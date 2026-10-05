@@ -5,10 +5,12 @@
  * 输入 state 绝不被修改（ADR-001）。
  */
 import { Rng } from "../rng";
+import { EffectQueue } from "../pipeline";
 import type { BuffInstance } from "../buffs";
 import type { ContentDb } from "../registry/content";
 import type { CardDefinition } from "../registry/content";
 import type { CardInstance, EnemyState, Phase, BattleState } from "./state";
+import type { EffectWork } from "./work";
 
 export interface MutableUnit {
   readonly id: string;
@@ -52,6 +54,10 @@ export interface Draft {
   discard: string[];
   exhaust: string[];
   cardInstances: Record<string, CardInstance>;
+  /** 栈式效果队列（ADR-002）：不在 BattleState 中持久化，每次 reduce 从空开始 */
+  queue: EffectQueue<EffectWork>;
+  /** 排空重入保护：结算中再入的动作只入栈，由当前循环弹出 */
+  draining: boolean;
 }
 
 export function toDraft(state: BattleState): Draft {
@@ -95,6 +101,8 @@ export function toDraft(state: BattleState): Draft {
     discard: [...state.piles.discard],
     exhaust: [...state.piles.exhaust],
     cardInstances: { ...state.cardInstances },
+    queue: new EffectQueue<EffectWork>(),
+    draining: false,
   };
 }
 

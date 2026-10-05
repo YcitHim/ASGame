@@ -17,7 +17,7 @@ import {
 import type { EventSink } from "../events/event-sink";
 import { livingEnemies, toDraft, type Draft } from "./draft";
 import { resolveRelics } from "./relics";
-import { loseHp, resolveEffects } from "./resolve";
+import { enqueueEffects, loseHp, resolveEffects } from "./resolve";
 import type { CardInstance, BattleState } from "./state";
 
 export interface EffectiveCard {
@@ -255,8 +255,9 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
       if (!handler.onHit) continue;
       const extra = handler.onHit(enhancement.params, enhancementContext(draft, hitIndex));
       if (extra.length > 0) {
-        // 附加伤害不再叠加本卡的强化伤害修饰，避免重复计算
-        resolveEffects(draft, sink, extra, {
+        // 附加伤害不再叠加本卡的强化伤害修饰，避免重复计算；
+        // 连锁动作只入栈，由当前结算循环 LIFO 弹出（ADR-002），不递归排空。
+        enqueueEffects(draft, extra, {
           sourceId: instance.instanceId,
           actorId: "player",
           chosenTargetId: targetId,

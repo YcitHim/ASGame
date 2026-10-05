@@ -8,7 +8,7 @@
 import type { BuffId } from "../registry/ids";
 import { Rng } from "../rng";
 import type { EventSink } from "../events/event-sink";
-import { applyBuffToTarget, drawCards, PLAYER_ID } from "./resolve";
+import { applyBuffToTarget, drawCards, killUnit, PLAYER_ID } from "./resolve";
 import { findUnit, type Draft } from "./draft";
 
 export interface DebugResult {
@@ -78,7 +78,7 @@ export function executeDebugCommand(draft: Draft, sink: EventSink, command: stri
       const unit = id ? findUnit(draft, id) : undefined;
       if (!id || !unit) return { ok: false, message: `敌人不存在：${id ?? ""}` };
       unit.hp = 0;
-      sink.emit("UnitDied", { unitId: id, clearedEffects: 0 });
+      killUnit(draft, sink, id);
       return { ok: true, message: `已击杀 ${id}` };
     }
 

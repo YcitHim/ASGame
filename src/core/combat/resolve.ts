@@ -12,6 +12,7 @@ import type { CardEffect, ConditionNode, TargetRef } from "../registry/content";
 import { evaluateCondition, type ConditionContext } from "../registry/condition";
 import { getTarget } from "../registry/target";
 import { findUnit, livingEnemies, type Draft, type MutableUnit } from "./draft";
+import type { EffectContext, EffectWork } from "./work";
 
 export const POLLUTION_CRITICAL = 80;
 export const POLLUTION_MAX = 100;
@@ -126,7 +127,7 @@ export function dealDamage(draft: Draft, sink: EventSink, args: DamageArgs): voi
     segments: args.segments ?? 1,
   });
   if (hpLost > 0) sink.emit("HpLost", { targetId: args.targetId, value: hpLost, reason: "damage" });
-  if (target.hp === 0) sink.emit("UnitDied", { unitId: args.targetId, clearedEffects: 0 });
+  if (target.hp === 0) killUnit(draft, sink, args.targetId);
 }
 
 export function gainBlock(
@@ -171,7 +172,7 @@ export function loseHp(
   const lost = Math.min(unit.hp, value);
   unit.hp -= lost;
   sink.emit("HpLost", { targetId, value: lost, reason });
-  if (unit.hp === 0) sink.emit("UnitDied", { unitId: targetId, clearedEffects: 0 });
+  if (unit.hp === 0) killUnit(draft, sink, targetId);
 }
 
 /** amount 是"卡面参数"：强度型=层数，计时型=回合数（策划 Q1）。 */
@@ -295,16 +296,7 @@ export function drawCards(draft: Draft, sink: EventSink, count: number): string[
   return drawn;
 }
 
-export interface EffectContext {
-  readonly sourceId: string;
-  readonly actorId: string;
-  readonly chosenTargetId: string | null;
-  /** 每段伤害结算后回调（强化 onHit 钩子；多段攻击每段独立触发） */
-  readonly onHit?: (hitIndex: number, targetId: string) => void;
-  /** 强化层注入的修饰（layer: enhancement），走修饰符管线而非直接改值 */
-  readonly attackModifiers?: readonly Modifier[];
-  readonly blockModifiers?: readonly Modifier[];
-}
+export type { EffectContext } from "./work";
 
 function defaultTarget(effect: CardEffect): TargetRef {
   if (effect.target) return effect.target;
@@ -312,68 +304,125 @@ function defaultTarget(effect: CardEffect): TargetRef {
   return { type: "self" };
 }
 
-/** 依次结算一张卡/一个意图的效果列表。 */
+let workSeq = 0;
+function nextWorkId(): string {
+  workSeq += 1;
+  return `w${workSeq}`;
+}
+
+/** 死亡清理：取消该单位挂起的动作，并把被取消数量写进 UnitDied（ADR-002）。 */
+export function killUnit(draft: Draft, sink: EventSink, unitId: string): number {
+  const cleared = draft.queue.removeByUnit(unitId).length;
+  sink.emit("UnitDied", { unitId, clearedEffects: cleared });
+  return cleared;
+}
+
+/**
+ * 把效果列表解析成栈上的动作（ADR-002）。
+ * 条件与目标在此刻快照；倒序压栈，弹出时仍是卡面书写顺序。
+ */
+export function enqueueEffects(
+  draft: Draft,
+  effects: readonly CardEffect[],
+  ctx: EffectContext,
+): void {
+  const damageTotal = effects.filter((e) => e.kind === "damage").length;
+  const pending: EffectWork[] = [];
+  let damageIndex = 0;
+  for (const effect of effects) {
+    if (!evaluateCondition(effect.condition, conditionContext(draft))) continue;
+    if (effect.kind === "damage") damageIndex += 1;
+    const targetIds = resolveTargets(draft, defaultTarget(effect), ctx.actorId, ctx.chosenTargetId);
+    pending.push({ effect, ctx, targetIds, damageIndex, damageTotal });
+  }
+  for (let i = pending.length - 1; i >= 0; i -= 1) {
+    const work = pending[i];
+    draft.queue.push({
+      id: nextWorkId(),
+      sourceId: ctx.actorId,
+      targetIds: work.targetIds,
+      payload: work,
+    });
+  }
+}
+
+function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
+  const { effect, ctx, targetIds, damageIndex, damageTotal } = work;
+  const value = effect.value ?? 0;
+
+  switch (effect.kind) {
+    case "damage":
+      for (const t of targetIds) {
+        dealDamage(draft, sink, {
+          sourceId: ctx.sourceId,
+          actorId: ctx.actorId,
+          targetId: t,
+          base: value,
+          segment: damageIndex,
+          segments: damageTotal,
+          extraModifiers: ctx.attackModifiers,
+        });
+        ctx.onHit?.(damageIndex, t);
+      }
+      break;
+    case "block":
+      for (const t of targetIds) gainBlock(draft, sink, t, value, ctx.blockModifiers);
+      break;
+    case "draw":
+      drawCards(draft, sink, value);
+      break;
+    case "heal":
+      for (const t of targetIds) healUnit(draft, sink, t, value, "card");
+      break;
+    case "applyBuff":
+      if (effect.buff) {
+        for (const t of targetIds) {
+          applyBuffToTarget(draft, sink, t, effect.buff as BuffId, effect.stacks ?? 1, effect.duration);
+        }
+      }
+      break;
+    case "gainEnergy":
+      draft.player.energy += value;
+      break;
+    case "gainPollution":
+      changePollution(draft, sink, value);
+      break;
+    case "gainCharge":
+      changeCharge(draft, sink, value);
+      break;
+    default:
+      break;
+  }
+}
+
+/**
+ * 逐项结算队列直到清空。
+ * LIFO：执行过程中压入的动作下一次优先结算（"中途插入"）；
+ * 重入时只入栈不排空，避免内层提前消费外层挂起动作。
+ */
+export function drainQueue(draft: Draft, sink: EventSink): void {
+  if (draft.draining) return;
+  draft.draining = true;
+  try {
+    let next = draft.queue.pop();
+    while (next) {
+      executeWork(draft, sink, next.payload);
+      next = draft.queue.pop();
+    }
+  } finally {
+    draft.draining = false;
+  }
+}
+
+/** 依次结算一张卡/一个意图的效果列表（入栈 → 排空）。 */
 export function resolveEffects(
   draft: Draft,
   sink: EventSink,
   effects: readonly CardEffect[],
   ctx: EffectContext,
 ): void {
-  const damageTotal = effects.filter((e) => e.kind === "damage").length;
-  let damageIndex = 0;
-
-  for (const effect of effects) {
-    if (!evaluateCondition(effect.condition, conditionContext(draft))) continue;
-    const targets = resolveTargets(draft, defaultTarget(effect), ctx.actorId, ctx.chosenTargetId);
-    const value = effect.value ?? 0;
-
-    switch (effect.kind) {
-      case "damage": {
-        damageIndex += 1;
-        const segment = damageIndex;
-        for (const t of targets) {
-          dealDamage(draft, sink, {
-            sourceId: ctx.sourceId,
-            actorId: ctx.actorId,
-            targetId: t,
-            base: value,
-            segment,
-            segments: damageTotal,
-            extraModifiers: ctx.attackModifiers,
-          });
-          ctx.onHit?.(segment, t);
-        }
-        break;
-      }
-      case "block":
-        for (const t of targets) gainBlock(draft, sink, t, value, ctx.blockModifiers);
-        break;
-      case "draw":
-        drawCards(draft, sink, value);
-        break;
-      case "heal":
-        for (const t of targets) healUnit(draft, sink, t, value, "card");
-        break;
-      case "applyBuff":
-        if (effect.buff) {
-          for (const t of targets) {
-            applyBuffToTarget(draft, sink, t, effect.buff as BuffId, effect.stacks ?? 1, effect.duration);
-          }
-        }
-        break;
-      case "gainEnergy":
-        draft.player.energy += value;
-        break;
-      case "gainPollution":
-        changePollution(draft, sink, value);
-        break;
-      case "gainCharge":
-        changeCharge(draft, sink, value);
-        break;
-      default:
-        break;
-    }
-  }
+  enqueueEffects(draft, effects, ctx);
+  drainQueue(draft, sink);
 }
 
 /** 供外部（如 Buff 触发）判断条件用。 */
