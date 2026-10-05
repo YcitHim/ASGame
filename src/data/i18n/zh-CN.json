@@ -142,5 +142,20 @@
   "enh.rustbite.name": "淬锈",
   "enh.rustbite.desc": "此牌命中时，给予目标 1 回合易伤（多段重复触发只刷新回合数）。",
   "enh.bloodwage.name": "血偿",
-  "enh.bloodwage.desc": "此牌击杀敌人时，回复 4 点 HP。"
+  "enh.bloodwage.desc": "此牌击杀敌人时，回复 4 点 HP。",
+  "card.sparkjab.name": "火芯刺",
+  "card.sparkjab.desc": "造成 4 点伤害，获得 2 点充能。",
+  "card.sparkjab.descUp": "造成 6 点伤害，获得 3 点充能。",
+  "card.discharge.name": "泄能重锤",
+  "card.discharge.desc": "造成 8 点伤害；消耗全部充能，每点充能额外 +2 伤害。",
+  "card.discharge.descUp": "造成 11 点伤害；消耗全部充能，每点充能额外 +3 伤害。",
+  "card.redline.name": "红线运转",
+  "card.redline.desc": "获得 4 点充能；充能 ≥8 时抽 2 张。",
+  "card.redline.descUp": "获得 5 点充能；充能 ≥8 时抽 3 张。",
+  "card.blightoffering.name": "污血献祭",
+  "card.blightoffering.desc": "污染 +12，抽 2 张。",
+  "card.blightoffering.descUp": "污染 +10，抽 3 张。",
+  "card.corrodededge.name": "蚀心之刃",
+  "card.corrodededge.desc": "造成 7 点伤害；污染 ≥50 时改为 14。",
+  "card.corrodededge.descUp": "造成 9 点伤害；污染 ≥50 时改为 18。"
 }

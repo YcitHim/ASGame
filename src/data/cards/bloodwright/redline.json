@@ -1,0 +1,38 @@
+{
+  "id": "redline",
+  "class": "bloodwright",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "gainCharge",
+      "value": 4
+    },
+    {
+      "kind": "draw",
+      "value": 2,
+      "condition": {
+        "type": "chargeAtLeast",
+        "n": 8
+      }
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainCharge",
+        "value": 5
+      },
+      {
+        "kind": "draw",
+        "value": 3,
+        "condition": {
+          "type": "chargeAtLeast",
+          "n": 8
+        }
+      }
+    ]
+  },
+  "i18n": "card.redline"
+}

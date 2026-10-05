@@ -490,6 +490,28 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
     case "gainCharge":
       changeCharge(draft, sink, value);
       break;
+    case "spendCharge": {
+      // 「泄能重锤」：先让本牌的基础伤害吃到充能固定加伤（attackModifiers），
+      // 再消耗全部充能，按每点 value 造成一笔额外伤害。消耗部分为固定值、不吃任何增幅。
+      const charge = draft.player.charge;
+      if (charge <= 0) break;
+      if (value > 0) {
+        for (const t of targetIds) {
+          dealDamage(draft, sink, {
+            sourceId: ctx.sourceId,
+            actorId: ctx.actorId,
+            targetId: t,
+            base: charge * value,
+            segment: 1,
+            segments: 1,
+            modifiers: [],
+          });
+        }
+      }
+      draft.player.charge = 0;
+      sink.emit("ChargeChanged", { targetId: PLAYER_ID, before: charge, after: 0, delta: -charge });
+      break;
+    }
     case "gainModifier":
       // 本场临时修饰（血锈光环）：写入 BattleState.modifiers，随战斗结束消失
       if (effect.valueKind && effect.op) {

@@ -3,8 +3,9 @@ import { buildReport, buildScenarioReport, formatReport, formatScenarioReport } 
 import { simulateEliteScenario } from "./scenario";
 import { simulateRun } from "./sim";
 
-const HEALTHY_MIN = 0.3;
-const HEALTHY_MAX = 0.7;
+/** docs/27 §一：sim 补上精英遗物模拟后基线抬升，sim 口径目标区间暂定为 45%~65%（真人实测仍按 45~60%）。 */
+const HEALTHY_MIN = 0.45;
+const HEALTHY_MAX = 0.65;
 
 /** 用法：npm run sim -- [局数] [--scenario elite_warden] */
 function parseArgs(argv: string[]): { games: number; scenario: string | null } {

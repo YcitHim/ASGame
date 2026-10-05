@@ -27,6 +27,7 @@ export const CONDITION_IDS = [
   "selfHpAtLeast",
   "pollutionAbove",
   "pollutionBelow",
+  "pollutionAtLeast",
   "chargeAtLeast",
   "hasBuff",
   "cardsPlayedThisTurn",

@@ -79,6 +79,7 @@ registerCondition("selfHpAtLeast", (ctx, p) => {
 });
 registerCondition("pollutionAbove", (ctx, p) => ctx.pollution > num(p, "n"));
 registerCondition("pollutionBelow", (ctx, p) => ctx.pollution < num(p, "n"));
+registerCondition("pollutionAtLeast", (ctx, p) => ctx.pollution >= num(p, "n", 1));
 registerCondition("chargeAtLeast", (ctx, p) => ctx.charge >= num(p, "n"));
 registerCondition("hasBuff", (ctx, p) => {
   const id = p["buffId"];

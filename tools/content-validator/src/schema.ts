@@ -74,6 +74,15 @@ const effectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("gainCharge"), value: z.number(), condition: conditionSchema.optional() }).strict(),
   z
     .object({
+      kind: z.literal("spendCharge"),
+      target: targetSchema.optional(),
+      /** 每点充能的额外伤害 */
+      value: z.number().int().min(0),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
       kind: z.literal("gainModifier"),
       valueKind: z.enum(VALUE_KINDS),
       op: z.enum(["add", "mul"]),

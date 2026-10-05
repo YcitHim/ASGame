@@ -28,7 +28,9 @@ export interface CardEffect {
     | "gainPollution"
     | "gainCharge"
     /** 写入本场临时修饰层（docs/16 P3.2「血锈光环」）：战斗内持续、随战斗结束消失 */
-    | "gainModifier";
+    | "gainModifier"
+    /** 消耗全部充能（docs/27 §二 C2「泄能重锤」）：每点充能造成 value 点额外伤害，随后清零 */
+    | "spendCharge";
   readonly target?: TargetRef;
   readonly value?: number;
   readonly hits?: number;
