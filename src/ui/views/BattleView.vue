@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from "vue";
 import { useRouter } from "vue-router";
 import { previewEnergyCost, type BattleState } from "@/core/combat";
 import type { CardDefinition } from "@/core/registry";
-import { loadGameContent } from "@/data/load";
+import { loadGameContent, t } from "@/data/load";
 import { useBattleStore } from "@/stores/battle";
 import { useRunStore } from "@/stores/run";
 import { useSettingsStore } from "@/stores/settings";
@@ -124,6 +124,52 @@ interface DragState {
 const drag = ref<DragState | null>(null);
 let dragCleanup: (() => void) | null = null;
 
+/* ---------- 打击感：出牌飞行（FLIP，docs/08 §6） ---------- */
+
+const lastCardRect = ref<DOMRect | null>(null);
+const flyFx = ref<{ cardId: string; x1: number; y1: number; x2: number; y2: number; seq: number } | null>(null);
+const flyRef = useTemplateRef<HTMLElement>("flyRef");
+
+function captureCardRect(event: PointerEvent): void {
+  const el = event.currentTarget as HTMLElement | null;
+  if (el) lastCardRect.value = el.getBoundingClientRect();
+}
+
+watch(
+  () => store.cardPlayed?.seq,
+  async () => {
+    const info = store.cardPlayed;
+    const rect = lastCardRect.value;
+    if (!info || !rect) return;
+    const targetEl = info.targetId
+      ? document.querySelector(`[data-enemy-id="${info.targetId}"]`)
+      : document.querySelector(".player-panel");
+    const tr = targetEl?.getBoundingClientRect();
+    const x1 = rect.left + rect.width / 2;
+    const y1 = rect.top + rect.height / 2;
+    const x2 = tr ? tr.left + tr.width / 2 : window.innerWidth / 2;
+    const y2 = tr ? tr.top + tr.height / 2 : window.innerHeight / 2;
+    flyFx.value = { cardId: info.cardId, x1, y1, x2, y2, seq: info.seq };
+    await nextTick();
+    const el = flyRef.value;
+    if (el) {
+      el.style.left = `${x1}px`;
+      el.style.top = `${y1}px`;
+      el.animate(
+        [
+          { transform: "translate(-50%, -50%) scale(1)", opacity: 1 },
+          {
+            transform: `translate(calc(-50% + ${x2 - x1}px), calc(-50% + ${y2 - y1}px)) scale(0.7)`,
+            opacity: 0.15,
+          },
+        ],
+        { duration: 250, easing: "cubic-bezier(.2,.8,.3,1)", fill: "forwards" },
+      );
+    }
+    setTimeout(() => (flyFx.value = null), 260);
+  },
+);
+
 /** 命中光标下的存活敌人（拖拽松开时判定）。 */
 function enemyAt(x: number, y: number): string | null {
   const el = typeof document.elementFromPoint === "function" ? document.elementFromPoint(x, y) : null;
@@ -142,6 +188,7 @@ function endDrag(): void {
 function onGrab(index: number, event: PointerEvent): void {
   if (!canAct.value) return;
   event.preventDefault();
+  captureCardRect(event);
   endDrag();
   drag.value = {
     index,
@@ -237,11 +284,15 @@ function back(): void {
             targetable: store.targeting !== null || drag?.moved === true,
             'drop-target': drag?.hoverEnemy === enemy.id,
             enraged: bossEnraged && enemy.hp > 0 && enemy.hp * 2 < enemy.maxHp,
+            hit: store.hitUnits.includes(enemy.id),
+            dying: store.dyingUnits.includes(enemy.id),
           }"
           :data-enemy-id="enemy.id"
           @click="pickEnemy(enemy.id)"
         >
-          <IntentIcon :intent="enemy.intent" />
+          <div class="intent-slot" :class="{ flip: store.flipUnits.includes(enemy.id) }">
+            <IntentIcon :intent="enemy.intent" />
+          </div>
           <div class="enemy-fig">
             <svg width="150" height="150" viewBox="0 0 170 170" aria-hidden="true">
               <ellipse cx="85" cy="158" rx="52" ry="8" fill="rgba(0,0,0,.6)" />
@@ -273,7 +324,10 @@ function back(): void {
 
       <!-- 战场带 -->
       <div class="field-band">
-        <div class="player-panel">
+        <div
+          class="player-panel"
+          :class="{ hit: store.hitUnits.includes('player'), dying: store.dyingUnits.includes('player') }"
+        >
           <div class="pp-name">血械侍僧 <small v-if="player && player.hp * 2 < player.maxHp">失控线已激活</small></div>
           <HpBar
             v-if="player"
@@ -375,6 +429,16 @@ function back(): void {
 
       <!-- 二阶段横幅 -->
       <div v-if="phaseBanner" class="phase-banner">锈 喉 · 第 二 阶 段</div>
+
+      <!-- HP 低于 50%：屏幕边缘血色渐晕（docs/08 §6） -->
+      <div v-if="player && player.hp * 2 < player.maxHp" class="vignette" />
+
+      <!-- 出牌飞行 -->
+      <Teleport to="body">
+        <div v-if="flyFx" ref="flyRef" class="fly-card">
+          {{ t(`card.${flyFx.cardId}.name`, flyFx.cardId) }}
+        </div>
+      </Teleport>
 
       <div v-if="store.message" class="message">{{ store.message }}</div>
 
@@ -576,4 +640,57 @@ function back(): void {
 .result p { color: var(--ink-dim); font-size: 13px; letter-spacing: 0.2em; }
 .result-actions { display: flex; gap: 14px; margin-top: 10px; }
 .result-actions .etch-btn { padding: 10px 24px; font-size: 13px; }
+/* 打击感：命中闪白 80ms / 死亡下沉 500ms / 意图翻入 200ms / 出牌飞行 250ms / 低血渐晕 */
+.enemy.hit .enemy-fig,
+.player-panel.hit {
+  animation: hit-flash 80ms linear;
+}
+@keyframes hit-flash {
+  0% { filter: brightness(2.4) saturate(0.3); }
+  100% { filter: brightness(1); }
+}
+.enemy.dying {
+  animation: unit-die 500ms ease-in forwards;
+}
+@keyframes unit-die {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0.25; transform: translateY(18px) scale(0.88); filter: grayscale(1) brightness(0.6); }
+}
+.intent-slot.flip {
+  animation: intent-in 200ms ease-out;
+}
+@keyframes intent-in {
+  0% { transform: rotateX(90deg) scale(0.82); opacity: 0; }
+  100% { transform: rotateX(0) scale(1); opacity: 1; }
+}
+.vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 38;
+  pointer-events: none;
+  background: radial-gradient(ellipse 78% 72% at 50% 50%, transparent 58%, rgba(138, 43, 31, 0.42) 100%);
+  animation: vignette-pulse 2.6s ease-in-out infinite;
+}
+@keyframes vignette-pulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+.fly-card {
+  position: fixed;
+  z-index: 70;
+  width: 110px;
+  height: 156px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  font-family: var(--serif-title);
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  color: var(--ink-bone);
+  background: linear-gradient(165deg, #1c1915, #12100e);
+  border: 1px solid var(--edge-gold);
+  border-radius: var(--radius-md);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.75);
+}
 </style>

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/YOUR_GITHUB/rust-and-blood/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB/rust-and-blood/actions/workflows/ci.yml)
 
-> 当前状态：**S5 流程串联已落地**（线性 5 节点地图、精英+Boss「锈喉」、卡奖/休息/锻造、G2 存档、G6 无头模拟器 100 局报表）。
+> 当前状态：**S6 打磨与封版**（golden replay 进 CI、打击感参数、0.1 数值锚定）。策划拍板已全部落实，详见 docs/12。
 > 推进基准：`docs/09-阶段任务分解.md`（阶段出口门禁全绿才前进），先读 `docs/`（尤其 01/02/03）。
 > 内容编辑入口：`src/data/`（卡牌 / 强化 / 遗物 / 敌人 / 关卡 / 文案，全部 JSON + validator）。
 

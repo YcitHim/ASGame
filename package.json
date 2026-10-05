@@ -15,7 +15,9 @@
     "test:watch": "vitest",
     "ci": "npm run lint && npm run typecheck && npm run validate && npm run test:coverage && npm run sim -- 100",
     "test:coverage": "vitest run --coverage",
-    "sim": "tsx tools/headless-sim/src/cli.ts"
+    "sim": "tsx tools/headless-sim/src/cli.ts",
+    "record:golden": "tsx tools/headless-sim/src/record-golden.ts",
+    "test:replay": "vitest run tests/unit/golden-replay.spec.ts"
   },
   "dependencies": {
     "pinia": "^4.0.3",

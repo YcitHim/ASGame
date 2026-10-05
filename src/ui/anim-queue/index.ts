@@ -12,7 +12,7 @@ export interface AnimGroup {
 }
 
 const DURATION: Partial<Record<DomainEvent["type"], number>> = {
-  DamageDealt: 200,
+  DamageDealt: 180,
   HpLost: 140,
   HpHealed: 140,
   BlockGained: 120,

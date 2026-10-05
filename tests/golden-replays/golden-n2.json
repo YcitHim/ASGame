@@ -1,0 +1,215 @@
+{
+  "version": 1,
+  "recordedAt": "2026-10-05",
+  "content": "rust-and-blood",
+  "battle": {
+    "id": "golden-n2",
+    "nodeId": "n2",
+    "enemies": [
+      "corroded_swarm",
+      "riveted_heavy"
+    ],
+    "deck": [
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": [
+          "empower"
+        ]
+      },
+      {
+        "cardId": "defend",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "defend",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "defend",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "bloodbolt",
+        "upgraded": false,
+        "enhancements": [
+          "thrifty_pact"
+        ]
+      },
+      {
+        "cardId": "bloodflail",
+        "upgraded": false,
+        "enhancements": [
+          "empower"
+        ]
+      },
+      {
+        "cardId": "redtear",
+        "upgraded": false,
+        "enhancements": [
+          "bloodboil"
+        ]
+      },
+      {
+        "cardId": "brace",
+        "upgraded": true,
+        "enhancements": []
+      },
+      {
+        "cardId": "exsanguinate",
+        "upgraded": false,
+        "enhancements": []
+      }
+    ],
+    "relics": [
+      "broken_oil",
+      "blood_pump",
+      "redtear_ring"
+    ],
+    "seed": 424242,
+    "player": {
+      "maxHp": 66,
+      "energy": 3
+    },
+    "actions": [
+      {
+        "type": "Noop",
+        "actionId": "start"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p1",
+        "handIndex": 1,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p2",
+        "handIndex": 2,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p3",
+        "handIndex": 2,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e4"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p5",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e6"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p7",
+        "handIndex": 1,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p8",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p9",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e10"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p11",
+        "handIndex": 1,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p12",
+        "handIndex": 1,
+        "targetId": "riveted_heavy"
+      }
+    ],
+    "eventHash": "ecdd0abbc7e5596b1a8a9158ee35ae479f81503f56dddb64088158a881052a7c",
+    "eventTypes": [
+      "BattleStarted",
+      "CardsDrawn",
+      "BuffApplied",
+      "IntentRevealed",
+      "IntentRevealed",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "DamageDealt",
+      "HpLost",
+      "DamageDealt",
+      "HpLost",
+      "CardExhausted",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "UnitDied",
+      "TurnEnded",
+      "BlockGained",
+      "BlockGained",
+      "TurnStarted",
+      "CardsDrawn",
+      "IntentRevealed",
+      "HpLost",
+      "HpHealed",
+      "CardPlayed",
+      "BlockBroken",
+      "DamageDealt",
+      "HpLost",
+      "CardExhausted",
+      "CardRetained",
+      "TurnEnded",
+      "BlockBroken",
+      "DamageDealt",
+      "HpLost",
+      "BlockGained",
+      "TurnStarted"
+    ],
+    "turns": 4,
+    "outcome": "win"
+  }
+}

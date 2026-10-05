@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "recordedAt": "2026-10-05",
+  "content": "rust-and-blood",
+  "battle": {
+    "id": "golden-n1",
+    "nodeId": "n1",
+    "enemies": [
+      "rust_hound",
+      "polluting_preacher"
+    ],
+    "deck": [
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "defend",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "defend",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "defend",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "defend",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "bloodbolt",
+        "upgraded": false,
+        "enhancements": []
+      }
+    ],
+    "relics": [
+      "broken_oil",
+      "blood_pump"
+    ],
+    "seed": 20261005,
+    "player": {
+      "maxHp": 66,
+      "energy": 3
+    },
+    "actions": [
+      {
+        "type": "Noop",
+        "actionId": "start"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p1",
+        "handIndex": 0,
+        "targetId": "rust_hound"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p2",
+        "handIndex": 0,
+        "targetId": "rust_hound"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p3",
+        "handIndex": 2,
+        "targetId": "rust_hound"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e4"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p5",
+        "handIndex": 3,
+        "targetId": "rust_hound"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p6",
+        "handIndex": 0,
+        "targetId": "polluting_preacher"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p7",
+        "handIndex": 1,
+        "targetId": "polluting_preacher"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e8"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p9",
+        "handIndex": 0,
+        "targetId": "polluting_preacher"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p10",
+        "handIndex": 0,
+        "targetId": "polluting_preacher"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p11",
+        "handIndex": 0,
+        "targetId": "polluting_preacher"
+      }
+    ],
+    "eventHash": "245a378987ce34309f27635f0eb1d4f48e18a020c4e3068099cc33b73d9db637",
+    "eventTypes": [
+      "BattleStarted",
+      "CardsDrawn",
+      "BuffApplied",
+      "IntentRevealed",
+      "IntentRevealed",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "TurnEnded",
+      "DamageDealt",
+      "HpLost",
+      "DamageDealt",
+      "HpLost",
+      "TurnStarted",
+      "CardsDrawn",
+      "IntentRevealed",
+      "IntentRevealed",
+      "HpLost",
+      "HpHealed",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "UnitDied",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "TurnEnded",
+      "DamageDealt",
+      "HpLost",
+      "TurnStarted",
+      "DeckShuffled"
+    ],
+    "turns": 3,
+    "outcome": "win"
+  }
+}

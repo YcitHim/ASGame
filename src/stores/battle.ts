@@ -23,6 +23,7 @@ export interface Floater {
 
 let actionCounter = 0;
 let floaterCounter = 0;
+let cardPlayedSeq = 0;
 const queue = new AnimQueue();
 
 export const useBattleStore = defineStore("battle", {
@@ -35,6 +36,11 @@ export const useBattleStore = defineStore("battle", {
     shake: 0,
     targeting: null as number | null,
     speed: 1 as 1 | 2,
+    /** 打击感反馈（docs/08 §6） */
+    hitUnits: [] as string[],
+    dyingUnits: [] as string[],
+    flipUnits: [] as string[],
+    cardPlayed: null as { cardId: string; targetId: string | null; seq: number } | null,
   }),
   getters: {
     over(state): boolean {
@@ -181,12 +187,35 @@ export const useBattleStore = defineStore("battle", {
     },
 
     onAnimEvent(event: DomainEvent): void {
-      if (event.type === "DamageDealt") {
-        this.shake += 1;
-        if (event.hpLost > 0) this.pushFloater(event.targetId, event.hpLost, "damage", event.hpLost >= 12);
-      } else if (event.type === "HpHealed") {
-        this.pushFloater(event.targetId, event.value, "heal", false);
+      switch (event.type) {
+        case "DamageDealt":
+          this.shake += 1;
+          this.markUnit("hitUnits", event.targetId, 80);
+          if (event.hpLost > 0) this.pushFloater(event.targetId, event.hpLost, "damage", event.hpLost >= 12);
+          break;
+        case "HpHealed":
+          this.pushFloater(event.targetId, event.value, "heal", false);
+          break;
+        case "UnitDied":
+          this.markUnit("dyingUnits", event.unitId, 500);
+          break;
+        case "IntentRevealed":
+          this.markUnit("flipUnits", event.enemyId, 200);
+          break;
+        case "CardPlayed":
+          this.cardPlayed = { cardId: event.cardId, targetId: event.targetId, seq: ++cardPlayedSeq };
+          break;
+        default:
+          break;
       }
+    },
+
+    /** 给某个单位打一段限时状态（命中闪白 / 死亡 / 意图翻入）。 */
+    markUnit(key: "hitUnits" | "dyingUnits" | "flipUnits", unitId: string, ms: number): void {
+      if (!this[key].includes(unitId)) this[key] = [...this[key], unitId];
+      setTimeout(() => {
+        this[key] = this[key].filter((id) => id !== unitId);
+      }, ms);
     },
 
     pushFloater(targetId: string, value: number, kind: Floater["kind"], big: boolean): void {
