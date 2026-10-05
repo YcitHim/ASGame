@@ -49,6 +49,8 @@ interface SavedRun {
   acquired: string[];
   /** 本次祭坛是否已重铸过（按 nodeIndex 判定，缺省 = 未用） */
   recastUsedNode?: number | null;
+  /** 本节点是否已附着过强化（按 nodeIndex 判定，缺省 = 未用） */
+  enhanceUsedNode?: number | null;
 }
 
 export const useRunStore = defineStore("run", {
@@ -59,6 +61,7 @@ export const useRunStore = defineStore("run", {
     relics: [] as string[],
     acquired: [] as string[],
     recastUsedNode: null as number | null,
+    enhanceUsedNode: null as number | null,
   }),
 
   getters: {
@@ -108,6 +111,15 @@ export const useRunStore = defineStore("run", {
         )
         .map(({ index }) => index);
     },
+    /**
+     * 当前节点还能不能附着强化（docs/16 P3 + docs/25）。
+     * 每个节点只允许 1 次：祭坛 1 次、精英残骸 1 次；**重复进入同一节点不再生效**
+     * （此前靠 ForgeView 组件局部变量，从地图重进祭坛就会重置 → 玩家报「能强化两次」）。
+     */
+    canEnhanceHere(): boolean {
+      if (!this.run) return false;
+      return this.enhanceUsedNode !== this.run.nodeIndex;
+    },
     canRecast(): boolean {
       if (!this.run) return false;
       if (this.recastUsedNode === this.run.nodeIndex) return false;
@@ -128,6 +140,9 @@ export const useRunStore = defineStore("run", {
       this.deck = act.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
       this.relics = [...(act.startRelics ?? [])];
       this.acquired = [];
+      // 每节点标记必须随新局重置，否则上一局的"已用"会卡住新局（测试抓到的真问题）
+      this.recastUsedNode = null;
+      this.enhanceUsedNode = null;
       this.active = true;
       this.persist();
     },
@@ -250,11 +265,13 @@ export const useRunStore = defineStore("run", {
     },
 
     applyEnhancement(deckIndex: number, enhancementId: string): boolean {
+      if (!this.canEnhanceHere) return false;
       if (!this.canApply(enhancementId, deckIndex)) return false;
       this.deck = this.deck.map((card, i) =>
         i === deckIndex ? { ...card, enhancements: [...card.enhancements, enhancementId] } : card,
       );
       this.acquired = [...this.acquired, enhancementId];
+      this.enhanceUsedNode = this.run?.nodeIndex ?? null;
       this.persist();
       return true;
     },
@@ -324,6 +341,7 @@ export const useRunStore = defineStore("run", {
         relics: [...this.relics],
         acquired: [...this.acquired],
         recastUsedNode: this.recastUsedNode,
+        enhanceUsedNode: this.enhanceUsedNode,
       };
     },
 
@@ -341,6 +359,7 @@ export const useRunStore = defineStore("run", {
       this.relics = saved.relics ?? [];
       this.acquired = saved.acquired ?? [];
       this.recastUsedNode = saved.recastUsedNode ?? null;
+      this.enhanceUsedNode = saved.enhanceUsedNode ?? null;
       this.active = true;
       return true;
     },
@@ -352,6 +371,8 @@ export const useRunStore = defineStore("run", {
       this.deck = [];
       this.relics = [];
       this.acquired = [];
+      this.recastUsedNode = null;
+      this.enhanceUsedNode = null;
     },
   },
 });

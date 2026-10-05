@@ -58,6 +58,7 @@ describe("systems/save（ADR-008）", () => {
     const progress = migrate({ version: 1, data: { run: { nodeIndex: 1 }, deck: [] } });
     expect(progress?.version).toBe(SCHEMA_VERSION);
     expect((progress?.data as { recastUsedNode?: unknown }).recastUsedNode).toBeNull();
+    expect((progress?.data as { enhanceUsedNode?: unknown }).enhanceUsedNode).toBeNull();
 
     const settings = migrate({ version: 1, data: { masterVolume: 0.5 } });
     expect(settings?.data).toEqual({ masterVolume: 0.5 });

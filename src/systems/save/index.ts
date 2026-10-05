@@ -8,7 +8,7 @@
 export const SAVE_NAMESPACE = "rustandblood";
 
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export type SaveSlot = "settings" | "progress" | "replay";
 
@@ -36,6 +36,14 @@ const migrations: Record<number, (data: unknown) => unknown> = {
     const record = data as Record<string, unknown>;
     if (!("run" in record) && !("deck" in record)) return record;
     return { ...record, recastUsedNode: record["recastUsedNode"] ?? null };
+  },
+  // 2 → 3：进度档新增 enhanceUsedNode —— 「每个节点只允许附着 1 枚强化」改由 store 判定，
+  // 修复「从地图重复进入祭坛可反复附着」的 bug（玩家报）。
+  2: (data) => {
+    if (typeof data !== "object" || data === null) return data;
+    const record = data as Record<string, unknown>;
+    if (!("run" in record) && !("deck" in record)) return record;
+    return { ...record, enhanceUsedNode: record["enhanceUsedNode"] ?? null };
   },
 };
 

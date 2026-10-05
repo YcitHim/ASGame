@@ -98,10 +98,26 @@ describe("S5 局外进度（runStore）", () => {
     run.startRun(1);
     const index = run.deck.findIndex((c) => c.cardId === "bloodbolt");
     expect(run.applyEnhancement(index, "empower")).toBe(true);
-    // 已挂 1 枚的牌仍可作为附着目标（同卡双挂是 docs/25 决策的全部意义）
+    // 已挂 1 枚的牌仍可作为附着目标；但**同一节点只能附着一次** → 推进节点后再挂第二枚
     expect(run.canApply("rustbite", index)).toBe(true);
+    expect(run.applyEnhancement(index, "rustbite")).toBe(false);
+    run.advance();
     expect(run.applyEnhancement(index, "rustbite")).toBe(true);
     expect(run.deck[index].enhancements).toEqual(["empower", "rustbite"]);
+  });
+
+  it("每节点只允许附着 1 枚（修复「从地图重进祭坛可反复强化」的 bug）", () => {
+    const run = useRunStore();
+    run.startRun(1);
+    const index = run.deck.findIndex((c) => c.cardId === "bloodbolt");
+    expect(run.canEnhanceHere).toBe(true);
+    expect(run.applyEnhancement(index, "empower")).toBe(true);
+    expect(run.canEnhanceHere).toBe(false);
+    // 再次附着（等价于"返回地图后再点祭坛"）必须被拒
+    expect(run.applyEnhancement(index, "rustbite")).toBe(false);
+    expect(run.deck[index].enhancements).toEqual(["empower"]);
+    run.advance();
+    expect(run.canEnhanceHere).toBe(true);
   });
 
   it("重铸：随机换同阶强化，耗 5 HP，每座祭坛限 1 次（docs/16 P3.4）", () => {

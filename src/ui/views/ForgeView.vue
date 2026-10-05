@@ -13,8 +13,8 @@ useStageFit(stage);
 
 const selected = ref<string | null>(null);
 const notice = ref("");
-/** 本次祭坛只允许附着一次（一次只给一个强化） */
-const appliedThisVisit = ref(false);
+/** 本次祭坛是否已用掉附着：改由 run store 按 nodeIndex 判定（重进/刷新都不会再放行） */
+const usedHere = computed(() => !run.canEnhanceHere);
 
 onMounted(() => {
   if (!run.active) run.startRun();
@@ -38,7 +38,7 @@ function isTarget(deckIndex: number): boolean {
 }
 
 function pickOffer(id: string): void {
-  if (appliedThisVisit.value) {
+  if (usedHere.value) {
     notice.value = "本次祭坛的强化已用掉，继续远征吧";
     return;
   }
@@ -49,7 +49,7 @@ function pickOffer(id: string): void {
 function attach(deckIndex: number): void {
   const offer = chosenOffer.value;
   if (!offer) return;
-  if (appliedThisVisit.value) {
+  if (usedHere.value) {
     notice.value = "本次祭坛的强化已用掉，继续远征吧";
     return;
   }
@@ -60,7 +60,6 @@ function attach(deckIndex: number): void {
   if (run.applyEnhancement(deckIndex, offer.id)) {
     notice.value = `${cardName(run.deck[deckIndex].cardId)} 已附着「${enhancementName(offer.id)}」，本次祭坛结束`;
     selected.value = null;
-    appliedThisVisit.value = true;
   }
 }
 
@@ -109,8 +108,8 @@ function backToMap(): void {
             v-for="offer in offers"
             :key="offer.id"
             class="offer"
-            :class="[`tier-${offer.tier}`, { active: selected === offer.id, used: appliedThisVisit }]"
-            :disabled="appliedThisVisit"
+            :class="[`tier-${offer.tier}`, { active: selected === offer.id, used: usedHere }]"
+            :disabled="usedHere"
             @click="pickOffer(offer.id)"
           >
             <div class="offer-top">
@@ -149,18 +148,19 @@ function backToMap(): void {
 
         <section class="col recast">
           <h2>重铸 · {{ RECAST_HP_COST }} HP</h2>
-          <p class="note">随机移除该卡 1 枚强化，再从同阶池随机换 1 枚（每座祭坛限 1 次，随机洗）</p>
-          <button
-            v-for="index in run.recastableCards"
-            :key="index"
-            class="deck-card"
-            :disabled="!run.canRecast"
-            @click="doRecast(index)"
-          >
-            <span class="name">{{ cardName(run.deck[index].cardId) }}</span>
-            <span class="enhs">{{ run.deck[index].enhancements.map(enhancementName).join(" · ") }}</span>
-
-          </button>
+          <p class="recast-note">随机移除 1 枚强化 → 同阶随机换 1 枚（每座祭坛限 1 次）</p>
+          <div class="recast-list">
+            <button
+              v-for="index in run.recastableCards"
+              :key="index"
+              class="recast-card"
+              :disabled="!run.canRecast"
+              @click="doRecast(index)"
+            >
+              <span class="rc-name">{{ cardName(run.deck[index].cardId) }}</span>
+              <span class="rc-enhs">{{ run.deck[index].enhancements.map(enhancementName).join(" · ") }}</span>
+            </button>
+          </div>
           <p v-if="run.recastableCards.length === 0" class="empty">没有可重铸的卡（同阶已无可换强化）</p>
           <p v-else-if="!run.canRecast" class="empty">本次祭坛已重铸过（或 HP 不足）</p>
         </section>
@@ -252,7 +252,7 @@ function backToMap(): void {
   margin-bottom: 12px;
 }
 .offers {
-  width: 540px;
+  width: 460px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -332,9 +332,59 @@ function backToMap(): void {
 }
 .deck {
   flex: 1;
-  min-width: 0;
+  min-width: 240px;
   display: flex;
   flex-direction: column;
+}
+/* 重铸：紧凑第三栏（此前无宽度约束 + 复用 deck-card 网格，把卡组挤成一条线） */
+.recast {
+  width: 288px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+}
+.recast-note {
+  margin-bottom: 10px;
+  font-size: 10px;
+  line-height: 1.7;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+}
+.recast-list {
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 4px;
+}
+.recast-card {
+  text-align: left;
+  border: 1px solid rgba(110, 88, 54, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  background: rgba(10, 8, 6, 0.6);
+  transition: border-color var(--dur-hover), transform var(--dur-hover);
+}
+.recast-card:hover:not(:disabled) {
+  border-color: var(--gold);
+  transform: translateX(3px);
+}
+.recast-card:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.rc-name {
+  display: block;
+  font-size: 12px;
+  color: var(--ink-bone);
+}
+.rc-enhs {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--gold-dim);
+  overflow-wrap: anywhere;
 }
 .deck-list {
   overflow-y: auto;
