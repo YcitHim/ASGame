@@ -13,6 +13,8 @@ const props = defineProps<{
   index: number;
   handCount: number;
   enhancements?: number;
+  upgraded?: boolean;
+  enhancementIds?: readonly string[];
 }>();
 
 const emit = defineEmits<{ (e: "grab", index: number, event: PointerEvent): void }>();
@@ -31,7 +33,17 @@ const KEYWORD_LABEL: Record<string, string> = {
 };
 
 const name = computed(() => t(`card.${props.cardId}.name`, props.cardId));
-const desc = computed(() => t(`card.${props.cardId}.desc`, ""));
+const desc = computed(() =>
+  props.upgraded
+    ? t(`card.${props.cardId}.descUp`, t(`card.${props.cardId}.desc`, ""))
+    : t(`card.${props.cardId}.desc`, ""),
+);
+const enhancementNames = computed(() => (props.enhancementIds ?? []).map((id) => t(`enh.${id}.name`, id)));
+const enhancementTip = computed(() =>
+  enhancementNames.value.length > 0
+    ? enhancementNames.value.map((n) => `${n}：${t(`enh.${props.enhancementIds?.[enhancementNames.value.indexOf(n)]}.desc`, "")}`).join("\n")
+    : "",
+);
 const typeLabel = computed(() => TYPE_LABEL[props.type] ?? props.type);
 const keywordLabels = computed(() => props.keywords.map((k) => KEYWORD_LABEL[k] ?? k));
 /** 扇形展开：以中心为 0 度，向两侧摊开。 */
@@ -53,10 +65,10 @@ const lift = computed(() => Math.abs(rotation.value) * 1.8);
     <div class="cost">{{ cost }}</div>
     <div v-if="keywordLabels.includes('血契')" class="bloodcost">血契</div>
     <div class="art"><span>{{ typeLabel }}</span></div>
-    <div class="cname">{{ name }}</div>
+    <div class="cname">{{ name }}<sup v-if="upgraded" class="upmark">+</sup></div>
     <div class="ctype">{{ typeLabel }}<template v-if="keywordLabels.length"> · {{ keywordLabels.join(" · ") }}</template></div>
     <div class="ctext">{{ desc }}</div>
-    <div class="enhslots">
+    <div class="enhslots" :title="enhancementTip">
       <i v-for="n in 3" :key="n" :class="{ on: n <= (enhancements ?? 0) }" />
     </div>
   </div>
@@ -139,6 +151,11 @@ const lift = computed(() => Math.abs(rotation.value) * 1.8);
   font-size: 26px;
   letter-spacing: 0.3em;
   color: rgba(176, 141, 74, 0.55);
+}
+.upmark {
+  color: var(--gold);
+  font-size: 11px;
+  margin-left: 3px;
 }
 .cname {
   text-align: center;

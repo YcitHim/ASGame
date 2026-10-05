@@ -1,0 +1,16 @@
+{
+  "id": "fortify",
+  "tier": 1,
+  "appliesTo": [
+    "defend",
+    "brace",
+    "ironhide",
+    "bloodwall",
+    "lastbreath"
+  ],
+  "handler": "fortify",
+  "params": {
+    "bonus": 3
+  },
+  "i18n": "enh.fortify"
+}

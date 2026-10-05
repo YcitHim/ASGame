@@ -280,6 +280,8 @@ export interface EffectContext {
   readonly sourceId: string;
   readonly actorId: string;
   readonly chosenTargetId: string | null;
+  /** 每段伤害结算后回调（强化 onHit 钩子；多段攻击每段独立触发） */
+  readonly onHit?: (hitIndex: number, targetId: string) => void;
 }
 
 function defaultTarget(effect: CardEffect): TargetRef {
@@ -306,15 +308,17 @@ export function resolveEffects(
     switch (effect.kind) {
       case "damage": {
         damageIndex += 1;
+        const segment = damageIndex;
         for (const t of targets) {
           dealDamage(draft, sink, {
             sourceId: ctx.sourceId,
             actorId: ctx.actorId,
             targetId: t,
             base: value,
-            segment: damageIndex,
+            segment,
             segments: damageTotal,
           });
+          ctx.onHit?.(segment, t);
         }
         break;
       }

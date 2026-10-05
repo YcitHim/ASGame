@@ -4,10 +4,10 @@
   "type": "attack",
   "rarity": "uncommon",
   "cost": 2,
+  "bloodCost": 1,
   "keywords": [
     "bloodpact"
   ],
-  "bloodCost": 1,
   "effects": [
     {
       "kind": "damage",
@@ -28,5 +28,27 @@
       }
     }
   ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 11
+      },
+      {
+        "kind": "damage",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 11,
+        "condition": {
+          "type": "hpBelow",
+          "percent": 50
+        }
+      }
+    ]
+  },
   "i18n": "card.redtear"
 }

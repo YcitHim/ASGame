@@ -1,0 +1,15 @@
+{
+  "id": "redtear_ring",
+  "i18n": "relic.redtear_ring",
+  "timing": "onTurnStart",
+  "once": "turn",
+  "effects": [
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 3
+    }
+  ]
+}

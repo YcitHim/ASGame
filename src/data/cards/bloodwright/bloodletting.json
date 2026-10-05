@@ -4,15 +4,23 @@
   "type": "skill",
   "rarity": "common",
   "cost": 0,
+  "bloodCost": 3,
   "keywords": [
     "bloodpact"
   ],
-  "bloodCost": 3,
   "effects": [
     {
       "kind": "draw",
       "value": 2
     }
   ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "draw",
+        "value": 3
+      }
+    ]
+  },
   "i18n": "card.bloodletting"
 }

@@ -3,11 +3,13 @@ import { computed, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
 import EmberField from "@/ui/components/EmberField.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
+import { useRunStore } from "@/stores/run";
 import { hasSlot } from "@/systems/save";
 
 const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 const router = useRouter();
+const run = useRunStore();
 const canContinue = computed(() => hasSlot("progress"));
 
 const menu = [
@@ -20,7 +22,12 @@ const menu = [
 function onMenu(key: (typeof menu)[number]["key"], enabled: boolean): void {
   if (!enabled) return;
   if (key === "settings") void router.push("/settings");
-  else if (key === "expedition" || key === "continue") void router.push("/battle");
+  else if (key === "expedition") {
+    run.startRun();
+    void router.push("/battle");
+  } else if (key === "continue") {
+    void router.push("/battle");
+  }
 }
 </script>
 

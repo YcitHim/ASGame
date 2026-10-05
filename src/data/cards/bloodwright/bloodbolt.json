@@ -2,19 +2,46 @@
   "id": "bloodbolt",
   "class": "bloodwright",
   "type": "attack",
-  "rarity": "common",
+  "rarity": "starter",
   "cost": 1,
-  "keywords": ["bloodpact"],
   "bloodCost": 2,
+  "keywords": [
+    "bloodpact"
+  ],
   "effects": [
-    { "kind": "damage", "target": { "type": "chosenEnemy" }, "value": 9 },
-    { "kind": "draw", "value": 1, "condition": { "type": "hpBelow", "percent": 50 } }
+    {
+      "kind": "damage",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 9
+    },
+    {
+      "kind": "draw",
+      "value": 1,
+      "condition": {
+        "type": "hpBelow",
+        "percent": 50
+      }
+    }
   ],
   "upgraded": {
-    "cost": 1,
     "effects": [
-      { "kind": "damage", "target": { "type": "chosenEnemy" }, "value": 12 },
-      { "kind": "draw", "value": 2, "condition": { "type": "hpBelow", "percent": 50 } }
+      {
+        "kind": "damage",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 12
+      },
+      {
+        "kind": "draw",
+        "value": 2,
+        "condition": {
+          "type": "hpBelow",
+          "percent": 50
+        }
+      }
     ]
   },
   "i18n": "card.bloodbolt"

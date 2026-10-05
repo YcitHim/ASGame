@@ -106,13 +106,33 @@ export interface ActDefinition {
   readonly i18n: string;
   readonly player: { readonly maxHp: number; readonly energy: number };
   readonly startDeck: readonly string[];
+  readonly startRelics?: readonly string[];
   readonly encounters: readonly EncounterDefinition[];
+}
+
+/** 触发器时机（triggers README 的 v0 时机表）。 */
+export type TriggerTiming =
+  | "onBattleStart"
+  | "onTurnStart"
+  | "onTurnEnd"
+  | "onPlay"
+  | "onHit"
+  | "onSell";
+
+export interface RelicDefinition {
+  readonly id: string;
+  readonly i18n: string;
+  readonly timing: TriggerTiming;
+  readonly effects: readonly CardEffect[];
+  /** 触发次数限制：battle = 整场一次；turn = 每回合一次；缺省 = 每次时机都触发 */
+  readonly once?: "battle" | "turn";
 }
 
 export interface ContentDb {
   readonly cards: ReadonlyMap<string, CardDefinition>;
   readonly enemies: ReadonlyMap<string, EnemyDefinition>;
   readonly enhancements: ReadonlyMap<string, EnhancementDefinition>;
+  readonly relics: ReadonlyMap<string, RelicDefinition>;
 }
 
 export function createContentDb(partial: Partial<ContentDb> = {}): ContentDb {
@@ -120,6 +140,7 @@ export function createContentDb(partial: Partial<ContentDb> = {}): ContentDb {
     cards: partial.cards ?? new Map(),
     enemies: partial.enemies ?? new Map(),
     enhancements: partial.enhancements ?? new Map(),
+    relics: partial.relics ?? new Map(),
   };
 }
 

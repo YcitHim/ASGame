@@ -2,8 +2,9 @@
 
 [![CI](https://github.com/YOUR_GITHUB/rust-and-blood/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB/rust-and-blood/actions/workflows/ci.yml)
 
-> 当前状态：**S3 战斗可玩已落地**（回合状态机、出牌判定、六 Buff、关键词 v0、意图 AI + 3 敌人、调试控制台与战斗 UI）。
+> 当前状态：**S4 首职业内容已落地**（血械侍僧 30 卡 + 3 强化 + 4 遗物、强化 modifyCard/onHit、锻造祭坛三选一、ADR-007 竖屏遮罩）。
 > 推进基准：`docs/09-阶段任务分解.md`（阶段出口门禁全绿才前进），先读 `docs/`（尤其 01/02/03）。
+> 内容编辑入口：`src/data/`（卡牌 / 强化 / 遗物 / 敌人 / 关卡 / 文案，全部 JSON + validator）。
 
 ## 开发命令
 

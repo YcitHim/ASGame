@@ -1,0 +1,42 @@
+{
+  "id": "crimsonpact",
+  "class": "bloodwright",
+  "type": "power",
+  "rarity": "rare",
+  "cost": 2,
+  "bloodCost": 3,
+  "keywords": [
+    "bloodpact"
+  ],
+  "effects": [
+    {
+      "kind": "gainCharge",
+      "value": 5
+    },
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "self"
+      },
+      "buff": "strength",
+      "stacks": 2
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainCharge",
+        "value": 7
+      },
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "self"
+        },
+        "buff": "strength",
+        "stacks": 3
+      }
+    ]
+  },
+  "i18n": "card.crimsonpact"
+}

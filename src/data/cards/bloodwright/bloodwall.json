@@ -1,0 +1,44 @@
+{
+  "id": "bloodwall",
+  "class": "bloodwright",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 2,
+  "effects": [
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 12
+    },
+    {
+      "kind": "gainEnergy",
+      "value": 1,
+      "condition": {
+        "type": "hpBelow",
+        "percent": 50
+      }
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "block",
+        "target": {
+          "type": "self"
+        },
+        "value": 16
+      },
+      {
+        "kind": "gainEnergy",
+        "value": 1,
+        "condition": {
+          "type": "hpBelow",
+          "percent": 50
+        }
+      }
+    ]
+  },
+  "i18n": "card.bloodwall"
+}

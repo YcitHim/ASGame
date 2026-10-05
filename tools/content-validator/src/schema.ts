@@ -67,8 +67,8 @@ const effectSchema = z.discriminatedUnion("kind", [
     })
     .strict(),
   z.object({ kind: z.literal("gainEnergy"), value: z.number().int().min(0), condition: conditionSchema.optional() }).strict(),
-  z.object({ kind: z.literal("gainPollution"), value: z.number().min(0), condition: conditionSchema.optional() }).strict(),
-  z.object({ kind: z.literal("gainCharge"), value: z.number().min(0), condition: conditionSchema.optional() }).strict(),
+  z.object({ kind: z.literal("gainPollution"), value: z.number(), condition: conditionSchema.optional() }).strict(),
+  z.object({ kind: z.literal("gainCharge"), value: z.number(), condition: conditionSchema.optional() }).strict(),
 ]);
 
 const playSchema = z
@@ -161,9 +161,21 @@ export const actSchema = z
     i18n: z.string(),
     player: z.object({ maxHp: z.number().int().min(1), energy: z.number().int().min(0) }).strict(),
     startDeck: z.array(z.string().regex(ID_PATTERN)).min(1),
+    startRelics: z.array(z.string().regex(ID_PATTERN)).optional(),
     encounters: z.array(z.object({ id: idSchema, enemies: z.array(z.string().regex(ID_PATTERN)).min(1) }).strict()).min(1),
   })
   .strict();
 
 export type EnemyJson = z.infer<typeof enemySchema>;
 export type ActJson = z.infer<typeof actSchema>;
+export const relicSchema = z
+  .object({
+    id: idSchema,
+    i18n: z.string(),
+    timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell"]),
+    effects: z.array(effectSchema).min(1),
+    once: z.enum(["battle", "turn"]).optional(),
+  })
+  .strict();
+
+export type RelicJson = z.infer<typeof relicSchema>;

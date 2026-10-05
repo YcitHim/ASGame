@@ -10,14 +10,18 @@
     "strike",
     "strike",
     "strike",
+    "strike",
     "defend",
     "defend",
     "defend",
     "defend",
-    "bloodbolt",
-    "bloodletting",
-    "redtear",
-    "bloodflail"
+    "bloodbolt"
+  ],
+  "startRelics": [
+    "broken_oil",
+    "blood_pump",
+    "redtear_ring",
+    "rust_charm"
   ],
   "encounters": [
     {

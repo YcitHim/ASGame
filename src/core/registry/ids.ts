@@ -55,7 +55,7 @@ export const BUFF_IDS = [
 export const CARD_HANDLER_IDS = ["multihit", "rampageOnSameTarget"] as const;
 
 /** 强化机制 handler（ADR-005，S4 只验 bloodboil） */
-export const ENHANCEMENT_HANDLER_IDS = ["bloodboil", "bloodrage"] as const;
+export const ENHANCEMENT_HANDLER_IDS = ["bloodboil", "empower", "fortify", "bloodrage"] as const;
 
 export const CARD_TYPES = ["attack", "skill", "power", "curse", "status"] as const;
 export const CARD_RARITIES = ["starter", "common", "uncommon", "rare", "special"] as const;

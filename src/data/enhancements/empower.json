@@ -1,0 +1,27 @@
+{
+  "id": "empower",
+  "tier": 1,
+  "appliesTo": [
+    "strike",
+    "jab",
+    "quickcut",
+    "cleave",
+    "rustspray",
+    "ironhide",
+    "leech",
+    "reap",
+    "overloadstrike",
+    "bloodflail",
+    "redtear",
+    "bloodbolt",
+    "veinburst",
+    "exsanguinate",
+    "plaguesurge",
+    "bloodstorm"
+  ],
+  "handler": "empower",
+  "params": {
+    "bonus": 2
+  },
+  "i18n": "enh.empower"
+}

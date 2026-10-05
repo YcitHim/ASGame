@@ -1,0 +1,32 @@
+{
+  "id": "veinburst",
+  "class": "bloodwright",
+  "type": "attack",
+  "rarity": "uncommon",
+  "cost": 1,
+  "bloodCost": 2,
+  "keywords": [
+    "bloodpact"
+  ],
+  "effects": [
+    {
+      "kind": "damage",
+      "target": {
+        "type": "allEnemies"
+      },
+      "value": 7
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "target": {
+          "type": "allEnemies"
+        },
+        "value": 10
+      }
+    ]
+  },
+  "i18n": "card.veinburst"
+}

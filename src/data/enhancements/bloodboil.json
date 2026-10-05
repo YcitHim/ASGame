@@ -1,12 +1,22 @@
 {
   "id": "bloodboil",
   "tier": 2,
-  "appliesTo": ["bloodbolt"],
+  "appliesTo": [
+    "bloodbolt",
+    "redtear"
+  ],
   "handler": "bloodboil",
   "params": {
-    "condition": { "type": "hpBelow", "percent": 50 },
+    "condition": {
+      "type": "hpBelow",
+      "percent": 50
+    },
     "hits": 3,
-    "split": [0.4, 0.3, 0.3]
+    "split": [
+      0.4,
+      0.3,
+      0.3
+    ]
   },
   "i18n": "enh.bloodboil"
 }

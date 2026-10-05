@@ -1,0 +1,42 @@
+{
+  "id": "ironhide",
+  "class": "bloodwright",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 4
+    },
+    {
+      "kind": "damage",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 4
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "block",
+        "target": {
+          "type": "self"
+        },
+        "value": 6
+      },
+      {
+        "kind": "damage",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 6
+      }
+    ]
+  },
+  "i18n": "card.ironhide"
+}

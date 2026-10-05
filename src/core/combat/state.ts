@@ -35,6 +35,12 @@ export interface PlayerState {
   readonly pollution: number;
   readonly charge: number;
   readonly buffs: readonly BuffInstance[];
+  /** 本局携带的遗物 id */
+  readonly relics: readonly string[];
+  /** 已触发过的遗物（once: battle） */
+  readonly triggeredThisBattle: readonly string[];
+  /** 本回合已触发过的遗物（once: turn） */
+  readonly triggeredThisTurn: readonly string[];
 }
 
 export interface EnemyState {
@@ -74,15 +80,23 @@ export interface BattleState {
   readonly content: ContentDb;
 }
 
+/** 卡组条目：字符串 = 未升级无强化；对象 = 携带升级/强化（Roguelike 卡组实例）。 */
+export interface DeckEntry {
+  readonly cardId: string;
+  readonly upgraded?: boolean;
+  readonly enhancements?: readonly string[];
+}
+
 export interface BattleConfig {
   readonly battleId: string;
   readonly seed: number;
   readonly player: { readonly maxHp: number; readonly energy: number };
   readonly enemies: readonly EnemySetup[];
-  /** 卡组（卡牌 id 列表，洗牌前顺序） */
-  readonly deck: readonly string[];
+  /** 卡组（洗牌前顺序） */
+  readonly deck: readonly (string | DeckEntry)[];
   readonly handSize?: number;
   readonly content?: ContentDb;
+  readonly relics?: readonly string[];
 }
 
 export const DEFAULT_HAND_SIZE = 5;
@@ -97,9 +111,15 @@ export function createBattleState(config: BattleConfig): BattleState {
   const cardInstances: Record<string, CardInstance> = {};
   const draw: string[] = [];
 
-  config.deck.forEach((cardId, index) => {
+  config.deck.forEach((entry, index) => {
+    const cardId = typeof entry === "string" ? entry : entry.cardId;
     const instanceId = makeInstanceId(cardId, index);
-    cardInstances[instanceId] = { instanceId, cardId, upgraded: false, enhancements: [] };
+    cardInstances[instanceId] = {
+      instanceId,
+      cardId,
+      upgraded: typeof entry === "string" ? false : (entry.upgraded ?? false),
+      enhancements: typeof entry === "string" ? [] : (entry.enhancements ?? []),
+    };
     draw.push(instanceId);
   });
 
@@ -119,6 +139,9 @@ export function createBattleState(config: BattleConfig): BattleState {
       pollution: 0,
       charge: 0,
       buffs: [],
+      relics: (config.relics ?? []).slice(),
+      triggeredThisBattle: [],
+      triggeredThisTurn: [],
     },
     enemies: config.enemies.map((e) => {
       const def = content.enemies.get(e.id);

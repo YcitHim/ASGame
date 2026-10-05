@@ -4,10 +4,12 @@ import {
   cardSchema,
   enemySchema,
   enhancementSchema,
+  relicSchema,
   type ActJson,
   type CardJson,
   type EnemyJson,
   type EnhancementJson,
+  type RelicJson,
 } from "./schema";
 
 export interface SourceFile {
@@ -27,6 +29,7 @@ export interface ContentInput {
   enhancements: SourceFile[];
   enemies?: SourceFile[];
   acts?: SourceFile[];
+  relics?: SourceFile[];
   i18n: Record<string, string>;
 }
 
@@ -36,6 +39,7 @@ export interface ValidationResult {
   enhancements: EnhancementJson[];
   enemies: EnemyJson[];
   acts: ActJson[];
+  relics: RelicJson[];
 }
 
 function zodIssues(file: string, error: unknown): ValidationIssue[] {
@@ -63,11 +67,13 @@ export function validateContent(input: ContentInput): ValidationResult {
   const enhancements: EnhancementJson[] = [];
   const enemies: EnemyJson[] = [];
   const acts: ActJson[] = [];
+  const relics: RelicJson[] = [];
 
   parseAll(cardSchema, input.cards, cards, issues);
   parseAll(enhancementSchema, input.enhancements, enhancements, issues);
   parseAll(enemySchema, input.enemies ?? [], enemies, issues);
   parseAll(actSchema, input.acts ?? [], acts, issues);
+  parseAll(relicSchema, input.relics ?? [], relics, issues);
 
   // 全局 id 唯一（docs/04 §4）
   const seen = new Map<string, string>();
@@ -80,6 +86,7 @@ export function validateContent(input: ContentInput): ValidationResult {
   for (const e of enhancements) checkId("enhancement", e.id);
   for (const e of enemies) checkId("enemy", e.id);
   for (const a of acts) checkId("act", a.id);
+  for (const r of relics) checkId("relic", r.id);
 
   // 强化 appliesTo / mutex 引用
   const cardIds = new Set(cards.map((c) => c.id));
@@ -99,6 +106,7 @@ export function validateContent(input: ContentInput): ValidationResult {
 
   // act 引用：起手卡组与遭遇敌人
   const enemyIds = new Set(enemies.map((e) => e.id));
+  const relicIds = new Set(relics.map((r) => r.id));
   for (const act of acts) {
     for (const cardId of act.startDeck) {
       if (!cardIds.has(cardId)) {
@@ -110,6 +118,11 @@ export function validateContent(input: ContentInput): ValidationResult {
         if (!enemyIds.has(enemyId)) {
           issues.push({ file: `act ${act.id}`, path: `encounters.${enc.id}`, message: `引用了不存在的敌人 "${enemyId}"` });
         }
+      }
+    }
+    for (const relicId of act.startRelics ?? []) {
+      if (!relicIds.has(relicId)) {
+        issues.push({ file: `act ${act.id}`, path: "startRelics", message: `引用了不存在的遗物 "${relicId}"` });
       }
     }
     if (!(act.i18n in input.i18n)) {
@@ -134,8 +147,11 @@ export function validateContent(input: ContentInput): ValidationResult {
   for (const e of enemies) {
     requireKey(`enemy ${e.id}`, `enemy.${e.id}.name`);
   }
+  for (const r of relics) {
+    requireKey(`relic ${r.id}`, r.i18n + ".name");
+  }
 
-  return { issues, cards, enhancements, enemies, acts };
+  return { issues, cards, enhancements, enemies, acts, relics };
 }
 
 /** 报错文本：带文件与字段定位（docs/05 G1 验收要求）。 */

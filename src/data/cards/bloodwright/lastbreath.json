@@ -1,0 +1,53 @@
+{
+  "id": "lastbreath",
+  "class": "bloodwright",
+  "type": "skill",
+  "rarity": "rare",
+  "cost": 2,
+  "keywords": [
+    "exhaust"
+  ],
+  "effects": [
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 15
+    },
+    {
+      "kind": "heal",
+      "target": {
+        "type": "self"
+      },
+      "value": 10,
+      "condition": {
+        "type": "hpBelow",
+        "percent": 50
+      }
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "block",
+        "target": {
+          "type": "self"
+        },
+        "value": 20
+      },
+      {
+        "kind": "heal",
+        "target": {
+          "type": "self"
+        },
+        "value": 15,
+        "condition": {
+          "type": "hpBelow",
+          "percent": 50
+        }
+      }
+    ]
+  },
+  "i18n": "card.lastbreath"
+}

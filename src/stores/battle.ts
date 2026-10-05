@@ -10,6 +10,7 @@ import type { Action } from "@/core/actions";
 import type { DomainEvent } from "@/core/events";
 import { loadGameContent } from "@/data/load";
 import { AnimQueue } from "@/ui/anim-queue";
+import { useRunStore } from "@/stores/run";
 
 export interface Floater {
   readonly id: number;
@@ -59,17 +60,21 @@ export const useBattleStore = defineStore("battle", {
       queue.setSpeed(this.speed);
     },
 
-    start(encounterIndex = 0): void {
+    start(): void {
       this.ensureConfigured();
       const game = loadGameContent();
       const act = game.acts[0];
-      const encounter = act.encounters[Math.min(encounterIndex, act.encounters.length - 1)];
+      const run = useRunStore();
+      if (!run.active) run.startRun();
+      const encounter = act.encounters[Math.min(run.encounterIndex, act.encounters.length - 1)];
       this.battle = createBattleState({
-        battleId: `${act.id}-${encounter.id}`,
+        battleId: `${act.id}-${encounter.id}-${run.encounterIndex}`,
         seed: (Date.now() ^ (Math.floor(Date.now() / 7) << 3)) >>> 0,
         player: act.player,
         enemies: encounter.enemies.map((id) => ({ id })),
-        deck: act.startDeck,
+        // 以局外卡组实例开局：升级与强化都带上
+        deck: run.deck.map((c) => ({ cardId: c.cardId, upgraded: c.upgraded, enhancements: c.enhancements })),
+        relics: run.relics,
         content: game.content,
       });
       this.log = [];

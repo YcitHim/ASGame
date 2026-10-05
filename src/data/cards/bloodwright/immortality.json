@@ -1,0 +1,34 @@
+{
+  "id": "immortality",
+  "class": "bloodwright",
+  "type": "power",
+  "rarity": "rare",
+  "cost": 3,
+  "bloodCost": 2,
+  "keywords": [
+    "bloodpact"
+  ],
+  "effects": [
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "self"
+      },
+      "buff": "regeneration",
+      "stacks": 5
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "self"
+        },
+        "buff": "regeneration",
+        "stacks": 7
+      }
+    ]
+  },
+  "i18n": "card.immortality"
+}

@@ -23,6 +23,9 @@ export interface MutablePlayer extends MutableUnit {
   readonly maxEnergy: number;
   pollution: number;
   charge: number;
+  relics: string[];
+  triggeredThisBattle: string[];
+  triggeredThisTurn: string[];
 }
 
 export interface MutableEnemy extends MutableUnit {
@@ -71,6 +74,9 @@ export function toDraft(state: BattleState): Draft {
       maxEnergy: state.player.maxEnergy,
       pollution: state.player.pollution,
       charge: state.player.charge,
+      relics: [...state.player.relics],
+      triggeredThisBattle: [...state.player.triggeredThisBattle],
+      triggeredThisTurn: [...state.player.triggeredThisTurn],
     },
     enemies: state.enemies.map((e) => ({
       id: e.id,
@@ -107,6 +113,9 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
       pollution: draft.player.pollution,
       charge: draft.player.charge,
       buffs: draft.player.buffs.map((b) => ({ ...b })),
+      relics: [...draft.player.relics],
+      triggeredThisBattle: [...draft.player.triggeredThisBattle],
+      triggeredThisTurn: [...draft.player.triggeredThisTurn],
     },
     enemies: draft.enemies.map((e) => ({
       id: e.id,

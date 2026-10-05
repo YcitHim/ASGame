@@ -14,6 +14,7 @@ import { executeDebugCommand } from "./debug";
 import { definitionOf, fromDraft, livingEnemies, toDraft, type Draft } from "./draft";
 import { generateIntents, runEnemyTurn } from "./enemy-turn";
 import { effectiveCard, playCard } from "./play-card";
+import { resetTurnRelics, resolveRelics } from "./relics";
 import {
   drawCards,
   resolvePollutionCritical,
@@ -52,6 +53,7 @@ function startBattle(draft: Draft, sink: EventSink): void {
   });
   sink.emit("CardsDrawn", { cardIds: hand });
 
+  resolveRelics(draft, sink, "onBattleStart");
   generateIntents(draft, sink);
   draft.phase = "playerAction";
 }
@@ -101,6 +103,7 @@ function checkBattleEnd(draft: Draft, sink: EventSink): boolean {
 function endTurn(draft: Draft, sink: EventSink): void {
   draft.phase = "turnEnd";
   resolveHandAtTurnEnd(draft, sink);
+  resolveRelics(draft, sink, "onTurnEnd");
   tickAllBuffs(draft, sink, "turnEnd");
   sink.emit("TurnEnded", { turn: draft.turn });
 
@@ -117,6 +120,8 @@ function endTurn(draft: Draft, sink: EventSink): void {
   draft.player.block = 0;
   for (const enemy of draft.enemies) enemy.block = 0;
   draft.cardsPlayedThisTurn = 0;
+  resetTurnRelics(draft);
+  resolveRelics(draft, sink, "onTurnStart");
   sink.emit("TurnStarted", { turn: draft.turn });
 
   draft.phase = "draw";

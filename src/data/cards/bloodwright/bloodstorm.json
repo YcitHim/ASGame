@@ -1,0 +1,20 @@
+{
+  "id": "bloodstorm",
+  "class": "bloodwright",
+  "type": "attack",
+  "rarity": "rare",
+  "cost": 2,
+  "bloodCost": 2,
+  "keywords": [
+    "bloodpact"
+  ],
+  "play": {
+    "handler": "rampageOnSameTarget",
+    "params": {
+      "value": 7,
+      "perHit": 3
+    }
+  },
+  "upgraded": {},
+  "i18n": "card.bloodstorm"
+}

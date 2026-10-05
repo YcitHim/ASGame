@@ -1,0 +1,16 @@
+{
+  "id": "broken_oil",
+  "i18n": "relic.broken_oil",
+  "timing": "onBattleStart",
+  "once": "battle",
+  "effects": [
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "self"
+      },
+      "buff": "strength",
+      "stacks": 2
+    }
+  ]
+}

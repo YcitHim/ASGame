@@ -5,7 +5,7 @@
 
 ## 待做清单
 - [x] 注册接口：`registerCondition / registerTarget / registerCardHandler`，重复注册报错
-- [x] 内置项登记：全部 condition / target；cardHandler `multihit` / `rampageOnSameTarget`（enhancementHandler 随 S4）
+- [x] 内置项登记：全部 condition / target；cardHandler `multihit` / `rampageOnSameTarget`；enhancementHandler `bloodboil` / `empower` / `fortify`
 - [x] 查询接口：`getCondition / getTarget / getCardHandler` + `registered*` 全集
 - [x] 与 tools/content-validator 的契约：`registry/ids.ts` 为构建期 id 白名单
 

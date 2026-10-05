@@ -1,0 +1,30 @@
+{
+  "id": "bloodrite",
+  "class": "bloodwright",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 0,
+  "bloodCost": 1,
+  "keywords": [
+    "bloodpact"
+  ],
+  "effects": [
+    {
+      "kind": "gainEnergy",
+      "value": 1
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainEnergy",
+        "value": 1
+      },
+      {
+        "kind": "draw",
+        "value": 1
+      }
+    ]
+  },
+  "i18n": "card.bloodrite"
+}

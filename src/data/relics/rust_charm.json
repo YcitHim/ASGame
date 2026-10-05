@@ -1,0 +1,16 @@
+{
+  "id": "rust_charm",
+  "i18n": "relic.rust_charm",
+  "timing": "onTurnEnd",
+  "once": "turn",
+  "effects": [
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "self"
+      },
+      "buff": "strength",
+      "stacks": 1
+    }
+  ]
+}

@@ -11,6 +11,7 @@ export const router = createRouter({
     { path: "/", name: "title", component: () => import("./views/TitleView.vue") },
     { path: "/settings", name: "settings", component: () => import("./views/SettingsView.vue") },
     { path: "/battle", name: "battle", component: () => import("./views/BattleView.vue") },
+    { path: "/forge", name: "forge", component: () => import("./views/ForgeView.vue") },
     {
       path: "/expedition",
       name: "expedition",

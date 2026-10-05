@@ -31,7 +31,8 @@ const shaking = ref(false);
 const isDev = isDebugEnabled();
 
 onMounted(() => {
-  if (!store.battle) store.start();
+  // 新战斗（或上一场已结算）时按当前局外卡组开局
+  if (!store.battle || store.over) store.start();
 });
 
 const state = computed<BattleState | null>(() => store.battle);
@@ -53,6 +54,8 @@ const hand = computed(() =>
       keywords: def?.keywords ?? [],
       type: def?.type ?? "skill",
       enhancements: instance.enhancements.length,
+      enhancementIds: instance.enhancements,
+      upgraded: instance.upgraded,
       playable: cost <= (player.value?.energy ?? 0),
     };
   }),
@@ -174,6 +177,11 @@ function restart(): void {
   store.start();
 }
 
+function goForge(): void {
+  store.skip();
+  void router.push("/forge");
+}
+
 function back(): void {
   void router.push("/");
 }
@@ -268,6 +276,8 @@ function back(): void {
             :index="index"
             :hand-count="hand.length"
             :enhancements="card.enhancements"
+            :enhancement-ids="card.enhancementIds"
+            :upgraded="card.upgraded"
             @grab="onGrab"
           />
         </div>
@@ -335,6 +345,7 @@ function back(): void {
         <h2 :class="store.result">{{ store.result === "win" ? "胜 利" : "死 亡" }}</h2>
         <p>{{ store.result === "win" ? "锈蚀回廊的敌人已被肃清。" : "血肉归还于锈。" }}</p>
         <div class="result-actions">
+          <button v-if="store.result === 'win'" class="etch-btn" @click="goForge">前往锻造祭坛</button>
           <button class="etch-btn" @click="restart">再战</button>
           <button class="etch-btn" @click="back">返回标题</button>
         </div>

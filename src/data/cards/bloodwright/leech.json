@@ -1,0 +1,42 @@
+{
+  "id": "leech",
+  "class": "bloodwright",
+  "type": "attack",
+  "rarity": "uncommon",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "damage",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 5
+    },
+    {
+      "kind": "heal",
+      "target": {
+        "type": "self"
+      },
+      "value": 4
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 7
+      },
+      {
+        "kind": "heal",
+        "target": {
+          "type": "self"
+        },
+        "value": 6
+      }
+    ]
+  },
+  "i18n": "card.leech"
+}

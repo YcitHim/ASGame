@@ -1,0 +1,32 @@
+{
+  "id": "transfusion",
+  "class": "bloodwright",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 1,
+  "bloodCost": 2,
+  "keywords": [
+    "bloodpact"
+  ],
+  "effects": [
+    {
+      "kind": "heal",
+      "target": {
+        "type": "self"
+      },
+      "value": 6
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "heal",
+        "target": {
+          "type": "self"
+        },
+        "value": 9
+      }
+    ]
+  },
+  "i18n": "card.transfusion"
+}

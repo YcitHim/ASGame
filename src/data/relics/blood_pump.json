@@ -1,0 +1,14 @@
+{
+  "id": "blood_pump",
+  "i18n": "relic.blood_pump",
+  "timing": "onSell",
+  "effects": [
+    {
+      "kind": "heal",
+      "target": {
+        "type": "self"
+      },
+      "value": 2
+    }
+  ]
+}
