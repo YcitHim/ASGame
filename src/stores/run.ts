@@ -144,7 +144,8 @@ export const useRunStore = defineStore("run", {
       if (!enhancement || !card) return false;
       if (!enhancement.appliesTo.includes(card.cardId)) return false;
       if (card.enhancements.length >= MAX_ENHANCEMENT_SLOTS) return false;
-      if (card.enhancements.includes(enhancementId)) return false;
+      // 同一强化全局唯一：已给过某张卡，就不能再给别的卡
+      if (this.deck.some((c) => c.enhancements.includes(enhancementId))) return false;
       const mutex = enhancement.mutex ?? [];
       return !mutex.some((m) => card.enhancements.includes(m));
     },

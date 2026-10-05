@@ -63,6 +63,16 @@ describe("S5 局外进度（runStore）", () => {
     expect(run.deck[bloodboltIndex].enhancements).toEqual(["empower"]);
     expect(run.applyEnhancement(bloodboltIndex, "empower")).toBe(false);
     expect(run.canApply("fortify", braceIndex)).toBe(true);
+
+    // 同一强化全局唯一：给了血之螺栓后，不能再给另一张特殊卡
+    const run2 = useRunStore();
+    run2.startRun(1);
+    run2.addCard("redtear");
+    const bb = run2.deck.findIndex((c) => c.cardId === "bloodbolt");
+    const rt = run2.deck.findIndex((c) => c.cardId === "redtear");
+    expect(run2.canApply("empower", rt)).toBe(true);
+    expect(run2.applyEnhancement(bb, "empower")).toBe(true);
+    expect(run2.canApply("empower", rt)).toBe(false);
   });
 
   it("休息点：回复 / 升级", () => {

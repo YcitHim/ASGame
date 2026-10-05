@@ -151,12 +151,15 @@ export function simulateRun(content: ContentDb, act: ActDefinition, seed: number
       for (const id of choices) {
         const enhancement = content.enhancements.get(id);
         if (!enhancement) continue;
-        const target = deck.findIndex(
-          (c) =>
-            enhancement.appliesTo.includes(c.cardId) &&
-            c.enhancements.length < MAX_ENHANCEMENT_SLOTS &&
-            !c.enhancements.includes(id),
-        );
+        // 与游戏规则一致：同一强化全局唯一
+        const alreadyOwned = deck.some((c) => c.enhancements.includes(id));
+        const target = alreadyOwned
+          ? -1
+          : deck.findIndex(
+              (c) =>
+                enhancement.appliesTo.includes(c.cardId) &&
+                c.enhancements.length < MAX_ENHANCEMENT_SLOTS,
+            );
         if (target >= 0) {
           deck[target] = { ...deck[target], enhancements: [...deck[target].enhancements, id] };
           enhancements[id] = (enhancements[id] ?? 0) + 1;

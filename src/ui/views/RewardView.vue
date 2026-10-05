@@ -133,7 +133,11 @@ function rarityLabel(rarity: string | undefined): string {
 }
 .option {
   position: relative;
-  padding: 16px 10px 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 34px;
   border: 1px solid rgba(110, 88, 54, 0.35);
   border-radius: var(--radius-md);
   background:
@@ -147,9 +151,8 @@ function rarityLabel(rarity: string | undefined): string {
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 22px rgba(176, 141, 74, 0.28), 0 16px 34px rgba(0, 0, 0, 0.65);
 }
 .rarity {
-  position: absolute;
-  top: 6px;
-  right: 10px;
+  align-self: flex-end;
+  margin-right: 2px;
   font-size: 10px;
   letter-spacing: 0.2em;
   color: var(--ink-dim);

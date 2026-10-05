@@ -93,6 +93,26 @@ button {
   cursor: not-allowed;
 }
 
+/* 细滚动条（锻造卡组等列表用） */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.35);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(110, 88, 54, 0.55);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(176, 141, 74, 0.7);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(110, 88, 54, 0.6) transparent;
+}
+
 ::selection {
   background: rgba(138, 43, 31, 0.6);
 }

@@ -12,6 +12,8 @@ useStageFit(stage);
 
 const selected = ref<string | null>(null);
 const notice = ref("");
+/** 本次祭坛只允许附着一次（一次只给一个强化） */
+const appliedThisVisit = ref(false);
 
 onMounted(() => {
   if (!run.active) run.startRun();
@@ -35,6 +37,10 @@ function isTarget(deckIndex: number): boolean {
 }
 
 function pickOffer(id: string): void {
+  if (appliedThisVisit.value) {
+    notice.value = "本次祭坛的强化已用掉，继续远征吧";
+    return;
+  }
   selected.value = selected.value === id ? null : id;
   notice.value = selected.value ? "选择要附着的卡牌（高亮）" : "";
 }
@@ -42,13 +48,18 @@ function pickOffer(id: string): void {
 function attach(deckIndex: number): void {
   const offer = chosenOffer.value;
   if (!offer) return;
+  if (appliedThisVisit.value) {
+    notice.value = "本次祭坛的强化已用掉，继续远征吧";
+    return;
+  }
   if (!isTarget(deckIndex)) {
     notice.value = "该强化只适用于特殊卡（带机制关键词的牌）";
     return;
   }
   if (run.applyEnhancement(deckIndex, offer.id)) {
-    notice.value = `${cardName(run.deck[deckIndex].cardId)} 已附着「${enhancementName(offer.id)}」`;
+    notice.value = `${cardName(run.deck[deckIndex].cardId)} 已附着「${enhancementName(offer.id)}」，本次祭坛结束`;
     selected.value = null;
+    appliedThisVisit.value = true;
   }
 }
 
@@ -85,7 +96,8 @@ function backToMap(): void {
             v-for="offer in offers"
             :key="offer.id"
             class="offer"
-            :class="[`tier-${offer.tier}`, { active: selected === offer.id }]"
+            :class="[`tier-${offer.tier}`, { active: selected === offer.id, used: appliedThisVisit }]"
+            :disabled="appliedThisVisit"
             @click="pickOffer(offer.id)"
           >
             <div class="offer-top">
@@ -223,8 +235,12 @@ function backToMap(): void {
   background: linear-gradient(160deg, #1f1b16, #12100e);
   transition: border-color var(--dur-hover), box-shadow var(--dur-hover), transform var(--dur-hover);
 }
-.offer:hover {
+.offer:hover:not(:disabled) {
   transform: translateX(4px);
+}
+.offer:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 .offer.tier-1 {
   border-left-color: #8fa1b5;
@@ -285,14 +301,17 @@ function backToMap(): void {
 }
 .deck {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
 .deck-list {
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding-right: 4px;
 }
 .deck-card {
   display: grid;
@@ -344,6 +363,7 @@ function backToMap(): void {
   grid-column: 1 / -1;
   font-size: 10px;
   color: var(--gold-dim);
+  overflow-wrap: anywhere;
 }
 .bottom {
   width: 100%;

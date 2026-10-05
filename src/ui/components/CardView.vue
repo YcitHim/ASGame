@@ -24,8 +24,11 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: "grab", index: number, event: PointerEvent): void }>();
 
 /** 右侧注解窗：显示该卡真正需要解释的词（描述 + 关键词行去重）。 */
+const TIP_WIDTH = 236;
+const TIP_GAP = 12;
 const showTip = ref(false);
 const tipPos = ref({ left: 0, top: 0 });
+const tipSide = ref<"right" | "left">("right");
 const cardRef = ref<HTMLElement | null>(null);
 
 const TYPE_LABEL: Record<string, string> = { attack: "攻击", skill: "技能", power: "能力", curse: "诅咒", status: "状态" };
@@ -75,14 +78,26 @@ const annotations = computed(() => {
   return merged.map((term) => ({ term, tip: keywordTip(term) }));
 });
 
+/**
+ * 定位注解窗：以卡牌"中心 + 未旋转半宽"为基准，
+ * 因此手牌扇形旋转多少度、在左在右，窗与卡牌的间距都一致。
+ */
 function placeTip(): void {
   const el = cardRef.value;
   if (!el) return;
   const rect = el.getBoundingClientRect();
-  const width = 236;
-  const gap = 14;
-  const left = rect.right + gap + width <= window.innerWidth ? rect.right + gap : Math.max(8, rect.left - gap - width);
-  const top = Math.min(Math.max(8, rect.top), Math.max(8, window.innerHeight - 200));
+  const scale = Number.parseFloat(getComputedStyle(el).getPropertyValue("--stage-scale")) || 1;
+  const halfWidth = (el.offsetWidth * scale) / 2 || rect.width / 2;
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+
+  const rightCandidate = centerX + halfWidth + TIP_GAP;
+  const fitsRight = rightCandidate + TIP_WIDTH <= window.innerWidth - 8;
+  tipSide.value = fitsRight ? "right" : "left";
+  const left = fitsRight
+    ? rightCandidate
+    : Math.max(8, centerX - halfWidth - TIP_GAP - TIP_WIDTH);
+  const top = Math.min(Math.max(8, centerY - 60), Math.max(8, window.innerHeight - 200));
   tipPos.value = { left, top };
 }
 
@@ -134,6 +149,7 @@ function onLeave(): void {
     <div
       v-if="showTip && annotations.length > 0"
       class="kw-panel"
+      :class="tipSide"
       :style="{ left: tipPos.left + 'px', top: tipPos.top + 'px' }"
     >
       <div v-for="item in annotations" :key="item.term" class="kw-row">
@@ -214,12 +230,19 @@ function onLeave(): void {
 }
 .bloodcost {
   position: absolute;
-  top: 24px;
-  left: -8px;
-  z-index: 3;
-  font-size: 10px;
-  color: #e0705a;
+  top: 27px;
+  left: -14px;
+  z-index: 4;
+  font-size: 9px;
+  line-height: 1;
+  color: #f0a08c;
   letter-spacing: 0.1em;
+  padding: 3px 6px;
+  border-radius: 2px;
+  background: rgba(48, 14, 9, 0.94);
+  border: 1px solid rgba(224, 112, 90, 0.7);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
 }
 .art {
   height: 96px;
@@ -322,6 +345,15 @@ function onLeave(): void {
   background: var(--bg-raised, #1c1915);
   border-left: 1px solid rgba(176, 141, 74, 0.6);
   border-bottom: 1px solid rgba(176, 141, 74, 0.6);
+}
+/* 窗在卡牌左侧时，箭头翻到右边 */
+.kw-panel.left::before {
+  left: auto;
+  right: -6px;
+  border-left: none;
+  border-bottom: none;
+  border-right: 1px solid rgba(176, 141, 74, 0.6);
+  border-top: 1px solid rgba(176, 141, 74, 0.6);
 }
 .kw-row {
   display: flex;
