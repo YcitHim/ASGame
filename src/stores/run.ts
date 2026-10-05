@@ -82,15 +82,36 @@ export const useRunStore = defineStore("run", {
     deckSize(state): number {
       return state.deck.length;
     },
-    /** 可重铸的卡（身上至少有 1 枚强化） */
+    /**
+     * 可重铸的卡：身上有强化 **且** 至少有一枚强化存在"同阶可换替代"
+     * （docs/23 §6：同阶池空 → 禁止重铸，不做"只移除不补"的纯亏损）。
+     */
     recastableCards(state): number[] {
-      return state.deck.map((c, i) => (c.enhancements.length > 0 ? i : -1)).filter((i) => i >= 0);
+      const content = loadGameContent().content;
+      return state.deck
+        .map((card, index) => ({ card, index }))
+        .filter(({ card }) => card.enhancements.length > 0)
+        .filter(({ card }) =>
+          card.enhancements.some((removed) => {
+            const def = content.enhancements.get(removed);
+            if (!def) return false;
+            const keep = card.enhancements.filter((id) => id !== removed);
+            const ownedElsewhere = state.deck
+              .filter((other) => other !== card)
+              .flatMap((other) => [...other.enhancements]);
+            return (
+              rollRecastEnhancement(content, card.cardId, keep, ownedElsewhere, def.tier, 1, [removed]) !==
+              null
+            );
+          }),
+        )
+        .map(({ index }) => index);
     },
     canRecast(): boolean {
       if (!this.run) return false;
       if (this.recastUsedNode === this.run.nodeIndex) return false;
       if (this.run.hp <= RECAST_HP_COST) return false;
-      return this.deck.some((c) => c.enhancements.length > 0);
+      return this.recastableCards.length > 0;
     },
     cardDef(): (cardId: string) => CardDefinition | undefined {
       const content = loadGameContent().content;
@@ -266,11 +287,22 @@ export const useRunStore = defineStore("run", {
       const ownedElsewhere = this.deck
         .filter((_, i) => i !== deckIndex)
         .flatMap((c) => [...c.enhancements]);
-      const added = removedDef
-        ? rollRecastEnhancement(content, card.cardId, keep, ownedElsewhere, removedDef.tier, seed ^ 0x9e3779b9)
-        : null;
+      const added =
+        removedDef
+          ? rollRecastEnhancement(
+              content,
+              card.cardId,
+              keep,
+              ownedElsewhere,
+              removedDef.tier,
+              seed ^ 0x9e3779b9,
+              [removed],
+            )
+          : null;
+      // docs/23 §6：同阶池空 → 禁止重铸（不扣 HP、不改卡）
+      if (added === null) return null;
 
-      const next = added ? [...keep, added] : keep;
+      const next = [...keep, added];
       this.deck = this.deck.map((c, i) => (i === deckIndex ? { ...c, enhancements: next } : c));
       this.acquired = [...this.acquired.filter((id) => id !== removed), ...(added ? [added] : [])];
       this.run = setRunHp(this.run, Math.max(0, this.run.hp - RECAST_HP_COST));

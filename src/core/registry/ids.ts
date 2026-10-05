@@ -67,6 +67,10 @@ export const ENHANCEMENT_HANDLER_IDS = [
   "fortify",
   "bloodpact_discount",
   "bloodrage",
+  /** docs/23 §1 三枚新强化 */
+  "lighten",
+  "rustbite",
+  "bloodwage",
 ] as const;
 
 export const CARD_TYPES = ["attack", "skill", "power", "curse", "status"] as const;

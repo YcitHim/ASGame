@@ -8,7 +8,7 @@
 export const SAVE_NAMESPACE = "rustandblood";
 
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export type SaveSlot = "settings" | "progress" | "replay";
 
@@ -29,17 +29,29 @@ interface Envelope {
 const migrations: Record<number, (data: unknown) => unknown> = {
   // 0 → 1：初版，无历史数据，仅补齐结构
   0: (data) => data,
+  // 1 → 2（docs/16 P3.4）：远征进度档新增 recastUsedNode（重铸每祭坛限 1 次）。
+  // 只对"进度档"补字段——settings / replay 等其它槽位共享同一版本链，不能被污染。
+  1: (data) => {
+    if (typeof data !== "object" || data === null) return data;
+    const record = data as Record<string, unknown>;
+    if (!("run" in record) && !("deck" in record)) return record;
+    return { ...record, recastUsedNode: record["recastUsedNode"] ?? null };
+  },
 };
 
 function isEnvelope(raw: unknown): raw is Envelope {
   return typeof raw === "object" && raw !== null && "version" in raw && "data" in raw;
 }
 
-/** 把任意历史形态的存档升到当前版本；不认识的结构直接丢弃。 */
+/**
+ * 把任意历史形态的存档升到当前版本；不认识的结构直接丢弃。
+ * 兼容"无信封"裸存档（0.1 时代可能的残留）：按 v0 处理，**不丢弃**（docs/23 §2）。
+ */
 export function migrate(raw: unknown): { version: number; data: unknown } | null {
-  if (!isEnvelope(raw)) return null;
-  let version = typeof raw.version === "number" ? raw.version : 0;
-  let data = raw.data;
+  if (typeof raw !== "object" || raw === null) return null;
+  const envelope: Envelope = isEnvelope(raw) ? raw : { version: 0, savedAt: 0, data: raw };
+  let version = typeof envelope.version === "number" ? envelope.version : 0;
+  let data = envelope.data;
   if (version > SCHEMA_VERSION) return null; // 来自未来的存档，不猜
   while (version < SCHEMA_VERSION) {
     const step = migrations[version];

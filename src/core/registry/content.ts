@@ -69,6 +69,8 @@ export interface CardDefinition {
   readonly upgraded?: CardUpgrade;
   readonly art?: string;
   readonly i18n?: string;
+  /** 入池解锁条件（docs/23 §9）：0.5 一律 "none"；P6 meta 上线时改为解锁式 */
+  readonly unlockCondition?: string;
 }
 
 export interface IntentDefinition {

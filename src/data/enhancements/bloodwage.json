@@ -1,0 +1,20 @@
+{
+  "id": "bloodwage",
+  "tier": 2,
+  "appliesTo": [
+    "bloodbolt",
+    "redtear",
+    "overloadstrike",
+    "bloodflail",
+    "plaguesurge",
+    "bloodstorm",
+    "exsanguinate",
+    "veinburst",
+    "rustspray"
+  ],
+  "handler": "bloodwage",
+  "params": {
+    "healOnKill": 4
+  },
+  "i18n": "enh.bloodwage"
+}

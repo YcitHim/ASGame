@@ -10,7 +10,7 @@ import { splitValues, type ModifierOp, type ValueKind } from "../pipeline";
 import type { BuffInstance } from "../buffs";
 import type { CardDefinition, CardEffect, CardPlayHandler } from "./content";
 import { evaluateCondition, type ConditionContext } from "./condition";
-import type { EnhancementHandlerId, KeywordId } from "./ids";
+import type { BuffId, EnhancementHandlerId, KeywordId } from "./ids";
 
 export interface EnhancementContext {
   readonly hp: number;
@@ -54,6 +54,11 @@ export interface EnhancementHandler {
     ctx: EnhancementContext,
   ) => ModifyCardResult | undefined;
   onHit?: (
+    params: Readonly<Record<string, unknown>>,
+    ctx: EnhancementContext,
+  ) => readonly CardEffect[];
+  /** 击杀触发（docs/23 §1「血偿」）：此牌击杀敌人时结算，返回的动作为附加效果 */
+  onKill?: (
     params: Readonly<Record<string, unknown>>,
     ctx: EnhancementContext,
   ) => readonly CardEffect[];
@@ -157,6 +162,44 @@ registerEnhancementHandler({
     const multiplier = asNumber(params["multiplier"], 1.5);
     if (multiplier === 1) return undefined;
     return { modifiers: [{ kind: "attackDamage", op: "mul", value: multiplier }] };
+  },
+});
+
+/** T1「减重」（docs/23 §1）：该牌费用 +costDelta（走 cardCost 管线，负数即减费；管线 clamp ≥0）。 */
+registerEnhancementHandler({
+  id: "lighten",
+  modifyCard(_input, params) {
+    const delta = Math.trunc(asNumber(params["costDelta"], -1));
+    if (delta === 0) return undefined;
+    return { modifiers: [{ kind: "cardCost", op: "add", value: delta }] };
+  },
+});
+
+/** T1「淬锈」（docs/23 §1）：命中时给目标 N 回合易伤（onHit；多段重复触发只刷新回合数）。 */
+registerEnhancementHandler({
+  id: "rustbite",
+  onHit(params) {
+    const buffId = typeof params["buffId"] === "string" ? (params["buffId"] as BuffId) : "vulnerable";
+    const turns = Math.max(1, Math.trunc(asNumber(params["turns"], 1)));
+    return [
+      {
+        kind: "applyBuff",
+        target: { type: "chosenEnemy" },
+        buff: buffId,
+        stacks: 1,
+        duration: turns,
+      },
+    ];
+  },
+});
+
+/** T2「血偿」（docs/23 §1）：此牌击杀敌人时回复 healOnKill 点 HP。 */
+registerEnhancementHandler({
+  id: "bloodwage",
+  onKill(params) {
+    const heal = Math.trunc(asNumber(params["healOnKill"], 0));
+    if (heal <= 0) return [];
+    return [{ kind: "heal", target: { type: "self" }, value: heal }];
   },
 });
 

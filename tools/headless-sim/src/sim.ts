@@ -40,6 +40,8 @@ export interface SimResult {
   hpAfterElite: number | null;
   /** 通过 Boss 战后的剩余 HP */
   hpAfterBoss: number | null;
+  /** 本局是否组出「失控线爆发流」（同一张牌同时有 血怒 + 低血沸腾，docs/23 §10 口径 b） */
+  bloodrageBoil: boolean;
 }
 
 export interface BattleRunConfig {
@@ -148,6 +150,9 @@ export function simulateRun(content: ContentDb, act: ActDefinition, seed: number
     enhancements,
     hpAfterElite,
     hpAfterBoss,
+    bloodrageBoil: deck.some(
+      (c) => c.enhancements.includes("bloodrage") && c.enhancements.includes("bloodboil"),
+    ),
   });
 
   while (!isRunComplete(run, act)) {

@@ -1,0 +1,20 @@
+{
+  "id": "lighten",
+  "tier": 1,
+  "appliesTo": [
+    "redtear",
+    "overloadstrike",
+    "plaguesurge",
+    "bloodstorm",
+    "exsanguinate",
+    "bloodwall",
+    "lastbreath",
+    "crimsonpact",
+    "immortality"
+  ],
+  "handler": "lighten",
+  "params": {
+    "costDelta": -1
+  },
+  "i18n": "enh.lighten"
+}

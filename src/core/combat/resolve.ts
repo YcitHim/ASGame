@@ -7,6 +7,7 @@
 import { applyBuff, buffApplication, buffStacks, tickBuffs, type BuffInstance } from "../buffs";
 import type { EventSink } from "../events/event-sink";
 import { evaluateValue, type Modifier } from "../pipeline";
+import { getEnhancementHandler } from "../registry/enhancement-handler";
 import type { BuffId } from "../registry/ids";
 import type { CardEffect, ConditionNode, TargetRef } from "../registry/content";
 import { evaluateCondition, type ConditionContext } from "../registry/condition";
@@ -145,7 +146,37 @@ export function dealDamage(draft: Draft, sink: EventSink, args: DamageArgs): voi
   // 反伤（荆棘血痂）：受攻击即对攻击者造成固定伤害，逐段触发、走队列中途插入
   triggerThorns(draft, sink, args);
 
-  if (target.hp === 0) killUnit(draft, sink, args.targetId);
+  if (target.hp === 0) {
+    killUnit(draft, sink, args.targetId);
+    // 击杀触发（docs/23 §1「血偿」）：死亡清理 + 亡语之后，再结算伤害来源牌上的 onKill
+    triggerEnhancementOnKill(draft, sink, args);
+  }
+}
+
+/**
+ * 击杀触发：伤害来源是"装备了 onKill 强化的牌"时，结算该强化返回的附加动作。
+ * 反伤 / 敌人攻击的 sourceId 不是卡牌实例，自然不命中。
+ */
+function triggerEnhancementOnKill(draft: Draft, sink: EventSink, args: DamageArgs): void {
+  if (args.actorId !== PLAYER_ID) return;
+  const instance = draft.cardInstances[args.sourceId];
+  if (!instance || instance.enhancements.length === 0) return;
+
+  for (const enhancementId of instance.enhancements) {
+    const def = draft.content.enhancements.get(enhancementId);
+    if (!def) continue;
+    const handler = getEnhancementHandler(def.handler);
+    if (!handler.onKill) continue;
+    const extra = handler.onKill(def.params, { ...conditionContext(draft), hitIndex: 0 });
+    if (extra.length > 0) {
+      enqueueEffects(draft, extra, {
+        sourceId: args.sourceId,
+        actorId: PLAYER_ID,
+        chosenTargetId: args.targetId,
+      });
+      drainQueue(draft, sink);
+    }
+  }
 }
 
 /**

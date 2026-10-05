@@ -30,5 +30,6 @@
       }
     ]
   },
-  "i18n": "card.bloodrust"
+  "i18n": "card.bloodrust",
+  "unlockCondition": "none"
 }

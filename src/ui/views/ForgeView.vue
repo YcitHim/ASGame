@@ -161,7 +161,7 @@ function backToMap(): void {
             <span class="enhs">{{ run.deck[index].enhancements.map(enhancementName).join(" · ") }}</span>
 
           </button>
-          <p v-if="run.recastableCards.length === 0" class="empty">还没有已附加强化的卡</p>
+          <p v-if="run.recastableCards.length === 0" class="empty">没有可重铸的卡（同阶已无可换强化）</p>
           <p v-else-if="!run.canRecast" class="empty">本次祭坛已重铸过（或 HP 不足）</p>
         </section>
       </div>

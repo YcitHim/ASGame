@@ -119,6 +119,18 @@ describe("S5 局外进度（runStore）", () => {
     expect(run.recast(bloodboltIndex)).toBeNull();
   });
 
+  it("重铸：同阶池已空时禁止（docs/23 §6）", () => {
+    const run = useRunStore();
+    run.startRun(1);
+    run.addCard("brace");
+    const braceIndex = run.deck.findIndex((c) => c.cardId === "brace");
+    expect(run.applyEnhancement(braceIndex, "fortify")).toBe(true);
+    // brace 的 T1 池 = 只有 fortify，移除后无同阶可换 → 禁止重铸
+    expect(run.recastableCards).not.toContain(braceIndex);
+    expect(run.canRecast).toBe(false);
+    expect(run.recast(braceIndex)).toBeNull();
+  });
+
   it("重铸：HP 不足时不可用", () => {
     const run = useRunStore();
     run.startRun(1);

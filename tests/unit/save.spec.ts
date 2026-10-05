@@ -48,6 +48,21 @@ describe("systems/save（ADR-008）", () => {
     expect(readSlot("progress", null)).toEqual({ node: 2 });
   });
 
+  it("无信封裸存档按 v0 迁移，不丢弃（docs/23 §2）", () => {
+    const raw = { run: { nodeIndex: 3 }, deck: [], relics: [], acquired: [] };
+    localStorage.setItem(slotKey("progress"), JSON.stringify(raw));
+    expect(readSlot("progress", null)).toMatchObject({ run: { nodeIndex: 3 }, recastUsedNode: null });
+  });
+
+  it("v1 进度档迁移到 v2 时补 recastUsedNode；非进度档不被污染", () => {
+    const progress = migrate({ version: 1, data: { run: { nodeIndex: 1 }, deck: [] } });
+    expect(progress?.version).toBe(SCHEMA_VERSION);
+    expect((progress?.data as { recastUsedNode?: unknown }).recastUsedNode).toBeNull();
+
+    const settings = migrate({ version: 1, data: { masterVolume: 0.5 } });
+    expect(settings?.data).toEqual({ masterVolume: 0.5 });
+  });
+
   it("来自未来版本的存档不猜，直接丢弃", () => {
     localStorage.setItem(slotKey("progress"), JSON.stringify({ version: SCHEMA_VERSION + 5, data: {} }));
     expect(readSlot("progress", "fallback")).toBe("fallback");

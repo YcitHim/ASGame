@@ -99,6 +99,7 @@ const cardShape = {
   bloodCost: z.number().int().min(0).max(99).optional(),
   keywords: z.array(z.enum(KEYWORD_IDS)).optional(),
   effects: z.array(effectSchema).optional(),
+  unlockCondition: z.string().optional(),
   play: playSchema.optional(),
   upgraded: z
     .object({

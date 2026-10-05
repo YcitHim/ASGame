@@ -123,8 +123,10 @@ export function rollRecastEnhancement(
   ownedElsewhere: readonly string[],
   tier: number,
   seed: number,
+  /** 被移除的那一枚：不允许原地换回（docs/23 §6） */
+  exclude: readonly string[] = [],
 ): string | null {
-  const owned = new Set([...keep, ...ownedElsewhere]);
+  const owned = new Set([...keep, ...ownedElsewhere, ...exclude]);
   const pool = [...content.enhancements.values()]
     .filter((e) => {
       if (e.tier !== tier) return false;

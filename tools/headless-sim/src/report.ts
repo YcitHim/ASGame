@@ -22,6 +22,11 @@ export interface Report {
   bossHpP10: number;
   bossHpP50: number;
   bossCleared: number;
+  /** docs/23 §10：失控线爆发流（血怒 + 低血沸腾）出现率 / 对应局胜率 / 平均回合 */
+  comboGames: number;
+  comboRate: number;
+  comboWinRate: number;
+  comboAvgTurns: number;
   nodeReach: Record<number, number>;
   topPlayed: [string, number][];
   topPicked: [string, number][];
@@ -44,6 +49,23 @@ function mergeCounts(results: SimResult[], pick: (r: SimResult) => Record<string
   const total: Record<string, number> = {};
   for (const r of results) for (const [k, v] of Object.entries(pick(r))) total[k] = (total[k] ?? 0) + v;
   return Object.entries(total).sort((a, b) => b[1] - a[1]);
+}
+
+/** 口径 b（docs/23 §10）：出现率 + 对应局胜率 + 平均回合。 */
+function comboReport(results: SimResult[]): {
+  comboGames: number;
+  comboRate: number;
+  comboWinRate: number;
+  comboAvgTurns: number;
+} {
+  const games = results.filter((r) => r.bloodrageBoil);
+  const wins = games.filter((r) => r.outcome === "win").length;
+  return {
+    comboGames: games.length,
+    comboRate: results.length === 0 ? 0 : games.length / results.length,
+    comboWinRate: games.length === 0 ? 0 : wins / games.length,
+    comboAvgTurns: avg(games.map((r) => r.turns)),
+  };
 }
 
 export function buildReport(results: SimResult[]): Report {
@@ -71,6 +93,7 @@ export function buildReport(results: SimResult[]): Report {
     bossHpP10: percentile(bossHp, 10),
     bossHpP50: percentile(bossHp, 50),
     bossCleared: bossHp.length,
+    ...comboReport(results),
     nodeReach,
     topPlayed: mergeCounts(results, (r) => r.cardsPlayed),
     topPicked: mergeCounts(results, (r) => r.cardsPicked),
@@ -124,6 +147,7 @@ export function formatReport(report: Report): string {
     `  平均造成伤害 ${report.avgDamageDealt.toFixed(0)} · 平均承伤 ${report.avgDamageTaken.toFixed(0)}（P90 ${report.damageTakenP90}）`,
     `  精英战后剩余 HP P10 ${report.eliteHpP10} / P50 ${report.eliteHpP50}（过精英 ${report.eliteCleared} 局；设计意图 P50 ≥ 25）`,
     `  Boss 战后剩余 HP P10 ${report.bossHpP10} / P50 ${report.bossHpP50}（过 Boss ${report.bossCleared} 局）`,
+    `  失控线爆发流（血怒+低血沸腾）出现率 ${pct(report.comboRate)}（${report.comboGames} 局）· 对应胜率 ${pct(report.comboWinRate)} · 平均回合 ${report.comboAvgTurns.toFixed(1)}（参考：出现率 ≥15%、胜率 ≤ 全局 +15pp）`,
     `  到达节点分布 ${Object.entries(report.nodeReach).map(([k, v]) => `${k}:${v}`).join(" ")}`,
     `  出牌 Top：${report.topPlayed.slice(0, 8).map(([k, v]) => `${k}(${v})`).join(" ")}`,
     `  抓牌 Top：${report.topPicked.slice(0, 8).map(([k, v]) => `${k}(${v})`).join(" ")}`,

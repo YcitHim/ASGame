@@ -22,18 +22,31 @@ const content = createContentDb({
         intents: [{ intent: { kind: "attack", value: 1 }, weight: 1 }],
       },
     ],
+    [
+      "frail",
+      {
+        id: "frail",
+        name: "Frail",
+        maxHp: 1,
+        intents: [{ intent: { kind: "attack", value: 1 }, weight: 1 }],
+      },
+    ],
   ]),
   enhancements: game.content.enhancements,
   relics: new Map(),
 });
 
-function battle(deck: (string | { cardId: string; enhancements: string[] })[], hp?: number): BattleState {
+function battle(
+  deck: (string | { cardId: string; enhancements: string[] })[],
+  hp?: number,
+  enemyId = "dummy",
+): BattleState {
   let state = reduce(
     createBattleState({
       battleId: "p3",
       seed: 11,
       player: { maxHp: 66, energy: 3 },
-      enemies: [{ id: "dummy" }],
+      enemies: [{ id: enemyId }],
       deck,
       content,
     }),
@@ -43,9 +56,9 @@ function battle(deck: (string | { cardId: string; enhancements: string[] })[], h
   return state;
 }
 
-function play(state: BattleState, cardId: string) {
+function play(state: BattleState, cardId: string, targetId = "dummy") {
   const index = state.piles.hand.findIndex((id) => state.cardInstances[id].cardId === cardId);
-  return reduce(state, { type: "PlayCard", actionId: "p", handIndex: index, targetId: "dummy" });
+  return reduce(state, { type: "PlayCard", actionId: "p", handIndex: index, targetId });
 }
 
 const hits = (events: readonly { type: string }[]) =>
@@ -78,6 +91,30 @@ describe("P3.1 血怒 × 低血沸腾（失控线爆发流）", () => {
   it("只有血怒（单段）：9 ×1.5 = 13.5 → 14", () => {
     const result = play(battle([{ cardId: "bloodbolt", enhancements: ["bloodrage"] }], 20), "bloodbolt");
     expect(hits(result.events).map((d) => d.value)).toEqual([14]);
+  });
+});
+
+describe("P3.3 强化铺量（docs/23 §1）", () => {
+  it("减重：redtear 费用 2 → 1（走 cardCost 管线）", () => {
+    const result = play(battle([{ cardId: "redtear", enhancements: ["lighten"] }]), "redtear");
+    // 基础 2 费，减重 -1 → 花 1 点能量（血契另行扣血）
+    expect(result.state.player.energy).toBe(2);
+  });
+
+  it("淬锈：命中给目标 1 回合易伤", () => {
+    const result = play(battle([{ cardId: "bloodbolt", enhancements: ["rustbite"] }]), "bloodbolt");
+    const vul = result.state.enemies[0].buffs.find((b) => b.id === "vulnerable");
+    expect(vul?.duration).toBe(1);
+  });
+
+  it("血偿：此牌击杀敌人时回复 4 点 HP", () => {
+    const result = play(
+      battle([{ cardId: "strike", enhancements: ["bloodwage"] }], 40, "frail"),
+      "strike",
+      "frail",
+    );
+    expect(result.state.enemies[0].hp).toBe(0);
+    expect(result.state.player.hp).toBe(44);
   });
 });
 

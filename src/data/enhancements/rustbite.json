@@ -1,0 +1,21 @@
+{
+  "id": "rustbite",
+  "tier": 1,
+  "appliesTo": [
+    "bloodbolt",
+    "redtear",
+    "overloadstrike",
+    "bloodflail",
+    "plaguesurge",
+    "bloodstorm",
+    "exsanguinate",
+    "veinburst",
+    "rustspray"
+  ],
+  "handler": "rustbite",
+  "params": {
+    "buffId": "vulnerable",
+    "turns": 1
+  },
+  "i18n": "enh.rustbite"
+}
