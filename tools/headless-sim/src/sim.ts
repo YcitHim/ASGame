@@ -36,11 +36,34 @@ export interface SimResult {
   cardsPlayed: Record<string, number>;
   cardsPicked: Record<string, number>;
   enhancements: Record<string, number>;
+  /** 通过精英战后的剩余 HP（docs/19 §3：可触发的精英验收指标） */
+  hpAfterElite: number | null;
+  /** 通过 Boss 战后的剩余 HP */
+  hpAfterBoss: number | null;
+}
+
+export interface BattleRunConfig {
+  battleId: string;
+  seed: number;
+  maxHp: number;
+  energy: number;
+  hp: number;
+  enemies: readonly string[];
+  deck: readonly SimCard[];
+  relics: readonly string[];
+}
+
+export interface BattleRunOutcome {
+  state: BattleState;
+  turns: number;
+  damageDealt: number;
+  damageTaken: number;
+  cardsPlayed: Record<string, number>;
 }
 
 const MAX_BATTLE_ACTIONS = 600;
 
-function bestReward(ids: readonly string[], content: ContentDb): string | null {
+export function bestReward(ids: readonly string[], content: ContentDb): string | null {
   let best: { id: string; value: number } | null = null;
   for (const id of ids) {
     const def = content.cards.get(id);
@@ -49,6 +72,52 @@ function bestReward(ids: readonly string[], content: ContentDb): string | null {
     if (!best || value > best.value) best = { id, value };
   }
   return best?.id ?? null;
+}
+
+/** 跑完一整场战斗，返回终局状态与统计（主线与场景直开共用）。 */
+export function runBattle(content: ContentDb, config: BattleRunConfig): BattleRunOutcome {
+  let state: BattleState = createBattleState({
+    battleId: config.battleId,
+    seed: config.seed,
+    player: { maxHp: config.maxHp, energy: config.energy, hp: config.hp },
+    enemies: config.enemies.map((id) => ({ id })),
+    deck: config.deck.map((c) => ({ cardId: c.cardId, upgraded: c.upgraded, enhancements: c.enhancements })),
+    relics: [...config.relics],
+    content,
+  });
+  state = reduce(state, { type: "Noop", actionId: "s" }).state;
+
+  let damageDealt = 0;
+  let damageTaken = 0;
+  const cardsPlayed: Record<string, number> = {};
+  let guard = 0;
+
+  while (state.phase !== "battleEnd" && guard < MAX_BATTLE_ACTIONS) {
+    guard += 1;
+    const target = chooseTarget(state) ?? null;
+    const playIndex = choosePlay(state, content, target);
+    const action: Action =
+      playIndex === null
+        ? { type: "EndTurn", actionId: `e${guard}` }
+        : {
+            type: "PlayCard",
+            actionId: `p${guard}`,
+            handIndex: playIndex,
+            ...(target ? { targetId: target } : {}),
+          };
+    const result = reduce(state, action);
+    state = result.state;
+    for (const event of result.events as readonly DomainEvent[]) {
+      if (event.type === "DamageDealt") {
+        if (event.targetId === "player") damageTaken += event.hpLost;
+        else damageDealt += event.hpLost;
+      } else if (event.type === "CardPlayed") {
+        cardsPlayed[event.cardId] = (cardsPlayed[event.cardId] ?? 0) + 1;
+      }
+    }
+  }
+
+  return { state, turns: state.turn, damageDealt, damageTaken, cardsPlayed };
 }
 
 export function simulateRun(content: ContentDb, act: ActDefinition, seed: number): SimResult {
@@ -63,6 +132,8 @@ export function simulateRun(content: ContentDb, act: ActDefinition, seed: number
   let damageDealt = 0;
   let damageTaken = 0;
   let battles = 0;
+  let hpAfterElite: number | null = null;
+  let hpAfterBoss: number | null = null;
 
   const finish = (outcome: "win" | "lose"): SimResult => ({
     seed,
@@ -75,6 +146,8 @@ export function simulateRun(content: ContentDb, act: ActDefinition, seed: number
     cardsPlayed,
     cardsPicked,
     enhancements,
+    hpAfterElite,
+    hpAfterBoss,
   });
 
   while (!isRunComplete(run, act)) {
@@ -83,46 +156,29 @@ export function simulateRun(content: ContentDb, act: ActDefinition, seed: number
 
     if (isCombatNode(node)) {
       battles += 1;
-      let state: BattleState = createBattleState({
+      const battle = runBattle(content, {
         battleId: `${act.id}-${node.id}`,
         seed: (run.seed ^ Math.imul(run.nodeIndex + 1, 0x9e3779b9)) >>> 0,
-        player: { maxHp: act.player.maxHp, energy: act.player.energy, hp: run.hp },
-        enemies: (node.enemies ?? []).map((id) => ({ id })),
-        deck: deck.map((c) => ({ cardId: c.cardId, upgraded: c.upgraded, enhancements: c.enhancements })),
+        maxHp: act.player.maxHp,
+        energy: act.player.energy,
+        hp: run.hp,
+        enemies: node.enemies ?? [],
+        deck,
         relics,
-        content,
       });
-      state = reduce(state, { type: "Noop", actionId: "s" }).state;
 
-      let guard = 0;
-      while (state.phase !== "battleEnd" && guard < MAX_BATTLE_ACTIONS) {
-        guard += 1;
-        const target = chooseTarget(state) ?? null;
-        const playIndex = choosePlay(state, content, target);
-        const action: Action =
-          playIndex === null
-            ? { type: "EndTurn", actionId: `e${guard}` }
-            : {
-                type: "PlayCard",
-                actionId: `p${guard}`,
-                handIndex: playIndex,
-                ...(target ? { targetId: target } : {}),
-              };
-        const result = reduce(state, action);
-        state = result.state;
-        for (const event of result.events as readonly DomainEvent[]) {
-          if (event.type === "DamageDealt") {
-            if (event.targetId === "player") damageTaken += event.hpLost;
-            else damageDealt += event.hpLost;
-          } else if (event.type === "CardPlayed") {
-            cardsPlayed[event.cardId] = (cardsPlayed[event.cardId] ?? 0) + 1;
-          }
-        }
+      turns += battle.turns;
+      damageDealt += battle.damageDealt;
+      damageTaken += battle.damageTaken;
+      for (const [id, n] of Object.entries(battle.cardsPlayed)) {
+        cardsPlayed[id] = (cardsPlayed[id] ?? 0) + n;
       }
 
-      turns += state.turn;
-      run = setRunHp(run, state.player.hp);
-      if (state.phase !== "battleEnd" || state.player.hp <= 0) return finish("lose");
+      run = setRunHp(run, battle.state.player.hp);
+      if (battle.state.phase !== "battleEnd" || battle.state.player.hp <= 0) return finish("lose");
+
+      if (node.kind === "elite") hpAfterElite = battle.state.player.hp;
+      if (node.kind === "boss") hpAfterBoss = battle.state.player.hp;
 
       // 战后卡奖
       const rewards = rollCardRewards(content, act, run, run.nodeIndex);

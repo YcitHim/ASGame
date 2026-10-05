@@ -3,10 +3,23 @@ import { ref } from "vue";
 import type { BuffInstance } from "@/core/buffs";
 import { buffAmount, buffMeta, buffTip, buffValueText, type BuffMeta } from "./buff-meta";
 import { BUFF_TIP_WIDTH, computeBuffTipPlacement } from "@/ui/tip-position";
+import { keywordTip } from "@/ui/glossary";
 
-withDefaults(
-  defineProps<{ buffs: readonly BuffInstance[]; align?: "start" | "center"; compact?: boolean }>(),
-  { align: "center", compact: false },
+interface ChargeBadge {
+  readonly stacks: number;
+  readonly thenIn: number;
+  readonly block: number;
+}
+
+const props = withDefaults(
+  defineProps<{
+    buffs: readonly BuffInstance[];
+    align?: "start" | "center";
+    compact?: boolean;
+    /** 蓄力中时额外显示的「蓄力 ×N（M 回合后释放）」徽标（docs/19 §4） */
+    charge?: ChargeBadge | null;
+  }>(),
+  { align: "center", compact: false, charge: null },
 );
 
 interface TipState {
@@ -24,7 +37,7 @@ function meta(id: string): BuffMeta {
   return buffMeta(id);
 }
 
-function open(event: MouseEvent | FocusEvent, buff: BuffInstance): void {
+function place(event: MouseEvent | FocusEvent, name: string, value: string, desc: string): void {
   const el = event.currentTarget as HTMLElement | null;
   if (!el) return;
   const rect = el.getBoundingClientRect();
@@ -34,12 +47,22 @@ function open(event: MouseEvent | FocusEvent, buff: BuffInstance): void {
     window.innerWidth,
     window.innerHeight,
   );
-  tip.value = {
-    ...placement,
-    name: meta(buff.id).name,
-    value: buffValueText(buff),
-    desc: buffTip(buff.id),
-  };
+  tip.value = { ...placement, name, value, desc };
+}
+
+function open(event: MouseEvent | FocusEvent, buff: BuffInstance): void {
+  place(event, meta(buff.id).name, buffValueText(buff), buffTip(buff.id));
+}
+
+function openCharge(event: MouseEvent | FocusEvent): void {
+  const badge = props.charge;
+  if (!badge) return;
+  place(
+    event,
+    "蓄力",
+    `×${badge.stacks} · ${badge.thenIn} 回合后释放`,
+    keywordTip("蓄力"),
+  );
 }
 
 function close(): void {
@@ -49,6 +72,21 @@ function close(): void {
 
 <template>
   <div class="buffrow" :class="'align-' + align">
+    <button
+      v-if="charge"
+      class="buff charge"
+      :class="{ compact }"
+      type="button"
+      @mouseenter="openCharge"
+      @mouseleave="close"
+      @focus="openCharge"
+      @blur="close"
+    >
+      <span class="tile" style="--buff-tint: #7a3a1f">蓄</span>
+      <span class="name">蓄力<template v-if="charge.thenIn > 0"> · {{ charge.thenIn }}回合</template></span>
+      <span class="val">{{ charge.stacks }}</span>
+    </button>
+
     <button
       v-for="b in buffs"
       :key="b.id"
@@ -115,6 +153,12 @@ function close(): void {
   border-color: var(--gold);
   transform: translateY(-1px);
   outline: none;
+}
+.buff.charge {
+  border-color: rgba(192, 106, 43, 0.65);
+}
+.buff.charge:hover {
+  border-color: #d9822b;
 }
 .tile {
   width: 22px;

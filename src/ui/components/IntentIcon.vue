@@ -16,7 +16,12 @@ const label = computed(() => {
 const sub = computed(() => {
   const i = props.intent;
   if (!i) return "未知";
-  if (i.kind === "charge") return i.block ? `蓄力 · 挡 ${i.block}` : "蓄力";
+  if (i.kind === "charge") {
+    const parts = ["蓄力"];
+    if (i.block) parts.push("+" + i.block + "挡");
+    if (i.thenIn) parts.push(i.thenIn + "回合");
+    return parts.join(" · ");
+  }
   return { attack: "攻击", defend: "防御", debuff: "诅咒", summon: "召唤", unknown: "未知" }[i.kind];
 });
 

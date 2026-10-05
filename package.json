@@ -16,6 +16,7 @@
     "ci": "npm run lint && npm run typecheck && npm run validate && npm run test:coverage && npm run sim -- 100",
     "test:coverage": "vitest run --coverage",
     "sim": "tsx tools/headless-sim/src/cli.ts",
+    "sim:elite": "tsx tools/headless-sim/src/cli.ts --scenario elite_warden",
     "record:golden": "tsx tools/headless-sim/src/record-golden.ts",
     "test:replay": "vitest run tests/unit/golden-replay.spec.ts"
   },

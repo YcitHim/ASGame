@@ -160,7 +160,7 @@
         "targetId": "rust_throat"
       }
     ],
-    "eventHash": "73b068450d09190a1c4fd2141f6280e9c5b29cba28a004fa05f8bf0df5830c33",
+    "eventHash": "762597817acf140ea7dfeaf165c9050e52985316793e9fcdc8a631ec40a1f805",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -175,6 +175,7 @@
       "CardRetained",
       "BuffApplied",
       "TurnEnded",
+      "ChargeResolved",
       "BlockGained",
       "TurnStarted",
       "CardsDrawn",
@@ -190,6 +191,7 @@
       "CardRetained",
       "BuffApplied",
       "TurnEnded",
+      "ChargeResolved",
       "BlockBroken",
       "DamageDealt",
       "HpLost",
@@ -198,8 +200,6 @@
       "CardsDrawn",
       "IntentRevealed",
       "CardPlayed",
-      "DamageDealt",
-      "HpLost",
       "DamageDealt",
       "HpLost"
     ],

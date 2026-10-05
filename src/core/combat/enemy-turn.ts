@@ -46,6 +46,14 @@ export function runEnemyTurn(draft: Draft, sink: EventSink): void {
 
     switch (intent.kind) {
       case "attack": {
+        if (intent.released) {
+          sink.emit("ChargeResolved", {
+            enemyId: enemy.id,
+            block: 0,
+            released: true,
+            value: intent.value ?? 0,
+          });
+        }
         const hits = Math.max(1, intent.hits ?? 1);
         for (let i = 0; i < hits; i += 1) {
           dealDamage(draft, sink, {
@@ -67,11 +75,14 @@ export function runEnemyTurn(draft: Draft, sink: EventSink): void {
           applyBuffToTarget(draft, sink, PLAYER_ID, intent.buffId as BuffId, intent.stacks ?? 1, intent.duration);
         }
         break;
-      case "charge":
+      case "charge": {
         // 蓄力 = 预告回合：架起格挡（docs/18 Q3），不施加永久力量（docs/16 禁止）。
         // 释放值已由蓄力链算死在末端攻击上，此处不记账。
-        if ((intent.block ?? 0) > 0) gainBlock(draft, sink, enemy.id, intent.block ?? 0);
+        const chargeBlock = intent.block ?? 0;
+        sink.emit("ChargeResolved", { enemyId: enemy.id, block: chargeBlock, released: false });
+        if (chargeBlock > 0) gainBlock(draft, sink, enemy.id, chargeBlock);
         break;
+      }
       default:
         break;
     }

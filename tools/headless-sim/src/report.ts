@@ -1,6 +1,7 @@
 /**
  * headless-sim · 报表聚合
  */
+import { SCENARIO_TARGET, type ScenarioResult } from "./scenario";
 import type { SimResult } from "./sim";
 
 export interface Report {
@@ -14,6 +15,13 @@ export interface Report {
   turnP50: number;
   turnP90: number;
   damageTakenP90: number;
+  /** docs/19 §3.1：精英 / Boss 战后剩余 HP 分位数（可触发的验收指标） */
+  eliteHpP10: number;
+  eliteHpP50: number;
+  eliteCleared: number;
+  bossHpP10: number;
+  bossHpP50: number;
+  bossCleared: number;
   nodeReach: Record<number, number>;
   topPlayed: [string, number][];
   topPicked: [string, number][];
@@ -44,6 +52,8 @@ export function buildReport(results: SimResult[]): Report {
   for (const r of results) nodeReach[r.nodeReached] = (nodeReach[r.nodeReached] ?? 0) + 1;
   const turns = results.map((r) => r.turns);
   const taken = results.map((r) => r.damageTaken);
+  const eliteHp = results.map((r) => r.hpAfterElite).filter((v): v is number => v !== null);
+  const bossHp = results.map((r) => r.hpAfterBoss).filter((v): v is number => v !== null);
   return {
     games: results.length,
     wins,
@@ -55,6 +65,12 @@ export function buildReport(results: SimResult[]): Report {
     turnP50: percentile(turns, 50),
     turnP90: percentile(turns, 90),
     damageTakenP90: percentile(taken, 90),
+    eliteHpP10: percentile(eliteHp, 10),
+    eliteHpP50: percentile(eliteHp, 50),
+    eliteCleared: eliteHp.length,
+    bossHpP10: percentile(bossHp, 10),
+    bossHpP50: percentile(bossHp, 50),
+    bossCleared: bossHp.length,
     nodeReach,
     topPlayed: mergeCounts(results, (r) => r.cardsPlayed),
     topPicked: mergeCounts(results, (r) => r.cardsPicked),
@@ -64,12 +80,50 @@ export function buildReport(results: SimResult[]): Report {
 
 const pct = (n: number): string => `${(n * 100).toFixed(1)}%`;
 
+export interface ScenarioReport {
+  games: number;
+  wins: number;
+  winRate: number;
+  avgDamageTaken: number;
+  avgTurns: number;
+  hpLeftP10: number;
+  hpLeftP50: number;
+}
+
+export function buildScenarioReport(results: ScenarioResult[]): ScenarioReport {
+  const wins = results.filter((r) => r.win).length;
+  return {
+    games: results.length,
+    wins,
+    winRate: results.length === 0 ? 0 : wins / results.length,
+    avgDamageTaken: avg(results.map((r) => r.damageTaken)),
+    avgTurns: avg(results.map((r) => r.turns)),
+    hpLeftP10: percentile(results.map((r) => r.hpLeft), 10),
+    hpLeftP50: percentile(results.map((r) => r.hpLeft), 50),
+  };
+}
+
+export function formatScenarioReport(report: ScenarioReport): string {
+  const { minRate, maxRate, minTaken, maxTaken } = SCENARIO_TARGET;
+  const rateOk = report.winRate >= minRate && report.winRate <= maxRate;
+  const takenOk = report.avgDamageTaken >= minTaken && report.avgDamageTaken <= maxTaken;
+  return [
+    "[headless-sim] 场景直开 · 精英（铁锈看守 · HP 45 · 起始卡组+2 张抓牌+1 升级）",
+    `  局数 ${report.games} · 胜率 ${pct(report.winRate)}（目标 ${pct(minRate)}~${pct(maxRate)}）${rateOk ? " ✓" : " ✗"}`,
+    `  平均承伤 ${report.avgDamageTaken.toFixed(1)}（目标 ${minTaken}~${maxTaken}）${takenOk ? " ✓" : " ✗"} · 平均回合 ${report.avgTurns.toFixed(1)}`,
+    `  战后剩余 HP P10 ${report.hpLeftP10} / P50 ${report.hpLeftP50}`,
+    `  结论：${rateOk && takenOk ? "达标（17/8 维持）" : "未达标 → 见 docs/19 §3.2 调整规则"}`,
+  ].join("\n");
+}
+
 export function formatReport(report: Report): string {
   const lines = [
     "[headless-sim] 线性地图数值体检",
     `  局数 ${report.games} · 胜率 ${pct(report.winRate)}（${report.wins}/${report.games}）`,
     `  平均回合 ${report.avgTurns.toFixed(1)}（P50 ${report.turnP50} / P90 ${report.turnP90}） · 平均战斗数 ${report.avgBattles.toFixed(1)}`,
     `  平均造成伤害 ${report.avgDamageDealt.toFixed(0)} · 平均承伤 ${report.avgDamageTaken.toFixed(0)}（P90 ${report.damageTakenP90}）`,
+    `  精英战后剩余 HP P10 ${report.eliteHpP10} / P50 ${report.eliteHpP50}（过精英 ${report.eliteCleared} 局；设计意图 P50 ≥ 25）`,
+    `  Boss 战后剩余 HP P10 ${report.bossHpP10} / P50 ${report.bossHpP50}（过 Boss ${report.bossCleared} 局）`,
     `  到达节点分布 ${Object.entries(report.nodeReach).map(([k, v]) => `${k}:${v}`).join(" ")}`,
     `  出牌 Top：${report.topPlayed.slice(0, 8).map(([k, v]) => `${k}(${v})`).join(" ")}`,
     `  抓牌 Top：${report.topPicked.slice(0, 8).map(([k, v]) => `${k}(${v})`).join(" ")}`,

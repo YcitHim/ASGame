@@ -2,7 +2,15 @@
 import { computed } from "vue";
 
 const props = withDefaults(
-  defineProps<{ hp: number; maxHp: number; block?: number; height?: number; showLimit?: boolean }>(),
+  defineProps<{
+    hp: number;
+    maxHp: number;
+    block?: number;
+    height?: number;
+    showLimit?: boolean;
+    /** 格挡来源提示（如「蓄力架盾」）；缺省为「格挡 N」 */
+    blockHint?: string;
+  }>(),
   { block: 0, height: 14, showLimit: false },
 );
 
@@ -11,7 +19,7 @@ const pct = computed(() => Math.max(0, Math.min(100, (props.hp / Math.max(1, pro
 
 <template>
   <div class="hpbar" :style="{ height: height + 'px' }">
-    <div v-if="block > 0" class="blockbadge" :title="'格挡 ' + block">
+    <div v-if="block > 0" class="blockbadge" :title="blockHint || '格挡 ' + block">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="rgba(107,122,140,.35)" stroke="#8FA1B5" stroke-width="1.3">
         <path d="M12 3 L20 6 V12 C20 17 16.5 20 12 21.5 C7.5 20 4 17 4 12 V6 Z" />
       </svg>
@@ -19,7 +27,9 @@ const pct = computed(() => Math.max(0, Math.min(100, (props.hp / Math.max(1, pro
     </div>
     <div class="hpfill" :style="{ width: pct + '%' }" />
     <div v-if="showLimit" class="limit-line" />
-    <div class="hptext" :style="{ lineHeight: height + 'px' }">{{ hp }} / {{ maxHp }}</div>
+    <div class="hptext" :class="{ 'align-left': showLimit }" :style="{ lineHeight: height + 'px' }">
+      {{ hp }} / {{ maxHp }}
+    </div>
   </div>
 </template>
 
@@ -44,6 +54,11 @@ const pct = computed(() => Math.max(0, Math.min(100, (props.hp / Math.max(1, pro
   letter-spacing: 0.1em;
   color: var(--ink-bone);
   text-shadow: 0 1px 2px #000;
+}
+/* 有失控线时血量数字靠左，给中线的「失控线」标签腾位（两者不再互相遮挡） */
+.hptext.align-left {
+  text-align: left;
+  padding-left: 8px;
 }
 .blockbadge {
   position: absolute;
@@ -73,12 +88,13 @@ const pct = computed(() => Math.max(0, Math.min(100, (props.hp / Math.max(1, pro
 .limit-line::after {
   content: "失控线";
   position: absolute;
-  top: -14px;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(5px, -50%);
   font-size: 9px;
   letter-spacing: 0.14em;
   color: var(--blood-hi);
   white-space: nowrap;
+  opacity: 0.92;
 }
 </style>

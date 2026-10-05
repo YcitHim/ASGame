@@ -59,6 +59,18 @@ describe("蓄力链：物理型（蓄 1）", () => {
     expect(after.state.enemies[0].buffs.some((b) => b.id === "strength")).toBe(false);
   });
 
+  it("发出 ChargeResolved：蓄力开始（架盾）与释放重击各一次", () => {
+    const afterCharge = reduce(start("chain1"), { type: "EndTurn", actionId: "e1" });
+    const startEvent = afterCharge.events.find((e) => e.type === "ChargeResolved");
+    expect(startEvent?.type === "ChargeResolved" ? startEvent.released : true).toBe(false);
+    expect(startEvent?.type === "ChargeResolved" ? startEvent.block : 0).toBe(6);
+
+    const afterHit = reduce(afterCharge.state, { type: "EndTurn", actionId: "e2" });
+    const releaseEvent = afterHit.events.find((e) => e.type === "ChargeResolved");
+    expect(releaseEvent?.type === "ChargeResolved" ? releaseEvent.released : false).toBe(true);
+    expect(releaseEvent?.type === "ChargeResolved" ? releaseEvent.value : 0).toBe(12);
+  });
+
   it("释放值 = 普攻基准 + 蓄力值 × 层数，玩家真实掉血", () => {
     const afterCharge = reduce(start("chain1"), { type: "EndTurn", actionId: "e1" }).state;
     expect(afterCharge.enemies[0].intent).toEqual({ kind: "attack", value: 12, released: true });

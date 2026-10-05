@@ -66,6 +66,8 @@ export interface EventPayloadMap {
   PollutionChanged: { targetId: string; before: number; after: number; delta: number; critical: boolean };
   ChargeChanged: { targetId: string; before: number; after: number; delta: number };
   Overloaded: { targetId: string; charge: number; backlash: number };
+  /** 敌人蓄力开始（架盾）或释放重击；供战斗日志解释「为什么打不动它」 */
+  ChargeResolved: { enemyId: string; block: number; released: boolean; value?: number };
   IntentRevealed: { enemyId: string; intent: IntentPayload };
   UnitDied: { unitId: string; clearedEffects: number };
   BattleEnded: { result: "win" | "lose"; rewardsSeed: number };

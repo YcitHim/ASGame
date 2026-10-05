@@ -81,6 +81,15 @@ const chargingEnemies = computed(() =>
     })),
 );
 
+/** 蓄力徽标（docs/19 §4）：蓄力中在敌人状态行显示「蓄力 ×N（M 回合后释放）」。 */
+function chargeBadge(enemy: {
+  intent: { kind: string; value?: number; thenIn?: number; block?: number } | null;
+}): { stacks: number; thenIn: number; block: number } | null {
+  const intent = enemy.intent;
+  if (!intent || intent.kind !== "charge") return null;
+  return { stacks: intent.value ?? 1, thenIn: intent.thenIn ?? 1, block: intent.block ?? 0 };
+}
+
 /** Boss 二阶段：首领节点且首领掉到半血以下 → 狂暴反馈（策划 Q13 可感知）。 */
 const isBossNode = computed(() => run.current?.kind === "boss");
 const bossEnraged = computed(
@@ -327,8 +336,13 @@ function back(): void {
             <span v-if="bossEnraged && enemy.hp > 0 && enemy.hp * 2 < enemy.maxHp" class="rage-tag">狂暴</span>
           </div>
           <div v-if="enemyTitle(enemy.id)" class="enemy-title">{{ enemyTitle(enemy.id) }}</div>
-          <HpBar :hp="enemy.hp" :max-hp="enemy.maxHp" :block="enemy.block" />
-          <BuffRow :buffs="enemy.buffs" compact />
+          <HpBar
+            :hp="enemy.hp"
+            :max-hp="enemy.maxHp"
+            :block="enemy.block"
+            :block-hint="enemy.intent?.kind === 'charge' ? '蓄力架盾' : undefined"
+          />
+          <BuffRow :buffs="enemy.buffs" compact :charge="chargeBadge(enemy)" />
           <DamageFloat v-for="f in floatersFor[enemy.id] ?? []" :key="f.id" :floater="f" />
         </div>
       </div>

@@ -65,8 +65,31 @@ export function describeEvent(event: DomainEvent, names: Record<string, string> 
       return { seq: event.seq, type: event.type, text: `充能 ${event.before} → ${event.after}` };
     case "Overloaded":
       return { seq: event.seq, type: event.type, text: `过载！充能 ${event.charge}，反噬 ${event.backlash}` };
-    case "IntentRevealed":
-      return { seq: event.seq, type: event.type, text: `${unitLabel(event.enemyId, names)} 意图：${event.intent.kind}${event.intent.value !== undefined ? " " + event.intent.value : ""}` };
+    case "ChargeResolved":
+      return {
+        seq: event.seq,
+        type: event.type,
+        text: event.released
+          ? `${unitLabel(event.enemyId, names)} 释放了蓄力重击！`
+          : `${unitLabel(event.enemyId, names)} 开始蓄力${event.block > 0 ? `（架起 ${event.block} 点格挡）` : ""}`,
+      };
+    case "IntentRevealed": {
+      const intent = event.intent;
+      const who = unitLabel(event.enemyId, names);
+      if (intent.kind === "charge") {
+        const parts: string[] = [];
+        if (intent.block) parts.push(`架起 ${intent.block} 点格挡`);
+        if (intent.thenValue !== undefined) {
+          const when = (intent.thenIn ?? 1) > 1 ? `${intent.thenIn} 回合后` : "下回合";
+          parts.push(`${when}释放 ${intent.thenValue} 点重击`);
+        }
+        return { seq: event.seq, type: event.type, text: `${who} 开始蓄力（${parts.join("，")}）` };
+      }
+      if (intent.released) {
+        return { seq: event.seq, type: event.type, text: `${who} 蓄力重击已就绪（${intent.value ?? 0} 点）` };
+      }
+      return { seq: event.seq, type: event.type, text: `${who} 意图：${intent.kind}${intent.value !== undefined ? " " + intent.value : ""}` };
+    }
     case "UnitDied":
       return { seq: event.seq, type: event.type, text: `${unitLabel(event.unitId, names)} 倒下` };
     case "BattleEnded":
