@@ -1,14 +1,30 @@
 /**
- * stores/run · 一次远征的局外状态（卡组实例 / 遗物 / 进度）
+ * stores/run · 一次远征的局外状态（地图进度 / 卡组实例 / 遗物 / 跨节点 HP）
  *
- * 卡组是"实例"而非卡牌 id：锻造祭坛把强化挂到具体实例上，战斗开局按实例建卡。
- * 数值逻辑一律在 core，这里只保存数据与调用 core 的纯函数。
+ * 玩法规则（节点推进、奖励抽取、局外 HP）全部来自 core/map；
+ * 这里只做保存、投影与持久化（G2 存档）。
  */
 import { defineStore } from "pinia";
-import type { CardDefinition } from "@/core/registry";
+import {
+  advanceNode,
+  createRunState,
+  MAX_ENHANCEMENT_SLOTS,
+  currentNode,
+  healRun,
+  isRunComplete,
+  mapView,
+  rollCardRewards,
+  rollEnhancementChoices,
+  setRunHp,
+  type RunState,
+} from "@/core/map";
+import type { ActDefinition, CardDefinition, MapNode } from "@/core/registry";
 import { loadGameContent } from "@/data/load";
+import { clearSlot, readSlot, writeSlot } from "@/systems/save";
 
-export const MAX_ENHANCEMENT_SLOTS = 3;
+export { MAX_ENHANCEMENT_SLOTS };
+/** 休息点回复比例（最大 HP 的 30%） */
+export const REST_HEAL_RATIO = 0.3;
 
 export interface RunCard {
   readonly cardId: string;
@@ -19,21 +35,44 @@ export interface RunCard {
 export interface EnhancementOffer {
   readonly id: string;
   readonly tier: number;
-  /** 本次可附着的卡组下标（appliesTo 命中且槽位未满、无互斥冲突） */
   readonly targets: readonly number[];
+}
+
+interface SavedRun {
+  run: RunState;
+  deck: RunCard[];
+  relics: string[];
+  acquired: string[];
 }
 
 export const useRunStore = defineStore("run", {
   state: () => ({
     active: false,
-    seed: 0,
+    run: null as RunState | null,
     deck: [] as RunCard[],
     relics: [] as string[],
-    encounterIndex: 0,
-    /** 本局已获得的强化 id（用于展示） */
     acquired: [] as string[],
   }),
+
   getters: {
+    act(): ActDefinition | undefined {
+      return loadGameContent().acts[0];
+    },
+    view(): ReturnType<typeof mapView> | null {
+      return this.act && this.run ? mapView(this.run, this.act) : null;
+    },
+    current(): MapNode | undefined {
+      return this.act && this.run ? currentNode(this.run, this.act) : undefined;
+    },
+    finished(): boolean {
+      return !!this.act && !!this.run && isRunComplete(this.run, this.act);
+    },
+    hp(): number {
+      return this.run?.hp ?? this.act?.player.maxHp ?? 0;
+    },
+    maxHp(): number {
+      return this.act?.player.maxHp ?? 0;
+    },
     deckSize(state): number {
       return state.deck.length;
     },
@@ -42,36 +81,79 @@ export const useRunStore = defineStore("run", {
       return (cardId: string) => content.cards.get(cardId);
     },
   },
+
   actions: {
     startRun(seed = (Date.now() ^ 0x9e3779b9) >>> 0): void {
-      const game = loadGameContent();
-      const act = game.acts[0];
-      this.seed = seed >>> 0;
+      const act = this.act;
+      if (!act) return;
+      this.run = createRunState(act, seed);
       this.deck = act.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
       this.relics = [...(act.startRelics ?? [])];
-      this.encounterIndex = 0;
       this.acquired = [];
       this.active = true;
+      this.persist();
     },
 
-    /** 该强化能否附着到某张卡（appliesTo + 槽位 + 互斥）。 */
-    canApply(enhancementId: string, deckIndex: number): boolean {
+    /** 节点结算完成 → 推进到下一个节点。 */
+    advance(): void {
+      if (!this.run || !this.act) return;
+      this.run = advanceNode(this.run, this.act);
+      this.persist();
+    },
+
+    /** 战斗结束写回局外 HP。 */
+    setHp(hp: number): void {
+      if (!this.run) return;
+      this.run = setRunHp(this.run, hp);
+      this.persist();
+    },
+
+    /** 休息点：回复 或 升级一张卡。 */
+    rest(option: "heal" | "upgrade", deckIndex = -1): void {
+      if (!this.run || !this.act) return;
+      if (option === "heal") {
+        this.run = healRun(this.run, this.act.player.maxHp, Math.round(this.act.player.maxHp * REST_HEAL_RATIO));
+      } else if (deckIndex >= 0) {
+        this.upgradeCard(deckIndex);
+      }
+      this.persist();
+    },
+
+    addCard(cardId: string): void {
+      this.deck = [...this.deck, { cardId, upgraded: false, enhancements: [] }];
+      this.persist();
+    },
+
+    /** 卡奖三选一（走 reward 流，同种子可复现）。 */
+    cardRewards(): string[] {
+      if (!this.run) return [];
       const game = loadGameContent();
-      const enhancement = game.content.enhancements.get(enhancementId);
+      return rollCardRewards(game.content, this.act!, this.run, this.run.nodeIndex);
+    },
+
+    /** 锻造祭坛三选一。 */
+    enhancementChoices(): string[] {
+      if (!this.run) return [];
+      const game = loadGameContent();
+      return rollEnhancementChoices(game.content, this.run, this.run.nodeIndex);
+    },
+
+    canApply(enhancementId: string, deckIndex: number): boolean {
+      const enhancement = loadGameContent().content.enhancements.get(enhancementId);
       const card = this.deck[deckIndex];
       if (!enhancement || !card) return false;
       if (!enhancement.appliesTo.includes(card.cardId)) return false;
       if (card.enhancements.length >= MAX_ENHANCEMENT_SLOTS) return false;
       if (card.enhancements.includes(enhancementId)) return false;
       const mutex = enhancement.mutex ?? [];
-      if (mutex.some((m) => card.enhancements.includes(m))) return false;
-      return true;
+      return !mutex.some((m) => card.enhancements.includes(m));
     },
 
-    /** 锻造祭坛三选一：列出可用强化 + 各自可附着的卡组下标。 */
-    offers(): EnhancementOffer[] {
-      const game = loadGameContent();
-      return [...game.content.enhancements.values()]
+    offers(ids: readonly string[]): EnhancementOffer[] {
+      const content = loadGameContent().content;
+      return ids
+        .map((id) => content.enhancements.get(id))
+        .filter((e): e is NonNullable<typeof e> => e !== undefined)
         .map((e) => ({
           id: e.id,
           tier: e.tier,
@@ -86,6 +168,7 @@ export const useRunStore = defineStore("run", {
         i === deckIndex ? { ...card, enhancements: [...card.enhancements, enhancementId] } : card,
       );
       this.acquired = [...this.acquired, enhancementId];
+      this.persist();
       return true;
     },
 
@@ -93,11 +176,46 @@ export const useRunStore = defineStore("run", {
       const card = this.deck[deckIndex];
       if (!card || card.upgraded) return false;
       this.deck = this.deck.map((c, i) => (i === deckIndex ? { ...c, upgraded: true } : c));
+      this.persist();
       return true;
     },
 
-    advanceEncounter(): void {
-      this.encounterIndex += 1;
+    /* ---------- G2 存档 ---------- */
+
+    serialize(): SavedRun | null {
+      if (!this.run) return null;
+      return {
+        run: this.run,
+        deck: this.deck.map((c) => ({ cardId: c.cardId, upgraded: c.upgraded, enhancements: [...c.enhancements] })),
+        relics: [...this.relics],
+        acquired: [...this.acquired],
+      };
+    },
+
+    persist(): void {
+      const payload = this.serialize();
+      if (payload) writeSlot("progress", payload);
+    },
+
+    /** 读档并恢复"; 无档或损坏返回 false。 */
+    load(): boolean {
+      const saved = readSlot<SavedRun | null>("progress", null);
+      if (!saved || !saved.run || !Array.isArray(saved.deck)) return false;
+      this.run = saved.run;
+      this.deck = saved.deck;
+      this.relics = saved.relics ?? [];
+      this.acquired = saved.acquired ?? [];
+      this.active = true;
+      return true;
+    },
+
+    clearSave(): void {
+      clearSlot("progress");
+      this.active = false;
+      this.run = null;
+      this.deck = [];
+      this.relics = [];
+      this.acquired = [];
     },
   },
 });

@@ -33,6 +33,8 @@ const isDev = isDebugEnabled();
 onMounted(() => {
   // 新战斗（或上一场已结算）时按当前局外卡组开局
   if (!store.battle || store.over) store.start();
+  // 当前节点不是战斗节点（例如直接访问 /battle）→ 回到地图
+  if (!store.battle) void router.replace("/map");
 });
 
 const state = computed<BattleState | null>(() => store.battle);
@@ -62,6 +64,11 @@ const hand = computed(() =>
 );
 
 const logEntries = computed<LogEntry[]>(() => store.log.map((e) => describeEvent(e, store.enemyNames)));
+
+/** 蓄力预警：任意存活敌人正在蓄力 → 全屏提示（Boss 大招读招）。 */
+const chargingEnemies = computed(() =>
+  enemies.value.filter((e) => e.hp > 0 && e.intent?.kind === "charge").map((e) => intentLabel(e.id)),
+);
 
 const floatersFor = computed(() => {
   const map: Record<string, typeof store.floaters> = {};
@@ -177,9 +184,9 @@ function restart(): void {
   store.start();
 }
 
-function goForge(): void {
+function goReward(): void {
   store.skip();
-  void router.push("/forge");
+  void router.push("/reward");
 }
 
 function back(): void {
@@ -332,6 +339,13 @@ function back(): void {
         </div>
       </Teleport>
 
+      <!-- Boss 蓄力大招：全屏预警 -->
+      <div v-if="chargingEnemies.length > 0" class="telegraph">
+        <div class="telegraph-line" />
+        <p>{{ chargingEnemies.join("、") }} 正在蓄力 —— 准备迎接重击</p>
+        <div class="telegraph-line" />
+      </div>
+
       <div v-if="store.message" class="message">{{ store.message }}</div>
 
       <!-- 日志抽屉 -->
@@ -345,7 +359,7 @@ function back(): void {
         <h2 :class="store.result">{{ store.result === "win" ? "胜 利" : "死 亡" }}</h2>
         <p>{{ store.result === "win" ? "锈蚀回廊的敌人已被肃清。" : "血肉归还于锈。" }}</p>
         <div class="result-actions">
-          <button v-if="store.result === 'win'" class="etch-btn" @click="goForge">前往锻造祭坛</button>
+          <button v-if="store.result === 'win'" class="etch-btn" @click="goReward">继续</button>
           <button class="etch-btn" @click="restart">再战</button>
           <button class="etch-btn" @click="back">返回标题</button>
         </div>
@@ -450,6 +464,23 @@ function back(): void {
 .message {
   position: absolute; left: 50%; bottom: 220px; transform: translateX(-50%); z-index: 35;
   font-size: 12px; letter-spacing: 0.2em; color: var(--blood-hi);
+}
+
+/* Boss 蓄力全屏预警 */
+.telegraph {
+  position: absolute; inset: 0; z-index: 45; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: radial-gradient(ellipse 80% 70% at 50% 50%, transparent 45%, rgba(192, 57, 43, 0.32) 100%);
+  animation: telegraph-pulse 1.1s ease-in-out infinite;
+}
+.telegraph p {
+  font-family: var(--serif-title); font-size: 17px; letter-spacing: 0.34em;
+  color: #f0b4a8; text-shadow: 0 0 18px rgba(192, 57, 43, 0.9), 0 2px 3px #000;
+}
+.telegraph-line { width: 460px; height: 1px; background: linear-gradient(90deg, transparent, var(--blood-hi), transparent); }
+@keyframes telegraph-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
 
 .log-drawer {

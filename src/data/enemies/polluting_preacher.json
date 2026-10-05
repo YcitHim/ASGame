@@ -1,12 +1,12 @@
 {
   "id": "polluting_preacher",
   "i18n": "enemy.polluting_preacher",
-  "maxHp": 34,
+  "maxHp": 36,
   "intents": [
     {
       "intent": {
         "kind": "attack",
-        "value": 5
+        "value": 6
       },
       "weight": 3,
       "maxConsecutive": 2

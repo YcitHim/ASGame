@@ -1,12 +1,12 @@
 {
   "id": "rust_hound",
   "i18n": "enemy.rust_hound",
-  "maxHp": 22,
+  "maxHp": 26,
   "intents": [
     {
       "intent": {
         "kind": "attack",
-        "value": 6
+        "value": 7
       },
       "weight": 4,
       "maxConsecutive": 2
@@ -14,7 +14,7 @@
     {
       "intent": {
         "kind": "attack",
-        "value": 4,
+        "value": 5,
         "hits": 2
       },
       "weight": 2,
@@ -23,7 +23,7 @@
     {
       "intent": {
         "kind": "defend",
-        "value": 5
+        "value": 6
       },
       "weight": 2
     }

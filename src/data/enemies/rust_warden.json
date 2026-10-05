@@ -1,0 +1,31 @@
+{
+  "id": "rust_warden",
+  "i18n": "enemy.rust_warden",
+  "maxHp": 72,
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 11
+      },
+      "weight": 3,
+      "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "defend",
+        "value": 12
+      },
+      "weight": 2,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "charge",
+        "value": 3
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    }
+  ]
+}

@@ -4,7 +4,7 @@
 
 ## save/ · 存档
 - [x] localStorage 封装 + 命名空间 key（`rustandblood:*`）
-- [x] **version 字段 + migration 链（ADR-008）** —— 骨架已落地，S5 接进度/卡组/RNG 快照
+- [x] **version 字段 + migration 链（ADR-008）** —— 已接进度：节点 / 卡组强化 / 遗物 / HP（继续远征读档）
 - [ ] 存档内容：设置项 / 当前进度 / 卡组实例（含强化）/ RNG 流快照 / 回放输入流
 - [ ] 0.5 预留云端存档接口位
 

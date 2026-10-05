@@ -90,7 +90,7 @@ export interface DeckEntry {
 export interface BattleConfig {
   readonly battleId: string;
   readonly seed: number;
-  readonly player: { readonly maxHp: number; readonly energy: number };
+  readonly player: { readonly maxHp: number; readonly energy: number; readonly hp?: number };
   readonly enemies: readonly EnemySetup[];
   /** 卡组（洗牌前顺序） */
   readonly deck: readonly (string | DeckEntry)[];
@@ -131,7 +131,7 @@ export function createBattleState(config: BattleConfig): BattleState {
     phase: "battleStart",
     player: {
       id: "player",
-      hp: config.player.maxHp,
+      hp: config.player.hp ?? config.player.maxHp,
       maxHp: config.player.maxHp,
       block: 0,
       energy: config.player.energy,

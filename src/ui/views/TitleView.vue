@@ -26,7 +26,7 @@ function onMenu(key: (typeof menu)[number]["key"], enabled: boolean): void {
     run.startRun();
     void router.push("/battle");
   } else if (key === "continue") {
-    void router.push("/battle");
+    if (run.load()) void router.push("/map");
   }
 }
 </script>

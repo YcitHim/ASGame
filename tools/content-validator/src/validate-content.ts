@@ -113,10 +113,14 @@ export function validateContent(input: ContentInput): ValidationResult {
         issues.push({ file: `act ${act.id}`, path: "startDeck", message: `引用了不存在的卡牌 "${cardId}"` });
       }
     }
-    for (const enc of act.encounters) {
-      for (const enemyId of enc.enemies) {
+    for (const node of act.map) {
+      const needsEnemies = node.kind === "battle" || node.kind === "elite" || node.kind === "boss";
+      if (needsEnemies && (!node.enemies || node.enemies.length === 0)) {
+        issues.push({ file: `act ${act.id}`, path: `map.${node.id}`, message: `${node.kind} 节点必须配置 enemies` });
+      }
+      for (const enemyId of node.enemies ?? []) {
         if (!enemyIds.has(enemyId)) {
-          issues.push({ file: `act ${act.id}`, path: `encounters.${enc.id}`, message: `引用了不存在的敌人 "${enemyId}"` });
+          issues.push({ file: `act ${act.id}`, path: `map.${node.id}`, message: `引用了不存在的敌人 "${enemyId}"` });
         }
       }
     }

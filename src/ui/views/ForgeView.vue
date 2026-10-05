@@ -17,8 +17,8 @@ onMounted(() => {
   if (!run.active) run.startRun();
 });
 
-/** 三选一：按 tier 排序后取前三（0.1 强化池共 3 个，正好三选一）。 */
-const offers = computed(() => run.offers().slice(0, 3));
+/** 三选一：由 core/map 的 reward 流按节点抽取，再按可附着目标过滤。 */
+const offers = computed(() => run.offers(run.enhancementChoices()));
 const chosenOffer = computed(() => offers.value.find((o) => o.id === selected.value) ?? null);
 
 function cardName(cardId: string): string {
@@ -57,12 +57,12 @@ function attach(deckIndex: number): void {
 }
 
 function continueExpedition(): void {
-  run.advanceEncounter();
-  void router.push("/battle");
+  run.advance();
+  void router.push("/map");
 }
 
-function backToBattle(): void {
-  void router.push("/battle");
+function backToMap(): void {
+  void router.push("/map");
 }
 </script>
 
@@ -72,7 +72,7 @@ function backToBattle(): void {
       <div class="topbar">
         <span>锻造祭坛 · 第一幕</span>
         <div class="r">
-          <span @click="backToBattle">返回战斗</span>
+          <span @click="backToMap">返回地图</span>
           <span @click="router.push('/')">放弃远征</span>
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/YOUR_GITHUB/rust-and-blood/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB/rust-and-blood/actions/workflows/ci.yml)
 
-> 当前状态：**S4 首职业内容已落地**（血械侍僧 30 卡 + 3 强化 + 4 遗物、强化 modifyCard/onHit、锻造祭坛三选一、ADR-007 竖屏遮罩）。
+> 当前状态：**S5 流程串联已落地**（线性 5 节点地图、精英+Boss「锈喉」、卡奖/休息/锻造、G2 存档、G6 无头模拟器 100 局报表）。
 > 推进基准：`docs/09-阶段任务分解.md`（阶段出口门禁全绿才前进），先读 `docs/`（尤其 01/02/03）。
 > 内容编辑入口：`src/data/`（卡牌 / 强化 / 遗物 / 敌人 / 关卡 / 文案，全部 JSON + validator）。
 
@@ -16,7 +16,8 @@ npm run lint       # ESLint（含 G3：core 禁 Math.random / Date.now / UI 依�
 npm run validate   # content-validator（G1：data JSON schema + 引用存在性）
 npm test           # Vitest 单测
 npm run test:coverage  # 单测 + 覆盖率（门禁：pipeline ≥ 90%）
-npm run ci         # lint → typecheck → validate → test:coverage（CI 同款）
+npm run sim -- 100 # 无头模拟器（G6）：跑 100 局线性地图，产出胜率/回合/伤害/抓用率报表
+npm run ci         # lint → typecheck → validate → test:coverage → sim 100（CI 同款）
 ```
 
 ## 目录导航

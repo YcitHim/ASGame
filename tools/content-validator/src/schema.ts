@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NODE_KINDS } from "../../../src/core/registry/content";
 import {
   BUFF_IDS,
   CARD_CLASSES,
@@ -155,6 +156,15 @@ export const enemySchema = z
   })
   .strict();
 
+export const mapNodeSchema = z
+  .object({
+    id: idSchema,
+    kind: z.enum(NODE_KINDS),
+    enemies: z.array(z.string().regex(ID_PATTERN)).optional(),
+    i18n: z.string().optional(),
+  })
+  .strict();
+
 export const actSchema = z
   .object({
     id: idSchema,
@@ -162,7 +172,7 @@ export const actSchema = z
     player: z.object({ maxHp: z.number().int().min(1), energy: z.number().int().min(0) }).strict(),
     startDeck: z.array(z.string().regex(ID_PATTERN)).min(1),
     startRelics: z.array(z.string().regex(ID_PATTERN)).optional(),
-    encounters: z.array(z.object({ id: idSchema, enemies: z.array(z.string().regex(ID_PATTERN)).min(1) }).strict()).min(1),
+    map: z.array(mapNodeSchema).min(1),
   })
   .strict();
 

@@ -10,7 +10,10 @@ export const router = createRouter({
   routes: [
     { path: "/", name: "title", component: () => import("./views/TitleView.vue") },
     { path: "/settings", name: "settings", component: () => import("./views/SettingsView.vue") },
+    { path: "/map", name: "map", component: () => import("./views/MapView.vue") },
     { path: "/battle", name: "battle", component: () => import("./views/BattleView.vue") },
+    { path: "/reward", name: "reward", component: () => import("./views/RewardView.vue") },
+    { path: "/rest", name: "rest", component: () => import("./views/RestView.vue") },
     { path: "/forge", name: "forge", component: () => import("./views/ForgeView.vue") },
     {
       path: "/expedition",

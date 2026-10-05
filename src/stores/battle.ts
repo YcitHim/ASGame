@@ -6,6 +6,7 @@
  */
 import { defineStore } from "pinia";
 import { createBattleState, reduce, validatePlayCardState, type BattleState } from "@/core/combat";
+import { isCombatNode } from "@/core/map";
 import type { Action } from "@/core/actions";
 import type { DomainEvent } from "@/core/events";
 import { loadGameContent } from "@/data/load";
@@ -65,14 +66,18 @@ export const useBattleStore = defineStore("battle", {
       const game = loadGameContent();
       const act = game.acts[0];
       const run = useRunStore();
-      if (!run.active) run.startRun();
-      const encounter = act.encounters[Math.min(run.encounterIndex, act.encounters.length - 1)];
+      if (!run.active || !run.run) run.startRun();
+      const node = run.current;
+      if (!node || !isCombatNode(node)) {
+        this.battle = null;
+        return;
+      }
       this.battle = createBattleState({
-        battleId: `${act.id}-${encounter.id}-${run.encounterIndex}`,
+        battleId: `${act.id}-${node.id}`,
         seed: (Date.now() ^ (Math.floor(Date.now() / 7) << 3)) >>> 0,
-        player: act.player,
-        enemies: encounter.enemies.map((id) => ({ id })),
-        // 以局外卡组实例开局：升级与强化都带上
+        // 跨节点保留 HP；卡组带上升级与强化实例
+        player: { maxHp: act.player.maxHp, energy: act.player.energy, hp: run.hp },
+        enemies: (node.enemies ?? []).map((id) => ({ id })),
         deck: run.deck.map((c) => ({ cardId: c.cardId, upgraded: c.upgraded, enhancements: c.enhancements })),
         relics: run.relics,
         content: game.content,
@@ -89,6 +94,10 @@ export const useBattleStore = defineStore("battle", {
       if (!this.battle) return [];
       const result = reduce(this.battle, action);
       this.battle = result.state;
+      if (result.state.phase === "battleEnd") {
+        // 战斗结束把剩余 HP 写回局外进度（跨节点保留）
+        useRunStore().setHp(result.state.player.hp);
+      }
       if (result.events.length > 0) {
         this.log.push(...result.events);
         this.playing = true;

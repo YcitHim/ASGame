@@ -96,9 +96,17 @@ export interface EnhancementDefinition {
   readonly i18n?: string;
 }
 
-export interface EncounterDefinition {
+/** 地图节点类型（0.1 用到的子集 + event 预留）。 */
+export const NODE_KINDS = ["battle", "elite", "rest", "altar", "reward", "boss", "event"] as const;
+export type NodeKind = (typeof NODE_KINDS)[number];
+
+export interface MapNode {
   readonly id: string;
-  readonly enemies: readonly string[];
+  readonly kind: NodeKind;
+  /** battle / elite / boss 节点的敌人 id 列表 */
+  readonly enemies?: readonly string[];
+  /** 节点副标题（可选，i18n key） */
+  readonly i18n?: string;
 }
 
 export interface ActDefinition {
@@ -107,7 +115,8 @@ export interface ActDefinition {
   readonly player: { readonly maxHp: number; readonly energy: number };
   readonly startDeck: readonly string[];
   readonly startRelics?: readonly string[];
-  readonly encounters: readonly EncounterDefinition[];
+  /** 线性节点列表（0.1 不分支） */
+  readonly map: readonly MapNode[];
 }
 
 /** 触发器时机（triggers README 的 v0 时机表）。 */

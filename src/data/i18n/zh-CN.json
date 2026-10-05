@@ -106,5 +106,12 @@
   "enh.empower.name": "锋锐",
   "enh.empower.desc": "该牌的伤害 +2。",
   "enh.fortify.name": "加固",
-  "enh.fortify.desc": "该牌的格挡 +3。"
+  "enh.fortify.desc": "该牌的格挡 +3。",
+  "enemy.rust_warden.name": "锈蚀看守",
+  "enemy.rust_throat.name": "锈喉",
+  "node.n1": "锈蚀回廊 · 入口",
+  "node.n2": "锈蚀回廊 · 深处",
+  "node.n3": "残破圣坛（休息）",
+  "node.n4": "锻造祭坛",
+  "node.n5": "锈喉之门"
 }
