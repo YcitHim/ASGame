@@ -245,8 +245,8 @@ function intentLabel(id: string): string {
 
 const actName = computed(() => game.i18n["act.rusty_corridor"] ?? "第一幕");
 
-function restart(): void {
-  store.start();
+function restartRun(): void {
+  store.restart();
 }
 
 function goReward(): void {
@@ -454,7 +454,7 @@ function back(): void {
         <p>{{ store.result === "win" ? "锈蚀回廊的敌人已被肃清。" : "血肉归还于锈。" }}</p>
         <div class="result-actions">
           <button v-if="store.result === 'win'" class="etch-btn" @click="goReward">继续</button>
-          <button class="etch-btn" @click="restart">再战</button>
+          <button v-else class="etch-btn" @click="restartRun">重新远征</button>
           <button class="etch-btn" @click="back">返回标题</button>
         </div>
       </div>

@@ -72,7 +72,9 @@ export const useBattleStore = defineStore("battle", {
       const game = loadGameContent();
       const act = game.acts[0];
       const run = useRunStore();
-      if (!run.active || !run.run) run.startRun();
+      // 防呆：未开局、或上一局已阵亡（HP<=0）时，一律开新局——
+      // 否则会用 0 HP 建战斗，第一帧就再次判负（表现为"再战点不动"）。
+      if (!run.active || !run.run || run.hp <= 0) run.startRun();
       const node = run.current;
       if (!node || !isCombatNode(node)) {
         this.battle = null;
@@ -170,6 +172,13 @@ export const useBattleStore = defineStore("battle", {
       this.dispatch({ type: "DebugCommand", actionId: `dbg-${++actionCounter}`, command });
       void before;
       return command;
+    },
+
+    /** 重新开始一局远征（阵亡后的「重新远征」）。 */
+    restart(): void {
+      const run = useRunStore();
+      if (!run.active || !run.run || run.hp <= 0) run.startRun();
+      this.start();
     },
 
     skip(): void {

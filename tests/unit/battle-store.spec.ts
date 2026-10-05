@@ -44,6 +44,33 @@ describe("battleStore（UI 投影 + 动画队列）", () => {
     expect(store.speed).toBe(1);
   });
 
+  it("阵亡后重开：满血新局、结算弹窗归位（回归 bug）", () => {
+    const store = useBattleStore();
+    store.start();
+    store.skip();
+    store.debug("set hp 0");
+    store.skip();
+    expect(store.result).toBe("lose");
+    expect(store.over).toBe(true);
+    expect(store.battle?.player.hp).toBe(0);
+
+    // 直接 start（标题「继续远征」路径）也不能用 0 HP 开局
+    store.start();
+    store.skip();
+    expect(store.over).toBe(false);
+    expect(store.battle!.player.hp).toBe(store.battle!.player.maxHp);
+
+    // 再死一次，走「重新远征」按钮路径
+    store.debug("set hp 0");
+    store.skip();
+    expect(store.over).toBe(true);
+    store.restart();
+    store.skip();
+    expect(store.over).toBe(false);
+    expect(store.battle!.phase).toBe("playerAction");
+    expect(store.battle!.player.hp).toBe(store.battle!.player.maxHp);
+  });
+
   it("非法出牌给出可读拒绝理由", () => {
     const store = useBattleStore();
     store.start();
