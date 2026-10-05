@@ -10,6 +10,10 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    watch: {
+      // 覆盖率报告与报表不是源码，避免 dev server 空转刷新
+      ignored: ["**/coverage/**", "**/reports/**", "**/dist/**"],
+    },
   },
   build: {
     target: "es2020",
