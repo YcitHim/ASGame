@@ -102,6 +102,23 @@ export function rollCardRewards(
   return picks;
 }
 
+/**
+ * 精英战遗物三选一（docs/25 §1 流程）：未持有的遗物按 id 排序取前 N。
+ * store 与无头 sim 共用，避免两处各写一份。
+ */
+export function rollRelicChoices(
+  content: ContentDb,
+  owned: readonly string[],
+  count = 3,
+): string[] {
+  const taken = new Set(owned);
+  return [...content.relics.values()]
+    .map((r) => r.id)
+    .filter((id) => !taken.has(id))
+    .sort()
+    .slice(0, count);
+}
+
 /** 重铸 HP 消耗（docs/16 P3.4 / docs/14 Q15）。 */
 export const RECAST_HP_COST = 5;
 

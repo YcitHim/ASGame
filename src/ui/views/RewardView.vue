@@ -15,9 +15,26 @@ useStageFit(stage);
 const rewards = ref<string[]>([]);
 const relicOffers = ref<string[]>([]);
 const node = computed(() => run.current);
-const mode = computed<"boss" | "relic" | "card">(() =>
-  node.value?.kind === "boss" ? "boss" : node.value?.kind === "elite" ? "relic" : "card",
+const mode = computed<"boss" | "elite" | "card">(() =>
+  node.value?.kind === "boss" ? "boss" : node.value?.kind === "elite" ? "elite" : "card",
 );
+
+/** 精英战两段式（docs/25 §1）：先遗物三选一，再「残骸锻核」强化三选一，都可放弃。 */
+const step = ref<"relic" | "enhance">("relic");
+const enhanceChoices = ref<string[]>([]);
+const selectedOffer = ref<string | null>(null);
+const enhanceOffers = computed(() => run.offers(enhanceChoices.value));
+const chosenOffer = computed(() => enhanceOffers.value.find((o) => o.id === selectedOffer.value) ?? null);
+
+function enhancementName(id: string): string {
+  return t(`enh.${id}.name`, id);
+}
+function enhancementDesc(id: string): string {
+  return t(`enh.${id}.desc`, "");
+}
+function isTarget(deckIndex: number): boolean {
+  return chosenOffer.value?.targets.includes(deckIndex) ?? false;
+}
 
 const RARITY_LABEL: Record<string, string> = {
   starter: "起始",
@@ -42,13 +59,31 @@ onMounted(() => {
     return;
   }
   if (mode.value === "card") rewards.value = run.cardRewards();
-  else if (mode.value === "relic") relicOffers.value = run.relicChoices();
+  else if (mode.value === "elite") relicOffers.value = run.relicChoices();
 });
+
+/** 遗物 → 强化（池空则直接回地图）。 */
+function afterRelic(): void {
+  enhanceChoices.value = run.enhancementChoices();
+  if (enhanceOffers.value.length > 0) {
+    step.value = "enhance";
+    return;
+  }
+  finishRun();
+}
 
 function takeRelic(id: string): void {
   run.addRelic(id);
-  run.advance();
-  void router.push("/map");
+  afterRelic();
+}
+
+function pickEnhanceOffer(id: string): void {
+  selectedOffer.value = selectedOffer.value === id ? null : id;
+}
+
+function attachElite(deckIndex: number): void {
+  if (!chosenOffer.value || !isTarget(deckIndex)) return;
+  if (run.applyEnhancement(deckIndex, chosenOffer.value.id)) finishRun();
 }
 
 function pick(cardId: string): void {
@@ -83,20 +118,56 @@ function rarityLabel(rarity: string | undefined): string {
         </div>
       </template>
 
-      <template v-else-if="mode === 'relic'">
-        <header class="hd">
-          <h1 class="head">遗 物</h1>
-          <p class="sub">精英战利品 · 选取一件遗物</p>
-        </header>
-        <div class="relics">
-          <button v-for="id in relicOffers" :key="id" class="relic" @click="takeRelic(id)">
-            <b>{{ t(`relic.${id}.name`, id) }}</b>
-            <p>{{ t(`relic.${id}.desc`, "") }}</p>
-            <span class="pick">取 走</span>
-          </button>
-          <p v-if="relicOffers.length === 0" class="none">没有可取走的遗物</p>
-        </div>
-        <button class="skip" @click="skip">放 弃</button>
+      <template v-else-if="mode === 'elite'">
+        <template v-if="step === 'relic'">
+          <header class="hd">
+            <h1 class="head">遗 物</h1>
+            <p class="sub">精英战利品 · 选取一件遗物</p>
+          </header>
+          <div class="relics">
+            <button v-for="id in relicOffers" :key="id" class="relic" @click="takeRelic(id)">
+              <b>{{ t(`relic.${id}.name`, id) }}</b>
+              <p>{{ t(`relic.${id}.desc`, "") }}</p>
+              <span class="pick">取 走</span>
+            </button>
+            <p v-if="relicOffers.length === 0" class="none">没有可取走的遗物</p>
+          </div>
+          <button class="skip" @click="afterRelic">放 弃</button>
+        </template>
+
+        <template v-else>
+          <header class="hd">
+            <h1 class="head">残 骸 锻 核</h1>
+            <p class="sub">从精英的残骸中，拆出仍能搏动的核心。</p>
+          </header>
+          <div class="options">
+            <button
+              v-for="offer in enhanceOffers"
+              :key="offer.id"
+              class="option enh"
+              :class="{ active: selectedOffer === offer.id }"
+              @click="pickEnhanceOffer(offer.id)"
+            >
+              <b>{{ enhancementName(offer.id) }}</b>
+              <p>{{ enhancementDesc(offer.id) }}</p>
+              <span class="pick">{{ selectedOffer === offer.id ? "选 中" : "选 取" }}</span>
+            </button>
+          </div>
+          <div v-if="selectedOffer" class="deck">
+            <button
+              v-for="(card, index) in run.deck"
+              :key="index"
+              class="deck-card"
+              :class="{ targetable: isTarget(index) }"
+              :disabled="!isTarget(index)"
+              @click="attachElite(index)"
+            >
+              {{ t(`card.${card.cardId}.name`, card.cardId)
+              }}<sup v-if="card.enhancements.length">{{ card.enhancements.length }}</sup>
+            </button>
+          </div>
+          <button class="skip" @click="finishRun">放 弃</button>
+        </template>
       </template>
 
       <template v-else>
@@ -158,6 +229,53 @@ function rarityLabel(rarity: string | undefined): string {
   display: flex;
   gap: 30px;
   margin-top: 12px;
+}
+/* 精英「残骸锻核」强化三选一（docs/25 §1.5） */
+.option.enh {
+  width: 210px;
+  min-height: 128px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 14px 14px 30px;
+}
+.option.enh b {
+  font-family: var(--serif-title);
+  font-size: 16px;
+  letter-spacing: 0.16em;
+  color: var(--ink-bone);
+  font-weight: 400;
+}
+.option.enh p {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink-dim);
+}
+.option.enh.active {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px rgba(176, 141, 74, 0.45);
+}
+.deck {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 760px;
+  justify-content: center;
+}
+.deck-card {
+  padding: 8px 14px;
+  font-size: 12px;
+  border: 1px solid rgba(176, 141, 74, 0.35);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(165deg, #1c1915, #12100e);
+  color: var(--ink-dim);
+}
+.deck-card.targetable {
+  border-color: var(--gold);
+  color: var(--ink-bone);
+}
+.deck-card:disabled {
+  opacity: 0.35;
 }
 .option {
   position: relative;

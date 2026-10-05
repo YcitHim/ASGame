@@ -93,6 +93,17 @@ describe("S5 局外进度（runStore）", () => {
     expect(run.rest("upgrade", 0)).toBeUndefined();
   });
 
+  it("同卡双挂：精英残骸强化可附着到已强化过的牌（docs/25 §1.3）", () => {
+    const run = useRunStore();
+    run.startRun(1);
+    const index = run.deck.findIndex((c) => c.cardId === "bloodbolt");
+    expect(run.applyEnhancement(index, "empower")).toBe(true);
+    // 已挂 1 枚的牌仍可作为附着目标（同卡双挂是 docs/25 决策的全部意义）
+    expect(run.canApply("rustbite", index)).toBe(true);
+    expect(run.applyEnhancement(index, "rustbite")).toBe(true);
+    expect(run.deck[index].enhancements).toEqual(["empower", "rustbite"]);
+  });
+
   it("重铸：随机换同阶强化，耗 5 HP，每座祭坛限 1 次（docs/16 P3.4）", () => {
     const run = useRunStore();
     run.startRun(1);

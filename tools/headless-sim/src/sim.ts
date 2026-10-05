@@ -14,6 +14,7 @@ import {
   MAX_ENHANCEMENT_SLOTS,
   rollCardRewards,
   rollEnhancementChoices,
+  rollRelicChoices,
   setRunHp,
 } from "../../../src/core/map";
 import type { ActDefinition, ContentDb } from "../../../src/core/registry";
@@ -42,6 +43,8 @@ export interface SimResult {
   hpAfterBoss: number | null;
   /** 本局是否组出「失控线爆发流」（同一张牌同时有 血怒 + 低血沸腾，docs/23 §10 口径 b） */
   bloodrageBoil: boolean;
+  /** 本局是否同时持有 血怒 与 低血沸腾（可不同卡）——诊断 AI 会不会凑对（docs/25 §1.6） */
+  bloodrageBoilAny: boolean;
 }
 
 export interface BattleRunConfig {
@@ -64,6 +67,32 @@ export interface BattleRunOutcome {
 }
 
 const MAX_BATTLE_ACTIONS = 600;
+
+/**
+ * 取一枚可附着的强化并附着到第一张"可附着目标"（祭坛 / 精英残骸共用，docs/25 §1.3）。
+ * 目标允许是已经附着过强化的牌（只要还有槽）——**同卡双挂必须可行**，这是 docs/25 决策的全部意义。
+ */
+function applyEnhancementChoice(
+  content: ContentDb,
+  deck: SimCard[],
+  choices: readonly string[],
+): string | null {
+  for (const id of choices) {
+    const enhancement = content.enhancements.get(id);
+    if (!enhancement) continue;
+    if (deck.some((c) => c.enhancements.includes(id))) continue;
+    const target = deck.findIndex(
+      (c) =>
+        enhancement.appliesTo.includes(c.cardId) &&
+        c.enhancements.length < MAX_ENHANCEMENT_SLOTS,
+    );
+    if (target >= 0) {
+      deck[target] = { ...deck[target], enhancements: [...deck[target].enhancements, id] };
+      return id;
+    }
+  }
+  return null;
+}
 
 export function bestReward(ids: readonly string[], content: ContentDb): string | null {
   let best: { id: string; value: number } | null = null;
@@ -153,6 +182,9 @@ export function simulateRun(content: ContentDb, act: ActDefinition, seed: number
     bloodrageBoil: deck.some(
       (c) => c.enhancements.includes("bloodrage") && c.enhancements.includes("bloodboil"),
     ),
+    bloodrageBoilAny:
+      deck.some((c) => c.enhancements.includes("bloodrage")) &&
+      deck.some((c) => c.enhancements.includes("bloodboil")),
   });
 
   while (!isRunComplete(run, act)) {
@@ -185,12 +217,24 @@ export function simulateRun(content: ContentDb, act: ActDefinition, seed: number
       if (node.kind === "elite") hpAfterElite = battle.state.player.hp;
       if (node.kind === "boss") hpAfterBoss = battle.state.player.hp;
 
-      // 战后卡奖
-      const rewards = rollCardRewards(content, act, run, run.nodeIndex);
-      const pick = bestReward(rewards, content);
-      if (pick) {
-        deck.push({ cardId: pick, upgraded: false, enhancements: [] });
-        cardsPicked[pick] = (cardsPicked[pick] ?? 0) + 1;
+      // 战后奖励（对齐游戏真实流程）：
+      //   普通战 = 卡奖；精英 = 遗物 + 强化三选一（docs/25 §1，无卡奖）；Boss = 结束
+      if (node.kind === "battle") {
+        const rewards = rollCardRewards(content, act, run, run.nodeIndex);
+        const pick = bestReward(rewards, content);
+        if (pick) {
+          deck.push({ cardId: pick, upgraded: false, enhancements: [] });
+          cardsPicked[pick] = (cardsPicked[pick] ?? 0) + 1;
+        }
+      } else if (node.kind === "elite") {
+        const relic = rollRelicChoices(content, relics, 1)[0];
+        if (relic && !relics.includes(relic)) relics.push(relic);
+        const applied = applyEnhancementChoice(
+          content,
+          deck,
+          rollEnhancementChoices(content, run, run.nodeIndex),
+        );
+        if (applied) enhancements[applied] = (enhancements[applied] ?? 0) + 1;
       }
       run = advanceNode(run, act);
       continue;
@@ -208,25 +252,12 @@ export function simulateRun(content: ContentDb, act: ActDefinition, seed: number
     }
 
     if (node.kind === "altar") {
-      const choices = rollEnhancementChoices(content, run, run.nodeIndex);
-      for (const id of choices) {
-        const enhancement = content.enhancements.get(id);
-        if (!enhancement) continue;
-        // 与游戏规则一致：同一强化全局唯一
-        const alreadyOwned = deck.some((c) => c.enhancements.includes(id));
-        const target = alreadyOwned
-          ? -1
-          : deck.findIndex(
-              (c) =>
-                enhancement.appliesTo.includes(c.cardId) &&
-                c.enhancements.length < MAX_ENHANCEMENT_SLOTS,
-            );
-        if (target >= 0) {
-          deck[target] = { ...deck[target], enhancements: [...deck[target].enhancements, id] };
-          enhancements[id] = (enhancements[id] ?? 0) + 1;
-          break;
-        }
-      }
+      const applied = applyEnhancementChoice(
+        content,
+        deck,
+        rollEnhancementChoices(content, run, run.nodeIndex),
+      );
+      if (applied) enhancements[applied] = (enhancements[applied] ?? 0) + 1;
       run = advanceNode(run, act);
       continue;
     }

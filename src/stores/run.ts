@@ -18,6 +18,7 @@ import {
   rollCardRewards,
   rollEnhancementChoices,
   rollRecastEnhancement,
+  rollRelicChoices,
   setRunHp,
   type RunState,
 } from "@/core/map";
@@ -212,13 +213,7 @@ export const useRunStore = defineStore("run", {
     /** 精英战掉落：未持有遗物里抽（Q10），允许放弃。 */
     relicChoices(): string[] {
       if (!this.run) return [];
-      const game = loadGameContent();
-      const owned = new Set(this.relics);
-      return [...game.content.relics.values()]
-        .map((r) => r.id)
-        .filter((id) => !owned.has(id))
-        .sort()
-        .slice(0, 3);
+      return rollRelicChoices(loadGameContent().content, this.relics, 3);
     },
 
     addRelic(relicId: string): void {

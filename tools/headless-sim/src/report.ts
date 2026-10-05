@@ -27,6 +27,9 @@ export interface Report {
   comboRate: number;
   comboWinRate: number;
   comboAvgTurns: number;
+  /** 跨卡同时持有（血怒 + 低血沸腾，可不同卡）——诊断 AI 会不会凑对（docs/25 §1.6） */
+  comboAnyGames: number;
+  comboAnyRate: number;
   nodeReach: Record<number, number>;
   topPlayed: [string, number][];
   topPicked: [string, number][];
@@ -57,14 +60,19 @@ function comboReport(results: SimResult[]): {
   comboRate: number;
   comboWinRate: number;
   comboAvgTurns: number;
+  comboAnyGames: number;
+  comboAnyRate: number;
 } {
   const games = results.filter((r) => r.bloodrageBoil);
   const wins = games.filter((r) => r.outcome === "win").length;
+  const anyGames = results.filter((r) => r.bloodrageBoilAny);
   return {
     comboGames: games.length,
     comboRate: results.length === 0 ? 0 : games.length / results.length,
     comboWinRate: games.length === 0 ? 0 : wins / games.length,
     comboAvgTurns: avg(games.map((r) => r.turns)),
+    comboAnyGames: anyGames.length,
+    comboAnyRate: results.length === 0 ? 0 : anyGames.length / results.length,
   };
 }
 
@@ -147,7 +155,8 @@ export function formatReport(report: Report): string {
     `  平均造成伤害 ${report.avgDamageDealt.toFixed(0)} · 平均承伤 ${report.avgDamageTaken.toFixed(0)}（P90 ${report.damageTakenP90}）`,
     `  精英战后剩余 HP P10 ${report.eliteHpP10} / P50 ${report.eliteHpP50}（过精英 ${report.eliteCleared} 局；设计意图 P50 ≥ 25）`,
     `  Boss 战后剩余 HP P10 ${report.bossHpP10} / P50 ${report.bossHpP50}（过 Boss ${report.bossCleared} 局）`,
-    `  失控线爆发流（血怒+低血沸腾）出现率 ${pct(report.comboRate)}（${report.comboGames} 局）· 对应胜率 ${pct(report.comboWinRate)} · 平均回合 ${report.comboAvgTurns.toFixed(1)}（参考：出现率 ≥15%、胜率 ≤ 全局 +15pp）`,
+    `  失控线爆发流（血怒+低血沸腾 同卡）出现率 ${pct(report.comboRate)}（${report.comboGames} 局）· 对应胜率 ${pct(report.comboWinRate)} · 平均回合 ${report.comboAvgTurns.toFixed(1)}（参考：出现率 ≥15%、胜率 ≤ 全局 +15pp）`,
+    `  同局持有两者（可不同卡）${pct(report.comboAnyRate)}（${report.comboAnyGames} 局）——用于区分"结构不可达"与"AI 不会凑对"`,
     `  到达节点分布 ${Object.entries(report.nodeReach).map(([k, v]) => `${k}:${v}`).join(" ")}`,
     `  出牌 Top：${report.topPlayed.slice(0, 8).map(([k, v]) => `${k}(${v})`).join(" ")}`,
     `  抓牌 Top：${report.topPicked.slice(0, 8).map(([k, v]) => `${k}(${v})`).join(" ")}`,
