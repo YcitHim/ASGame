@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { t } from "@/data/load";
-import { highlightText, keywordTip } from "@/ui/glossary";
+import { hasTip, highlightText, keywordTip, termsIn } from "@/ui/glossary";
 
 const props = defineProps<{
   cardId: string;
@@ -22,6 +22,11 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ (e: "grab", index: number, event: PointerEvent): void }>();
+
+/** 右侧注解窗：显示该卡真正需要解释的词（描述 + 关键词行去重）。 */
+const showTip = ref(false);
+const tipPos = ref({ left: 0, top: 0 });
+const cardRef = ref<HTMLElement | null>(null);
 
 const TYPE_LABEL: Record<string, string> = { attack: "攻击", skill: "技能", power: "能力", curse: "诅咒", status: "状态" };
 const KEYWORD_LABEL: Record<string, string> = {
@@ -58,10 +63,43 @@ const rotation = computed(() => {
   return ((props.index - center) / Math.max(1, center)) * 9;
 });
 const lift = computed(() => (props.display ? 0 : Math.abs(rotation.value) * 1.8));
+
+/** 需要解释的词：描述里出现的 + 关键词行里有的，去重后给出解释。 */
+const annotations = computed(() => {
+  const fromDesc = termsIn(desc.value);
+  const fromKeywords = keywordLabels.value.filter((label) => hasTip(label));
+  const merged: string[] = [];
+  for (const term of [...fromKeywords, ...fromDesc]) {
+    if (!merged.includes(term)) merged.push(term);
+  }
+  return merged.map((term) => ({ term, tip: keywordTip(term) }));
+});
+
+function placeTip(): void {
+  const el = cardRef.value;
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  const width = 236;
+  const gap = 14;
+  const left = rect.right + gap + width <= window.innerWidth ? rect.right + gap : Math.max(8, rect.left - gap - width);
+  const top = Math.min(Math.max(8, rect.top), Math.max(8, window.innerHeight - 200));
+  tipPos.value = { left, top };
+}
+
+function onEnter(): void {
+  if (props.dragging) return;
+  placeTip();
+  showTip.value = true;
+}
+
+function onLeave(): void {
+  showTip.value = false;
+}
 </script>
 
 <template>
   <div
+    ref="cardRef"
     class="card"
     :class="[
       `rarity-${rarity ?? 'common'}`,
@@ -69,6 +107,8 @@ const lift = computed(() => (props.display ? 0 : Math.abs(rotation.value) * 1.8)
     ]"
     :style="{ transform: `rotate(${rotation}deg) translateY(${lift}px)` }"
     @pointerdown="emit('grab', index, $event)"
+    @pointerenter="onEnter"
+    @pointerleave="onLeave"
   >
     <div class="cost">{{ cost }}</div>
     <div v-if="keywordLabels.includes('血契')" class="bloodcost">血契</div>
@@ -78,7 +118,7 @@ const lift = computed(() => (props.display ? 0 : Math.abs(rotation.value) * 1.8)
       {{ typeLabel }}
       <template v-if="keywordLabels.length">
         ·
-        <span v-for="(k, i) in keywordLabels" :key="k" class="kw" :data-tip="keywordTip(k)">
+        <span v-for="(k, i) in keywordLabels" :key="k" :class="{ kw: hasTip(k) }">
           {{ k }}<template v-if="i < keywordLabels.length - 1"> / </template>
         </span>
       </template>
@@ -88,6 +128,20 @@ const lift = computed(() => (props.display ? 0 : Math.abs(rotation.value) * 1.8)
       <i v-for="n in 3" :key="n" :class="{ on: n <= (enhancements ?? 0) }" />
     </div>
   </div>
+
+  <!-- 卡牌右侧的独立注解窗（Teleport 到 body：不被舞台缩放/裁切影响） -->
+  <Teleport to="body">
+    <div
+      v-if="showTip && annotations.length > 0"
+      class="kw-panel"
+      :style="{ left: tipPos.left + 'px', top: tipPos.top + 'px' }"
+    >
+      <div v-for="item in annotations" :key="item.term" class="kw-row">
+        <b>{{ item.term }}</b>
+        <span>{{ item.tip }}</span>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -236,35 +290,54 @@ const lift = computed(() => (props.display ? 0 : Math.abs(rotation.value) * 1.8)
 </style>
 
 <style>
-/* 关键词：蓝字 + 悬浮解释（全局，因为 v-html 内容不参与 scoped） */
+/* 需要解释的机制词：蓝字（注解内容由右侧 kw-panel 给出，不再内嵌 tooltip） */
 .card .kw {
   color: #7fa6c8;
-  border-bottom: 1px dotted rgba(127, 166, 200, 0.6);
-  position: relative;
-  cursor: help;
+  border-bottom: 1px dotted rgba(127, 166, 200, 0.5);
 }
-.card .kw:hover {
-  color: #a8c8e4;
-}
-.card .kw[data-tip]:hover::after {
-  content: attr(data-tip);
-  position: absolute;
-  left: 50%;
-  bottom: 135%;
-  transform: translateX(-50%);
-  width: 220px;
-  padding: 8px 10px;
+
+/* 卡牌右侧注解窗（Teleport 到 body） */
+.kw-panel {
+  position: fixed;
+  z-index: 90;
+  width: 236px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   background: var(--bg-raised, #1c1915);
   border: 1px solid rgba(176, 141, 74, 0.6);
   border-radius: 3px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.85);
-  color: var(--ink-dim, #9a9081);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.85), inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+.kw-panel::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 22px;
+  width: 10px;
+  height: 10px;
+  transform: rotate(45deg);
+  background: var(--bg-raised, #1c1915);
+  border-left: 1px solid rgba(176, 141, 74, 0.6);
+  border-bottom: 1px solid rgba(176, 141, 74, 0.6);
+}
+.kw-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.kw-row b {
+  font-family: var(--serif-title, serif);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  color: #7fa6c8;
+  font-weight: 400;
+}
+.kw-row span {
   font-size: 10px;
   line-height: 1.7;
-  letter-spacing: 0.04em;
-  text-align: left;
-  white-space: normal;
-  z-index: 80;
-  pointer-events: none;
+  color: var(--ink-dim, #9a9081);
 }
 </style>
