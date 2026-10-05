@@ -131,5 +131,10 @@
   "card.thornscab.descUp": "获得 2 回合「反伤 5」：受到攻击时，对攻击者造成 5 点伤害。",
   "card.bloodforblood.name": "以血还血",
   "card.bloodforblood.desc": "造成 8 点伤害；若本回合受过伤害，额外造成 6 点伤害。",
-  "card.bloodforblood.descUp": "造成 11 点伤害；若本回合受过伤害，额外造成 7 点伤害。"
+  "card.bloodforblood.descUp": "造成 11 点伤害；若本回合受过伤害，额外造成 7 点伤害。",
+  "enh.bloodrage.name": "血怒",
+  "enh.bloodrage.desc": "HP<50% 时，此牌伤害 ×1.5（乘区，乘完统一取整）。",
+  "card.bloodrust.name": "血锈光环",
+  "card.bloodrust.desc": "本场战斗中你的所有攻击 +1；获得 8 点污染。",
+  "card.bloodrust.descUp": "本场战斗中你的所有攻击 +2；获得 8 点污染。"
 }

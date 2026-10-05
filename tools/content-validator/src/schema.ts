@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { NODE_KINDS } from "../../../src/core/registry/content";
+import { VALUE_KINDS } from "../../../src/core/pipeline";
 import {
   BUFF_IDS,
   CARD_CLASSES,
@@ -71,6 +72,15 @@ const effectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("gainEnergy"), value: z.number().int().min(0), condition: conditionSchema.optional() }).strict(),
   z.object({ kind: z.literal("gainPollution"), value: z.number(), condition: conditionSchema.optional() }).strict(),
   z.object({ kind: z.literal("gainCharge"), value: z.number(), condition: conditionSchema.optional() }).strict(),
+  z
+    .object({
+      kind: z.literal("gainModifier"),
+      valueKind: z.enum(VALUE_KINDS),
+      op: z.enum(["add", "mul"]),
+      value: z.number(),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
 ]);
 
 const playSchema = z

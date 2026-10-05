@@ -145,6 +145,21 @@ registerEnhancementHandler({
   },
 });
 
+/**
+ * T2「血怒」：HP<50% 时，此牌伤害 ×multiplier（乘区；取整在管线乘区后统一做一次）。
+ * 与低血沸腾同槽：低血沸腾管段数、血怒管单段质量 → 「失控线爆发流」。
+ */
+registerEnhancementHandler({
+  id: "bloodrage",
+  modifyCard(_input, params, ctx) {
+    const condition = params["condition"] as Parameters<typeof evaluateCondition>[0];
+    if (condition && !evaluateCondition(condition, conditionCtx(ctx))) return undefined;
+    const multiplier = asNumber(params["multiplier"], 1.5);
+    if (multiplier === 1) return undefined;
+    return { modifiers: [{ kind: "attackDamage", op: "mul", value: multiplier }] };
+  },
+});
+
 /** T1「节油血契」：该牌卖血代价 -discount（走 hpCost 的 enhancement 层）。 */
 registerEnhancementHandler({
   id: "bloodpact_discount",

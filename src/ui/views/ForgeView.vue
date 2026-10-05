@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
+import { RECAST_HP_COST } from "@/core/map";
 import { t } from "@/data/load";
 import { useRunStore } from "@/stores/run";
 import { useStageFit } from "@/ui/composables/useStageFit";
@@ -61,6 +62,18 @@ function attach(deckIndex: number): void {
     selected.value = null;
     appliedThisVisit.value = true;
   }
+}
+
+/** 重铸（docs/16 P3.4）：随机换一枚同阶强化，耗 5 HP，每座祭坛限 1 次。 */
+function doRecast(deckIndex: number): void {
+  const result = run.recast(deckIndex);
+  if (!result) {
+    notice.value = "重铸不可用：HP 需大于 5，且每座祭坛只允许重铸一次";
+    return;
+  }
+  notice.value = result.added
+    ? `重铸：${enhancementName(result.removed)} → ${enhancementName(result.added)}`
+    : `重铸：移除了「${enhancementName(result.removed)}」，同阶池已无可替换`;
 }
 
 function continueExpedition(): void {
@@ -132,6 +145,24 @@ function backToMap(): void {
               </span>
             </button>
           </div>
+        </section>
+
+        <section class="col recast">
+          <h2>重铸 · {{ RECAST_HP_COST }} HP</h2>
+          <p class="note">随机移除该卡 1 枚强化，再从同阶池随机换 1 枚（每座祭坛限 1 次，随机洗）</p>
+          <button
+            v-for="index in run.recastableCards"
+            :key="index"
+            class="deck-card"
+            :disabled="!run.canRecast"
+            @click="doRecast(index)"
+          >
+            <span class="name">{{ cardName(run.deck[index].cardId) }}</span>
+            <span class="enhs">{{ run.deck[index].enhancements.map(enhancementName).join(" · ") }}</span>
+
+          </button>
+          <p v-if="run.recastableCards.length === 0" class="empty">还没有已附加强化的卡</p>
+          <p v-else-if="!run.canRecast" class="empty">本次祭坛已重铸过（或 HP 不足）</p>
         </section>
       </div>
 

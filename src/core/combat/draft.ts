@@ -10,6 +10,7 @@ import type { BuffInstance } from "../buffs";
 import type { ContentDb } from "../registry/content";
 import type { CardDefinition } from "../registry/content";
 import type { IntentPayload } from "../events";
+import type { Modifier } from "../pipeline";
 import type { CardInstance, EnemyState, Phase, BattleState } from "./state";
 import type { EffectWork } from "./work";
 
@@ -56,6 +57,8 @@ export interface Draft {
   discard: string[];
   exhaust: string[];
   cardInstances: Record<string, CardInstance>;
+  /** 本场临时修饰（layer:"temporary"）：随战斗结束消失 */
+  modifiers: Modifier[];
   /** 栈式效果队列（ADR-002）：不在 BattleState 中持久化，每次 reduce 从空开始 */
   queue: EffectQueue<EffectWork>;
   /** 排空重入保护：结算中再入的动作只入栈，由当前循环弹出 */
@@ -104,6 +107,7 @@ export function toDraft(state: BattleState): Draft {
     discard: [...state.piles.discard],
     exhaust: [...state.piles.exhaust],
     cardInstances: { ...state.cardInstances },
+    modifiers: state.modifiers.map((m) => ({ ...m })),
     queue: new EffectQueue<EffectWork>(),
     draining: false,
   };
@@ -148,7 +152,7 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
       exhaust: [...draft.exhaust],
     },
     cardInstances: { ...draft.cardInstances },
-    modifiers: [],
+    modifiers: draft.modifiers.map((m) => ({ ...m })),
     handSize: draft.handSize,
     cardsPlayedThisTurn: draft.cardsPlayedThisTurn,
     tookDamageThisTurn: draft.tookDamageThisTurn,

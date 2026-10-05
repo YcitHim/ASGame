@@ -1,0 +1,21 @@
+{
+  "id": "bloodrage",
+  "tier": 2,
+  "appliesTo": [
+    "bloodbolt",
+    "redtear",
+    "overloadstrike",
+    "bloodflail",
+    "plaguesurge",
+    "bloodstorm"
+  ],
+  "handler": "bloodrage",
+  "params": {
+    "condition": {
+      "type": "hpBelow",
+      "percent": 50
+    },
+    "multiplier": 1.5
+  },
+  "i18n": "enh.bloodrage"
+}

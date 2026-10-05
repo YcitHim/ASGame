@@ -4,6 +4,7 @@
  * data/*.json 经 content-validator 校验后，在应用启动时装入这里。
  * core 只认这些类型，不读文件系统、不 import UI（G3）。
  */
+import type { ModifierOp, ValueKind } from "../pipeline";
 import type { BuffId, CardHandlerId, CardRarity, CardType, ConditionId, EnhancementHandlerId, KeywordId, TargetId } from "./ids";
 
 export interface TargetRef {
@@ -25,7 +26,9 @@ export interface CardEffect {
     | "applyBuff"
     | "gainEnergy"
     | "gainPollution"
-    | "gainCharge";
+    | "gainCharge"
+    /** 写入本场临时修饰层（docs/16 P3.2「血锈光环」）：战斗内持续、随战斗结束消失 */
+    | "gainModifier";
   readonly target?: TargetRef;
   readonly value?: number;
   readonly hits?: number;
@@ -36,6 +39,9 @@ export interface CardEffect {
   readonly duration?: number;
   /** 仅对该效果生效的条件（如 HP<50% 时抽牌） */
   readonly condition?: ConditionNode;
+  /** 仅 gainModifier：目标数值种类与运算 */
+  readonly valueKind?: ValueKind;
+  readonly op?: ModifierOp;
 }
 
 export interface CardUpgrade {

@@ -1,0 +1,34 @@
+{
+  "id": "bloodrust",
+  "class": "bloodwright",
+  "type": "skill",
+  "rarity": "rare",
+  "cost": 2,
+  "effects": [
+    {
+      "kind": "gainModifier",
+      "valueKind": "attackDamage",
+      "op": "add",
+      "value": 1
+    },
+    {
+      "kind": "gainPollution",
+      "value": 8
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainModifier",
+        "valueKind": "attackDamage",
+        "op": "add",
+        "value": 2
+      },
+      {
+        "kind": "gainPollution",
+        "value": 8
+      }
+    ]
+  },
+  "i18n": "card.bloodrust"
+}

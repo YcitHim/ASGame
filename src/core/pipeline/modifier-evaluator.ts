@@ -37,6 +37,11 @@ export interface Modifier {
   readonly layer: ModifierLayer;
   readonly op: ModifierOp;
   readonly value: number;
+  /**
+   * 该修饰作用于哪个数值种类。仅"本场临时修饰"（BattleState.modifiers）需要，
+   * 其余层由消费点决定（enhancement 只会喂给对应的 evaluateValue）。
+   */
+  readonly kind?: ValueKind;
 }
 
 export const VALUE_KINDS = ["cardCost", "attackDamage", "hpCost", "drawCount", "block", "heal"] as const;

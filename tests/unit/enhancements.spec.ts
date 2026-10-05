@@ -1,11 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { createBattleState, reduce, type BattleState } from "@/core/combat";
-import { createContentDb, registerEnhancementHandler, type EnhancementDefinition } from "@/core/registry";
+import {
+  createContentDb,
+  registerEnhancementHandler,
+  type EnhancementDefinition,
+  type EnhancementHandlerId,
+} from "@/core/registry";
 import { TEST_CARDS, TEST_ENEMIES } from "../helpers/combat";
 
 /** onHit 钩子用预留的 bloodrage id 注册一个测试实现（生产数据里 0.5 才启用）。 */
+/** 测试专用 handler：`bloodrage` 已被生产占用为 T2「血怒」，测试的 spark 另开 id。 */
+const SPARK_HANDLER = "test_spark" as EnhancementHandlerId;
+
 registerEnhancementHandler({
-  id: "bloodrage",
+  id: SPARK_HANDLER,
   onHit: () => [{ kind: "damage", target: { type: "chosenEnemy" }, value: 1 }],
 });
 
@@ -19,7 +27,7 @@ const ENHANCEMENTS: EnhancementDefinition[] = [
   },
   { id: "sharpen", tier: 1, appliesTo: ["strike"], handler: "empower", params: { bonus: 2 } },
   { id: "reinforce", tier: 1, appliesTo: ["defend"], handler: "fortify", params: { bonus: 3 } },
-  { id: "spark", tier: 1, appliesTo: ["strike"], handler: "bloodrage", params: {} },
+  { id: "spark", tier: 1, appliesTo: ["strike"], handler: SPARK_HANDLER, params: {} },
   { id: "thrift", tier: 1, appliesTo: ["bloodbolt"], handler: "bloodpact_discount", params: { discount: 1 } },
 ];
 

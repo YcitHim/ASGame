@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { createBattleState, reduce, type BattleState } from "@/core/combat";
-import { createContentDb, registerEnhancementHandler, type EnhancementDefinition } from "@/core/registry";
+import {
+  createContentDb,
+  registerEnhancementHandler,
+  type EnhancementDefinition,
+  type EnhancementHandlerId,
+} from "@/core/registry";
 import { TEST_CARDS, TEST_ENEMIES } from "../helpers/combat";
 
 /**
@@ -9,8 +14,11 @@ import { TEST_CARDS, TEST_ENEMIES } from "../helpers/combat";
  * - 单位死亡时清除队列中所有以它为目标的挂起动作，并把真实数量回填到 UnitDied.clearedEffects
  */
 
+/** 测试专用 handler：`bloodrage` 已被生产占用为 T2「血怒」，测试的 spark 另开 id。 */
+const SPARK_HANDLER = "test_spark" as EnhancementHandlerId;
+
 registerEnhancementHandler({
-  id: "bloodrage",
+  id: SPARK_HANDLER,
   onHit: () => [{ kind: "damage", target: { type: "chosenEnemy" }, value: 1 }],
 });
 
@@ -22,7 +30,7 @@ const ENHANCEMENTS: EnhancementDefinition[] = [
     handler: "bloodboil",
     params: { condition: { type: "hpBelow", percent: 50 }, hits: 3, split: [0.4, 0.3, 0.3] },
   },
-  { id: "spark", tier: 1, appliesTo: ["strike"], handler: "bloodrage", params: {} },
+  { id: "spark", tier: 1, appliesTo: ["strike"], handler: SPARK_HANDLER, params: {} },
 ];
 
 function content() {

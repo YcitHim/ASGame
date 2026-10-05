@@ -13,8 +13,11 @@ import {
   healRun,
   isRunComplete,
   mapView,
+  pickRecastRemoval,
+  RECAST_HP_COST,
   rollCardRewards,
   rollEnhancementChoices,
+  rollRecastEnhancement,
   setRunHp,
   type RunState,
 } from "@/core/map";
@@ -43,6 +46,8 @@ interface SavedRun {
   deck: RunCard[];
   relics: string[];
   acquired: string[];
+  /** 本次祭坛是否已重铸过（按 nodeIndex 判定，缺省 = 未用） */
+  recastUsedNode?: number | null;
 }
 
 export const useRunStore = defineStore("run", {
@@ -52,6 +57,7 @@ export const useRunStore = defineStore("run", {
     deck: [] as RunCard[],
     relics: [] as string[],
     acquired: [] as string[],
+    recastUsedNode: null as number | null,
   }),
 
   getters: {
@@ -75,6 +81,16 @@ export const useRunStore = defineStore("run", {
     },
     deckSize(state): number {
       return state.deck.length;
+    },
+    /** 可重铸的卡（身上至少有 1 枚强化） */
+    recastableCards(state): number[] {
+      return state.deck.map((c, i) => (c.enhancements.length > 0 ? i : -1)).filter((i) => i >= 0);
+    },
+    canRecast(): boolean {
+      if (!this.run) return false;
+      if (this.recastUsedNode === this.run.nodeIndex) return false;
+      if (this.run.hp <= RECAST_HP_COST) return false;
+      return this.deck.some((c) => c.enhancements.length > 0);
     },
     cardDef(): (cardId: string) => CardDefinition | undefined {
       const content = loadGameContent().content;
@@ -108,15 +124,26 @@ export const useRunStore = defineStore("run", {
       this.persist();
     },
 
-    /** 休息点：回复 或 升级一张卡。 */
-    rest(option: "heal" | "upgrade", deckIndex = -1): void {
+    /** 休息点：回复 / 升级一张卡 / 移除一张卡（docs/16 P3.5）。 */
+    rest(option: "heal" | "upgrade" | "remove", deckIndex = -1): void {
       if (!this.run || !this.act) return;
       if (option === "heal") {
         this.run = healRun(this.run, this.act.player.maxHp, Math.round(this.act.player.maxHp * REST_HEAL_RATIO));
+      } else if (option === "remove" && deckIndex >= 0) {
+        this.removeCard(deckIndex);
       } else if (deckIndex >= 0) {
         this.upgradeCard(deckIndex);
       }
       this.persist();
+    },
+
+    /** 休息点「移除一张卡」：不可把卡组清空。 */
+    removeCard(deckIndex: number): boolean {
+      if (deckIndex < 0 || deckIndex >= this.deck.length) return false;
+      if (this.deck.length <= 1) return false;
+      this.deck = this.deck.filter((_, i) => i !== deckIndex);
+      this.persist();
+      return true;
     },
 
     addCard(cardId: string): void {
@@ -216,6 +243,42 @@ export const useRunStore = defineStore("run", {
       return true;
     },
 
+    /**
+     * 重铸（docs/16 P3.4 / docs/14 Q15）：随机移除该卡 1 枚强化，
+     * 再从同 tier 可附着池随机换 1 枚；耗 5 HP，每个祭坛限 1 次。
+     */
+    recast(deckIndex: number): { removed: string; added: string | null } | null {
+      if (!this.run || !this.canRecast) return null;
+      const card = this.deck[deckIndex];
+      if (!card || card.enhancements.length === 0) return null;
+
+      const seed =
+        (this.run.seed ^
+          Math.imul(this.run.nodeIndex + 3, 0x85ebca6b) ^
+          Math.imul(deckIndex + 1, 0xc2b2ae35)) >>>
+        0;
+      const removed = pickRecastRemoval(card.enhancements, seed);
+      if (!removed) return null;
+
+      const content = loadGameContent().content;
+      const removedDef = content.enhancements.get(removed);
+      const keep = card.enhancements.filter((id) => id !== removed);
+      const ownedElsewhere = this.deck
+        .filter((_, i) => i !== deckIndex)
+        .flatMap((c) => [...c.enhancements]);
+      const added = removedDef
+        ? rollRecastEnhancement(content, card.cardId, keep, ownedElsewhere, removedDef.tier, seed ^ 0x9e3779b9)
+        : null;
+
+      const next = added ? [...keep, added] : keep;
+      this.deck = this.deck.map((c, i) => (i === deckIndex ? { ...c, enhancements: next } : c));
+      this.acquired = [...this.acquired.filter((id) => id !== removed), ...(added ? [added] : [])];
+      this.run = setRunHp(this.run, Math.max(0, this.run.hp - RECAST_HP_COST));
+      this.recastUsedNode = this.run.nodeIndex;
+      this.persist();
+      return { removed, added };
+    },
+
     upgradeCard(deckIndex: number): boolean {
       const card = this.deck[deckIndex];
       if (!card || card.upgraded) return false;
@@ -233,6 +296,7 @@ export const useRunStore = defineStore("run", {
         deck: this.deck.map((c) => ({ cardId: c.cardId, upgraded: c.upgraded, enhancements: [...c.enhancements] })),
         relics: [...this.relics],
         acquired: [...this.acquired],
+        recastUsedNode: this.recastUsedNode,
       };
     },
 
@@ -249,6 +313,7 @@ export const useRunStore = defineStore("run", {
       this.deck = saved.deck;
       this.relics = saved.relics ?? [];
       this.acquired = saved.acquired ?? [];
+      this.recastUsedNode = saved.recastUsedNode ?? null;
       this.active = true;
       return true;
     },

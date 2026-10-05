@@ -10,7 +10,7 @@ const run = useRunStore();
 const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 
-const mode = ref<"choice" | "upgrade">("choice");
+const mode = ref<"choice" | "upgrade" | "remove">("choice");
 const node = computed(() => run.current);
 const healAmount = computed(() => Math.round(run.maxHp * 0.3));
 
@@ -26,6 +26,17 @@ function heal(): void {
 
 function chooseUpgrade(): void {
   mode.value = "upgrade";
+}
+
+function chooseRemove(): void {
+  mode.value = "remove";
+}
+
+function doRemove(index: number): void {
+  const ok = run.removeCard(index);
+  if (!ok) return;
+  run.advance();
+  void router.push("/map");
 }
 
 function doUpgrade(index: number): void {
@@ -56,10 +67,14 @@ function cardName(id: string): string {
             <b>打磨</b>
             <p>升级一张卡牌</p>
           </button>
+          <button class="choice" @click="chooseRemove">
+            <b>剔除</b>
+            <p>从卡组移除一张卡牌</p>
+          </button>
         </div>
       </template>
 
-      <template v-else>
+      <template v-else-if="mode === 'upgrade'">
         <p class="sub">选择一张卡升级</p>
         <div class="deck">
           <button
@@ -71,6 +86,21 @@ function cardName(id: string): string {
             @click="doUpgrade(index)"
           >
             {{ cardName(card.cardId) }}{{ card.upgraded ? "+（已升级）" : "" }}
+          </button>
+        </div>
+      </template>
+
+      <template v-else>
+        <p class="sub">选择一张卡移除（卡组至少保留 1 张）</p>
+        <div class="deck">
+          <button
+            v-for="(card, index) in run.deck"
+            :key="index"
+            class="deck-card"
+            :disabled="run.deck.length <= 1"
+            @click="doRemove(index)"
+          >
+            {{ cardName(card.cardId) }}
           </button>
         </div>
       </template>

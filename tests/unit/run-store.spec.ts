@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it } from "vitest";
+import { loadGameContent } from "@/data/load";
 import { useRunStore } from "@/stores/run";
 
 /** Node 环境无 localStorage，注入最小内存实现（G2 存档用）。 */
@@ -90,6 +91,55 @@ describe("S5 局外进度（runStore）", () => {
     run.rest("upgrade", 0);
     expect(run.deck[0].upgraded).toBe(true);
     expect(run.rest("upgrade", 0)).toBeUndefined();
+  });
+
+  it("重铸：随机换同阶强化，耗 5 HP，每座祭坛限 1 次（docs/16 P3.4）", () => {
+    const run = useRunStore();
+    run.startRun(1);
+    const bloodboltIndex = run.deck.findIndex((c) => c.cardId === "bloodbolt");
+    expect(run.canRecast).toBe(false); // 尚无强化
+    expect(run.applyEnhancement(bloodboltIndex, "empower")).toBe(true);
+
+    const hpBefore = run.hp;
+    expect(run.canRecast).toBe(true);
+    expect(run.recastableCards).toContain(bloodboltIndex);
+
+    const result = run.recast(bloodboltIndex);
+    expect(result?.removed).toBe("empower");
+    expect(run.deck[bloodboltIndex].enhancements).not.toContain("empower");
+    expect(run.deck[bloodboltIndex].enhancements).toHaveLength(1);
+    // 替换品必须是同 tier
+    const content = loadGameContent().content;
+    const added = result?.added ?? "";
+    expect(content.enhancements.get(added)?.tier).toBe(1);
+    expect(run.hp).toBe(hpBefore - 5);
+
+    // 同一祭坛第二次被拒
+    expect(run.canRecast).toBe(false);
+    expect(run.recast(bloodboltIndex)).toBeNull();
+  });
+
+  it("重铸：HP 不足时不可用", () => {
+    const run = useRunStore();
+    run.startRun(1);
+    const bloodboltIndex = run.deck.findIndex((c) => c.cardId === "bloodbolt");
+    run.applyEnhancement(bloodboltIndex, "empower");
+    run.setHp(5);
+    expect(run.canRecast).toBe(false);
+    expect(run.recast(bloodboltIndex)).toBeNull();
+  });
+
+  it("休息点「移除一张卡」：卡组至少保留 1 张（docs/16 P3.5）", () => {
+    const run = useRunStore();
+    run.startRun(1);
+    const before = run.deck.length;
+    const strikeIndex = run.deck.findIndex((c) => c.cardId === "strike");
+    expect(run.removeCard(strikeIndex)).toBe(true);
+    expect(run.deck).toHaveLength(before - 1);
+
+    while (run.deck.length > 1) run.removeCard(0);
+    expect(run.deck).toHaveLength(1);
+    expect(run.removeCard(0)).toBe(false);
   });
 
   it("卡奖三选一：从非起始卡池抽取，同种子同结果", () => {

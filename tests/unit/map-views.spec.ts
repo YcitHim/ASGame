@@ -65,7 +65,7 @@ describe("S5 UI 流程视图挂载", () => {
     wrapper.unmount();
   });
 
-  it("RestView：两个选项；选择打磨后列出卡组", async () => {
+  it("RestView：三个选项；选择打磨后列出卡组", async () => {
     const { wrapper, run } = mountView(RestView, (r) => {
       r.startRun(1);
       r.advance();
@@ -73,7 +73,8 @@ describe("S5 UI 流程视图挂载", () => {
       r.advance();
     });
     await nextTick();
-    expect(wrapper.findAll(".choice")).toHaveLength(2);
+    // 休息点三选一：憩息 / 打磨 / 剔除（docs/16 P3.5）
+    expect(wrapper.findAll(".choice")).toHaveLength(3);
     await wrapper.findAll(".choice")[1].trigger("click");
     await nextTick();
     expect(wrapper.findAll(".deck-card")).toHaveLength(run.deckSize);

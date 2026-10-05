@@ -55,6 +55,13 @@ export function attackModifiers(draft: Draft, actorId: string, targetId: string)
   const actor = unitBuffs(draft, actorId);
   const target = unitBuffs(draft, targetId);
 
+  // 本场临时修饰（血锈光环等）：只作用于玩家自己
+  if (actorId === PLAYER_ID) {
+    for (const m of draft.modifiers) {
+      if (m.kind === undefined || m.kind === "attackDamage") mods.push(m);
+    }
+  }
+
   const strength = buffStacks(actor, "strength");
   if (strength > 0) mods.push({ sourceId: "strength", layer: "buff", op: "add", value: strength });
 
@@ -451,6 +458,18 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
       break;
     case "gainCharge":
       changeCharge(draft, sink, value);
+      break;
+    case "gainModifier":
+      // 本场临时修饰（血锈光环）：写入 BattleState.modifiers，随战斗结束消失
+      if (effect.valueKind && effect.op) {
+        draft.modifiers.push({
+          sourceId: ctx.sourceId,
+          layer: "temporary",
+          op: effect.op,
+          value,
+          kind: effect.valueKind,
+        });
+      }
       break;
     default:
       break;

@@ -102,6 +102,45 @@ export function rollCardRewards(
   return picks;
 }
 
+/** 重铸 HP 消耗（docs/16 P3.4 / docs/14 Q15）。 */
+export const RECAST_HP_COST = 5;
+
+/** 从该卡已有的强化里随机移除 1 枚（同种子同结果）。 */
+export function pickRecastRemoval(enhancements: readonly string[], seed: number): string | null {
+  if (enhancements.length === 0) return null;
+  const rng = new Rng(seed >>> 0).stream("reward");
+  return enhancements[rng.nextInt(0, enhancements.length - 1)] ?? null;
+}
+
+/**
+ * 重铸替换（docs/16 P3.4）：从**同 tier** 且适用于该卡的强化里随机抽 1 枚。
+ * 排除：全局已持有（同一强化全局唯一）、该卡保留的其它强化、以及双向 mutex 冲突。
+ */
+export function rollRecastEnhancement(
+  content: ContentDb,
+  cardId: string,
+  keep: readonly string[],
+  ownedElsewhere: readonly string[],
+  tier: number,
+  seed: number,
+): string | null {
+  const owned = new Set([...keep, ...ownedElsewhere]);
+  const pool = [...content.enhancements.values()]
+    .filter((e) => {
+      if (e.tier !== tier) return false;
+      if (!e.appliesTo.includes(cardId)) return false;
+      if (owned.has(e.id)) return false;
+      if ((e.mutex ?? []).some((m) => keep.includes(m))) return false;
+      if (keep.some((k) => (content.enhancements.get(k)?.mutex ?? []).includes(e.id))) return false;
+      return true;
+    })
+    .map((e) => e.id)
+    .sort();
+  if (pool.length === 0) return null;
+  const rng = new Rng(seed >>> 0).stream("reward");
+  return pool[rng.nextInt(0, pool.length - 1)] ?? null;
+}
+
 /**
  * 锻造祭坛三选一：从 content.enhancements 里抽 N 个（同样走 reward 流）。
  */
