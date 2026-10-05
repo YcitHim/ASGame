@@ -125,5 +125,11 @@
   "enemy.rust_sentinel.title": "小怪 · 空壳里仍站着旧命令",
   "enemy.riveted_heavy.title": "先锋 · 把自己钉进铠甲的行刑者",
   "enemy.rust_warden.title": "精英 · 圣所最后的门闩",
-  "enemy.rust_throat.title": "首领 · 吞下唱诗班的喉咙"
+  "enemy.rust_throat.title": "首领 · 吞下唱诗班的喉咙",
+  "card.thornscab.name": "荆棘血痂",
+  "card.thornscab.desc": "获得 2 回合「反伤 3」：受到攻击时，对攻击者造成 3 点伤害。",
+  "card.thornscab.descUp": "获得 2 回合「反伤 5」：受到攻击时，对攻击者造成 5 点伤害。",
+  "card.bloodforblood.name": "以血还血",
+  "card.bloodforblood.desc": "造成 8 点伤害；若本回合受过伤害，额外造成 6 点伤害。",
+  "card.bloodforblood.descUp": "造成 11 点伤害；若本回合受过伤害，额外造成 7 点伤害。"
 }

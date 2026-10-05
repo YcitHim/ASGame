@@ -95,11 +95,32 @@ export interface EnemyIntentEntry {
   readonly maxConsecutive?: number;
 }
 
+/** 敌人 JSON 的原始形状（两个装载器共用：新增字段只在这里映射，避免静默丢字段）。 */
+export interface RawEnemyDefinition {
+  readonly id: string;
+  readonly maxHp: number;
+  readonly intents: readonly EnemyIntentEntry[];
+  readonly onDeath?: readonly CardEffect[];
+}
+
+/** 由 JSON 原始对象 + 解析后的显示名构造敌人定义。 */
+export function buildEnemyDefinition(raw: RawEnemyDefinition, name: string): EnemyDefinition {
+  return {
+    id: raw.id,
+    name,
+    maxHp: raw.maxHp,
+    intents: raw.intents,
+    ...(raw.onDeath ? { onDeath: raw.onDeath } : {}),
+  };
+}
+
 export interface EnemyDefinition {
   readonly id: string;
   readonly name: string;
   readonly maxHp: number;
   readonly intents: readonly EnemyIntentEntry[];
+  /** 亡语（docs/16 P2.2）：该单位死亡并完成死亡清理后结算的效果 */
+  readonly onDeath?: readonly CardEffect[];
 }
 
 export interface EnhancementDefinition {

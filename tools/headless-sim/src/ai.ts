@@ -13,10 +13,27 @@ export interface CardScore {
   score: number;
 }
 
-function damageOf(def: CardDefinition): number {
+/**
+ * 卡面伤害。条件伤害只有在"当前确实满足"时才计入（docs/16 P1.4 AI 评分增强）：
+ * 否则 AI 会把「以血还血」恒当成 14 伤，2 费打 8 点，白亏能量。
+ */
+function damageOf(def: CardDefinition, tookDamageThisTurn = false): number {
   const effects = def.effects ?? [];
-  const fromEffects = effects.filter((e) => e.kind === "damage").reduce((a, e) => a + (e.value ?? 0), 0);
-  if (fromEffects > 0) return fromEffects;
+  let total = 0;
+  let conditionalOnly = false;
+  for (const e of effects) {
+    if (e.kind !== "damage") continue;
+    const value = e.value ?? 0;
+    if (!e.condition) {
+      total += value;
+      continue;
+    }
+    conditionalOnly = true;
+    const type = (e.condition as { type?: string }).type;
+    if (type === "tookDamageThisTurn" && tookDamageThisTurn) total += value;
+  }
+  if (total > 0) return total;
+  if (conditionalOnly) return 0;
   const params = def.play?.params ?? {};
   const value = typeof params["value"] === "number" ? params["value"] : 0;
   const hits = typeof params["hits"] === "number" ? params["hits"] : 1;
@@ -48,7 +65,7 @@ export function scoreHand(state: BattleState, content: ContentDb): CardScore[] {
     const blood = pactHpCost({ keywords: def.keywords, bloodCost: def.bloodCost });
     if (blood > 0 && state.player.hp <= blood + 4) return { index, score: -1 };
 
-    const attack = damageOf(def);
+    const attack = damageOf(def, state.tookDamageThisTurn);
     const block = blockOf(def);
     const draw = drawOf(def);
     let score = attack * 1.2 + block * (lowHp ? 1.4 : 0.7) + draw * 1.5;

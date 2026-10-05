@@ -25,6 +25,8 @@ export interface ConditionContext {
   readonly buffs: readonly BuffInstance[];
   readonly cardsPlayedThisTurn: number;
   readonly handSize: number;
+  /** 本回合（含刚结束的敌方回合）是否受过攻击伤害；缺省 false */
+  readonly tookDamageThisTurn?: boolean;
   /** 主体侧：敌人意图用；缺省时回落到玩家字段，卡牌条件不受影响 */
   readonly self?: SelfContext;
 }
@@ -86,6 +88,8 @@ registerCondition("hasBuff", (ctx, p) => {
 });
 registerCondition("cardsPlayedThisTurn", (ctx, p) => ctx.cardsPlayedThisTurn >= num(p, "n", 1));
 registerCondition("handIsEmpty", (ctx) => ctx.handSize === 0);
+/** 本回合事件回看（docs/16 P2.3）：「以血还血」的额外伤害条件。 */
+registerCondition("tookDamageThisTurn", (ctx) => ctx.tookDamageThisTurn === true);
 
 /** 递归求值：and / or / not 内建。 */
 export function evaluateCondition(node: ConditionNode | undefined, ctx: ConditionContext): boolean {

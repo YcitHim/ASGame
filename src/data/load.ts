@@ -5,22 +5,19 @@
  * 文案不写死在 JSON 里：卡牌/遗物用 i18n key，敌人名在这里用 zh-CN 表解析。
  */
 import {
+  buildEnemyDefinition,
   createContentDb,
   type ActDefinition,
   type CardDefinition,
   type ContentDb,
   type EnemyDefinition,
   type EnhancementDefinition,
+  type RawEnemyDefinition,
   type RelicDefinition,
 } from "@/core/registry";
 import zhCN from "./i18n/zh-CN.json";
 
-interface EnemyJson {
-  id: string;
-  i18n: string;
-  maxHp: number;
-  intents: EnemyDefinition["intents"];
-}
+type EnemyJson = RawEnemyDefinition & { i18n: string };
 
 const cardModules = import.meta.glob<{ default: CardDefinition }>("./cards/**/*.json", { eager: true });
 const enhancementModules = import.meta.glob<{ default: EnhancementDefinition }>("./enhancements/**/*.json", { eager: true });
@@ -58,12 +55,7 @@ export function loadGameContent(): GameContent {
   const enemies = new Map<string, EnemyDefinition>();
   for (const mod of Object.values(enemyModules)) {
     const raw = mod.default;
-    enemies.set(raw.id, {
-      id: raw.id,
-      name: I18N[`enemy.${raw.id}.name`] ?? raw.id,
-      maxHp: raw.maxHp,
-      intents: raw.intents,
-    });
+    enemies.set(raw.id, buildEnemyDefinition(raw, I18N[`enemy.${raw.id}.name`] ?? raw.id));
   }
 
   const acts = Object.values(actModules)

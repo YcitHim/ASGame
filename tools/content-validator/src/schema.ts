@@ -177,6 +177,8 @@ export const enemySchema = z
     i18n: z.string(),
     maxHp: z.number().int().min(1),
     intents: z.array(enemyIntentSchema).min(1),
+    /** 亡语（docs/16 P2.2）：死亡清理后结算 */
+    onDeath: z.array(effectSchema).optional(),
   })
   .strict();
 

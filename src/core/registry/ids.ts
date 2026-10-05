@@ -31,6 +31,8 @@ export const CONDITION_IDS = [
   "hasBuff",
   "cardsPlayedThisTurn",
   "handIsEmpty",
+  /** 本回合（含刚结束的敌方回合）玩家受到过攻击伤害（docs/16 P2.3） */
+  "tookDamageThisTurn",
 ] as const;
 
 /** 目标选择器 */
@@ -51,6 +53,8 @@ export const BUFF_IDS = [
   "block",
   "regeneration",
   "pollution",
+  /** 反伤（荆棘血痂，docs/16 P2.1）：受攻击时对攻击者造成 stacks 点伤害 */
+  "thorns",
 ] as const;
 
 /** 卡牌复杂逻辑 handler（ADR-005） */

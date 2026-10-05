@@ -21,6 +21,7 @@ export const BUFF_META: Record<string, BuffMeta> = {
   weak: { name: "虚弱", glyph: "弱", tint: "#4a5866", unit: "回合" },
   regeneration: { name: "再生", glyph: "生", tint: "#3f6b3a", unit: "层" },
   pollution: { name: "污染", glyph: "污", tint: "#5b3a7a", unit: "点" },
+  thorns: { name: "反伤", glyph: "反", tint: "#6b1f34", unit: "点" },
   block: { name: "格挡", glyph: "盾", tint: "#54636f", unit: "点" },
 };
 
@@ -40,6 +41,11 @@ export function buffAmount(buff: { id: string; stacks: number; duration?: number
 
 export function buffValueText(buff: { id: string; stacks: number; duration?: number | null }): string {
   const meta = buffMeta(buff.id);
-  if (buff.duration != null) return `剩余 ${buff.duration} 回合`;
+  if (buff.duration != null) {
+    // stacksAndTurns 型（反伤）要同时说清强度与剩余回合；计时型（易伤/虚弱）stacks 恒为 1，不显示
+    return buff.stacks > 1
+      ? `${buff.stacks} ${meta.unit} · 剩余 ${buff.duration} 回合`
+      : `剩余 ${buff.duration} 回合`;
+  }
   return `${buff.stacks} ${meta.unit}`.trim();
 }

@@ -108,6 +108,9 @@ function endTurn(draft: Draft, sink: EventSink): void {
   sink.emit("TurnEnded", { turn: draft.turn });
 
   draft.phase = "enemyAction";
+  // 进入敌方回合即清空"本回合受过伤害"：敌人在此后的攻击会重新置位，
+  // 下一玩家回合读到的就是"我刚被打了"（"以血还血"的判定窗口）。
+  draft.tookDamageThisTurn = false;
   // 敌人格挡在【敌人自己】的回合开始时清零（docs/03 §4）：
   // 上一回合留下的格挡必须撑过玩家的整个回合，否则防御意图形同虚设。
   for (const enemy of draft.enemies) enemy.block = 0;

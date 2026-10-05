@@ -31,6 +31,7 @@ export function conditionContext(draft: Draft): ConditionContext {
     buffs: draft.player.buffs,
     cardsPlayedThisTurn: draft.cardsPlayedThisTurn,
     handSize: draft.hand.length,
+    tookDamageThisTurn: draft.tookDamageThisTurn,
     // 卡牌条件默认读玩家；意图表会用 enemyConditionContext 覆盖 self
     self: { hp: draft.player.hp, maxHp: draft.player.maxHp, buffs: draft.player.buffs },
   };
@@ -96,6 +97,8 @@ export interface DamageArgs {
   modifiers?: readonly Modifier[];
   /** 额外修饰（强化层等），追加在自动推导的修饰之后 */
   extraModifiers?: readonly Modifier[];
+  /** 该次伤害是反伤：不触发二次反伤 */
+  reflect?: boolean;
 }
 
 /** 单次伤害：基础值 → 修饰管线 → 格挡吸收 → HP → 死亡检查。 */
@@ -126,8 +129,56 @@ export function dealDamage(draft: Draft, sink: EventSink, args: DamageArgs): voi
     segment: args.segment ?? 1,
     segments: args.segments ?? 1,
   });
-  if (hpLost > 0) sink.emit("HpLost", { targetId: args.targetId, value: hpLost, reason: "damage" });
+  if (hpLost > 0) {
+    sink.emit("HpLost", { targetId: args.targetId, value: hpLost, reason: "damage" });
+    // 「本回合事件回看」：只记玩家被攻击掉血（血迹自伤 / 污染反噬不算，docs/16 P2.3）
+    if (args.targetId === PLAYER_ID) draft.tookDamageThisTurn = true;
+  }
+
+  // 反伤（荆棘血痂）：受攻击即对攻击者造成固定伤害，逐段触发、走队列中途插入
+  triggerThorns(draft, sink, args);
+
   if (target.hp === 0) killUnit(draft, sink, args.targetId);
+}
+
+/**
+ * 直接入栈一个已解析目标的伤害动作。
+ * 反伤这类"目标由上下文决定（就是攻击者）"的触发走这里——目标选择器无法表达"攻击者"。
+ */
+function enqueueDamageWork(
+  draft: Draft,
+  effect: CardEffect,
+  ctx: EffectContext,
+  targetIds: readonly string[],
+  reflect: boolean,
+): void {
+  draft.queue.push({
+    id: nextWorkId(),
+    sourceId: ctx.actorId,
+    targetIds,
+    payload: { effect, ctx, targetIds, damageIndex: 1, damageTotal: 1, reflect },
+  });
+}
+
+function triggerThorns(draft: Draft, sink: EventSink, args: DamageArgs): void {
+  if (args.reflect) return;
+  if (args.actorId === args.targetId) return;
+  const stacks = buffStacks(unitBuffs(draft, args.targetId), "thorns");
+  if (stacks <= 0) return;
+  const attacker = findUnit(draft, args.actorId);
+  if (!attacker || attacker.hp <= 0) return;
+
+  sink.emit("BuffTriggered", { targetId: args.targetId, buffId: "thorns", stacks });
+  enqueueDamageWork(
+    draft,
+    { kind: "damage", value: stacks },
+    { sourceId: args.targetId, actorId: args.targetId, chosenTargetId: null },
+    [args.actorId],
+    true,
+  );
+  // 连锁结算中（draining）只入栈，由当前循环 LIFO 弹出，保证"每段之后立即结算"；
+  // 敌人回合的直接调用不在排空循环里，这里会立即结算。
+  drainQueue(draft, sink);
 }
 
 export function gainBlock(
@@ -310,10 +361,19 @@ function nextWorkId(): string {
   return `w${workSeq}`;
 }
 
-/** 死亡清理：取消该单位挂起的动作，并把被取消数量写进 UnitDied（ADR-002）。 */
+/**
+ * 死亡处理：先做死亡清理（取消该单位挂起的动作，计数写进 UnitDied），
+ * 再结算亡语（onDeath，docs/16 P2.2）——顺序不可颠倒。
+ */
 export function killUnit(draft: Draft, sink: EventSink, unitId: string): number {
   const cleared = draft.queue.removeByUnit(unitId).length;
   sink.emit("UnitDied", { unitId, clearedEffects: cleared });
+
+  const deathEffects = draft.content.enemies.get(unitId)?.onDeath;
+  if (deathEffects && deathEffects.length > 0) {
+    enqueueEffects(draft, deathEffects, { sourceId: unitId, actorId: unitId, chosenTargetId: null });
+    drainQueue(draft, sink);
+  }
   return cleared;
 }
 
@@ -361,6 +421,8 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
           segment: damageIndex,
           segments: damageTotal,
           extraModifiers: ctx.attackModifiers,
+          // 反伤是固定伤害：不走攻击修饰（力量/充能/易伤都不该放大它）
+          ...(work.reflect ? { reflect: true, modifiers: [] } : {}),
         });
         ctx.onHit?.(damageIndex, t);
       }

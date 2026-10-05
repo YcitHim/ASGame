@@ -48,6 +48,7 @@ export interface Draft {
   phase: Phase;
   eventSeq: number;
   cardsPlayedThisTurn: number;
+  tookDamageThisTurn: boolean;
   player: MutablePlayer;
   enemies: MutableEnemy[];
   draw: string[];
@@ -72,6 +73,7 @@ export function toDraft(state: BattleState): Draft {
     phase: state.phase,
     eventSeq: state.eventSeq,
     cardsPlayedThisTurn: state.cardsPlayedThisTurn,
+    tookDamageThisTurn: state.tookDamageThisTurn,
     player: {
       id: "player",
       hp: state.player.hp,
@@ -149,6 +151,7 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
     modifiers: [],
     handSize: draft.handSize,
     cardsPlayedThisTurn: draft.cardsPlayedThisTurn,
+    tookDamageThisTurn: draft.tookDamageThisTurn,
     eventSeq,
     content: draft.content,
   };

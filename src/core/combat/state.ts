@@ -76,6 +76,8 @@ export interface BattleState {
   readonly modifiers: readonly Modifier[];
   readonly handSize: number;
   readonly cardsPlayedThisTurn: number;
+  /** 本回合（含刚结束的敌方回合）玩家是否受过攻击伤害（docs/16 P2.3） */
+  readonly tookDamageThisTurn: boolean;
   /** 事件全局序号计数器 */
   readonly eventSeq: number;
   /** 静态内容目录（不参与回放序列化） */
@@ -165,6 +167,7 @@ export function createBattleState(config: BattleConfig): BattleState {
     modifiers: [],
     handSize: config.handSize ?? DEFAULT_HAND_SIZE,
     cardsPlayedThisTurn: 0,
+    tookDamageThisTurn: false,
     eventSeq: 0,
     content,
   };

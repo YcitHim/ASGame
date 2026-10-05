@@ -26,4 +26,6 @@ export interface EffectWork {
   /** 段号（1 起，仅 damage 有意义） */
   readonly damageIndex: number;
   readonly damageTotal: number;
+  /** 反伤动作：固定伤害、不叠加攻击修饰，且不再二次触发反伤 */
+  readonly reflect?: boolean;
 }

@@ -27,6 +27,13 @@ const runDeck: GoldenDeckEntry[] = [
   base("exsanguinate"),
 ];
 
+/** P2 连锁卡组：反伤（荆棘血痂，占多数保证 AI 一定打出）+ 事件回看（以血还血）+ 面对带亡语的虫群 */
+const chainDeck: GoldenDeckEntry[] = [
+  ...Array.from({ length: 8 }, () => base("thornscab")),
+  base("bloodforblood"),
+  base("strike"),
+];
+
 const battles = [
   recordBattle({
     content,
@@ -45,6 +52,15 @@ const battles = [
     deck: runDeck,
     relics: ["broken_oil", "blood_pump", "redtear_ring"],
     seed: 424242,
+  }),
+  recordBattle({
+    content,
+    id: "golden-chain",
+    nodeId: "n2",
+    enemies: ["corroded_swarm", "riveted_heavy"],
+    deck: chainDeck,
+    relics: ["broken_pump", "broken_oil"],
+    seed: 31337,
   }),
   recordBattle({
     content,

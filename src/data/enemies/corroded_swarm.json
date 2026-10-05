@@ -2,6 +2,12 @@
   "id": "corroded_swarm",
   "i18n": "enemy.corroded_swarm",
   "maxHp": 30,
+  "onDeath": [
+    {
+      "kind": "gainPollution",
+      "value": 3
+    }
+  ],
   "intents": [
     {
       "intent": {

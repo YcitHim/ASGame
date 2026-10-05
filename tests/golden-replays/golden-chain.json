@@ -1,0 +1,311 @@
+{
+  "version": 1,
+  "recordedAt": "2026-10-05",
+  "content": "rust-and-blood",
+  "battle": {
+    "id": "golden-chain",
+    "nodeId": "n2",
+    "enemies": [
+      "corroded_swarm",
+      "riveted_heavy"
+    ],
+    "deck": [
+      {
+        "cardId": "thornscab",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "thornscab",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "thornscab",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "thornscab",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "thornscab",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "thornscab",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "thornscab",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "thornscab",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "bloodforblood",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      }
+    ],
+    "relics": [
+      "broken_pump",
+      "broken_oil"
+    ],
+    "seed": 31337,
+    "player": {
+      "maxHp": 66,
+      "energy": 3
+    },
+    "actions": [
+      {
+        "type": "Noop",
+        "actionId": "start"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p1",
+        "handIndex": 2,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p2",
+        "handIndex": 1,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e3"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p4",
+        "handIndex": 0,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p5",
+        "handIndex": 0,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p6",
+        "handIndex": 0,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e7"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p8",
+        "handIndex": 4,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p9",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e10"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p11",
+        "handIndex": 4,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p12",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p13",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e14"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p15",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p16",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p17",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e18"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p19",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p20",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e21"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p22",
+        "handIndex": 1,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p23",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e24"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p25",
+        "handIndex": 4,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p26",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p27",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e28"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p29",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p30",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p31",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e32"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p33",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p34",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      }
+    ],
+    "eventHash": "ef39997bb7a90557b84921ddffbcb53b128f2cb14d6fb1f7981b4597af852e30",
+    "eventTypes": [
+      "BattleStarted",
+      "CardsDrawn",
+      "BuffApplied",
+      "IntentRevealed",
+      "IntentRevealed",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "TurnEnded",
+      "PollutionChanged",
+      "ChargeResolved",
+      "BlockGained",
+      "TurnStarted",
+      "CardsDrawn",
+      "IntentRevealed",
+      "IntentRevealed",
+      "CardPlayed",
+      "BuffApplied",
+      "CardPlayed",
+      "BuffApplied",
+      "CardPlayed",
+      "BuffApplied",
+      "TurnEnded",
+      "DamageDealt",
+      "HpLost",
+      "BuffTriggered",
+      "DamageDealt",
+      "HpLost",
+      "ChargeResolved",
+      "DamageDealt",
+      "HpLost",
+      "BuffTriggered",
+      "DamageDealt",
+      "HpLost",
+      "TurnStarted",
+      "DeckShuffled",
+      "CardsDrawn"
+    ],
+    "turns": 10,
+    "outcome": "win"
+  }
+}

@@ -5,12 +5,14 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  buildEnemyDefinition,
   createContentDb,
   type ActDefinition,
   type CardDefinition,
   type ContentDb,
   type EnemyDefinition,
   type EnhancementDefinition,
+  type RawEnemyDefinition,
   type RelicDefinition,
 } from "../../../src/core/registry";
 
@@ -38,12 +40,7 @@ function readJson<T>(path: string): T {
   return JSON.parse(readFileSync(path, "utf8")) as T;
 }
 
-interface EnemyJson {
-  id: string;
-  i18n: string;
-  maxHp: number;
-  intents: EnemyDefinition["intents"];
-}
+type EnemyJson = RawEnemyDefinition & { i18n: string };
 
 export interface NodeGameContent {
   content: ContentDb;
@@ -72,7 +69,7 @@ export function loadNodeContent(): NodeGameContent {
   const enemies = new Map<string, EnemyDefinition>();
   for (const f of walkJson(join(DATA_ROOT, "enemies"))) {
     const e = readJson<EnemyJson>(f);
-    enemies.set(e.id, { id: e.id, name: i18n[`enemy.${e.id}.name`] ?? e.id, maxHp: e.maxHp, intents: e.intents });
+    enemies.set(e.id, buildEnemyDefinition(e, i18n[`enemy.${e.id}.name`] ?? e.id));
   }
   const acts = walkJson(join(DATA_ROOT, "acts"))
     .map((f) => readJson<ActDefinition>(f))

@@ -172,7 +172,7 @@
         "targetId": "riveted_heavy"
       }
     ],
-    "eventHash": "acb8d7d024083f65a95e35c7e2f0945ece481e81e7911a6a7c5e08e74ed05a89",
+    "eventHash": "43d51a84f697acd1932823215920bce1d0358e6e42c758abfb65915fd195ceee",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -194,6 +194,7 @@
       "DamageDealt",
       "HpLost",
       "UnitDied",
+      "PollutionChanged",
       "TurnEnded",
       "BlockGained",
       "BlockGained",
@@ -212,8 +213,7 @@
       "BlockBroken",
       "DamageDealt",
       "HpLost",
-      "BlockGained",
-      "TurnStarted"
+      "BlockGained"
     ],
     "turns": 4,
     "outcome": "win"

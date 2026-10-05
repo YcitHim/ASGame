@@ -1,0 +1,28 @@
+{
+  "id": "thornscab",
+  "class": "bloodwright",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "applyBuff",
+      "target": { "type": "self" },
+      "buff": "thorns",
+      "stacks": 3,
+      "duration": 2
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "applyBuff",
+        "target": { "type": "self" },
+        "buff": "thorns",
+        "stacks": 5,
+        "duration": 2
+      }
+    ]
+  },
+  "i18n": "card.thornscab"
+}

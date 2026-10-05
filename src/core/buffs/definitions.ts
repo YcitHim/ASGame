@@ -15,6 +15,8 @@ export const BUFF_DEFINITIONS: Readonly<Record<BuffId, BuffDefinition>> = {
     defaultDuration: 3,
   },
   pollution: { id: "pollution", stacking: "stack", decayAt: "none", applyAs: "stacks", maxStacks: 100 },
+  // 反伤：strength 型不便表达"伤害 + 剩余回合"，用 stacksAndTurns（参数=反伤值，默认 2 回合）
+  thorns: { id: "thorns", stacking: "refreshOnly", decayAt: "turnStart", applyAs: "stacksAndTurns", defaultDuration: 2 },
   block: { id: "block", stacking: "stack", decayAt: "none", applyAs: "stacks", resource: true },
 };
 
