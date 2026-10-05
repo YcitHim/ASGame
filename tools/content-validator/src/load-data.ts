@@ -47,6 +47,7 @@ export function loadContent(): ContentInput {
     enemies: loadJsonFiles(join(DATA_ROOT, "enemies")),
     acts: loadJsonFiles(join(DATA_ROOT, "acts")),
     relics: loadJsonFiles(join(DATA_ROOT, "relics")),
+    events: loadJsonFiles(join(DATA_ROOT, "events")),
     i18n,
   };
 }

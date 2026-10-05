@@ -47,6 +47,7 @@ function enter(node: MapNode, index: number): void {
   if (node.kind === "rest") void router.push("/rest");
   else if (node.kind === "altar") void router.push("/forge");
   else if (node.kind === "reward") void router.push("/reward");
+  else if (node.kind === "event") void router.push("/event");
   else void router.push("/battle");
 }
 

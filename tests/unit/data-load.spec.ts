@@ -28,12 +28,13 @@ describe("真实内容装载（data/load）", () => {
     expect(game.i18n["card.strike.name"]).toBe("打击");
   });
 
-  it("线性地图 6 节点（2 普通战），含精英 / 休息 / 祭坛 / Boss", () => {
+  it("线性地图 7 节点（2 普通战 + 1 事件），含精英 / 休息 / 祭坛 / Boss", () => {
     const act = loadGameContent().acts[0];
-    expect(act.map).toHaveLength(6);
-    expect(act.map.map((n) => n.kind)).toEqual(["battle", "battle", "elite", "rest", "altar", "boss"]);
+    expect(act.map).toHaveLength(7);
+    expect(act.map.map((n) => n.kind)).toEqual(["battle", "battle", "event", "elite", "rest", "altar", "boss"]);
     expect(act.map[1].enemies).toEqual(["corroded_swarm", "riveted_heavy"]);
-    expect(act.map[5].enemies).toEqual(["rust_throat"]);
+    expect(act.map[2].events?.length).toBe(5);
+    expect(act.map[6].enemies).toEqual(["rust_throat"]);
   });
 
   it("起手卡组全部能在目录中找到定义", () => {

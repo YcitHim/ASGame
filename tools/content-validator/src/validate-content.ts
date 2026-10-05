@@ -4,11 +4,13 @@ import {
   cardSchema,
   enemySchema,
   enhancementSchema,
+  eventSchema,
   relicSchema,
   type ActJson,
   type CardJson,
   type EnemyJson,
   type EnhancementJson,
+  type EventJson,
   type RelicJson,
 } from "./schema";
 
@@ -30,6 +32,7 @@ export interface ContentInput {
   enemies?: SourceFile[];
   acts?: SourceFile[];
   relics?: SourceFile[];
+  events?: SourceFile[];
   i18n: Record<string, string>;
 }
 
@@ -40,6 +43,7 @@ export interface ValidationResult {
   enemies: EnemyJson[];
   acts: ActJson[];
   relics: RelicJson[];
+  events: EventJson[];
 }
 
 function zodIssues(file: string, error: unknown): ValidationIssue[] {
@@ -68,12 +72,14 @@ export function validateContent(input: ContentInput): ValidationResult {
   const enemies: EnemyJson[] = [];
   const acts: ActJson[] = [];
   const relics: RelicJson[] = [];
+  const events: EventJson[] = [];
 
   parseAll(cardSchema, input.cards, cards, issues);
   parseAll(enhancementSchema, input.enhancements, enhancements, issues);
   parseAll(enemySchema, input.enemies ?? [], enemies, issues);
   parseAll(actSchema, input.acts ?? [], acts, issues);
   parseAll(relicSchema, input.relics ?? [], relics, issues);
+  parseAll(eventSchema, input.events ?? [], events, issues);
 
   // 全局 id 唯一（docs/04 §4）
   const seen = new Map<string, string>();
@@ -144,6 +150,7 @@ export function validateContent(input: ContentInput): ValidationResult {
     });
   }
   for (const r of relics) checkId("relic", r.id);
+  for (const e of events) checkId("event", e.id);
 
   // 强化 appliesTo / mutex 引用
   const cardIds = new Set(cards.map((c) => c.id));
@@ -164,6 +171,20 @@ export function validateContent(input: ContentInput): ValidationResult {
   // act 引用：起手卡组与遭遇敌人
   const enemyIds = new Set(enemies.map((e) => e.id));
   const relicIds = new Set(relics.map((r) => r.id));
+  const eventIds = new Set(events.map((e) => e.id));
+  // 事件 gainCard 显式池引用
+  for (const ev of events) {
+    for (const opt of ev.options) {
+      const lists = [opt.effects ?? [], ...(opt.outcomes ?? []).map((o) => o.effects)];
+      for (const eff of lists.flat()) {
+        for (const id of eff.pool ?? []) {
+          if (!cardIds.has(id)) {
+            issues.push({ file: `event ${ev.id}`, path: "opt.effects.pool", message: `引用了不存在的卡牌 "${id}"` });
+          }
+        }
+      }
+    }
+  }
   for (const act of acts) {
     for (const cardId of act.startDeck) {
       if (!cardIds.has(cardId)) {
@@ -178,6 +199,12 @@ export function validateContent(input: ContentInput): ValidationResult {
       for (const enemyId of node.enemies ?? []) {
         if (!enemyIds.has(enemyId)) {
           issues.push({ file: `act ${act.id}`, path: `map.${node.id}`, message: `引用了不存在的敌人 "${enemyId}"` });
+        }
+      }
+      const eventRefs = [...(node.events ?? []), ...(node.event ? [node.event] : [])];
+      for (const eventId of eventRefs) {
+        if (!eventIds.has(eventId)) {
+          issues.push({ file: `act ${act.id}`, path: `map.${node.id}`, message: `引用了不存在的事件 "${eventId}"` });
         }
       }
     }
@@ -211,8 +238,17 @@ export function validateContent(input: ContentInput): ValidationResult {
   for (const r of relics) {
     requireKey(`relic ${r.id}`, r.i18n + ".name");
   }
+  for (const ev of events) {
+    requireKey(`event ${ev.id}`, ev.i18n + ".title");
+    requireKey(`event ${ev.id}`, ev.i18n + ".body");
+    for (const opt of ev.options) {
+      requireKey(`event ${ev.id}`, `${ev.i18n}.opt.${opt.id}.label`);
+      if (opt.i18n) requireKey(`event ${ev.id}`, opt.i18n);
+      for (const outcome of opt.outcomes ?? []) requireKey(`event ${ev.id}`, outcome.i18n);
+    }
+  }
 
-  return { issues, cards, enhancements, enemies, acts, relics };
+  return { issues, cards, enhancements, enemies, acts, relics, events };
 }
 
 /** 报错文本：带文件与字段定位（docs/05 G1 验收要求）。 */

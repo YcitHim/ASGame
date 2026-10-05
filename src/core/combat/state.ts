@@ -37,14 +37,19 @@ export interface PlayerState {
   readonly buffs: readonly BuffInstance[];
   /** 本局携带的遗物 id */
   readonly relics: readonly string[];
-  /** 已触发过的遗物（once: battle） */
+  /** 本场生效的卡牌能力（power）实例 id（docs/29 §一②） */
+  readonly powers: readonly string[];
+  /** 已触发过的遗物/能力（once: battle，key 为 relic:<id> 或 power:<instanceId>） */
   readonly triggeredThisBattle: readonly string[];
-  /** 本回合已触发过的遗物（once: turn） */
+  /** 本回合已触发过的遗物/能力（once: turn） */
   readonly triggeredThisTurn: readonly string[];
 }
 
 export interface EnemyState {
+  /** 战斗内唯一实例 id（同名敌人第 2 个起为 `<defId>#2`，docs/29 §一③「猎犬 × 2」） */
   readonly id: string;
+  /** 内容定义 id（content.enemies 的 key；同 id 多实例时仍指向同一份定义） */
+  readonly defId: string;
   readonly name: string;
   readonly hp: number;
   readonly maxHp: number;
@@ -94,7 +99,7 @@ export interface DeckEntry {
 export interface BattleConfig {
   readonly battleId: string;
   readonly seed: number;
-  readonly player: { readonly maxHp: number; readonly energy: number; readonly hp?: number };
+  readonly player: { readonly maxHp: number; readonly energy: number; readonly hp?: number; readonly pollution?: number };
   readonly enemies: readonly EnemySetup[];
   /** 卡组（洗牌前顺序） */
   readonly deck: readonly (string | DeckEntry)[];
@@ -114,6 +119,9 @@ export function createBattleState(config: BattleConfig): BattleState {
   const content = config.content ?? emptyContent();
   const cardInstances: Record<string, CardInstance> = {};
   const draw: string[] = [];
+  /** 同名敌人的实例计数：第 2 个起加 `#n` 后缀，避免 id 冲突导致只能打到第一个 */
+  const idCounts = new Map<string, number>();
+  const startingPollution = Math.max(0, Math.min(100, Math.trunc(config.player.pollution ?? 0)));
 
   config.deck.forEach((entry, index) => {
     const cardId = typeof entry === "string" ? entry : entry.cardId;
@@ -140,19 +148,27 @@ export function createBattleState(config: BattleConfig): BattleState {
       block: 0,
       energy: config.player.energy,
       maxEnergy: config.player.energy,
-      pollution: 0,
+      pollution: startingPollution,
       charge: 0,
-      buffs: [],
+      buffs:
+        startingPollution > 0
+          ? [{ id: "pollution" as const, stacks: startingPollution, duration: null }]
+          : [],
       relics: (config.relics ?? []).slice(),
+      powers: [],
       triggeredThisBattle: [],
       triggeredThisTurn: [],
     },
     enemies: config.enemies.map((e) => {
-      const def = content.enemies.get(e.id);
+      const defId = e.defId ?? e.id;
+      const def = content.enemies.get(defId);
       const maxHp = e.maxHp ?? def?.maxHp ?? 1;
+      const seen = (idCounts.get(defId) ?? 0) + 1;
+      idCounts.set(defId, seen);
       return {
-        id: e.id,
-        name: def?.name ?? e.id,
+        id: seen === 1 ? defId : `${defId}#${seen}`,
+        defId,
+        name: def?.name ?? defId,
         hp: maxHp,
         maxHp,
         block: 0,

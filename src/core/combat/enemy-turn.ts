@@ -22,7 +22,7 @@ export function generateIntents(draft: Draft, sink: EventSink): void {
       continue;
     }
 
-    const def = draft.content.enemies.get(enemy.id);
+    const def = draft.content.enemies.get(enemy.defId);
     if (!def) {
       const intent: IntentPayload = { kind: "unknown" };
       enemy.intent = intent;

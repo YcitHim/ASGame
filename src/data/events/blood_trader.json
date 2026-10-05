@@ -1,0 +1,37 @@
+{
+  "id": "blood_trader",
+  "i18n": "event.blood_trader",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.blood_trader.opt.a.result",
+      "effects": [
+        {
+          "kind": "hp",
+          "value": -12
+        },
+        {
+          "kind": "gainEnhancement"
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.blood_trader.opt.b.result",
+      "effects": [
+        {
+          "kind": "hp",
+          "value": -5
+        },
+        {
+          "kind": "gainCard",
+          "rarity": "uncommon"
+        }
+      ]
+    },
+    {
+      "id": "c",
+      "i18n": "event.blood_trader.opt.c.result"
+    }
+  ]
+}

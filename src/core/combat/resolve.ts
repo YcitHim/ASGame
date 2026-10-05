@@ -13,6 +13,7 @@ import type { CardEffect, ConditionNode, TargetRef } from "../registry/content";
 import { evaluateCondition, type ConditionContext } from "../registry/condition";
 import { getTarget } from "../registry/target";
 import { findUnit, livingEnemies, type Draft, type MutableUnit } from "./draft";
+import { resolveTriggers } from "./relics";
 import type { EffectContext, EffectWork } from "./work";
 
 export const POLLUTION_CRITICAL = 80;
@@ -407,7 +408,8 @@ export function killUnit(draft: Draft, sink: EventSink, unitId: string): number 
   const cleared = draft.queue.removeByUnit(unitId).length;
   sink.emit("UnitDied", { unitId, clearedEffects: cleared });
 
-  const deathEffects = draft.content.enemies.get(unitId)?.onDeath;
+  const enemy = draft.enemies.find((e) => e.id === unitId);
+  const deathEffects = enemy ? draft.content.enemies.get(enemy.defId)?.onDeath : undefined;
   if (deathEffects && deathEffects.length > 0) {
     enqueueEffects(draft, deathEffects, { sourceId: unitId, actorId: unitId, chosenTargetId: null });
     drainQueue(draft, sink);
@@ -466,7 +468,13 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
       }
       break;
     case "block":
-      for (const t of targetIds) gainBlock(draft, sink, t, value, ctx.blockModifiers);
+      for (const t of targetIds) {
+        const before = findUnit(draft, t)?.block ?? 0;
+        gainBlock(draft, sink, t, value, ctx.blockModifiers);
+        const after = findUnit(draft, t)?.block ?? 0;
+        // 获得格挡触发（docs/29 §一②）：只在真的拿到格挡时派发，避免 0 值刷触发
+        if (t === PLAYER_ID && after > before) resolveTriggers(draft, sink, "onBlock");
+      }
       break;
     case "draw":
       drawCards(draft, sink, value);

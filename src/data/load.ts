@@ -12,6 +12,7 @@ import {
   type ContentDb,
   type EnemyDefinition,
   type EnhancementDefinition,
+  type EventDefinition,
   type RawEnemyDefinition,
   type RelicDefinition,
 } from "@/core/registry";
@@ -23,6 +24,7 @@ const cardModules = import.meta.glob<{ default: CardDefinition }>("./cards/**/*.
 const enhancementModules = import.meta.glob<{ default: EnhancementDefinition }>("./enhancements/**/*.json", { eager: true });
 const enemyModules = import.meta.glob<{ default: EnemyJson }>("./enemies/*.json", { eager: true });
 const relicModules = import.meta.glob<{ default: RelicDefinition }>("./relics/*.json", { eager: true });
+const eventModules = import.meta.glob<{ default: EventDefinition }>("./events/*.json", { eager: true });
 const actModules = import.meta.glob<{ default: ActDefinition }>("./acts/*.json", { eager: true });
 
 export const I18N: Record<string, string> = zhCN as Record<string, string>;
@@ -52,6 +54,9 @@ export function loadGameContent(): GameContent {
   const relics = new Map<string, RelicDefinition>();
   for (const mod of Object.values(relicModules)) relics.set(mod.default.id, mod.default);
 
+  const events = new Map<string, EventDefinition>();
+  for (const mod of Object.values(eventModules)) events.set(mod.default.id, mod.default);
+
   const enemies = new Map<string, EnemyDefinition>();
   for (const mod of Object.values(enemyModules)) {
     const raw = mod.default;
@@ -63,7 +68,7 @@ export function loadGameContent(): GameContent {
     .sort((a, b) => a.id.localeCompare(b.id));
 
   cached = {
-    content: createContentDb({ cards, enemies, enhancements, relics }),
+    content: createContentDb({ cards, enemies, enhancements, relics, events }),
     acts,
     i18n: I18N,
   };

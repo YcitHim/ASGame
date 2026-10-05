@@ -16,7 +16,7 @@ import {
 } from "../registry/enhancement-handler";
 import type { EventSink } from "../events/event-sink";
 import { livingEnemies, toDraft, type Draft } from "./draft";
-import { resolveRelics } from "./relics";
+import { resolveTriggers } from "./relics";
 import { enqueueEffects, loseHp, resolveEffects } from "./resolve";
 import type { CardInstance, BattleState } from "./state";
 
@@ -224,12 +224,12 @@ export interface PlayCardOutcome {
 export function playCard(draft: Draft, sink: EventSink, handIndex: number, targetId: string | null): PlayCardOutcome {
   const validation = validatePlayCard(draft, handIndex, targetId);
   if (!validation.ok) return { ok: false, reason: validation.reason };
-  const { instance, effective, cost, bloodPaid } = validation;
+  const { instance, def, effective, cost, bloodPaid } = validation;
 
   draft.player.energy -= cost;
   if (bloodPaid > 0) {
     loseHp(draft, sink, "player", bloodPaid, "bloodpact");
-    resolveRelics(draft, sink, "onSell");
+    resolveTriggers(draft, sink, "onSell");
   }
 
   const [removed] = draft.hand.splice(handIndex, 1);
@@ -240,7 +240,7 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
     costPaid: cost,
     bloodPaid,
   });
-  resolveRelics(draft, sink, "onPlay");
+  resolveTriggers(draft, sink, "onPlay");
 
   const effects = effective.play
     ? getCardHandler(effective.play.handler)(effective.play.params, { chosenTargetId: targetId })
@@ -275,6 +275,11 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
     blockModifiers: effective.blockModifiers,
   });
   draft.cardsPlayedThisTurn += 1;
+
+  // 常驻能力（power）：本场生效，按实例记录（升级版走 def.upgraded.power）
+  if ((def.power ?? def.upgraded?.power) && !draft.player.powers.includes(instance.instanceId)) {
+    draft.player.powers.push(instance.instanceId);
+  }
 
   const destination = afterPlayDestination(effective);
   if (destination === "exhaust") {

@@ -37,15 +37,17 @@ describe("S5 局外进度（runStore）", () => {
   it("线性地图：advance 推进节点并记录已清", () => {
     const run = useRunStore();
     run.startRun(1);
-    expect(run.view?.nodes).toHaveLength(6);
+    expect(run.view?.nodes).toHaveLength(7);
     expect(run.current?.kind).toBe("battle");
     run.advance();
     expect(run.current?.kind).toBe("battle");
+    run.advance();
+    expect(run.current?.kind).toBe("event");
     run.advance();
     expect(run.current?.kind).toBe("elite");
     run.advance();
     expect(run.current?.kind).toBe("rest");
-    expect(run.run?.cleared).toEqual(["n1", "n2", "n3"]);
+    expect(run.run?.cleared).toEqual(["n1", "n2", "n2e", "n3"]);
   });
 
   it("锻造三选一：offers 有可附着目标，applyEnhancement 受 appliesTo/重复限制", () => {

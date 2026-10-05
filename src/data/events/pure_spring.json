@@ -1,0 +1,34 @@
+{
+  "id": "pure_spring",
+  "i18n": "event.pure_spring",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.pure_spring.opt.a.result",
+      "effects": [
+        {
+          "kind": "pollution",
+          "value": -40
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.pure_spring.opt.b.result",
+      "effects": [
+        {
+          "kind": "pollution",
+          "value": -70
+        },
+        {
+          "kind": "hp",
+          "value": -6
+        }
+      ]
+    },
+    {
+      "id": "c",
+      "i18n": "event.pure_spring.opt.c.result"
+    }
+  ]
+}

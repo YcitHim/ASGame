@@ -51,6 +51,18 @@ export interface CardUpgrade {
   readonly effects?: readonly CardEffect[];
   readonly play?: CardPlayHandler;
   readonly keywords?: readonly KeywordId[];
+  readonly power?: CardPower;
+}
+
+/**
+ * 卡牌能力（power）的常驻触发（docs/29 §一②）：打出后记入玩家 powers 列表，
+ * 之后按 timing 派发 effects。与遗物同构，但挂在卡牌实例上（升级版可覆盖）。
+ */
+export interface CardPower {
+  readonly timing: TriggerTiming;
+  readonly effects: readonly CardEffect[];
+  /** 触发次数限制：battle = 整场一次；turn = 每回合一次；缺省 = 每次触发 */
+  readonly once?: "battle" | "turn";
 }
 
 export interface CardPlayHandler {
@@ -68,6 +80,8 @@ export interface CardDefinition {
   readonly keywords?: readonly KeywordId[];
   readonly effects?: readonly CardEffect[];
   readonly play?: CardPlayHandler;
+  /** 常驻触发（docs/29 §一②「动能电池 / 炉渣装甲」）：打出后本场生效 */
+  readonly power?: CardPower;
   readonly upgraded?: CardUpgrade;
   readonly art?: string;
   readonly i18n?: string;
@@ -152,6 +166,45 @@ export interface EncounterEntry {
   readonly weight: number;
 }
 
+/** 随机事件（docs/27 §三 / docs/16 4.4）：纯文本选择，结果只挂钩现有管线。 */
+export type EventEffectKind = "hp" | "pollution" | "gainRelic" | "gainCard" | "gainEnhancement";
+
+export interface EventEffect {
+  readonly kind: EventEffectKind;
+  /** hp：正=回复、负=失去；pollution：增减量 */
+  readonly value?: number;
+  /** gainCard：按稀有度抽池（与 pool 二选一） */
+  readonly rarity?: CardRarity;
+  /** gainCard：显式卡池 */
+  readonly pool?: readonly string[];
+  /** gainCard 抽几张（缺省 1） */
+  readonly count?: number;
+}
+
+/** 随机结果（赌博式事件用）：weight + 结果文案 key + 效果。 */
+export interface EventOutcome {
+  readonly weight: number;
+  readonly i18n: string;
+  readonly effects: readonly EventEffect[];
+}
+
+export interface EventOption {
+  /** 选项 id（i18n 后缀：event.<id>.opt.<optionId>.label / .result） */
+  readonly id: string;
+  /** 固定结果 */
+  readonly effects?: readonly EventEffect[];
+  /** 固定结果文案 key（随机结果时由 outcome.i18n 提供） */
+  readonly i18n?: string;
+  /** 随机结果（与 effects 二选一） */
+  readonly outcomes?: readonly EventOutcome[];
+}
+
+export interface EventDefinition {
+  readonly id: string;
+  readonly i18n: string;
+  readonly options: readonly EventOption[];
+}
+
 export interface MapNode {
   readonly id: string;
   readonly kind: NodeKind;
@@ -161,6 +214,10 @@ export interface MapNode {
   readonly i18n?: string;
   /** 遭遇池（docs/29 §一③）：同种子同遭遇；缺省回落到 enemies */
   readonly encounters?: readonly EncounterEntry[];
+  /** 事件节点：事件池 id（docs/27 §三），同种子抽一个；缺省遍历全部事件 */
+  readonly events?: readonly string[];
+  /** 事件节点：写死单个事件 id */
+  readonly event?: string;
 }
 
 export interface ActDefinition {
@@ -180,7 +237,9 @@ export type TriggerTiming =
   | "onTurnEnd"
   | "onPlay"
   | "onHit"
-  | "onSell";
+  | "onSell"
+  /** 获得格挡时（docs/29 §一②「动能电池 / 炉渣装甲」） */
+  | "onBlock";
 
 export interface RelicDefinition {
   readonly id: string;
@@ -196,6 +255,7 @@ export interface ContentDb {
   readonly enemies: ReadonlyMap<string, EnemyDefinition>;
   readonly enhancements: ReadonlyMap<string, EnhancementDefinition>;
   readonly relics: ReadonlyMap<string, RelicDefinition>;
+  readonly events: ReadonlyMap<string, EventDefinition>;
 }
 
 export function createContentDb(partial: Partial<ContentDb> = {}): ContentDb {
@@ -204,6 +264,7 @@ export function createContentDb(partial: Partial<ContentDb> = {}): ContentDb {
     enemies: partial.enemies ?? new Map(),
     enhancements: partial.enhancements ?? new Map(),
     relics: partial.relics ?? new Map(),
+    events: partial.events ?? new Map(),
   };
 }
 

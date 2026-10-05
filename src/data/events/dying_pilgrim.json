@@ -1,0 +1,44 @@
+{
+  "id": "dying_pilgrim",
+  "i18n": "event.dying_pilgrim",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.dying_pilgrim.opt.a.result",
+      "effects": [
+        {
+          "kind": "hp",
+          "value": -5
+        },
+        {
+          "kind": "gainRelic"
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.dying_pilgrim.opt.b.result",
+      "effects": [
+        {
+          "kind": "gainCard",
+          "rarity": "common",
+          "count": 2
+        },
+        {
+          "kind": "pollution",
+          "value": 10
+        }
+      ]
+    },
+    {
+      "id": "c",
+      "i18n": "event.dying_pilgrim.opt.c.result",
+      "effects": [
+        {
+          "kind": "pollution",
+          "value": -15
+        }
+      ]
+    }
+  ]
+}

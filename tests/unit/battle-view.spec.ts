@@ -6,6 +6,7 @@ import { createRouter, createWebHashHistory } from "vue-router";
 import { nextTick } from "vue";
 import BattleView from "@/ui/views/BattleView.vue";
 import { useBattleStore } from "@/stores/battle";
+import { useRunStore } from "@/stores/run";
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -74,6 +75,36 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
     expect(enemyId).toBeTruthy();
     store.skip();
     expect(store.log.some((e) => e.type === "CardPlayed")).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("Boss 台词 ×3：蓄力预警 / 二阶段横幅（docs/27 §五）", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const run = useRunStore();
+    run.startRun(1);
+    for (let i = 0; i < 6; i += 1) run.advance();
+    expect(run.current?.kind).toBe("boss");
+
+    const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
+    await nextTick();
+    await nextTick();
+    const store = useBattleStore();
+    expect(store.battle?.enemies[0].defId).toBe("rust_throat");
+
+    // 蓄力预警台词
+    const boss = store.battle!.enemies[0] as unknown as { intent: unknown; hp: number };
+    boss.intent = { kind: "charge", value: 4, thenIn: 1, block: 0 };
+    await nextTick();
+    expect(wrapper.text()).toContain("听，锈在喉咙里唱。");
+
+    // 二阶段横幅台词（HP < 50%）
+    boss.hp = 1;
+    await nextTick();
+    await nextTick();
+    expect(wrapper.text()).toContain("第二段圣歌，献给你。");
+
+    store.skip();
     wrapper.unmount();
   });
 });

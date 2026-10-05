@@ -1,0 +1,39 @@
+{
+  "id": "power_station",
+  "i18n": "event.power_station",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.power_station.opt.a.result",
+      "effects": [
+        {
+          "kind": "gainCard",
+          "pool": [
+            "chargeup",
+            "sparkjab",
+            "redline",
+            "discharge"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.power_station.opt.b.result",
+      "effects": [
+        {
+          "kind": "hp",
+          "value": -4
+        },
+        {
+          "kind": "gainCard",
+          "rarity": "rare"
+        }
+      ]
+    },
+    {
+      "id": "c",
+      "i18n": "event.power_station.opt.c.result"
+    }
+  ]
+}

@@ -8,9 +8,9 @@
 export const SAVE_NAMESPACE = "rustandblood";
 
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
-export type SaveSlot = "settings" | "progress" | "replay";
+export type SaveSlot = "settings" | "progress" | "replay" | "codex";
 
 export function slotKey(slot: SaveSlot): string {
   return `${SAVE_NAMESPACE}:${slot}`;
@@ -44,6 +44,15 @@ const migrations: Record<number, (data: unknown) => unknown> = {
     const record = data as Record<string, unknown>;
     if (!("run" in record) && !("deck" in record)) return record;
     return { ...record, enhanceUsedNode: record["enhanceUsedNode"] ?? null };
+  },
+  // 3 → 4（docs/27 §三）：局外进度新增污染 RunState.pollution（事件可增减、跨节点保留）。
+  3: (data) => {
+    if (typeof data !== "object" || data === null) return data;
+    const record = data as Record<string, unknown>;
+    const run = record["run"];
+    if (typeof run !== "object" || run === null) return record;
+    const runRecord = run as Record<string, unknown>;
+    return { ...record, run: { ...runRecord, pollution: runRecord["pollution"] ?? 0 } };
   },
 };
 

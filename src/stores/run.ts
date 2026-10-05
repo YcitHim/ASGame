@@ -17,12 +17,15 @@ import {
   RECAST_HP_COST,
   rollCardRewards,
   rollEnhancementChoices,
+  rollEvent,
   rollRecastEnhancement,
   rollRelicChoices,
+  resolveEventOption,
   setRunHp,
+  setRunPollution,
   type RunState,
 } from "@/core/map";
-import type { ActDefinition, CardDefinition, MapNode } from "@/core/registry";
+import type { ActDefinition, CardDefinition, EventDefinition, MapNode } from "@/core/registry";
 import { loadGameContent } from "@/data/load";
 import { clearSlot, readSlot, writeSlot } from "@/systems/save";
 
@@ -62,6 +65,19 @@ export const useRunStore = defineStore("run", {
     acquired: [] as string[],
     recastUsedNode: null as number | null,
     enhanceUsedNode: null as number | null,
+    /** 事件节点：最近一次结算结果（null = 还没选） */
+    eventResult: null as {
+      optionId: string;
+      outcomeIndex: number;
+      i18n: string;
+      hpDelta: number;
+      pollutionDelta: number;
+      relicIds: readonly string[];
+      cardIds: readonly string[];
+      gainEnhancement: boolean;
+    } | null,
+    /** E2-A 的强化三选一 */
+    eventChoices: null as string[] | null,
   }),
 
   getters: {
@@ -82,6 +98,9 @@ export const useRunStore = defineStore("run", {
     },
     maxHp(): number {
       return this.act?.player.maxHp ?? 0;
+    },
+    pollution(): number {
+      return this.run?.pollution ?? 0;
     },
     deckSize(state): number {
       return state.deck.length;
@@ -126,6 +145,13 @@ export const useRunStore = defineStore("run", {
       if (this.run.hp <= RECAST_HP_COST) return false;
       return this.recastableCards.length > 0;
     },
+    /** 当前事件节点抽到的事件（同种子同事件）。 */
+    eventDef(): EventDefinition | undefined {
+      if (!this.act || !this.run) return undefined;
+      const node = this.current;
+      if (!node || node.kind !== "event") return undefined;
+      return rollEvent(loadGameContent().content, this.run, node);
+    },
     cardDef(): (cardId: string) => CardDefinition | undefined {
       const content = loadGameContent().content;
       return (cardId: string) => content.cards.get(cardId);
@@ -143,6 +169,8 @@ export const useRunStore = defineStore("run", {
       // 每节点标记必须随新局重置，否则上一局的"已用"会卡住新局（测试抓到的真问题）
       this.recastUsedNode = null;
       this.enhanceUsedNode = null;
+      this.eventResult = null;
+      this.eventChoices = null;
       this.active = true;
       this.persist();
     },
@@ -229,6 +257,48 @@ export const useRunStore = defineStore("run", {
     relicChoices(): string[] {
       if (!this.run) return [];
       return rollRelicChoices(loadGameContent().content, this.relics, 3);
+    },
+
+    setPollution(value: number): void {
+      if (!this.run) return;
+      this.run = setRunPollution(this.run, value);
+      this.persist();
+    },
+
+    /** 事件选项结算（docs/27 §三）：核心算结果，store 只写回。 */
+    resolveEvent(optionId: string): void {
+      if (!this.run || this.eventResult) return;
+      const content = loadGameContent().content;
+      const def = this.eventDef;
+      if (!def) return;
+      const seed = (this.run.seed ^ Math.imul(this.run.nodeIndex + 11, 0x27d4eb2f)) >>> 0;
+      const res = resolveEventOption(content, def, optionId, { seed, ownedRelics: this.relics });
+      if (!res) return;
+      if (res.hpDelta !== 0) {
+        this.run = setRunHp(this.run, Math.max(0, Math.min(this.maxHp, this.run.hp + res.hpDelta)));
+      }
+      if (res.pollutionDelta !== 0) {
+        this.run = setRunPollution(this.run, this.run.pollution + res.pollutionDelta);
+      }
+      for (const id of res.relicIds) this.addRelic(id);
+      for (const id of res.cardIds) this.addCard(id);
+      let gainEnhancement = res.gainEnhancement;
+      if (gainEnhancement) {
+        this.eventChoices = this.enhancementChoices();
+        if (this.eventChoices.length === 0) {
+          this.eventChoices = null;
+          gainEnhancement = false;
+        }
+      }
+      this.eventResult = { ...res, gainEnhancement };
+      this.persist();
+    },
+
+    /** 事件结算完毕 → 推进到下一节点。 */
+    eventContinue(): void {
+      this.eventResult = null;
+      this.eventChoices = null;
+      this.advance();
     },
 
     addRelic(relicId: string): void {
@@ -354,7 +424,8 @@ export const useRunStore = defineStore("run", {
     load(): boolean {
       const saved = readSlot<SavedRun | null>("progress", null);
       if (!saved || !saved.run || !Array.isArray(saved.deck)) return false;
-      this.run = saved.run;
+      // 老档没有 pollution 字段：默认 0（save 迁移链已补，双保险）
+      this.run = { ...saved.run, pollution: saved.run.pollution ?? 0 };
       this.deck = saved.deck;
       this.relics = saved.relics ?? [];
       this.acquired = saved.acquired ?? [];

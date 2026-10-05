@@ -15,13 +15,14 @@ const canContinue = computed(() => hasSlot("progress"));
 const menu = [
   { key: "expedition", label: "开始远征", enabled: true },
   { key: "continue", label: "继续远征", enabled: canContinue.value },
-  { key: "codex", label: "图鉴", enabled: false },
+  { key: "codex", label: "图鉴", enabled: true },
   { key: "settings", label: "设置", enabled: true },
 ] as const;
 
 function onMenu(key: (typeof menu)[number]["key"], enabled: boolean): void {
   if (!enabled) return;
   if (key === "settings") void router.push("/settings");
+  else if (key === "codex") void router.push("/codex");
   else if (key === "expedition") {
     run.startRun();
     void router.push("/battle");

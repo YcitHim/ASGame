@@ -3,6 +3,7 @@ import { computed, onMounted, ref, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
 import type { CardDefinition } from "@/core/registry";
 import { t } from "@/data/load";
+import { useCodexStore } from "@/stores/codex";
 import { useRunStore } from "@/stores/run";
 import CardView from "@/ui/components/CardView.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
@@ -58,8 +59,14 @@ onMounted(() => {
     void router.replace("/");
     return;
   }
-  if (mode.value === "card") rewards.value = run.cardRewards();
-  else if (mode.value === "elite") relicOffers.value = run.relicChoices();
+  const codex = useCodexStore();
+  if (mode.value === "card") {
+    rewards.value = run.cardRewards();
+    codex.markCards(rewards.value);
+  } else if (mode.value === "elite") {
+    relicOffers.value = run.relicChoices();
+    codex.markRelics(relicOffers.value);
+  }
 });
 
 /** 遗物 → 强化（池空则直接回地图）。 */

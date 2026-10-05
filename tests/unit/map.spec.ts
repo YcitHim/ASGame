@@ -39,7 +39,7 @@ describe("S5.1 线性地图（core/map）", () => {
     const view = mapView(run, act);
     expect(view.current?.id).toBe("n1");
     expect(isCombatNode(currentNode(run, act))).toBe(true);
-    const restRun = { ...run, nodeIndex: 3 };
+    const restRun = { ...run, nodeIndex: 4 };
     expect(isCombatNode(currentNode(restRun, act))).toBe(false);
     expect(currentNode(restRun, act)?.kind).toBe("rest");
   });

@@ -1,0 +1,142 @@
+<script setup lang="ts">
+import { computed, onMounted, ref, useTemplateRef } from "vue";
+import { useRouter } from "vue-router";
+import { loadGameContent, t } from "@/data/load";
+import { useCodexStore } from "@/stores/codex";
+import CardView from "@/ui/components/CardView.vue";
+import { useStageFit } from "@/ui/composables/useStageFit";
+
+const router = useRouter();
+const codex = useCodexStore();
+const stage = useTemplateRef<HTMLElement>("stage");
+useStageFit(stage);
+
+const game = loadGameContent();
+type Tab = "card" | "relic" | "enemy";
+const tab = ref<Tab>("card");
+
+onMounted(() => codex.ensureLoaded());
+
+const cards = computed(() =>
+  [...game.content.cards.values()].filter((c) => c.rarity !== "starter" || codex.cardSeen(c.id)).sort((a, b) => a.id.localeCompare(b.id)),
+);
+const relics = computed(() => [...game.content.relics.values()].sort((a, b) => a.id.localeCompare(b.id)));
+const enemies = computed(() => [...game.content.enemies.values()].sort((a, b) => a.id.localeCompare(b.id)));
+
+function back(): void {
+  void router.push("/");
+}
+</script>
+
+<template>
+  <div class="viewport">
+    <div ref="stage" class="stage codex-stage">
+      <div class="topbar">
+        <span>图 鉴</span>
+        <div class="r"><span @click="back">返回标题</span></div>
+      </div>
+
+      <nav class="tabs">
+        <button class="tab" :class="{ active: tab === 'card' }" @click="tab = 'card'">卡牌 {{ cards.length }}</button>
+        <button class="tab" :class="{ active: tab === 'relic' }" @click="tab = 'relic'">遗物 {{ relics.length }}</button>
+        <button class="tab" :class="{ active: tab === 'enemy' }" @click="tab = 'enemy'">敌人 {{ enemies.length }}</button>
+      </nav>
+
+      <div class="body">
+        <template v-if="tab === 'card'">
+          <div class="card-grid">
+            <div v-for="c in cards" :key="c.id" class="card-slot">
+              <CardView
+                v-if="codex.cardSeen(c.id)"
+                :card-id="c.id"
+                :cost="c.cost"
+                :keywords="c.keywords ?? []"
+                :type="c.type"
+                :rarity="c.rarity"
+                :playable="true"
+                :selected="false"
+                :index="0"
+                :hand-count="1"
+                show-flavor
+                display
+              />
+              <div v-else class="locked-card">
+                <span class="q">？</span>
+                <small>尚未记述</small>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <template v-else-if="tab === 'relic'">
+          <div class="rows">
+            <article v-for="r in relics" :key="r.id" class="row" :class="{ locked: !codex.relicSeen(r.id) }">
+              <h3>{{ codex.relicSeen(r.id) ? t(`relic.${r.id}.name`, r.id) : "？？？" }}</h3>
+              <p>{{ codex.relicSeen(r.id) ? t(`relic.${r.id}.desc`, "") : "尚未记述。" }}</p>
+            </article>
+          </div>
+        </template>
+
+        <template v-else>
+          <div class="rows">
+            <article v-for="e in enemies" :key="e.id" class="row" :class="{ locked: !codex.enemySeen(e.id) }">
+              <h3>
+                {{ codex.enemySeen(e.id) ? e.name : "？？？" }}
+                <small v-if="codex.enemySeen(e.id)">{{ t(`enemy.${e.id}.title`, "") }}</small>
+              </h3>
+              <p>{{ codex.enemySeen(e.id) ? t(`enemy.${e.id}.lore`, "") : "尚未记述。" }}</p>
+            </article>
+          </div>
+        </template>
+      </div>
+
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.codex-stage { display: flex; flex-direction: column; align-items: center; padding: 42px 40px 18px; }
+.topbar {
+  position: absolute; top: 0; left: 0; right: 0; height: 34px; z-index: 30;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 18px;
+  font-size: 12px; letter-spacing: 0.3em; color: var(--ink-dim);
+  border-bottom: 1px solid rgba(110, 88, 54, 0.25);
+}
+.topbar .r span { cursor: pointer; }
+.topbar .r span:hover { color: var(--gold); }
+.tabs { display: flex; gap: 12px; z-index: 2; }
+.tab {
+  padding: 8px 24px;
+  font-family: var(--serif-title); font-size: 13px; letter-spacing: 0.24em;
+  color: var(--ink-dim);
+  border: 1px solid rgba(110, 88, 54, 0.45);
+  border-radius: var(--radius-sm);
+  background: rgba(18, 16, 14, 0.7);
+}
+.tab.active { color: var(--gold); border-color: var(--gold); box-shadow: 0 0 14px rgba(176, 141, 74, 0.25); }
+.body { margin-top: 16px; width: 1160px; max-height: 560px; overflow-y: auto; padding: 4px 10px 18px; }
+.card-grid { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; }
+.card-slot { width: 170px; }
+.card-slot :deep(.card) { cursor: default; }
+.locked-card {
+  width: 170px; height: 240px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  border: 1px dashed rgba(110, 88, 54, 0.4);
+  border-radius: var(--radius-md);
+  background: rgba(12, 10, 8, 0.55);
+  color: rgba(154, 144, 129, 0.5);
+}
+.locked-card .q { font-family: var(--serif-title); font-size: 40px; }
+.locked-card small { letter-spacing: 0.2em; }
+.rows { display: flex; flex-direction: column; gap: 10px; width: 820px; margin: 0 auto; }
+.row {
+  padding: 12px 18px;
+  border: 1px solid rgba(110, 88, 54, 0.35);
+  border-radius: var(--radius-sm);
+  background: rgba(18, 16, 14, 0.7);
+}
+.row h3 { font-family: var(--serif-title); font-size: 15px; letter-spacing: 0.18em; color: var(--ink-bone); font-weight: 400; }
+.row h3 small { margin-left: 12px; font-family: var(--serif-body); font-size: 11px; letter-spacing: 0.12em; color: var(--gold-dim); }
+.row p { margin-top: 7px; font-size: 12px; line-height: 1.8; color: var(--ink-dim); }
+.row.locked h3 { color: rgba(154, 144, 129, 0.45); }
+</style>

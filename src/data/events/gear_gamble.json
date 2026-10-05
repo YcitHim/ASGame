@@ -1,0 +1,40 @@
+{
+  "id": "gear_gamble",
+  "i18n": "event.gear_gamble",
+  "options": [
+    {
+      "id": "a",
+      "effects": [
+        {
+          "kind": "hp",
+          "value": -8
+        }
+      ],
+      "outcomes": [
+        {
+          "weight": 1,
+          "i18n": "event.gear_gamble.opt.a.win",
+          "effects": [
+            {
+              "kind": "gainRelic"
+            }
+          ]
+        },
+        {
+          "weight": 1,
+          "i18n": "event.gear_gamble.opt.a.lose",
+          "effects": [
+            {
+              "kind": "hp",
+              "value": -8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.gear_gamble.opt.b.result"
+    }
+  ]
+}

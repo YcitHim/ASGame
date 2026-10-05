@@ -4,9 +4,11 @@
  * 玩法规则只住在 core：节点推进、奖励抽取都在这里，UI 只做展示与转发。
  * 随机一律走 reward 流（ADR-006），因此同样的种子 + 输入流可复现。
  */
-import type { ActDefinition, MapNode, NodeKind } from "../registry/content";
+import type { ActDefinition, EventDefinition, MapNode, NodeKind } from "../registry/content";
 import type { ContentDb } from "../registry/content";
 import { Rng } from "../rng";
+
+export { resolveEventOption, type EventResolution } from "./event";
 
 export interface RunState {
   readonly actId: string;
@@ -16,11 +18,18 @@ export interface RunState {
   readonly cleared: readonly string[];
   /** 局外 HP：跨节点保留（战斗结束写回，休息回复） */
   readonly hp: number;
+  /** 局外污染：跨节点保留（战斗开始注入、结束写回；事件可增减，docs/27 §三） */
+  readonly pollution: number;
 }
 
 /** 写回局外 HP（战斗结束时调用）。 */
 export function setRunHp(run: RunState, hp: number): RunState {
   return { ...run, hp: Math.max(0, Math.trunc(hp)) };
+}
+
+/** 写回局外污染（战斗结束 / 事件结算时调用）。 */
+export function setRunPollution(run: RunState, pollution: number): RunState {
+  return { ...run, pollution: Math.max(0, Math.min(100, Math.trunc(pollution))) };
 }
 
 /** 休息点回复（按最大 HP 上限截断）。 */
@@ -36,7 +45,7 @@ export interface MapView {
 }
 
 export function createRunState(act: ActDefinition, seed: number): RunState {
-  return { actId: act.id, seed: seed >>> 0, nodeIndex: 0, cleared: [], hp: act.player.maxHp };
+  return { actId: act.id, seed: seed >>> 0, nodeIndex: 0, cleared: [], hp: act.player.maxHp, pollution: 0 };
 }
 
 export function mapView(run: RunState, act: ActDefinition): MapView {
@@ -114,6 +123,18 @@ export function rollEncounter(run: RunState, node: MapNode): string[] {
   const rng = new Rng((run.seed ^ Math.imul(run.nodeIndex + 1, 0x85ebca6b)) >>> 0).stream("map");
   const entry = rng.weighted(node.encounters.map((e) => [e, e.weight] as const));
   return [...entry.enemies];
+}
+
+/**
+ * 事件节点抽取（docs/27 §三）：同种子同事件，走独立的 map RNG 流。
+ * node.event 写死单个；node.events 为池；都没有则遍历全部事件。
+ */
+export function rollEvent(content: ContentDb, run: RunState, node: MapNode): EventDefinition | undefined {
+  if (node.event) return content.events.get(node.event);
+  const ids = node.events && node.events.length > 0 ? [...node.events] : [...content.events.keys()].sort();
+  if (ids.length === 0) return undefined;
+  const rng = new Rng((run.seed ^ Math.imul(run.nodeIndex + 5, 0x27d4eb2f)) >>> 0).stream("map");
+  return content.events.get(ids[rng.nextInt(0, ids.length - 1)]);
 }
 
 export function rollRelicChoices(

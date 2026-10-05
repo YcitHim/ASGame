@@ -20,6 +20,8 @@ const props = defineProps<{
   rarity?: string;
   /** 展示模式（奖励/锻造用）：不扇形、不夸张抬升 */
   display?: boolean;
+  /** flavor 位（docs/29 ⑤）：手牌小屏态省略、悬停/放大态显示；force 时（图鉴/详情）常显 */
+  showFlavor?: boolean;
 }>();
 
 const emit = defineEmits<{ (e: "grab", index: number, event: PointerEvent): void }>();
@@ -50,6 +52,8 @@ const desc = computed(() =>
     : t(`card.${props.cardId}.desc`, ""),
 );
 const descHtml = computed(() => highlightText(desc.value));
+/** 卡面斜体小字（docs/27 §四）：只作文本，不参与任何逻辑 */
+const flavor = computed(() => t(`card.${props.cardId}.flavor`, ""));
 const typeLabel = computed(() => TYPE_LABEL[props.type] ?? props.type);
 const keywordLabels = computed(() => props.keywords.map((k) => KEYWORD_LABEL[k] ?? k));
 const enhancementTip = computed(() =>
@@ -142,6 +146,7 @@ function onLeave(): void {
       </template>
     </div>
     <div class="ctext" v-html="descHtml" />
+    <div v-if="flavor" class="cflavor" :class="{ force: showFlavor }">{{ flavor }}</div>
     <div class="enhslots" :title="enhancementTip">
       <i v-for="n in 3" :key="n" :class="{ on: n <= (enhancements ?? 0) }" />
     </div>
@@ -291,6 +296,28 @@ function onLeave(): void {
   line-height: 1.65;
   color: var(--ink-dim);
   text-align: center;
+}
+.cflavor {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 22px;
+  text-align: center;
+  font-family: var(--serif-body);
+  font-size: 9px;
+  line-height: 1.45;
+  font-style: italic;
+  letter-spacing: 0.06em;
+  color: var(--gold-dim);
+  opacity: 0;
+  transition: opacity var(--dur-hover) ease-out;
+  pointer-events: none;
+}
+/* 放大态 / 悬停态 / 强制态必显（信息层级第 4 级，docs/29 ⑤） */
+.card:hover .cflavor,
+.card.display .cflavor,
+.cflavor.force {
+  opacity: 1;
 }
 .enhslots {
   position: absolute;

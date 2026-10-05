@@ -12,6 +12,7 @@ import {
   type ContentDb,
   type EnemyDefinition,
   type EnhancementDefinition,
+  type EventDefinition,
   type RawEnemyDefinition,
   type RelicDefinition,
 } from "../../../src/core/registry";
@@ -66,6 +67,11 @@ export function loadNodeContent(): NodeGameContent {
     const r = readJson<RelicDefinition>(f);
     relics.set(r.id, r);
   }
+  const events = new Map<string, EventDefinition>();
+  for (const f of walkJson(join(DATA_ROOT, "events"))) {
+    const e = readJson<EventDefinition>(f);
+    events.set(e.id, e);
+  }
   const enemies = new Map<string, EnemyDefinition>();
   for (const f of walkJson(join(DATA_ROOT, "enemies"))) {
     const e = readJson<EnemyJson>(f);
@@ -75,5 +81,5 @@ export function loadNodeContent(): NodeGameContent {
     .map((f) => readJson<ActDefinition>(f))
     .sort((a, b) => a.id.localeCompare(b.id));
 
-  return { content: createContentDb({ cards, enemies, enhancements, relics }), acts, i18n };
+  return { content: createContentDb({ cards, enemies, enhancements, relics, events }), acts, i18n };
 }

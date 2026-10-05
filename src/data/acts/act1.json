@@ -29,6 +29,11 @@
         "rust_hound",
         "polluting_preacher"
       ],
+      "encounters": [
+        { "enemies": ["rust_hound", "polluting_preacher"], "weight": 4 },
+        { "enemies": ["rust_hound", "rust_hound"], "weight": 3 },
+        { "enemies": ["corroded_swarm", "rust_hound"], "weight": 3 }
+      ],
       "i18n": "node.n1"
     },
     {
@@ -44,6 +49,18 @@
         { "enemies": ["rust_sentinel", "corroded_swarm"], "weight": 3 }
       ],
       "i18n": "node.n2"
+    },
+    {
+      "id": "n2e",
+      "kind": "event",
+      "events": [
+        "gear_gamble",
+        "blood_trader",
+        "pure_spring",
+        "power_station",
+        "dying_pilgrim"
+      ],
+      "i18n": "node.n2e"
     },
     {
       "id": "n3",

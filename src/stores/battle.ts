@@ -6,11 +6,12 @@
  */
 import { defineStore } from "pinia";
 import { createBattleState, reduce, validatePlayCardState, type BattleState } from "@/core/combat";
-import { isCombatNode } from "@/core/map";
+import { isCombatNode, rollEncounter } from "@/core/map";
 import type { Action } from "@/core/actions";
 import type { DomainEvent } from "@/core/events";
 import { loadGameContent } from "@/data/load";
 import { AnimQueue } from "@/ui/anim-queue";
+import { useCodexStore } from "@/stores/codex";
 import { useRunStore } from "@/stores/run";
 
 export interface Floater {
@@ -53,6 +54,8 @@ export const useBattleStore = defineStore("battle", {
     enemyNames(): Record<string, string> {
       const names: Record<string, string> = {};
       for (const [id, def] of loadGameContent().content.enemies) names[id] = def.name;
+      // 实例 id（同名敌人的 `#2` 等）也要能翻译，否则日志里显示原始 id
+      for (const e of this.battle?.enemies ?? []) names[e.id] = e.name;
       return names;
     },
   },
@@ -84,12 +87,17 @@ export const useBattleStore = defineStore("battle", {
         battleId: `${act.id}-${node.id}`,
         seed: (Date.now() ^ (Math.floor(Date.now() / 7) << 3)) >>> 0,
         // 跨节点保留 HP；卡组带上升级与强化实例
-        player: { maxHp: act.player.maxHp, energy: act.player.energy, hp: run.hp },
-        enemies: (node.enemies ?? []).map((id) => ({ id })),
+        player: { maxHp: act.player.maxHp, energy: act.player.energy, hp: run.hp, pollution: run.pollution ?? 0 },
+        enemies: rollEncounter(run.run!, node).map((id) => ({ id })),
         deck: run.deck.map((c) => ({ cardId: c.cardId, upgraded: c.upgraded, enhancements: c.enhancements })),
         relics: run.relics,
         content: game.content,
       });
+      // 图鉴「见过即解锁」：本场用到的卡 / 遗物 / 敌人都点亮（docs/16 4.7）
+      const codex = useCodexStore();
+      codex.markCards(run.deck.map((c) => c.cardId));
+      codex.markRelics(run.relics);
+      codex.markEnemies(this.battle.enemies.map((e) => e.defId));
       this.log = [];
       this.floaters = [];
       this.message = "";
@@ -103,8 +111,9 @@ export const useBattleStore = defineStore("battle", {
       const result = reduce(this.battle, action);
       this.battle = result.state;
       if (result.state.phase === "battleEnd") {
-        // 战斗结束把剩余 HP 写回局外进度（跨节点保留）
+        // 战斗结束把剩余 HP / 污染写回局外进度（跨节点保留，供事件结算）
         useRunStore().setHp(result.state.player.hp);
+        useRunStore().setPollution(result.state.player.pollution);
       }
       if (result.events.length > 0) {
         this.log.push(...result.events);

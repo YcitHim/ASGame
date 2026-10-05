@@ -13,9 +13,14 @@ import {
   isRunComplete,
   MAX_ENHANCEMENT_SLOTS,
   rollCardRewards,
+  rollEncounter,
   rollEnhancementChoices,
+  rollEvent,
   rollRelicChoices,
+  resolveEventOption,
   setRunHp,
+  setRunPollution,
+  type RunState,
 } from "../../../src/core/map";
 import type { ActDefinition, ContentDb } from "../../../src/core/registry";
 import { cardValue, choosePlay, chooseTarget } from "./ai";
@@ -54,6 +59,7 @@ export interface BattleRunConfig {
   energy: number;
   hp: number;
   enemies: readonly string[];
+  pollution?: number;
   deck: readonly SimCard[];
   relics: readonly string[];
 }
@@ -94,6 +100,49 @@ function applyEnhancementChoice(
   return null;
 }
 
+/** 事件选项评分（贪心 AI）：优先强化/遗物/卡，HP 越低越避忌付费；赌博按期望值。 */
+function chooseEventOption(
+  def: import("../../../src/core/registry").EventDefinition,
+  run: RunState,
+  act: ActDefinition,
+): string {
+  const hpRatio = run.hp / Math.max(1, act.player.maxHp);
+  const scoreEffect = (kind: string, value: number, count = 1): number => {
+    switch (kind) {
+      case "gainEnhancement":
+        return 30;
+      case "gainRelic":
+        return 22;
+      case "gainCard":
+        return 8 * count;
+      case "hp":
+        return value * (value < 0 ? (hpRatio < 0.4 ? 0.45 : 0.9) : 0.15);
+      case "pollution":
+        return -value * (value > 0 ? 0.25 : 0.18);
+      default:
+        return 0;
+    }
+  };
+  let best = def.options[0]?.id ?? "a";
+  let bestScore = -Infinity;
+  for (const opt of def.options) {
+    let score = (opt.effects ?? []).reduce((s, e) => s + scoreEffect(e.kind, e.value ?? 0, e.count ?? 1), 0);
+    const outcomes = opt.outcomes ?? [];
+    if (outcomes.length > 0) {
+      const total = outcomes.reduce((s, o) => s + o.weight, 0) || 1;
+      score += outcomes.reduce(
+        (s, o) => s + (o.weight / total) * o.effects.reduce((t, e) => t + scoreEffect(e.kind, e.value ?? 0, e.count ?? 1), 0),
+        0,
+      );
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      best = opt.id;
+    }
+  }
+  return best;
+}
+
 export function bestReward(ids: readonly string[], content: ContentDb): string | null {
   let best: { id: string; value: number } | null = null;
   for (const id of ids) {
@@ -110,7 +159,7 @@ export function runBattle(content: ContentDb, config: BattleRunConfig): BattleRu
   let state: BattleState = createBattleState({
     battleId: config.battleId,
     seed: config.seed,
-    player: { maxHp: config.maxHp, energy: config.energy, hp: config.hp },
+    player: { maxHp: config.maxHp, energy: config.energy, hp: config.hp, pollution: config.pollution ?? 0 },
     enemies: config.enemies.map((id) => ({ id })),
     deck: config.deck.map((c) => ({ cardId: c.cardId, upgraded: c.upgraded, enhancements: c.enhancements })),
     relics: [...config.relics],
@@ -199,7 +248,8 @@ export function simulateRun(content: ContentDb, act: ActDefinition, seed: number
         maxHp: act.player.maxHp,
         energy: act.player.energy,
         hp: run.hp,
-        enemies: node.enemies ?? [],
+        pollution: run.pollution,
+        enemies: rollEncounter(run, node),
         deck,
         relics,
       });
@@ -212,6 +262,7 @@ export function simulateRun(content: ContentDb, act: ActDefinition, seed: number
       }
 
       run = setRunHp(run, battle.state.player.hp);
+      run = setRunPollution(run, battle.state.player.pollution);
       if (battle.state.phase !== "battleEnd" || battle.state.player.hp <= 0) return finish("lose");
 
       if (node.kind === "elite") hpAfterElite = battle.state.player.hp;
@@ -246,6 +297,29 @@ export function simulateRun(content: ContentDb, act: ActDefinition, seed: number
       } else {
         const index = deck.findIndex((c) => !c.upgraded);
         if (index >= 0) deck[index] = { ...deck[index], upgraded: true };
+      }
+      run = advanceNode(run, act);
+      continue;
+    }
+
+    if (node.kind === "event") {
+      const def = rollEvent(content, run, node);
+      if (def) {
+        const optionId = chooseEventOption(def, run, act);
+        const seed = (run.seed ^ Math.imul(run.nodeIndex + 11, 0x27d4eb2f)) >>> 0;
+        const res = resolveEventOption(content, def, optionId, { seed, ownedRelics: relics });
+        if (res) {
+          if (res.hpDelta !== 0) {
+            run = setRunHp(run, Math.max(1, Math.min(act.player.maxHp, run.hp + res.hpDelta)));
+          }
+          if (res.pollutionDelta !== 0) run = setRunPollution(run, run.pollution + res.pollutionDelta);
+          for (const id of res.relicIds) if (!relics.includes(id)) relics.push(id);
+          for (const id of res.cardIds) deck.push({ cardId: id, upgraded: false, enhancements: [] });
+          if (res.gainEnhancement) {
+            const applied = applyEnhancementChoice(content, deck, rollEnhancementChoices(content, run, run.nodeIndex));
+            if (applied) enhancements[applied] = (enhancements[applied] ?? 0) + 1;
+          }
+        }
       }
       run = advanceNode(run, act);
       continue;

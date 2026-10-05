@@ -28,11 +28,14 @@ export interface MutablePlayer extends MutableUnit {
   pollution: number;
   charge: number;
   relics: string[];
+  /** 本场生效的卡牌能力（power）实例 id */
+  powers: string[];
   triggeredThisBattle: string[];
   triggeredThisTurn: string[];
 }
 
 export interface MutableEnemy extends MutableUnit {
+  readonly defId: string;
   readonly name: string;
   intent: EnemyState["intent"];
   intentHistory: string[];
@@ -88,11 +91,13 @@ export function toDraft(state: BattleState): Draft {
       pollution: state.player.pollution,
       charge: state.player.charge,
       relics: [...state.player.relics],
+      powers: [...state.player.powers],
       triggeredThisBattle: [...state.player.triggeredThisBattle],
       triggeredThisTurn: [...state.player.triggeredThisTurn],
     },
     enemies: state.enemies.map((e) => ({
       id: e.id,
+      defId: e.defId,
       name: e.name,
       hp: e.hp,
       maxHp: e.maxHp,
@@ -131,11 +136,13 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
       charge: draft.player.charge,
       buffs: draft.player.buffs.map((b) => ({ ...b })),
       relics: [...draft.player.relics],
+      powers: [...draft.player.powers],
       triggeredThisBattle: [...draft.player.triggeredThisBattle],
       triggeredThisTurn: [...draft.player.triggeredThisTurn],
     },
     enemies: draft.enemies.map((e) => ({
       id: e.id,
+      defId: e.defId,
       name: e.name,
       hp: e.hp,
       maxHp: e.maxHp,

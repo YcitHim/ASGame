@@ -74,7 +74,9 @@ const chargingEnemies = computed(() =>
   enemies.value
     .filter((e) => e.hp > 0 && e.intent?.kind === "charge")
     .map((e) => ({
-      name: intentLabel(e.id),
+      id: e.id,
+      name: intentLabel(e.defId),
+      line: t(`enemy.${e.id}.line.charge`, ""),
       thenValue: e.intent?.thenValue,
       thenIn: e.intent?.thenIn,
       block: e.intent?.block,
@@ -100,6 +102,25 @@ watch(bossEnraged, (now) => {
   if (!now) return;
   phaseBanner.value = true;
   setTimeout(() => (phaseBanner.value = false), 1800);
+});
+
+/** Boss 台词（docs/27 §五）：蓄力随预警、二阶段随横幅、死亡在结算前独白。 */
+const bossOnline = computed(() => enemies.value.some((e) => e.id === "rust_throat"));
+const bossPhaseLine = computed(() =>
+  bossOnline.value ? t("enemy.rust_throat.line.phase2", "") : "",
+);
+const bossDeathLine = computed(() =>
+  bossOnline.value && store.result === "win" ? t("enemy.rust_throat.line.death", "") : "",
+);
+
+/** 结算情境化文案（docs/29 ④）：按节点类型给专属句，战斗胜利两句轮换。 */
+const resultCopy = computed(() => {
+  if (store.result !== "win") return t("result.expeditionFail");
+  const kind = run.current?.kind;
+  if (kind === "boss") return t("result.bossWin");
+  if (kind === "elite") return t("result.eliteWin");
+  const seed = (store.battle?.battleId ?? "").length;
+  return seed % 2 === 0 ? t("result.battleWin") : t("result.battleWinAlt");
 });
 
 const floatersFor = computed(() => {
@@ -332,10 +353,10 @@ function back(): void {
             </svg>
           </div>
           <div class="enemy-name">
-            {{ intentLabel(enemy.id) }}
+            {{ intentLabel(enemy.defId) }}
             <span v-if="bossEnraged && enemy.hp > 0 && enemy.hp * 2 < enemy.maxHp" class="rage-tag">狂暴</span>
           </div>
-          <div v-if="enemyTitle(enemy.id)" class="enemy-title">{{ enemyTitle(enemy.id) }}</div>
+          <div v-if="enemyTitle(enemy.defId)" class="enemy-title">{{ enemyTitle(enemy.defId) }}</div>
           <HpBar
             :hp="enemy.hp"
             :max-hp="enemy.maxHp"
@@ -447,7 +468,7 @@ function back(): void {
       <!-- Boss 蓄力大招：全屏预警（带上后续伤害，读招才成立） -->
       <div v-if="chargingEnemies.length > 0" class="telegraph">
         <div class="telegraph-line" />
-        <p v-for="charge in chargingEnemies" :key="charge.name">
+        <p v-for="charge in chargingEnemies" :key="charge.name" class="telegraph-charge">
           {{ charge.name }}<template v-if="charge.block"> 蓄力并架起 <b>{{ charge.block }}</b> 点格挡</template><template v-else> 正在蓄力</template> ——
           <template v-if="charge.thenValue !== undefined">
             {{ charge.thenIn && charge.thenIn > 1 ? charge.thenIn + " 回合后" : "下回合" }}
@@ -455,11 +476,17 @@ function back(): void {
           </template>
           <template v-else>准备迎接重击</template>
         </p>
+        <p v-for="charge in chargingEnemies.filter((c) => c.line)" :key="charge.name + '-line'" class="telegraph-line-quote">
+          「{{ charge.line }}」
+        </p>
         <div class="telegraph-line" />
       </div>
 
       <!-- 二阶段横幅 -->
-      <div v-if="phaseBanner" class="phase-banner">锈 喉 · 第 二 阶 段</div>
+      <div v-if="phaseBanner" class="phase-banner">
+        <span class="phase-banner-title">锈 喉 · 第 二 阶 段</span>
+        <span v-if="bossPhaseLine" class="phase-banner-line">{{ bossPhaseLine }}</span>
+      </div>
 
       <!-- HP 低于 50%：屏幕边缘血色渐晕（docs/08 §6） -->
       <div v-if="player && player.hp * 2 < player.maxHp" class="vignette" />
@@ -481,8 +508,9 @@ function back(): void {
 
       <!-- 结算 -->
       <div v-if="store.over" class="result">
+        <p v-if="bossDeathLine" class="boss-last">「{{ bossDeathLine }}」</p>
         <h2 :class="store.result">{{ store.result === "win" ? "胜 利" : "死 亡" }}</h2>
-        <p>{{ store.result === "win" ? t("result.battleWin") : t("result.expeditionFail") }}</p>
+        <p>{{ resultCopy }}</p>
         <div class="result-actions">
           <button v-if="store.result === 'win'" class="etch-btn" @click="goReward">继续</button>
           <button v-else class="etch-btn" @click="restartRun">重新远征</button>
@@ -631,6 +659,30 @@ function back(): void {
   border-radius: 2px;
   padding: 1px 5px;
   background: rgba(60, 16, 10, 0.6);
+}
+.phase-banner-title { display: block; }
+.phase-banner-line {
+  display: block;
+  margin-top: 10px;
+  font-family: var(--serif-body);
+  font-size: 15px;
+  letter-spacing: 0.28em;
+  color: var(--ink-bone);
+  text-shadow: 0 0 14px rgba(192, 57, 43, 0.6);
+}
+.boss-last {
+  font-family: var(--serif-body);
+  font-size: 15px;
+  font-style: italic;
+  letter-spacing: 0.2em;
+  color: #d8c6a8 !important;
+}
+.telegraph-line-quote {
+  font-family: var(--serif-body) !important;
+  font-size: 13px !important;
+  font-style: italic;
+  letter-spacing: 0.22em !important;
+  color: #d8b6ac !important;
 }
 .phase-banner {
   position: absolute;
