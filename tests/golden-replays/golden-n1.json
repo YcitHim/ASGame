@@ -138,7 +138,7 @@
         "targetId": "polluting_preacher"
       }
     ],
-    "eventHash": "1ddcca213d358c9062dad7edbb189c82d12caaaecd60822d1f47348407982137",
+    "eventHash": "ed197609c9d278a5239ce9dd0bbff351c070e42ac5d52a7cb616d760bc25fc70",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",

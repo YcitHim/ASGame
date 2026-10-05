@@ -110,9 +110,9 @@ describe("真实内容：蓄力链数值表（docs/18 冻结值）", () => {
     const expected: Record<string, { release: number[]; block: number[] }> = {
       polluting_preacher: { release: [11], block: [4, 4] },
       riveted_heavy: { release: [14], block: [6] },
-      rust_warden: { release: [17], block: [8, 8] },
+      rust_warden: { release: [19], block: [8, 8] },
       rust_sentinel: { release: [12], block: [4] },
-      rust_throat: { release: [16, 24], block: [] },
+      rust_throat: { release: [16, 18, 24], block: [] },
     };
 
     for (const [id, want] of Object.entries(expected)) {

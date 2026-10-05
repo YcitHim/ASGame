@@ -48,6 +48,23 @@
     },
     {
       "intent": {
+        "kind": "charge",
+        "value": 4,
+        "releaseOverride": 18,
+        "thenIntent": {
+          "kind": "attack",
+          "value": 18
+        }
+      },
+      "weight": 1,
+      "maxConsecutive": 1,
+      "condition": {
+        "type": "selfHpAtLeast",
+        "percent": 50
+      }
+    },
+    {
+      "intent": {
         "kind": "attack",
         "value": 11,
         "hits": 2

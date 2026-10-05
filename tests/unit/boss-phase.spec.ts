@@ -55,7 +55,7 @@ describe("Boss 蓄力 → 大招（策划 Q13 / docs/18）", () => {
     const boss = loadGameContent().content.enemies.get("rust_throat");
     expect(boss).toBeDefined();
     const charges = boss!.intents.filter((e) => e.intent.kind === "charge");
-    expect(charges.map((c) => buildChargeChain(c.intent).releaseValue)).toEqual([16, 24]);
+    expect(charges.map((c) => buildChargeChain(c.intent).releaseValue)).toEqual([16, 18, 24]);
     expect(charges.every((c) => c.intent.releaseOverride !== undefined)).toBe(true);
     expect(boss!.intents.some((e) => e.condition?.type === "selfHpBelow")).toBe(true);
   });

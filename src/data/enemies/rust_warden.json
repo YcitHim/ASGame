@@ -22,11 +22,11 @@
     {
       "intent": {
         "kind": "charge",
-        "value": 3,
+        "value": 4,
         "block": 8,
         "thenIntent": {
           "kind": "charge",
-          "value": 3,
+          "value": 4,
           "block": 8,
           "thenIntent": {
             "kind": "attack",
