@@ -243,6 +243,11 @@ function intentLabel(id: string): string {
   return game.content.enemies.get(id)?.name ?? id;
 }
 
+/** 效果图基准里敌人名下方的一行称号（docs/15 §2）。 */
+function enemyTitle(id: string): string {
+  return t(`enemy.${id}.title`, "");
+}
+
 const actName = computed(() => game.i18n["act.rusty_corridor"] ?? "第一幕");
 
 function restartRun(): void {
@@ -316,6 +321,7 @@ function back(): void {
             {{ intentLabel(enemy.id) }}
             <span v-if="bossEnraged && enemy.hp > 0 && enemy.hp * 2 < enemy.maxHp" class="rage-tag">狂暴</span>
           </div>
+          <div v-if="enemyTitle(enemy.id)" class="enemy-title">{{ enemyTitle(enemy.id) }}</div>
           <HpBar :hp="enemy.hp" :max-hp="enemy.maxHp" :block="enemy.block" />
           <BuffRow :buffs="enemy.buffs" />
           <DamageFloat v-for="f in floatersFor[enemy.id] ?? []" :key="f.id" :floater="f" />
@@ -511,7 +517,8 @@ function back(): void {
   margin-top: 26px; height: 170px; display: flex; align-items: flex-end; justify-content: center;
   filter: drop-shadow(0 18px 14px rgba(0, 0, 0, 0.75));
 }
-.enemy-name { font-family: var(--serif-title); font-size: 15px; letter-spacing: 0.3em; margin: 6px 0; color: var(--ink-bone); }
+.enemy-name { font-family: var(--serif-title); font-size: 15px; letter-spacing: 0.3em; margin: 5px 0 1px; color: var(--ink-bone); }
+.enemy-title { font-size: 10px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 4px; }
 
 .field-band {
   position: absolute; left: 0; right: 0; bottom: 212px; height: 110px; z-index: 10;

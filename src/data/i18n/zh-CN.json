@@ -118,5 +118,12 @@
   "enemy.riveted_heavy.name": "铆钉重装兵",
   "enh.thrifty_pact.name": "节油血契",
   "enh.thrifty_pact.desc": "该牌的卖血代价 -1。",
-  "node.n6": "锈喉之门"
+  "node.n6": "锈喉之门",
+  "enemy.rust_hound.title": "小怪 · 回廊里巡狩的锈牙",
+  "enemy.corroded_swarm.title": "小怪 · 血肉里孵化的铁",
+  "enemy.polluting_preacher.title": "小怪 · 散播锈之福音的残僧",
+  "enemy.rust_sentinel.title": "小怪 · 空壳里仍站着旧命令",
+  "enemy.riveted_heavy.title": "先锋 · 把自己钉进铠甲的行刑者",
+  "enemy.rust_warden.title": "精英 · 圣所最后的门闩",
+  "enemy.rust_throat.title": "首领 · 吞下唱诗班的喉咙"
 }
