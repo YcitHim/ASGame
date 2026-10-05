@@ -34,6 +34,18 @@ describe("S5 UI 流程视图挂载", () => {
     wrapper.unmount();
   });
 
+  it("MapView：通关后显示居中胜利弹窗（不是地图下方的内联块）", async () => {
+    const { wrapper } = mountView(MapView, (run) => {
+      run.startRun(1);
+      for (let i = 0; i < 6; i += 1) run.advance();
+    });
+    await nextTick();
+    expect(wrapper.find(".victory-overlay").exists()).toBe(true);
+    expect(wrapper.find(".victory-overlay .etch-btn").exists()).toBe(true);
+    expect(wrapper.text()).toContain("远 征 胜 利");
+    wrapper.unmount();
+  });
+
   it("RewardView：普通节点给出三选一", async () => {
     const { wrapper } = mountView(RewardView, (run) => run.startRun(1));
     await nextTick();

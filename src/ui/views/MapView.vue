@@ -91,10 +91,15 @@ function toTitle(): void {
         </div>
       </div>
 
-      <div v-if="finished" class="victory">
-        <h2>远 征 胜 利</h2>
-        <p>锈喉已倒下，锈蚀回廊暂时沉寂。</p>
-        <button class="etch-btn" @click="toTitle">返回标题</button>
+      <!-- 远征胜利：居中弹窗（不再挂在地图下方） -->
+      <div v-if="finished" class="victory-overlay">
+        <div class="victory">
+          <h2>远 征 胜 利</h2>
+          <p>锈喉已倒下，锈蚀回廊暂时沉寂。</p>
+          <div class="victory-actions">
+            <button class="etch-btn" @click="toTitle">返回标题</button>
+          </div>
+        </div>
       </div>
 
       <div class="relics">遗物：{{ run.relics.map((r) => t(`relic.${r}.name`, r)).join(" · ") || "无" }}</div>
@@ -136,9 +141,36 @@ function toTitle(): void {
 .go { padding: 7px 18px; font-size: 12px; }
 .state { font-size: 11px; color: var(--ink-dim); letter-spacing: 0.15em; }
 .state.locked { color: rgba(154, 144, 129, 0.5); }
-.victory { margin-top: 26px; text-align: center; }
+.victory-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(10, 7, 5, 0.86), rgba(4, 3, 2, 0.94));
+  animation: overlay-in 200ms ease-out;
+}
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.victory {
+  text-align: center;
+  padding: 34px 64px 28px;
+  background: rgba(18, 16, 14, 0.9);
+  border: 1px solid var(--edge-gold);
+  border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.7), 0 22px 50px rgba(0, 0, 0, 0.8);
+  animation: victory-in 260ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@keyframes victory-in {
+  from { transform: translateY(14px) scale(0.96); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
 .victory h2 { font-family: var(--serif-title); font-size: 34px; letter-spacing: 0.4em; color: var(--gold); text-shadow: 0 0 26px rgba(176, 141, 74, 0.5); }
-.victory p { margin: 12px 0 18px; font-size: 12px; color: var(--ink-dim); letter-spacing: 0.2em; }
-.victory .etch-btn { padding: 10px 24px; font-size: 13px; }
+.victory p { margin: 14px 0 22px; font-size: 12px; color: var(--ink-dim); letter-spacing: 0.2em; }
+.victory-actions { display: flex; justify-content: center; }
+.victory .etch-btn { padding: 11px 30px; font-size: 13px; }
 .relics { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--ink-dim); letter-spacing: 0.12em; }
 </style>
