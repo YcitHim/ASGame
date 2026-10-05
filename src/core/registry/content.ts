@@ -67,11 +67,24 @@ export interface CardDefinition {
 
 export interface IntentDefinition {
   readonly kind: "attack" | "defend" | "debuff" | "charge" | "unknown";
+  /**
+   * 普通招式 = 伤害/数值；蓄力 = **每层一次性增幅值**（docs/18 Q2）。
+   * 蓄力链的释放值 = 普攻基准 + 蓄力值 × 层数，释放即消耗、不残留。
+   */
   readonly value?: number;
   readonly hits?: number;
   readonly buffId?: BuffId;
   readonly stacks?: number;
   readonly duration?: number;
+  /** 蓄力回合附带的格挡（docs/18 Q3「蓄力并架起 N 点格挡」） */
+  readonly block?: number;
+  /** Boss 例外：写死的释放值，绕过叠加公式（docs/18 Q2） */
+  readonly releaseOverride?: number;
+  /**
+   * 蓄力链的下一环：蓄 →（可再蓄）→ 释放。末端必须是 attack（docs/18 Q1）；
+   * 链长按敌型区分（法术 2 / 物理 1），不写无限链。
+   */
+  readonly thenIntent?: IntentDefinition;
 }
 
 export interface EnemyIntentEntry {
@@ -80,11 +93,6 @@ export interface EnemyIntentEntry {
   readonly condition?: ConditionNode;
   /** 同一意图最多连续出现次数（0.1 读招体验） */
   readonly maxConsecutive?: number;
-  /**
-   * 强制后续招式：本条被抽中后，敌人的下一个意图**直接**是这个（不再随机）。
-   * 用于「蓄力 → 大招」这类可读的读招节奏（策划 Q13）。
-   */
-  readonly thenIntent?: IntentDefinition;
 }
 
 export interface EnemyDefinition {

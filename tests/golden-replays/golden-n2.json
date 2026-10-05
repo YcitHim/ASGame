@@ -164,9 +164,15 @@
         "actionId": "p12",
         "handIndex": 1,
         "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p13",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
       }
     ],
-    "eventHash": "e3c3bc9f8a7227fac97be44d0d073e58c4223c1cd06801c8737e2eb8bf64a740",
+    "eventHash": "ec5c9b781669b0f0c2391428496ff4ef53f7f7ba0dedf9252ed6a4eb83a2cb39",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",

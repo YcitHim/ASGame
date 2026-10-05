@@ -14,14 +14,15 @@
     {
       "intent": {
         "kind": "charge",
-        "value": 2
+        "value": 3,
+        "block": 6,
+        "thenIntent": {
+          "kind": "attack",
+          "value": 11
+        }
       },
       "weight": 2,
-      "maxConsecutive": 1,
-      "thenIntent": {
-        "kind": "attack",
-        "value": 13
-      }
+      "maxConsecutive": 1
     },
     {
       "intent": {

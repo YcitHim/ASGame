@@ -130,7 +130,22 @@ export type EnhancementJson = z.infer<typeof enhancementSchema>;
 
 export { ENHANCEMENT_TIERS };
 
-const intentDefSchema = z
+/** 意图定义（可递归：蓄力链 蓄 →（可再蓄）→ 释放，docs/18 Q1） */
+export interface IntentJson {
+  kind: "attack" | "defend" | "debuff" | "charge" | "unknown";
+  value?: number;
+  hits?: number;
+  buffId?: string;
+  stacks?: number;
+  duration?: number;
+  /** 蓄力回合附带格挡（docs/18 Q3） */
+  block?: number;
+  /** Boss 例外：写死的释放值（docs/18 Q2） */
+  releaseOverride?: number;
+  thenIntent?: IntentJson;
+}
+
+const intentBaseSchema = z
   .object({
     kind: z.enum(["attack", "defend", "debuff", "charge", "unknown"]),
     value: z.number().int().min(0).optional(),
@@ -138,8 +153,14 @@ const intentDefSchema = z
     buffId: z.enum(BUFF_IDS).optional(),
     stacks: z.number().int().min(1).optional(),
     duration: z.number().int().min(1).optional(),
+    block: z.number().int().min(1).optional(),
+    releaseOverride: z.number().int().min(0).optional(),
   })
   .strict();
+
+const intentDefSchema: z.ZodType<IntentJson> = z.lazy(() =>
+  intentBaseSchema.extend({ thenIntent: intentDefSchema.optional() }),
+);
 
 const enemyIntentSchema = z
   .object({
@@ -147,7 +168,6 @@ const enemyIntentSchema = z
     weight: z.number().min(0),
     condition: conditionSchema.optional(),
     maxConsecutive: z.number().int().min(1).optional(),
-    thenIntent: intentDefSchema.optional(),
   })
   .strict();
 

@@ -73,7 +73,12 @@ const logEntries = computed<LogEntry[]>(() => store.log.map((e) => describeEvent
 const chargingEnemies = computed(() =>
   enemies.value
     .filter((e) => e.hp > 0 && e.intent?.kind === "charge")
-    .map((e) => ({ name: intentLabel(e.id), thenValue: e.intent?.thenValue })),
+    .map((e) => ({
+      name: intentLabel(e.id),
+      thenValue: e.intent?.thenValue,
+      thenIn: e.intent?.thenIn,
+      block: e.intent?.block,
+    })),
 );
 
 /** Boss 二阶段：首领节点且首领掉到半血以下 → 狂暴反馈（策划 Q13 可感知）。 */
@@ -429,8 +434,11 @@ function back(): void {
       <div v-if="chargingEnemies.length > 0" class="telegraph">
         <div class="telegraph-line" />
         <p v-for="charge in chargingEnemies" :key="charge.name">
-          {{ charge.name }} 正在蓄力 ——
-          <template v-if="charge.thenValue !== undefined">下回合 <b>{{ charge.thenValue }}</b> 点重击</template>
+          {{ charge.name }}<template v-if="charge.block"> 蓄力并架起 <b>{{ charge.block }}</b> 点格挡</template><template v-else> 正在蓄力</template> ——
+          <template v-if="charge.thenValue !== undefined">
+            {{ charge.thenIn && charge.thenIn > 1 ? charge.thenIn + " 回合后" : "下回合" }}
+            <b>{{ charge.thenValue }}</b> 点重击
+          </template>
           <template v-else>准备迎接重击</template>
         </p>
         <div class="telegraph-line" />

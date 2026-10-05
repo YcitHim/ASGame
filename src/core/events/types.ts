@@ -19,8 +19,14 @@ export interface IntentPayload {
   readonly buffId?: string;
   readonly stacks?: number;
   readonly duration?: number;
-  /** 蓄力类招式的后续伤害（预警文案用） */
+  /** 蓄力回合附带的格挡（docs/18 Q3） */
+  readonly block?: number;
+  /** 蓄力链的释放伤害（预警文案用） */
   readonly thenValue?: number;
+  /** 距离释放还剩几次敌人行动（蓄力链预警：2 回合后 / 下回合） */
+  readonly thenIn?: number;
+  /** 该攻击是蓄力链的释放段（信息标记；层数已在链上算死，无需运行期清零） */
+  readonly released?: boolean;
 }
 
 export interface EventPayloadMap {

@@ -32,17 +32,18 @@
     {
       "intent": {
         "kind": "charge",
-        "value": 3
+        "value": 3,
+        "releaseOverride": 16,
+        "thenIntent": {
+          "kind": "attack",
+          "value": 16
+        }
       },
       "weight": 2,
       "maxConsecutive": 1,
       "condition": {
         "type": "selfHpAtLeast",
         "percent": 50
-      },
-      "thenIntent": {
-        "kind": "attack",
-        "value": 16
       }
     },
     {
@@ -73,17 +74,18 @@
     {
       "intent": {
         "kind": "charge",
-        "value": 4
+        "value": 4,
+        "releaseOverride": 24,
+        "thenIntent": {
+          "kind": "attack",
+          "value": 24
+        }
       },
       "weight": 2,
       "maxConsecutive": 1,
       "condition": {
         "type": "selfHpBelow",
         "percent": 50
-      },
-      "thenIntent": {
-        "kind": "attack",
-        "value": 24
       }
     }
   ]

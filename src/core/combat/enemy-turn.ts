@@ -1,8 +1,9 @@
 /**
  * core/combat/enemy-turn · 敌人行动：意图生成（intents/）与执行
  */
+import type { IntentPayload } from "../events";
 import type { EventSink } from "../events/event-sink";
-import { generateIntent, intentToPayload } from "../intents";
+import { generateIntent } from "../intents";
 import type { BuffId } from "../registry/ids";
 import { enemyConditionContext } from "./resolve";
 import { applyBuffToTarget, dealDamage, gainBlock, PLAYER_ID } from "./resolve";
@@ -13,18 +14,17 @@ export function generateIntents(draft: Draft, sink: EventSink): void {
   for (const enemy of draft.enemies) {
     if (enemy.hp <= 0) continue;
 
-    // thenIntent：上一招指定了后续，直接揭示，不再随机
-    if (enemy.forcedIntent) {
-      const forced = intentToPayload(enemy.forcedIntent);
-      enemy.intent = forced;
-      enemy.forcedIntent = null;
-      sink.emit("IntentRevealed", { enemyId: enemy.id, intent: forced });
+    // 蓄力链：上一环指定的后续直接揭示，不再随机
+    const queued = enemy.forcedChain.shift();
+    if (queued) {
+      enemy.intent = queued;
+      sink.emit("IntentRevealed", { enemyId: enemy.id, intent: queued });
       continue;
     }
 
     const def = draft.content.enemies.get(enemy.id);
     if (!def) {
-      const intent = intentToPayload({ kind: "unknown" });
+      const intent: IntentPayload = { kind: "unknown" };
       enemy.intent = intent;
       sink.emit("IntentRevealed", { enemyId: enemy.id, intent });
       continue;
@@ -32,7 +32,7 @@ export function generateIntents(draft: Draft, sink: EventSink): void {
     const roll = generateIntent(def, enemyConditionContext(draft, enemy.id), enemy.intentHistory, draft.rng.stream("combat"));
     enemy.intent = roll.intent;
     enemy.intentHistory = [...enemy.intentHistory, roll.key];
-    enemy.forcedIntent = roll.forcedNext ?? null;
+    enemy.forcedChain = roll.chain ? [...roll.chain] : [];
     sink.emit("IntentRevealed", { enemyId: enemy.id, intent: roll.intent });
   }
 }
@@ -68,8 +68,9 @@ export function runEnemyTurn(draft: Draft, sink: EventSink): void {
         }
         break;
       case "charge":
-        // 蓄力 = 纯预告回合：不施加永久力量（docs/16 禁止永久力量类效果），
-        // 收益由 thenIntent 的强制后续招式在下一回合兑现。
+        // 蓄力 = 预告回合：架起格挡（docs/18 Q3），不施加永久力量（docs/16 禁止）。
+        // 释放值已由蓄力链算死在末端攻击上，此处不记账。
+        if ((intent.block ?? 0) > 0) gainBlock(draft, sink, enemy.id, intent.block ?? 0);
         break;
       default:
         break;

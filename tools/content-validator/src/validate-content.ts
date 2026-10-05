@@ -87,26 +87,59 @@ export function validateContent(input: ContentInput): ValidationResult {
   for (const e of enemies) checkId("enemy", e.id);
   for (const a of acts) checkId("act", a.id);
 
-  // 蓄力规范（docs/16 工作约定）：一切蓄力必须声明 thenIntent，且后续招式必须是带正伤害的攻击。
-  // 没有后续招式的蓄力 = 怪只会"默默加力量"，玩家看不到兑现（2026-10-05 实机 bug）。
+  // 蓄力规范（docs/16 + docs/18）：链必须最终落到带正伤害的攻击；链长 ≤ 3（法术 2 / 物理 1）；
+  // 无 releaseOverride 的链必须能按「普攻 + 蓄力值 × 层数」算出释放值。
+  // 没有后续招式的蓄力 = 怪只会"默默变强"，玩家看不到兑现（2026-10-05 实机 bug）。
+  const MAX_CHARGE_LAYERS = 3;
   for (const e of enemies) {
     e.intents.forEach((entry, i) => {
-      if (entry.intent.kind !== "charge") return;
-      const follow = entry.thenIntent;
-      if (!follow) {
+      const root = entry.intent;
+      const path = `intents.${i}.intent`;
+      if (root.kind !== "charge") {
+        if (root.block !== undefined || root.releaseOverride !== undefined || root.thenIntent !== undefined) {
+          issues.push({
+            file: `enemy ${e.id}`,
+            path,
+            message: "block / releaseOverride / thenIntent 只能出现在蓄力招式上",
+          });
+        }
+        return;
+      }
+
+      let link = root.thenIntent;
+      let layers = 1;
+      const links = [root];
+      while (link && link.kind === "charge") {
+        links.push(link);
+        layers += 1;
+        link = link.thenIntent;
+      }
+      if (layers > MAX_CHARGE_LAYERS) {
         issues.push({
           file: `enemy ${e.id}`,
-          path: `intents.${i}.thenIntent`,
-          message: "蓄力必须声明 thenIntent（docs/16：一切蓄力必须声明后续招式）",
+          path,
+          message: `蓄力链最长 ${MAX_CHARGE_LAYERS} 环（docs/18：法术 2 / 物理 1，不写无限链）`,
         });
         return;
       }
-      if (follow.kind !== "attack" || !follow.value || follow.value <= 0) {
+      const terminal = link;
+      if (!terminal || terminal.kind !== "attack" || !terminal.value || terminal.value <= 0) {
         issues.push({
           file: `enemy ${e.id}`,
-          path: `intents.${i}.thenIntent`,
-          message: "蓄力的 thenIntent 必须是带正伤害值的攻击",
+          path,
+          message: "蓄力链末端必须是带正伤害值的攻击（docs/18 Q1）",
         });
+        return;
+      }
+      if (root.releaseOverride === undefined) {
+        const missing = links.find((l) => l.value === undefined);
+        if (missing) {
+          issues.push({
+            file: `enemy ${e.id}`,
+            path,
+            message: "无 releaseOverride 的蓄力链，每一环都必须声明 value（用于叠加公式）",
+          });
+        }
       }
     });
   }

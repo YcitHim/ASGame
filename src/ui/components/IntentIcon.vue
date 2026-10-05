@@ -16,7 +16,8 @@ const label = computed(() => {
 const sub = computed(() => {
   const i = props.intent;
   if (!i) return "未知";
-  return { attack: "攻击", defend: "防御", debuff: "诅咒", charge: "蓄力", summon: "召唤", unknown: "未知" }[i.kind];
+  if (i.kind === "charge") return i.block ? `蓄力 · 挡 ${i.block}` : "蓄力";
+  return { attack: "攻击", defend: "防御", debuff: "诅咒", summon: "召唤", unknown: "未知" }[i.kind];
 });
 
 const color = computed(() => (props.intent?.kind === "attack" ? "#C0392B" : "#B08D4A"));
