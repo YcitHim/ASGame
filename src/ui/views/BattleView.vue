@@ -161,6 +161,9 @@ onBeforeUnmount(endDrag);
 
 const ghostCard = computed(() => (drag.value ? hand.value[drag.value.index] : undefined));
 
+/** 拖拽幽灵卡的缩放系数（相对舞台缩放，等比缩小以免遮挡视野）。 */
+const DRAG_GHOST_SCALE = 0.55;
+
 function intentLabel(id: string): string {
   return game.content.enemies.get(id)?.name ?? id;
 }
@@ -302,7 +305,7 @@ function back(): void {
           :style="{
             left: drag.x + 'px',
             top: drag.y + 'px',
-            transform: `translate(-50%, -30%) rotate(-3deg) scale(${stageScale * 0.95})`,
+            transform: `translate(-50%, -30%) rotate(-3deg) scale(${stageScale * DRAG_GHOST_SCALE})`,
           }"
         >
           <CardView
@@ -362,7 +365,8 @@ function back(): void {
   position: fixed;
   z-index: 60;
   pointer-events: none;
-  filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.8));
+  opacity: 0.92;
+  filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.85));
 }
 
 .topbar {
