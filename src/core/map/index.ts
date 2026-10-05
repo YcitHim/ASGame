@@ -106,6 +106,16 @@ export function rollCardRewards(
  * 精英战遗物三选一（docs/25 §1 流程）：未持有的遗物按 id 排序取前 N。
  * store 与无头 sim 共用，避免两处各写一份。
  */
+/**
+ * 遭遇池抽取（docs/29 §一③）：同种子同遭遇，走独立的 map RNG 流；无池则回落 node.enemies。
+ */
+export function rollEncounter(run: RunState, node: MapNode): string[] {
+  if (!node.encounters || node.encounters.length === 0) return [...(node.enemies ?? [])];
+  const rng = new Rng((run.seed ^ Math.imul(run.nodeIndex + 1, 0x85ebca6b)) >>> 0).stream("map");
+  const entry = rng.weighted(node.encounters.map((e) => [e, e.weight] as const));
+  return [...entry.enemies];
+}
+
 export function rollRelicChoices(
   content: ContentDb,
   owned: readonly string[],

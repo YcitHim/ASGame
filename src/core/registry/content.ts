@@ -147,6 +147,11 @@ export interface EnhancementDefinition {
 export const NODE_KINDS = ["battle", "elite", "rest", "altar", "reward", "boss", "event"] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 
+export interface EncounterEntry {
+  readonly enemies: readonly string[];
+  readonly weight: number;
+}
+
 export interface MapNode {
   readonly id: string;
   readonly kind: NodeKind;
@@ -154,6 +159,8 @@ export interface MapNode {
   readonly enemies?: readonly string[];
   /** 节点副标题（可选，i18n key） */
   readonly i18n?: string;
+  /** 遭遇池（docs/29 §一③）：同种子同遭遇；缺省回落到 enemies */
+  readonly encounters?: readonly EncounterEntry[];
 }
 
 export interface ActDefinition {

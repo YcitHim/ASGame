@@ -38,6 +38,11 @@
         "corroded_swarm",
         "riveted_heavy"
       ],
+      "encounters": [
+        { "enemies": ["corroded_swarm", "riveted_heavy"], "weight": 4 },
+        { "enemies": ["riveted_heavy", "polluting_preacher"], "weight": 3 },
+        { "enemies": ["rust_sentinel", "corroded_swarm"], "weight": 3 }
+      ],
       "i18n": "node.n2"
     },
     {

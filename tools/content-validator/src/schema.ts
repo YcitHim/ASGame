@@ -207,6 +207,10 @@ export const mapNodeSchema = z
     id: idSchema,
     kind: z.enum(NODE_KINDS),
     enemies: z.array(z.string().regex(ID_PATTERN)).optional(),
+    encounters: z
+      .array(z.object({ enemies: z.array(z.string().regex(ID_PATTERN)).min(1), weight: z.number().min(0) }).strict())
+      .min(1)
+      .optional(),
     i18n: z.string().optional(),
   })
   .strict();
