@@ -25,7 +25,11 @@
         "value": 3
       },
       "weight": 2,
-      "maxConsecutive": 1
+      "maxConsecutive": 1,
+      "thenIntent": {
+        "kind": "attack",
+        "value": 14
+      }
     }
   ]
 }

@@ -323,7 +323,7 @@ function back(): void {
           </div>
           <div v-if="enemyTitle(enemy.id)" class="enemy-title">{{ enemyTitle(enemy.id) }}</div>
           <HpBar :hp="enemy.hp" :max-hp="enemy.maxHp" :block="enemy.block" />
-          <BuffRow :buffs="enemy.buffs" />
+          <BuffRow :buffs="enemy.buffs" compact />
           <DamageFloat v-for="f in floatersFor[enemy.id] ?? []" :key="f.id" :floater="f" />
         </div>
       </div>
@@ -343,7 +343,10 @@ function back(): void {
             :height="18"
             :show-limit="true"
           />
-          <BuffRow v-if="player" :buffs="player.buffs" />
+          <div v-if="player && player.buffs.length > 0" class="pp-status">
+            <span class="pp-status-label">状态</span>
+            <BuffRow :buffs="player.buffs" align="start" />
+          </div>
           <DamageFloat v-for="f in floatersFor['player'] ?? []" :key="f.id" :floater="f" />
         </div>
         <PollutionGauge :value="player?.pollution ?? 0" />
@@ -521,7 +524,7 @@ function back(): void {
 .enemy-title { font-size: 10px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 4px; }
 
 .field-band {
-  position: absolute; left: 0; right: 0; bottom: 212px; height: 110px; z-index: 10;
+  position: absolute; left: 0; right: 0; bottom: 212px; height: 128px; z-index: 10;
   display: flex; align-items: center; justify-content: space-between; padding: 0 42px;
 }
 .player-panel {
@@ -529,8 +532,16 @@ function back(): void {
   border: 1px solid rgba(176, 141, 74, 0.4);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.65), 0 8px 24px rgba(0, 0, 0, 0.5);
   padding: 12px 16px; border-radius: var(--radius-sm);
+  display: flex; flex-direction: column; gap: 8px;
 }
-.pp-name { font-size: 13px; letter-spacing: 0.28em; color: var(--ink-bone); margin-bottom: 8px; }
+.pp-name { font-size: 13px; letter-spacing: 0.28em; color: var(--ink-bone); }
+/* 状态区独占一行，与血条之间留分隔线，避免角标压在血条上 */
+.pp-status {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding-top: 7px; border-top: 1px solid rgba(110, 88, 54, 0.28);
+}
+.pp-status-label { flex: none; padding-top: 7px; font-size: 10px; letter-spacing: 0.24em; color: var(--ink-dim); }
+.pp-status .buffrow { margin-top: 0; }
 .pp-name small { font-size: 10px; color: var(--blood-hi); letter-spacing: 0.12em; margin-left: 8px; }
 
 .hand-zone { position: absolute; left: 0; right: 0; bottom: 0; height: 212px; z-index: 20; }

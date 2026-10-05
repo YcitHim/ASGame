@@ -86,6 +86,30 @@ export function validateContent(input: ContentInput): ValidationResult {
   for (const e of enhancements) checkId("enhancement", e.id);
   for (const e of enemies) checkId("enemy", e.id);
   for (const a of acts) checkId("act", a.id);
+
+  // 蓄力规范（docs/16 工作约定）：一切蓄力必须声明 thenIntent，且后续招式必须是带正伤害的攻击。
+  // 没有后续招式的蓄力 = 怪只会"默默加力量"，玩家看不到兑现（2026-10-05 实机 bug）。
+  for (const e of enemies) {
+    e.intents.forEach((entry, i) => {
+      if (entry.intent.kind !== "charge") return;
+      const follow = entry.thenIntent;
+      if (!follow) {
+        issues.push({
+          file: `enemy ${e.id}`,
+          path: `intents.${i}.thenIntent`,
+          message: "蓄力必须声明 thenIntent（docs/16：一切蓄力必须声明后续招式）",
+        });
+        return;
+      }
+      if (follow.kind !== "attack" || !follow.value || follow.value <= 0) {
+        issues.push({
+          file: `enemy ${e.id}`,
+          path: `intents.${i}.thenIntent`,
+          message: "蓄力的 thenIntent 必须是带正伤害值的攻击",
+        });
+      }
+    });
+  }
   for (const r of relics) checkId("relic", r.id);
 
   // 强化 appliesTo / mutex 引用

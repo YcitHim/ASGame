@@ -24,7 +24,11 @@
         "kind": "charge",
         "value": 1
       },
-      "weight": 1
+      "weight": 1,
+      "thenIntent": {
+        "kind": "attack",
+        "value": 11
+      }
     }
   ]
 }

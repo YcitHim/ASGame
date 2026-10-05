@@ -39,6 +39,33 @@ export interface TipPlacement {
   visualRight: number;
 }
 
+/** 状态角标提示框：宽度固定，默认显示在角标上方，空间不足时翻到下方。 */
+export const BUFF_TIP_WIDTH = 208;
+export const BUFF_TIP_MAX_HEIGHT = 76;
+
+export interface BuffTipPlacement {
+  left: number;
+  top: number;
+  /** true = 在角标上方（translate(-50%,-100%)），false = 下方 */
+  above: boolean;
+}
+
+export function computeBuffTipPlacement(
+  anchor: { left: number; top: number; width: number; height: number },
+  viewportWidth: number,
+  viewportHeight: number,
+): BuffTipPlacement {
+  const cx = anchor.left + anchor.width / 2;
+  const maxLeft = Math.max(8, viewportWidth - BUFF_TIP_WIDTH - 8);
+  const left = Math.min(Math.max(8, cx - BUFF_TIP_WIDTH / 2), maxLeft);
+  // 上方需要容纳提示框全高 + 间距；放不下就翻到下方，且下方也要夹进视口
+  const above = anchor.top - BUFF_TIP_MAX_HEIGHT - 10 >= 8;
+  const top = above
+    ? anchor.top - 10
+    : Math.min(anchor.top + anchor.height + 10, Math.max(8, viewportHeight - 8));
+  return { left, top, above };
+}
+
 export function computeTipPlacement(
   input: TipLayoutInput,
   viewportWidth: number,

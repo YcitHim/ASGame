@@ -68,7 +68,8 @@ export function runEnemyTurn(draft: Draft, sink: EventSink): void {
         }
         break;
       case "charge":
-        applyBuffToTarget(draft, sink, enemy.id, "strength", intent.value ?? 1, null);
+        // 蓄力 = 纯预告回合：不施加永久力量（docs/16 禁止永久力量类效果），
+        // 收益由 thenIntent 的强制后续招式在下一回合兑现。
         break;
       default:
         break;
