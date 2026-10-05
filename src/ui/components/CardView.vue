@@ -2,6 +2,7 @@
 import { computed, ref } from "vue";
 import { t } from "@/data/load";
 import { hasTip, highlightText, keywordTip, termsIn } from "@/ui/glossary";
+import { computeTipPlacement } from "@/ui/tip-position";
 
 const props = defineProps<{
   cardId: string;
@@ -24,8 +25,6 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: "grab", index: number, event: PointerEvent): void }>();
 
 /** 右侧注解窗：显示该卡真正需要解释的词（描述 + 关键词行去重）。 */
-const TIP_WIDTH = 236;
-const TIP_GAP = 12;
 const showTip = ref(false);
 const tipPos = ref({ left: 0, top: 0 });
 const tipSide = ref<"right" | "left">("right");
@@ -78,27 +77,31 @@ const annotations = computed(() => {
   return merged.map((term) => ({ term, tip: keywordTip(term) }));
 });
 
-/**
- * 定位注解窗：以卡牌"中心 + 未旋转半宽"为基准，
- * 因此手牌扇形旋转多少度、在左在右，窗与卡牌的间距都一致。
- */
+/** 定位注解窗：由布局位置 + 悬停缩放推算真实视觉框，保证所有卡牌间距一致。 */
 function placeTip(): void {
   const el = cardRef.value;
   if (!el) return;
-  const rect = el.getBoundingClientRect();
   const scale = Number.parseFloat(getComputedStyle(el).getPropertyValue("--stage-scale")) || 1;
-  const halfWidth = (el.offsetWidth * scale) / 2 || rect.width / 2;
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
+  const parent = el.offsetParent as HTMLElement | null;
+  const parentRect = parent ? parent.getBoundingClientRect() : el.getBoundingClientRect();
 
-  const rightCandidate = centerX + halfWidth + TIP_GAP;
-  const fitsRight = rightCandidate + TIP_WIDTH <= window.innerWidth - 8;
-  tipSide.value = fitsRight ? "right" : "left";
-  const left = fitsRight
-    ? rightCandidate
-    : Math.max(8, centerX - halfWidth - TIP_GAP - TIP_WIDTH);
-  const top = Math.min(Math.max(8, centerY - 60), Math.max(8, window.innerHeight - 200));
-  tipPos.value = { left, top };
+  const placement = computeTipPlacement(
+    {
+      offsetLeft: el.offsetLeft,
+      offsetTop: el.offsetTop,
+      offsetWidth: el.offsetWidth,
+      offsetHeight: el.offsetHeight,
+      parentLeft: parentRect.left,
+      parentTop: parentRect.top,
+      scale,
+      display: props.display === true,
+    },
+    window.innerWidth,
+    window.innerHeight,
+  );
+
+  tipSide.value = placement.side;
+  tipPos.value = { left: placement.left, top: placement.top };
 }
 
 function onEnter(): void {
