@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/YOUR_GITHUB/rust-and-blood/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB/rust-and-blood/actions/workflows/ci.yml)
 
-> 当前状态：**S1 工程地基已落地**（Vite+Vue3+TS、G1 校验器、G3 确定性 lint、CI、标题/设置页）。
+> 当前状态：**S2 核心骨架已落地**（事件溯源主循环空转、分流 RNG、修饰符管线、栈式效果队列、Buff 层数规则）。
 > 推进基准：`docs/09-阶段任务分解.md`（阶段出口门禁全绿才前进），先读 `docs/`（尤其 01/02/03）。
 
 ## 开发命令
@@ -14,7 +14,8 @@ npm run build      # 类型检查 + 生产构建
 npm run lint       # ESLint（含 G3：core 禁 Math.random / Date.now / UI 依赖）
 npm run validate   # content-validator（G1：data JSON schema + 引用存在性）
 npm test           # Vitest 单测
-npm run ci         # lint → typecheck → validate → test（CI 同款）
+npm run test:coverage  # 单测 + 覆盖率（门禁：pipeline ≥ 90%）
+npm run ci         # lint → typecheck → validate → test:coverage（CI 同款）
 ```
 
 ## 目录导航

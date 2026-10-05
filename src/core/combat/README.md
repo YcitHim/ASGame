@@ -4,11 +4,11 @@
 回合相位流转 + reduce 主循环入口：`(state, action) → { state', events[] }`。
 
 ## 待做清单
-- [ ] 相位机：`battleStart → turnStart → draw → playerAction → enemyAction → turnEnd → battleEnd`（docs/02 §4）
-- [ ] 相位切换全部发事件；触发器按相位+时机调度
-- [ ] 战斗开始组装：读玩家卡组实例、敌人配置、初始化分流 RNG
-- [ ] 胜负判定与 `BattleEnded`（含奖励种子）
-- [ ] 多敌人管理：召唤位、死亡移除、目标重定向
+- [~] 相位机：battleStart → turnStart → draw → playerAction 已通；enemyAction / battleEnd 在 S3
+- [~] 相位切换发事件（TurnStarted/TurnEnded/CardsDrawn/BattleStarted 已发）；触发器调度 S3
+- [x] 战斗开始组装：状态初始化、分流 RNG、洗牌发初始手牌
+- [ ] 胜负判定与 `BattleEnded`（含奖励种子）—— S3
+- [ ] 多敌人管理：召唤位、死亡移除、目标重定向 —— S3
 
 ## 约束
 - 相位内动作插队走 `pipeline/` 的栈式队列，本模块不自己维护队列

@@ -14,6 +14,8 @@ export default defineConfig({
       provider: "v8",
       include: ["src/core/**/*.ts"],
       reportsDirectory: "coverage",
+      // 门禁 2：pipeline 行覆盖率 ≥ 90%；全局下限防整体倒退
+      thresholds: { lines: 90, functions: 90, branches: 80 },
     },
   },
 });

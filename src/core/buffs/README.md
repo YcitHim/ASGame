@@ -15,10 +15,10 @@ Buff 结构、层数规则、tick 结算。规则依据 docs/03 §2（冻结规�
 | 污染 Pollution | 强度型 | 玩家侧双刃剑资源，满值反噬（结算点见 docs/03 §4 待拍板） |
 
 ## 待做清单
-- [ ] Buff 结构 `{ id, stacks, duration, hooks }`
-- [ ] 叠加规则实现：默认 stacks 累加 + duration 刷新，特例显式声明
-- [ ] tick 顺序按 docs/03 §3 实现，顺序有单测锚定
-- [ ] Buff 图标与文案 key 约定（ui 侧消费）
+- [x] Buff 结构 `{ id, stacks, duration }` + `BuffDefinition`（stacking / decayAt / potency / maxStacks）
+- [x] 叠加规则：默认 stacks 累加 + duration 刷新；易伤/虚弱 refreshOnly、污染 maxStacks 均显式声明
+- [x] tick 按 docs/03 §3 实现（turnStart 衰减计时型、强度型不受影响），有单测锚定
+- [ ] Buff 图标与文案 key 约定（S3 随战斗 UI 接入）
 
 ## 约束
 - Buff 对数值的影响只通过修饰符管线表达，不改任何基础字段

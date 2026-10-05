@@ -14,11 +14,11 @@
 | `fx` | 纯表现层抖动等（不影响逻辑） |
 
 ## 待做清单
-- [ ] 种子算法选型（建议 mulberry32 / splitmix 系，纯函数可序列化状态）
-- [ ] 流派生：`rootSeed + streamName → 独立流`，互不污染
-- [ ] API：`nextInt(min,max) / nextFloat() / pick(arr) / shuffle(arr) / weighted(entries)`
-- [ ] **洗牌必须走本模块**（任何地方不得自行 shuffle）
-- [ ] 流状态可快照/恢复（存档与回放用）
+- [x] 种子算法选型：mulberry32 状态机 + fnv1a/splitmix32 流派生（纯整数，可序列化）
+- [x] 流派生：`rootSeed + streamName → 独立流`，互不污染（有单测）
+- [x] API：`nextInt(min,max) / nextFloat() / pick(arr) / shuffle(arr) / weighted(entries)`
+- [x] **洗牌必须走本模块**（`RngStream.shuffle` 为唯一入口）
+- [x] 流状态可快照/恢复（`RngStream.snapshot / Rng.fromSnapshot`，有单测）
 
 ## 约束
 - 任一流内部逻辑变更不得影响其他流的序列——这是改地图不废回放的关键
