@@ -23,7 +23,7 @@ const router = useRouter();
 const store = useBattleStore();
 const settings = useSettingsStore();
 const stage = useTemplateRef<HTMLElement>("stage");
-useStageFit(stage);
+const { scale: stageScale } = useStageFit(stage);
 
 const game = loadGameContent();
 const showLog = ref(false);
@@ -294,24 +294,30 @@ function back(): void {
         </div>
       </div>
 
-      <!-- 拖拽幽灵卡 -->
-      <div
-        v-if="drag && drag.moved && ghostCard"
-        class="drag-ghost"
-        :style="{ left: drag.x + 'px', top: drag.y + 'px' }"
-      >
-        <CardView
-          :card-id="ghostCard.cardId"
-          :cost="ghostCard.cost"
-          :keywords="ghostCard.keywords"
-          :type="ghostCard.type"
-          :playable="true"
-          :selected="false"
-          :index="0"
-          :hand-count="1"
-          :enhancements="ghostCard.enhancements"
-        />
-      </div>
+      <!-- 拖拽幽灵卡：Teleport 到 body，避免被 .stage 的 transform 影响 fixed 坐标 -->
+      <Teleport to="body">
+        <div
+          v-if="drag && drag.moved && ghostCard"
+          class="drag-ghost"
+          :style="{
+            left: drag.x + 'px',
+            top: drag.y + 'px',
+            transform: `translate(-50%, -30%) rotate(-3deg) scale(${stageScale * 0.95})`,
+          }"
+        >
+          <CardView
+            :card-id="ghostCard.cardId"
+            :cost="ghostCard.cost"
+            :keywords="ghostCard.keywords"
+            :type="ghostCard.type"
+            :playable="true"
+            :selected="false"
+            :index="0"
+            :hand-count="1"
+            :enhancements="ghostCard.enhancements"
+          />
+        </div>
+      </Teleport>
 
       <div v-if="store.message" class="message">{{ store.message }}</div>
 
@@ -356,7 +362,6 @@ function back(): void {
   position: fixed;
   z-index: 60;
   pointer-events: none;
-  transform: translate(-50%, -50%) scale(0.9);
   filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.8));
 }
 

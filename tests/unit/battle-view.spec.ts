@@ -58,6 +58,14 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
     try {
       cardEl.dispatchEvent(new MouseEvent("pointerdown", { clientX: 100, clientY: 100, bubbles: true }));
       window.dispatchEvent(new MouseEvent("pointermove", { clientX: 220, clientY: 60, bubbles: true }));
+      await nextTick();
+
+      // 幽灵卡必须 Teleport 到 body（脱离 .stage 的 transform 坐标空间），且坐标跟随指针
+      const ghost = document.body.querySelector(".drag-ghost") as HTMLElement | null;
+      expect(ghost).not.toBeNull();
+      expect(ghost?.style.left).toBe("220px");
+      expect(ghost?.style.top).toBe("60px");
+
       window.dispatchEvent(new MouseEvent("pointerup", { clientX: 220, clientY: 60, bubbles: true }));
     } finally {
       (document as unknown as { elementFromPoint: unknown }).elementFromPoint = original;
