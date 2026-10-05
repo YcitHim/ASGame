@@ -36,4 +36,36 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
     store.skip();
     wrapper.unmount();
   });
+
+  it("拖拽卡牌到敌人身上 = 直接出牌", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
+    await nextTick();
+    await nextTick();
+
+    const store = useBattleStore();
+    store.skip();
+
+    const cards = wrapper.findAll(".card");
+    expect(cards.length).toBeGreaterThan(0);
+    const cardEl = cards[0].element as HTMLElement;
+    const enemyEl = wrapper.findAll(".enemy")[0].element as HTMLElement;
+    const enemyId = enemyEl.dataset.enemyId;
+
+    const original = document.elementFromPoint;
+    (document as unknown as { elementFromPoint: () => Element | null }).elementFromPoint = () => enemyEl;
+    try {
+      cardEl.dispatchEvent(new MouseEvent("pointerdown", { clientX: 100, clientY: 100, bubbles: true }));
+      window.dispatchEvent(new MouseEvent("pointermove", { clientX: 220, clientY: 60, bubbles: true }));
+      window.dispatchEvent(new MouseEvent("pointerup", { clientX: 220, clientY: 60, bubbles: true }));
+    } finally {
+      (document as unknown as { elementFromPoint: unknown }).elementFromPoint = original;
+    }
+
+    expect(enemyId).toBeTruthy();
+    store.skip();
+    expect(store.log.some((e) => e.type === "CardPlayed")).toBe(true);
+    wrapper.unmount();
+  });
 });

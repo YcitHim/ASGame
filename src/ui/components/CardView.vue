@@ -9,12 +9,13 @@ const props = defineProps<{
   type: string;
   playable: boolean;
   selected: boolean;
+  dragging?: boolean;
   index: number;
   handCount: number;
   enhancements?: number;
 }>();
 
-const emit = defineEmits<{ (e: "pick", index: number): void }>();
+const emit = defineEmits<{ (e: "grab", index: number, event: PointerEvent): void }>();
 
 const TYPE_LABEL: Record<string, string> = { attack: "攻击", skill: "技能", power: "能力", curse: "诅咒", status: "状态" };
 const KEYWORD_LABEL: Record<string, string> = {
@@ -45,9 +46,9 @@ const lift = computed(() => Math.abs(rotation.value) * 1.8);
 <template>
   <div
     class="card"
-    :class="{ 'not-playable': !playable, selected }"
+    :class="{ 'not-playable': !playable, selected, dragging }"
     :style="{ transform: `rotate(${rotation}deg) translateY(${lift}px)` }"
-    @click="emit('pick', index)"
+    @pointerdown="emit('grab', index, $event)"
   >
     <div class="cost">{{ cost }}</div>
     <div v-if="keywordLabels.includes('血契')" class="bloodcost">血契</div>
@@ -74,7 +75,14 @@ const lift = computed(() => Math.abs(rotation.value) * 1.8);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.65), inset 0 0 26px rgba(0, 0, 0, 0.55), 0 10px 26px rgba(0, 0, 0, 0.65);
   transform-origin: bottom center;
   transition: transform var(--dur-hover) ease-out, box-shadow var(--dur-hover) ease-out, filter var(--dur-hover) ease-out;
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
+}
+.card:active {
+  cursor: grabbing;
+}
+.card.dragging {
+  opacity: 0.35;
 }
 .card:hover {
   transform: translateY(-52px) scale(1.12) rotate(0deg) !important;

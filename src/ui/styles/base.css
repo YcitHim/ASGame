@@ -15,6 +15,8 @@ body {
   color: var(--ink-bone);
   font-family: var(--serif-body);
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -34,6 +36,7 @@ button {
   height: var(--stage-h);
   flex: none;
   transform-origin: center center;
+  transform: scale(var(--stage-scale, 1));
   background:
     radial-gradient(ellipse 90% 60% at 50% 30%, rgba(58, 38, 28, 0.35), transparent 70%),
     radial-gradient(ellipse 120% 90% at 50% 110%, rgba(20, 14, 10, 0.9), transparent 60%),

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from "vue";
 import { useRouter } from "vue-router";
 import { cardEnergyCost, type BattleState } from "@/core/combat";
 import type { CardDefinition } from "@/core/registry";
@@ -77,13 +77,89 @@ watch(
   },
 );
 
-function pick(index: number): void {
-  store.selectCard(index);
-}
-
 function pickEnemy(enemyId: string): void {
   store.selectTarget(enemyId);
 }
+
+/* ---------- 拖拽出牌 ---------- */
+
+interface DragState {
+  index: number;
+  moved: boolean;
+  startX: number;
+  startY: number;
+  x: number;
+  y: number;
+  hoverEnemy: string | null;
+}
+
+const drag = ref<DragState | null>(null);
+let dragCleanup: (() => void) | null = null;
+
+/** 命中光标下的存活敌人（拖拽松开时判定）。 */
+function enemyAt(x: number, y: number): string | null {
+  const el = typeof document.elementFromPoint === "function" ? document.elementFromPoint(x, y) : null;
+  const node = el?.closest?.("[data-enemy-id]") as HTMLElement | null;
+  const id = node?.dataset?.enemyId ?? null;
+  if (!id) return null;
+  const enemy = store.battle?.enemies.find((e) => e.id === id);
+  return enemy && enemy.hp > 0 ? id : null;
+}
+
+function endDrag(): void {
+  dragCleanup?.();
+  dragCleanup = null;
+}
+
+function onGrab(index: number, event: PointerEvent): void {
+  if (!canAct.value) return;
+  event.preventDefault();
+  endDrag();
+  drag.value = {
+    index,
+    moved: false,
+    startX: event.clientX,
+    startY: event.clientY,
+    x: event.clientX,
+    y: event.clientY,
+    hoverEnemy: null,
+  };
+
+  const move = (e: PointerEvent) => {
+    const d = drag.value;
+    if (!d) return;
+    if (!d.moved && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > 6) d.moved = true;
+    d.x = e.clientX;
+    d.y = e.clientY;
+    d.hoverEnemy = d.moved ? enemyAt(e.clientX, e.clientY) : null;
+  };
+
+  const up = (e: PointerEvent) => {
+    const d = drag.value;
+    endDrag();
+    drag.value = null;
+    if (!d) return;
+    if (!d.moved) {
+      // 轻点 = 选中手牌（需目标的卡进入瞄准模式）
+      store.selectCard(d.index);
+      return;
+    }
+    const enemyId = enemyAt(e.clientX, e.clientY);
+    // 拖到敌人身上 = 直接对该目标出牌；否则按无目标尝试（非目标卡可直接打出）
+    store.playCard(d.index, enemyId);
+  };
+
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+  dragCleanup = () => {
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+  };
+}
+
+onBeforeUnmount(endDrag);
+
+const ghostCard = computed(() => (drag.value ? hand.value[drag.value.index] : undefined));
 
 function intentLabel(id: string): string {
   return game.content.enemies.get(id)?.name ?? id;
@@ -120,7 +196,12 @@ function back(): void {
           v-for="enemy in enemies"
           :key="enemy.id"
           class="enemy"
-          :class="{ dead: enemy.hp <= 0, targetable: store.targeting !== null }"
+          :class="{
+            dead: enemy.hp <= 0,
+            targetable: store.targeting !== null || drag?.moved === true,
+            'drop-target': drag?.hoverEnemy === enemy.id,
+          }"
+          :data-enemy-id="enemy.id"
           @click="pickEnemy(enemy.id)"
         >
           <IntentIcon :intent="enemy.intent" />
@@ -180,10 +261,11 @@ function back(): void {
             :type="card.type"
             :playable="card.playable && canAct"
             :selected="store.targeting === index"
+            :dragging="drag?.index === index && drag?.moved === true"
             :index="index"
             :hand-count="hand.length"
             :enhancements="card.enhancements"
-            @pick="pick"
+            @grab="onGrab"
           />
         </div>
 
@@ -210,6 +292,25 @@ function back(): void {
           </div>
           <button class="endturn" :disabled="!canAct" @click="store.endTurn()">结束回合</button>
         </div>
+      </div>
+
+      <!-- 拖拽幽灵卡 -->
+      <div
+        v-if="drag && drag.moved && ghostCard"
+        class="drag-ghost"
+        :style="{ left: drag.x + 'px', top: drag.y + 'px' }"
+      >
+        <CardView
+          :card-id="ghostCard.cardId"
+          :cost="ghostCard.cost"
+          :keywords="ghostCard.keywords"
+          :type="ghostCard.type"
+          :playable="true"
+          :selected="false"
+          :index="0"
+          :hand-count="1"
+          :enhancements="ghostCard.enhancements"
+        />
       </div>
 
       <div v-if="store.message" class="message">{{ store.message }}</div>
@@ -241,10 +342,22 @@ function back(): void {
   animation: shake 0.2s ease-out;
 }
 @keyframes shake {
-  0%, 100% { transform: scale(1) translate(0, 0); }
-  25% { transform: scale(1) translate(-6px, 2px); }
-  50% { transform: scale(1) translate(5px, -2px); }
-  75% { transform: scale(1) translate(-3px, 1px); }
+  0%, 100% { transform: scale(var(--stage-scale, 1)) translate(0, 0); }
+  25% { transform: scale(var(--stage-scale, 1)) translate(-6px, 2px); }
+  50% { transform: scale(var(--stage-scale, 1)) translate(5px, -2px); }
+  75% { transform: scale(var(--stage-scale, 1)) translate(-3px, 1px); }
+}
+
+.enemy.drop-target .enemy-fig {
+  filter: drop-shadow(0 0 18px rgba(192, 57, 43, 1)) brightness(1.15);
+}
+
+.drag-ghost {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.9);
+  filter: drop-shadow(0 18px 26px rgba(0, 0, 0, 0.8));
 }
 
 .topbar {
