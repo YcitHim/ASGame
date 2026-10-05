@@ -147,7 +147,7 @@ export function loseHp(
   sink: EventSink,
   targetId: string,
   value: number,
-  reason: "bloodpact" | "pollution",
+  reason: "bloodpact" | "pollution" | "backlash",
 ): void {
   const unit = findUnit(draft, targetId);
   if (!unit || value <= 0) return;
@@ -221,7 +221,7 @@ export function changeCharge(draft: Draft, sink: EventSink, delta: number): void
   sink.emit("ChargeChanged", { targetId: PLAYER_ID, before, after, delta: after - before });
   if (after > CHARGE_LIMIT) {
     sink.emit("Overloaded", { targetId: PLAYER_ID, charge: after, backlash: CHARGE_BACKLASH });
-    loseHp(draft, sink, PLAYER_ID, CHARGE_BACKLASH, "pollution");
+    loseHp(draft, sink, PLAYER_ID, CHARGE_BACKLASH, "backlash");
     draft.player.charge = 0;
     sink.emit("ChargeChanged", { targetId: PLAYER_ID, before: after, after: 0, delta: -after });
   }

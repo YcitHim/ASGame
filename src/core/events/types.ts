@@ -50,7 +50,7 @@ export interface EventPayloadMap {
   };
   BlockGained: { targetId: string; value: number; total: number };
   BlockBroken: { targetId: string; value: number };
-  HpLost: { targetId: string; value: number; reason: "damage" | "bloodpact" | "pollution" };
+  HpLost: { targetId: string; value: number; reason: "damage" | "bloodpact" | "pollution" | "backlash" };
   HpHealed: { targetId: string; value: number; total: number; reason: "regen" | "card" | "relic" };
   BuffApplied: { targetId: string; buffId: string; stacks: number; duration: number | null };
   BuffTriggered: { targetId: string; buffId: string; stacks: number };
