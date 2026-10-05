@@ -1,0 +1,7 @@
+{
+  "card.bloodbolt.name": "血之螺栓",
+  "card.bloodbolt.desc": "卖 2 血。造成 9 点伤害。HP<50% 时额外抽 1 张。",
+  "card.bloodbolt.flavor": "以血为引，以锈为媒。",
+  "enh.bloodboil.name": "低血沸腾",
+  "enh.bloodboil.desc": "HP<50% 时，此牌改为三段伤害（40% / 30% / 30%），每段独立结算。"
+}

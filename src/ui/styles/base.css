@@ -1,0 +1,103 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  background: #000;
+  color: var(--ink-bone);
+  font-family: var(--serif-body);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* 全局舞台：1280×720 等比缩放（docs/08 §4） */
+.stage {
+  position: relative;
+  width: var(--stage-w);
+  height: var(--stage-h);
+  flex: none;
+  transform-origin: center center;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 30%, rgba(58, 38, 28, 0.35), transparent 70%),
+    radial-gradient(ellipse 120% 90% at 50% 110%, rgba(20, 14, 10, 0.9), transparent 60%),
+    var(--bg-abyss);
+  box-shadow: 0 0 120px rgba(0, 0, 0, 0.9) inset;
+  overflow: hidden;
+}
+
+.viewport {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 余烬粒子（docs/08 §1 克制原则：上限极低） */
+.ember {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--gold);
+  opacity: 0;
+  z-index: 1;
+  animation: ember-rise linear infinite;
+  pointer-events: none;
+}
+@keyframes ember-rise {
+  0% { transform: translateY(0); opacity: 0; }
+  12% { opacity: 0.5; }
+  80% { opacity: 0.25; }
+  100% { transform: translateY(-460px) translateX(24px); opacity: 0; }
+}
+
+/* 蚀刻金属框通用按钮 */
+.etch-btn {
+  font-family: var(--serif-title);
+  letter-spacing: 0.3em;
+  color: var(--ink-bone);
+  background: linear-gradient(180deg, #2a2116, #171208);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--edge-inner), 0 6px 18px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 2px #000;
+  transition: background var(--dur-hover) ease-out, color var(--dur-hover) ease-out;
+}
+.etch-btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, #3a2d1a, #1d1509);
+  color: #fff;
+}
+.etch-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+::selection {
+  background: rgba(138, 43, 31, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

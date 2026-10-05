@@ -1,0 +1,129 @@
+<script setup lang="ts">
+import { computed, useTemplateRef } from "vue";
+import { useRouter } from "vue-router";
+import EmberField from "@/ui/components/EmberField.vue";
+import { useStageFit } from "@/ui/composables/useStageFit";
+import { hasSlot } from "@/systems/save";
+
+const stage = useTemplateRef<HTMLElement>("stage");
+useStageFit(stage);
+const router = useRouter();
+const canContinue = computed(() => hasSlot("progress"));
+
+const menu = [
+  { key: "expedition", label: "开始远征", enabled: true },
+  { key: "continue", label: "继续远征", enabled: canContinue.value },
+  { key: "codex", label: "图鉴", enabled: false },
+  { key: "settings", label: "设置", enabled: true },
+] as const;
+
+function onMenu(key: (typeof menu)[number]["key"], enabled: boolean): void {
+  if (!enabled) return;
+  if (key === "settings") void router.push("/settings");
+  else if (key === "expedition" || key === "continue") void router.push("/expedition");
+}
+</script>
+
+<template>
+  <div class="viewport">
+    <div ref="stage" class="stage title-stage">
+      <EmberField />
+
+      <header class="brand">
+        <h1 class="title">锈 与 血</h1>
+        <p class="subtitle">RUST &amp; BLOOD · 血肉科技的远征</p>
+      </header>
+
+      <nav class="menu">
+        <button
+          v-for="item in menu"
+          :key="item.key"
+          class="etch-btn menu-item"
+          :disabled="!item.enabled"
+          :title="item.enabled ? item.label : item.label + '（尚未开放）'"
+          @click="onMenu(item.key, item.enabled)"
+        >
+          {{ item.label }}
+        </button>
+      </nav>
+
+      <footer class="foot">
+        <span>0.1 · 工程地基 S1</span>
+        <span class="dim">docs/08 令牌驱动 · 效果图 docs/mockups/battle-screen.html</span>
+      </footer>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.title-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.title-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 70% 60% at 50% 45%, transparent 60%, rgba(0, 0, 0, 0.7) 100%);
+}
+
+.brand {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+}
+
+.title {
+  font-family: var(--serif-title);
+  font-size: 76px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  color: var(--ink-bone);
+  text-shadow: 0 0 34px rgba(138, 43, 31, 0.55), 0 3px 4px #000;
+}
+
+.subtitle {
+  margin-top: 14px;
+  font-size: 12px;
+  letter-spacing: 0.42em;
+  color: var(--gold-dim);
+}
+
+.menu {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 58px;
+}
+
+.menu-item {
+  width: 268px;
+  padding: 13px 22px;
+  font-size: 15px;
+}
+
+.foot {
+  position: absolute;
+  bottom: 22px;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--ink-dim);
+}
+
+.foot .dim {
+  color: rgba(154, 144, 129, 0.55);
+}
+</style>

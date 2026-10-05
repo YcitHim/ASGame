@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>锈与血 · 战斗界面效果图（UI 基准稿）</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Noto+Serif+SC:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-abyss:#0D0B09; --bg-panel:#12100E; --bg-raised:#1C1915;
+  --ink-bone:#E8E0D0; --ink-dim:#9A9081;
+  --blood:#8A2B1F; --blood-hi:#C0392B;
+  --gold:#B08D4A; --gold-dim:#6E5836;
+  --rot:#5E7B4C; --steel:#6B7A8C;
+  --serif:"Cinzel","Noto Serif SC","STSong",serif;
+}
+*{margin:0;padding:0;box-sizing:border-box;user-select:none}
+html,body{height:100%;background:#000;overflow:hidden;font-family:var(--serif);color:var(--ink-bone)}
+#viewport{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#stage{width:1280px;height:720px;position:relative;flex:none;transform-origin:center center;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 30%, rgba(58,38,28,.35), transparent 70%),
+    radial-gradient(ellipse 120% 90% at 50% 110%, rgba(20,14,10,.9), transparent 60%),
+    var(--bg-abyss);
+  box-shadow:0 0 120px rgba(0,0,0,.9) inset;
+  overflow:hidden}
+
+/* 低血量血色渐晕（失控线激活） */
+#stage::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:40;
+  background:radial-gradient(ellipse 75% 70% at 50% 50%, transparent 62%, rgba(138,43,31,.38) 100%);
+  animation:pulse 2.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.75}50%{opacity:1}}
+
+/* 余烬 */
+.ember{position:absolute;width:3px;height:3px;border-radius:50%;background:#B08D4A;opacity:0;z-index:1;
+  animation:rise linear infinite}
+@keyframes rise{0%{transform:translateY(0);opacity:0}12%{opacity:.5}80%{opacity:.25}100%{transform:translateY(-460px) translateX(24px);opacity:0}}
+
+/* 顶栏 */
+#topbar{position:absolute;top:0;left:0;right:0;height:34px;z-index:30;display:flex;align-items:center;
+  justify-content:space-between;padding:0 18px;font-size:12px;letter-spacing:.18em;color:var(--ink-dim);
+  background:linear-gradient(180deg,rgba(10,8,6,.9),transparent);
+  border-bottom:1px solid rgba(110,88,54,.25)}
+#topbar .r{display:flex;gap:16px}
+#topbar .r span{cursor:pointer}
+#topbar .r span:hover{color:var(--gold)}
+
+/* ============ 敌人区 ============ */
+#enemy-zone{position:absolute;top:56px;left:0;right:0;height:290px;display:flex;justify-content:center;z-index:10}
+.enemy{position:relative;width:300px;text-align:center}
+.intent{position:absolute;top:-6px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:7px;
+  background:rgba(18,16,14,.92);border:1px solid rgba(176,141,74,.5);padding:4px 12px 4px 8px;border-radius:3px;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.6);z-index:5}
+.intent .num{font-size:19px;color:var(--ink-bone);text-shadow:0 0 6px rgba(192,57,43,.6)}
+.intent .sub{font-size:10px;color:var(--ink-dim);letter-spacing:.1em}
+.enemy-fig{margin-top:26px;height:170px;display:flex;align-items:flex-end;justify-content:center;
+  filter:drop-shadow(0 18px 14px rgba(0,0,0,.75))}
+.ground-shadow{width:210px;height:20px;margin:-8px auto 0;border-radius:50%;
+  background:radial-gradient(ellipse,rgba(0,0,0,.8),transparent 70%)}
+.enemy-name{font-size:15px;letter-spacing:.3em;margin-top:6px;color:var(--ink-bone)}
+.enemy-title{font-size:10px;letter-spacing:.24em;color:var(--ink-dim);margin-top:2px}
+.hpbar{position:relative;width:240px;height:14px;margin:8px auto 0;background:#0a0806;
+  border:1px solid rgba(176,141,74,.45);box-shadow:inset 0 0 0 1px rgba(0,0,0,.7)}
+.hpfill{height:100%;background:linear-gradient(180deg,#a33724,#6e1f12);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.hptext{position:absolute;inset:0;font-size:10px;line-height:14px;letter-spacing:.1em;color:var(--ink-bone);text-shadow:0 1px 2px #000}
+.blockbadge{position:absolute;left:-30px;top:-5px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+  font-size:12px;color:#D8E2EC}
+.buffrow{display:flex;justify-content:center;gap:6px;margin-top:7px}
+.buff{width:26px;height:26px;background:var(--bg-raised);border:1px solid rgba(110,88,54,.5);border-radius:3px;
+  display:flex;align-items:center;justify-content:center;position:relative}
+.buff i{position:absolute;right:-4px;bottom:-5px;font-style:normal;font-size:10px;color:var(--gold)}
+/* 飘出的伤害数字 */
+.dmgfloat{position:absolute;top:52px;left:50%;font-size:38px;color:var(--ink-bone);
+  text-shadow:0 0 12px rgba(192,57,43,.9),0 2px 2px #000;opacity:0;z-index:6;
+  animation:dmg 3.2s ease-out infinite}
+@keyframes dmg{0%,62%{opacity:0;transform:translate(-50%,10px) scale(.6)}
+  68%{opacity:1;transform:translate(-50%,0) scale(1.25)}
+  76%{transform:translate(-50%,-4px) scale(1)}
+  92%{opacity:1}100%{opacity:0;transform:translate(-50%,-34px)}}
+
+/* ============ 战场带：玩家状态 + 污染仪表 ============ */
+#field-band{position:absolute;left:0;right:0;bottom:212px;height:110px;z-index:10;
+  display:flex;align-items:center;justify-content:space-between;padding:0 42px}
+.player-panel{width:340px;background:rgba(18,16,14,.82);border:1px solid rgba(176,141,74,.4);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.65), 0 8px 24px rgba(0,0,0,.5);padding:12px 16px;border-radius:3px}
+.pp-name{font-size:13px;letter-spacing:.28em;color:var(--ink-bone);margin-bottom:8px}
+.pp-name small{font-size:10px;color:var(--ink-dim);letter-spacing:.12em;margin-left:8px}
+.pp-hp{position:relative;height:18px;background:#0a0806;border:1px solid rgba(176,141,74,.45);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.7)}
+.pp-hp .hpfill{width:44%;background:linear-gradient(180deg,#a33724,#6e1f12)}
+.pp-hp .hptext{font-size:11px;line-height:18px}
+.limit-line{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--blood-hi);opacity:.9}
+.limit-line::after{content:"失控线";position:absolute;top:-15px;left:50%;transform:translateX(-50%);
+  font-size:9px;letter-spacing:.15em;color:var(--blood-hi);white-space:nowrap}
+.pp-sub{display:flex;align-items:center;gap:14px;margin-top:9px}
+.pp-block{display:flex;align-items:center;gap:5px;font-size:13px;color:#D8E2EC}
+.pp-buffs{display:flex;gap:6px}
+.gauge-wrap{width:150px;text-align:center}
+.gauge{width:92px;height:92px;margin:0 auto;border-radius:50%;position:relative;
+  background:conic-gradient(var(--rot) 0 65%, rgba(94,123,76,.14) 65% 100%);
+  box-shadow:0 0 18px rgba(94,123,76,.25)}
+.gauge::before{content:"";position:absolute;inset:9px;border-radius:50%;background:var(--bg-panel);
+  box-shadow:inset 0 0 12px rgba(0,0,0,.8)}
+.gauge .gv{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.gauge .gv b{font-size:21px;color:#A8C48E;font-weight:600}
+.gauge .gv span{font-size:9px;letter-spacing:.3em;color:var(--ink-dim);margin-top:2px}
+.gauge-label{font-size:10px;letter-spacing:.3em;color:var(--ink-dim);margin-top:6px}
+
+/* ============ 手牌区 ============ */
+#hand-zone{position:absolute;left:0;right:0;bottom:0;height:212px;z-index:20}
+#hand{position:absolute;left:50%;bottom:-16px;transform:translateX(-50%);display:flex;align-items:flex-end;height:230px}
+.card{width:170px;height:240px;flex:none;margin:0 -22px;position:relative;border-radius:5px;
+  background:linear-gradient(165deg,#1C1915 0%,#12100E 60%,#171310 100%);
+  border:1px solid rgba(176,141,74,.55);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.65), inset 0 0 26px rgba(0,0,0,.55), 0 10px 26px rgba(0,0,0,.65);
+  transform-origin:bottom center;transition:transform .15s ease-out, box-shadow .15s ease-out;cursor:pointer}
+.card:hover{transform:translateY(-52px) scale(1.12) rotate(0deg)!important;z-index:30;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.65), 0 0 0 1px rgba(176,141,74,.8), 0 22px 44px rgba(0,0,0,.8)}
+.card .cost{position:absolute;top:-11px;left:-11px;width:34px;height:34px;border-radius:50%;z-index:3;
+  background:radial-gradient(circle at 34% 30%,#3a2f1c,#171208);
+  border:1px solid var(--gold);box-shadow:0 0 10px rgba(176,141,74,.35), inset 0 0 6px #000;
+  display:flex;align-items:center;justify-content:center;font-size:17px;color:var(--gold)}
+.card .bloodcost{position:absolute;top:24px;left:-7px;display:flex;align-items:center;gap:2px;z-index:3;
+  font-size:10px;color:#E0705A}
+.card .art{height:96px;margin:10px 10px 0;border:1px solid rgba(110,88,54,.4);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(176,141,74,.16), transparent 62%),
+    linear-gradient(160deg,#241d15,#0f0d0a);
+  display:flex;align-items:center;justify-content:center;box-shadow:inset 0 0 14px rgba(0,0,0,.7)}
+.card .cname{text-align:center;font-size:15px;letter-spacing:.14em;margin-top:9px;color:var(--ink-bone)}
+.card .ctype{text-align:center;font-size:9px;letter-spacing:.22em;margin-top:3px;color:var(--gold-dim)}
+.card .ctext{margin:9px 12px 0;font-size:11px;line-height:1.65;color:var(--ink-dim);text-align:center}
+.card .ctext b{color:var(--ink-bone);font-weight:600}
+.card .ctext em{font-style:normal;color:var(--blood-hi)}
+.card .ctext u{text-decoration:none;color:var(--gold)}
+.card .enhslots{position:absolute;bottom:6px;left:0;right:0;display:flex;justify-content:center;gap:5px}
+.enhslots i{width:10px;height:10px;border:1px solid var(--gold-dim);transform:rotate(45deg);background:rgba(176,141,74,.12)}
+.enhslots i.on{background:var(--blood-hi);border-color:var(--blood-hi);box-shadow:0 0 6px rgba(192,57,43,.7)}
+/* 失控线激活卡 */
+.card.frenzy{border-color:rgba(192,57,43,.85);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.65), 0 0 16px rgba(192,57,43,.4), 0 10px 26px rgba(0,0,0,.65)}
+.card.frenzy .cname{color:#F0B4A8}
+.frenzy-tag{position:absolute;top:6px;right:8px;font-size:9px;letter-spacing:.12em;color:var(--blood-hi);
+  border:1px solid rgba(192,57,43,.5);padding:1px 5px;border-radius:2px;background:rgba(60,16,10,.5)}
+/* 关键词 Tooltip */
+.tip{position:absolute;bottom:106%;left:50%;transform:translateX(-50%) scale(.96);width:180px;z-index:40;
+  background:var(--bg-raised);border:1px solid rgba(176,141,74,.55);box-shadow:0 12px 30px rgba(0,0,0,.8), inset 0 0 0 1px rgba(0,0,0,.6);
+  padding:9px 11px;border-radius:3px;opacity:0;pointer-events:none;transition:opacity .12s;font-size:10px;line-height:1.6;color:var(--ink-dim)}
+.tip b{color:var(--blood-hi);letter-spacing:.1em}
+.card:hover .tip{opacity:1;transform:translateX(-50%) scale(1)}
+
+/* 能量球 / 血契指示 */
+#energy{position:absolute;left:34px;bottom:26px;z-index:25;text-align:center}
+.orb{width:64px;height:64px;border-radius:50%;position:relative;
+  background:radial-gradient(circle at 36% 30%, #4a3a1e, #171208 68%);
+  border:1px solid var(--gold);box-shadow:0 0 16px rgba(176,141,74,.35), inset 0 0 12px #000;
+  display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--gold)}
+.orb small{font-size:11px;color:var(--ink-dim)}
+.pact{margin-top:8px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:10px;color:#E0705A;letter-spacing:.1em}
+
+/* 牌堆 / 结束回合 */
+#piles{position:absolute;right:34px;bottom:26px;z-index:25;display:flex;align-items:flex-end;gap:14px}
+.pile{width:52px;height:72px;background:linear-gradient(160deg,#1C1915,#0f0d0a);
+  border:1px solid rgba(176,141,74,.45);border-radius:3px;position:relative;cursor:pointer;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.6), 3px 3px 0 rgba(0,0,0,.4), 6px 6px 0 rgba(0,0,0,.25);
+  display:flex;align-items:center;justify-content:center}
+.pile b{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--ink-dim);font-weight:400}
+.pile span{font-size:16px;color:var(--gold)}
+#endturn{margin-left:10px;padding:12px 22px;font-family:var(--serif);font-size:14px;letter-spacing:.3em;
+  color:var(--ink-bone);background:linear-gradient(180deg,#2a2116,#171208);
+  border:1px solid var(--gold);border-radius:3px;cursor:pointer;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.6), 0 6px 18px rgba(0,0,0,.5);text-shadow:0 1px 2px #000}
+#endturn:hover{background:linear-gradient(180deg,#3a2d1a,#1d1509);color:#fff}
+.caption{position:absolute;left:50%;bottom:4px;transform:translateX(-50%);font-size:10px;color:rgba(154,144,129,.5);letter-spacing:.2em;z-index:5}
+</style>
+</head>
+<body>
+<div id="viewport"><div id="stage">
+
+  <div class="ember" style="left:18%;bottom:40px;animation-duration:9s;animation-delay:0s"></div>
+  <div class="ember" style="left:34%;bottom:20px;animation-duration:12s;animation-delay:2s"></div>
+  <div class="ember" style="left:63%;bottom:60px;animation-duration:10s;animation-delay:4s"></div>
+  <div class="ember" style="left:81%;bottom:30px;animation-duration:13s;animation-delay:1s"></div>
+  <div class="ember" style="left:47%;bottom:15px;animation-duration:11s;animation-delay:6s"></div>
+
+  <div id="topbar">
+    <span>第一幕 · 锈蚀回廊 &nbsp;—&nbsp; 节点 4 / 6 · 锻造祭坛之后</span>
+    <div class="r"><span>日志</span><span>图鉴</span><span>设置</span></div>
+  </div>
+
+  <!-- 敌人区 -->
+  <div id="enemy-zone">
+    <div class="enemy">
+      <div class="intent">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C0392B" stroke-width="1.6" stroke-linecap="round">
+          <path d="M4 20 L16 8 M14 4 L20 4 L20 10 M7 13 L11 17"/></svg>
+        <span class="num">6×2</span><span class="sub">攻击</span>
+      </div>
+      <div class="dmgfloat">9</div>
+      <div class="enemy-fig">
+        <!-- 污染布道者：剪影立绘 -->
+        <svg width="170" height="170" viewBox="0 0 170 170">
+          <defs>
+            <linearGradient id="cloak" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#2b1d16"/><stop offset="1" stop-color="#120c08"/>
+            </linearGradient>
+          </defs>
+          <ellipse cx="85" cy="158" rx="52" ry="8" fill="rgba(0,0,0,.6)"/>
+          <path d="M85 18 C66 18 58 34 57 48 C56 60 52 68 46 78 C40 90 36 112 34 158 L136 158 C134 112 130 90 124 78 C118 68 114 60 113 48 C112 34 104 18 85 18 Z" fill="url(#cloak)" stroke="#3d2b1c" stroke-width="1.2"/>
+          <path d="M85 30 C74 30 68 40 68 50 C68 62 76 68 85 68 C94 68 102 62 102 50 C102 40 96 30 85 30 Z" fill="#0a0605"/>
+          <circle cx="78" cy="50" r="2.6" fill="#C0392B"><animate attributeName="opacity" values="1;.4;1" dur="3s" repeatCount="indefinite"/></circle>
+          <circle cx="92" cy="50" r="2.6" fill="#C0392B"><animate attributeName="opacity" values="1;.4;1" dur="3s" repeatCount="indefinite"/></circle>
+          <path d="M57 62 C48 74 44 96 43 128 M113 62 C122 74 126 96 127 128" stroke="#33241a" stroke-width="1.4" fill="none"/>
+          <g transform="translate(126,86)">
+            <line x1="0" y1="0" x2="14" y2="58" stroke="#4a3a26" stroke-width="2.4"/>
+            <g transform="translate(14,58)">
+              <animateTransform attributeName="transform" type="rotate" values="-8 0 0;8 0 0;-8 0 0" dur="4s" repeatCount="indefinite" additive="sum"/>
+              <line x1="0" y1="0" x2="0" y2="16" stroke="#4a3a26" stroke-width="1.2"/>
+              <circle cx="0" cy="22" r="6" fill="#171008" stroke="#6E5836" stroke-width="1.2"/>
+              <circle cx="0" cy="22" r="2.4" fill="#5E7B4C" opacity=".9"/>
+            </g>
+          </g>
+          <path d="M70 96 C74 104 96 104 100 96 L97 128 C92 134 78 134 73 128 Z" fill="#1c120c" stroke="#33241a" stroke-width="1"/>
+        </svg>
+      </div>
+      <div class="ground-shadow"></div>
+      <div class="enemy-name">污染布道者</div>
+      <div class="enemy-title">精英 · 锈蚀回廊的布道僧</div>
+      <div class="hpbar">
+        <div class="blockbadge">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="rgba(107,122,140,.35)" stroke="#8FA1B5" stroke-width="1.3">
+            <path d="M12 3 L20 6 V12 C20 17 16.5 20 12 21.5 C7.5 20 4 17 4 12 V6 Z"/></svg>
+          <span style="position:absolute;font-size:11px;color:#E8E0D0">9</span>
+        </div>
+        <div class="hpfill" style="width:71%"></div>
+        <div class="hptext">34 / 48</div>
+      </div>
+      <div class="buffrow">
+        <div class="buff" title="污染光环">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A8C48E" stroke-width="1.6">
+            <path d="M12 3 C12 3 6 11 6 15 A6 6 0 0 0 18 15 C18 11 12 3 12 3 Z"/></svg><i>∞</i>
+        </div>
+        <div class="buff" title="易伤">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C0392B" stroke-width="1.6">
+            <path d="M12 3 L20 6 V12 C20 17 16.5 20 12 21.5 C7.5 20 4 17 4 12 V6 Z M8 8 L16 16"/></svg><i>2</i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 战场带 -->
+  <div id="field-band">
+    <div class="player-panel">
+      <div class="pp-name">血械侍僧<small>HP 低于 50% — 失控线已激活</small></div>
+      <div class="pp-hp">
+        <div class="hpfill"></div>
+        <div class="limit-line"></div>
+        <div class="hptext">29 / 66</div>
+      </div>
+      <div class="pp-sub">
+        <div class="pp-block">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(107,122,140,.35)" stroke="#8FA1B5" stroke-width="1.3">
+            <path d="M12 3 L20 6 V12 C20 17 16.5 20 12 21.5 C7.5 20 4 17 4 12 V6 Z"/></svg>7
+        </div>
+        <div class="pp-buffs">
+          <div class="buff" title="力量"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B08D4A" stroke-width="1.7"><path d="M6 20 L12 14 M12 14 C10 12 10 9 12 7 C14 5 17 5 19 7 M12 14 L15 11"/></svg><i>2</i></div>
+          <div class="buff" title="再生"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A8C48E" stroke-width="1.7"><path d="M12 21 C12 14 12 9 12 4 M12 12 C9 12 7 10 7 7 C10 7 12 9 12 12 Z M12 9 C14 9 16 8 17 5 C14 5 12 7 12 9 Z"/></svg><i>2</i></div>
+          <div class="buff" title="红泪戒指"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C0392B" stroke-width="1.7"><circle cx="12" cy="14" r="6"/><path d="M12 2 L15 8 L12 6 L9 8 Z"/></svg><i>1</i></div>
+        </div>
+      </div>
+    </div>
+    <div class="gauge-wrap">
+      <div class="gauge"><div class="gv"><b>65</b><span>污 染</span></div></div>
+      <div class="gauge-label">临界 80 — 安全</div>
+    </div>
+  </div>
+
+  <!-- 手牌区 -->
+  <div id="hand-zone">
+    <div id="hand">
+      <div class="card" style="transform:rotate(-9deg) translateY(16px)">
+        <div class="cost">1</div>
+        <div class="bloodcost"><svg width="11" height="11" viewBox="0 0 24 24" fill="#C0392B"><path d="M12 2 C12 2 6 11 6 15 A6 6 0 0 0 18 15 C18 11 12 2 12 2 Z"/></svg>2</div>
+        <div class="art"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#8A2B1F" stroke-width="1.3"><circle cx="12" cy="12" r="8"/><path d="M12 4 V20 M4 12 H20 M7 7 L17 17 M17 7 L7 17"/></svg></div>
+        <div class="cname">血之螺栓</div>
+        <div class="ctype">攻击 · <span style="color:#C0392B">血契</span></div>
+        <div class="ctext"><em>卖 2 血</em>。造成 <b>9</b> 点伤害。<br><u>HP&lt;50%</u> 时额外抽 <b>1</b> 张。</div>
+        <div class="enhslots"><i class="on"></i><i class="on"></i><i></i></div>
+        <div class="tip"><b>血契</b> — 以自身 HP 为代价打出。此卡已附着 2 个强化：锋锐 · 低血沸腾（HP&lt;50% 时三连击）。</div>
+      </div>
+
+      <div class="card" style="transform:rotate(-4.5deg) translateY(4px)">
+        <div class="cost">1</div>
+        <div class="art"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6E5836" stroke-width="1.4"><path d="M4 20 L18 6 M15 3 L21 3 L21 9"/></svg></div>
+        <div class="cname">打击</div>
+        <div class="ctype">攻击</div>
+        <div class="ctext">造成 <b>6</b> 点伤害。</div>
+      </div>
+
+      <div class="card frenzy" style="transform:rotate(0deg)">
+        <div class="cost">2</div>
+        <div class="frenzy-tag">失控线激活</div>
+        <div class="art"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#C0392B" stroke-width="1.3"><path d="M12 2 C12 2 5 11 5 15.5 A7 7 0 0 0 19 15.5 C19 11 12 2 12 2 Z"/><path d="M12 9 C12 9 9 13 9 15.5 A3 3 0 0 0 15 15.5 C15 13 12 9 12 9 Z" fill="rgba(192,57,43,.35)"/></svg></div>
+        <div class="cname">红泪迸发</div>
+        <div class="ctype">攻击 · <span style="color:#C0392B">血契</span></div>
+        <div class="ctext">造成 <b>8</b> 点伤害。<br><u>HP&lt;50%</u> 时伤害 <em>翻倍</em>。</div>
+      </div>
+
+      <div class="card" style="transform:rotate(4.5deg) translateY(4px)">
+        <div class="cost">0</div>
+        <div class="bloodcost"><svg width="11" height="11" viewBox="0 0 24 24" fill="#C0392B"><path d="M12 2 C12 2 6 11 6 15 A6 6 0 0 0 18 15 C18 11 12 2 12 2 Z"/></svg>3</div>
+        <div class="art"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#8A2B1F" stroke-width="1.3"><path d="M4 12 H9 L11 7 L13 17 L15 12 H20"/></svg></div>
+        <div class="cname">输血</div>
+        <div class="ctype">技能 · <span style="color:#C0392B">血契</span></div>
+        <div class="ctext"><em>卖 3 血</em>。抽 <b>2</b> 张牌。</div>
+      </div>
+
+      <div class="card" style="transform:rotate(9deg) translateY(16px)">
+        <div class="cost">1</div>
+        <div class="art"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#6B7A8C" stroke-width="1.4"><path d="M12 3 L20 6 V12 C20 17 16.5 20 12 21.5 C7.5 20 4 17 4 12 V6 Z"/></svg></div>
+        <div class="cname">防御</div>
+        <div class="ctype">技能</div>
+        <div class="ctext">获得 <b>5</b> 点格挡。</div>
+      </div>
+    </div>
+
+    <div id="energy">
+      <div class="orb">2<small>/3</small></div>
+      <div class="pact"><svg width="10" height="10" viewBox="0 0 24 24" fill="#C0392B"><path d="M12 2 C12 2 6 11 6 15 A6 6 0 0 0 18 15 C18 11 12 2 12 2 Z"/></svg>血契 29/66</div>
+    </div>
+
+    <div id="piles">
+      <div class="pile"><span>12</span><b>抽牌堆</b></div>
+      <div class="pile"><span>7</span><b>弃牌堆</b></div>
+      <button id="endturn">结束回合</button>
+    </div>
+  </div>
+
+  <div class="caption">锈与血 · 0.1 UI 基准效果图 — docs/mockups/battle-screen.html</div>
+</div></div>
+<script>
+function fit(){
+  const s=Math.min(innerWidth/1280,innerHeight/720);
+  document.getElementById('stage').style.transform='scale('+s+')';
+}
+addEventListener('resize',fit);fit();
+</script>
+</body>
+</html>

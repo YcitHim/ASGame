@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: lint（含 G3 核心层确定性规则）
+        run: npm run lint
+      - name: typecheck
+        run: npm run typecheck
+      - name: content-validator（G1）
+        run: npm run validate
+      - name: unit tests（Vitest）
+        run: npm test
+      # golden replay 重放：S6 接入（tools/replay-viewer + tests/golden-replays）
+      # - name: golden replay
+      #   run: npm run test:replay
