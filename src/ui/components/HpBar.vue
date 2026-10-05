@@ -15,6 +15,8 @@ const props = withDefaults(
 );
 
 const pct = computed(() => Math.max(0, Math.min(100, (props.hp / Math.max(1, props.maxHp)) * 100)));
+/** 失控线已激活（HP 低于 50%）：此时填充退到中线左边，红色刻度反而清晰 */
+const limitActive = computed(() => props.showLimit && props.hp * 2 < props.maxHp);
 </script>
 
 <template>
@@ -26,7 +28,7 @@ const pct = computed(() => Math.max(0, Math.min(100, (props.hp / Math.max(1, pro
       <span>{{ block }}</span>
     </div>
     <div class="hpfill" :style="{ width: pct + '%' }" />
-    <div v-if="showLimit" class="limit-line" />
+    <div v-if="showLimit" class="limit-line" :class="{ active: limitActive }" />
     <div class="hptext" :class="{ 'align-left': showLimit }" :style="{ lineHeight: height + 'px' }">
       {{ hp }} / {{ maxHp }}
     </div>
@@ -76,25 +78,57 @@ const pct = computed(() => Math.max(0, Math.min(100, (props.hp / Math.max(1, pro
   font-size: 11px;
   color: #e8e0d0;
 }
+/* 刻度线用骨白，避免和红色填充同色（血量高时红线压红条 = 看不见） */
 .limit-line {
   position: absolute;
   left: 50%;
-  top: -3px;
-  bottom: -3px;
-  width: 1px;
-  background: var(--blood-hi);
-  opacity: 0.9;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  transform: translateX(-50%);
+  background: rgba(232, 224, 208, 0.9);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.75), 0 0 4px rgba(0, 0, 0, 0.85);
 }
+/* 顶部小三角，指向阈值 */
+.limit-line::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid rgba(232, 224, 208, 0.95);
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.9));
+}
+/* 标签做暗底金框徽标：红底 / 暗底都能读 */
 .limit-line::after {
   content: "失控线";
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(5px, -50%);
+  transform: translate(6px, -50%);
   font-size: 9px;
-  letter-spacing: 0.14em;
-  color: var(--blood-hi);
+  letter-spacing: 0.12em;
+  color: var(--ink-bone);
+  background: rgba(8, 6, 5, 0.86);
+  border: 1px solid rgba(176, 141, 74, 0.6);
+  border-radius: 2px;
+  padding: 1px 4px;
   white-space: nowrap;
-  opacity: 0.92;
+  text-shadow: 0 1px 2px #000;
+}
+/* 激活态才转血红并发光（此时填充已低于 50%，红线落在暗区） */
+.limit-line.active {
+  background: var(--blood-hi);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.75), 0 0 8px rgba(192, 57, 43, 0.85);
+}
+.limit-line.active::before {
+  border-top-color: var(--blood-hi);
+}
+.limit-line.active::after {
+  color: #ffd9d2;
+  border-color: rgba(192, 57, 43, 0.85);
+  background: rgba(40, 8, 6, 0.9);
 }
 </style>
