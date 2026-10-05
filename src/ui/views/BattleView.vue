@@ -482,7 +482,7 @@ function back(): void {
       <!-- 结算 -->
       <div v-if="store.over" class="result">
         <h2 :class="store.result">{{ store.result === "win" ? "胜 利" : "死 亡" }}</h2>
-        <p>{{ store.result === "win" ? "锈蚀回廊的敌人已被肃清。" : "血肉归还于锈。" }}</p>
+        <p>{{ store.result === "win" ? t("result.battleWin") : t("result.expeditionFail") }}</p>
         <div class="result-actions">
           <button v-if="store.result === 'win'" class="etch-btn" @click="goReward">继续</button>
           <button v-else class="etch-btn" @click="restartRun">重新远征</button>
