@@ -25,7 +25,8 @@ describe("reduce 主循环空转（2.2 / 门禁 2）", () => {
     const s0 = createBattleState(config());
     expect(s0.phase).toBe("battleStart");
     const r = reduce(s0, noop);
-    expect(r.events.map((e) => e.type)).toEqual(["BattleStarted", "CardsDrawn"]);
+    // 2 个敌人各揭示一次意图（无内容目录 → unknown）
+    expect(r.events.map((e) => e.type)).toEqual(["BattleStarted", "CardsDrawn", "IntentRevealed", "IntentRevealed"]);
     expect(r.state.phase).toBe("playerAction");
     expect(r.state.turn).toBe(1);
     expect(r.state.piles.hand).toHaveLength(5);
@@ -34,7 +35,13 @@ describe("reduce 主循环空转（2.2 / 门禁 2）", () => {
   it("EndTurn 产出 回合结束 → 回合开始 → 抽牌 的完整序列", () => {
     const r0 = reduce(createBattleState(config()), noop);
     const r1 = reduce(r0.state, endTurn(1));
-    expect(r1.events.map((e) => e.type)).toEqual(["TurnEnded", "TurnStarted", "CardsDrawn"]);
+    expect(r1.events.map((e) => e.type)).toEqual([
+      "TurnEnded",
+      "TurnStarted",
+      "CardsDrawn",
+      "IntentRevealed",
+      "IntentRevealed",
+    ]);
     expect(r1.state.turn).toBe(2);
     expect(r1.state.phase).toBe("playerAction");
     expect(r1.state.player.energy).toBe(3);

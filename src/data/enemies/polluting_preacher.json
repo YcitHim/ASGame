@@ -1,0 +1,40 @@
+{
+  "id": "polluting_preacher",
+  "i18n": "enemy.polluting_preacher",
+  "maxHp": 34,
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 5
+      },
+      "weight": 3,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "debuff",
+        "buffId": "weak",
+        "stacks": 1
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "debuff",
+        "buffId": "pollution",
+        "stacks": 15
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "charge",
+        "value": 2
+      },
+      "weight": 1
+    }
+  ]
+}

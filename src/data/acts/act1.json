@@ -1,0 +1,31 @@
+{
+  "id": "act1",
+  "i18n": "act.rusty_corridor",
+  "player": {
+    "maxHp": 66,
+    "energy": 3
+  },
+  "startDeck": [
+    "strike",
+    "strike",
+    "strike",
+    "strike",
+    "defend",
+    "defend",
+    "defend",
+    "defend",
+    "bloodbolt",
+    "bloodletting",
+    "redtear",
+    "bloodflail"
+  ],
+  "encounters": [
+    {
+      "id": "enc_1",
+      "enemies": [
+        "rust_hound",
+        "polluting_preacher"
+      ]
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/YOUR_GITHUB/rust-and-blood/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB/rust-and-blood/actions/workflows/ci.yml)
 
-> 当前状态：**S2 核心骨架已落地**（事件溯源主循环空转、分流 RNG、修饰符管线、栈式效果队列、Buff 层数规则）。
+> 当前状态：**S3 战斗可玩已落地**（回合状态机、出牌判定、六 Buff、关键词 v0、意图 AI + 3 敌人、调试控制台与战斗 UI）。
 > 推进基准：`docs/09-阶段任务分解.md`（阶段出口门禁全绿才前进），先读 `docs/`（尤其 01/02/03）。
 
 ## 开发命令

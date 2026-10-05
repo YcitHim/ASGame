@@ -4,28 +4,28 @@
 
 ## views/ · 页面
 - [x] 标题画面（开始远征 / 继续远征 / 图鉴占位 / 设置）—— S1 完成
-- [ ] 战斗页（布局见 docs/06 §2）
+- [x] 战斗页（布局按 docs/mockups/battle-screen.html，S3.7 初版）
 - [ ] 地图页（0.1 线性节点图）
 - [ ] 结算页（胜/负 + 奖励三选一）
 - [ ] 锻造祭坛（三选一，复用奖励界面骨架）
 - [x] 设置页（音量 / 倍速 / 语言占位 / 屏震开关）—— S1 完成，接 systems/save 持久化
 
 ## components/ · 组件
-- [ ] `Card`（框模板 + 强化槽显示 + 悬停浮起放大）
-- [ ] `HpBar` / `BlockBadge` / `EnergyOrb` / `PollutionGauge`（污染仪表）
-- [ ] `IntentIcon`（攻击/防御/Debuff/蓄力/未知）
-- [ ] `BuffRow`（层数与剩余回合）
-- [ ] `PileViewer`（抽/弃/消耗堆查看）
-- [ ] `DamageNumber` + 屏震指令接口
+- [x] `CardView`（框模板 + 强化槽 + 悬停浮起放大 + 扇形展开）
+- [x] `HpBar` / `EnergyOrb` / `PollutionGauge`（污染仪表，含临界呼吸红光）
+- [x] `IntentIcon`（攻击/防御/Debuff/蓄力/未知）
+- [x] `BuffRow`（层数与剩余回合）
+- [~] `PileViewer`（牌堆数量已显示；点击查看堆内清单顺延 S6）
+- [x] `DamageFloat` + 屏震指令接口（设置可关）
 
 ## anim-queue/ · 动画队列
-- [ ] 消费核心事件流：同 Action 事件为一组，组内并行、组间串行（docs/02 §6）
-- [ ] 卡牌移动 FLIP + transform，60fps 目标
-- [ ] 跳过 / 倍速 / 关屏震支持
+- [x] 消费核心事件流：同 Action 事件为一组，组内并行、组间串行（docs/02 §6）
+- [~] 卡牌移动 FLIP + transform —— 悬停/出牌 transform 已用，完整 FLIP 顺延 S6
+- [x] 跳过 / 倍速 / 关屏震支持
 
 ## fx/ · 打击感编排
-- [ ] 0.1：伤害数字、受击闪白、屏震、卡牌飞出/回手
-- [ ] 多段攻击（三连击）的分段动画时序
+- [~] 0.1：伤害数字 / 屏震已上；受击闪白、卡牌飞出/回手顺延 S6.1
+- [~] 多段攻击分段时序：事件与队列已按段下发，逐段节奏打磨顺延 S6.1
 - [ ] 0.5 才引入 PixiJS 粒子层，0.1 不留半成品接口
 
 ## 移动端

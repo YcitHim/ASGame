@@ -1,0 +1,359 @@
+/**
+ * core/combat/resolve · 战斗结算原语
+ *
+ * 所有数值走修饰符管线；所有状态变更发事件；本文件不出现具体卡牌特判
+ * （卡牌逻辑在 registry/handler 与 data JSON）。
+ */
+import { applyBuff, buffStacks, tickBuffs, type BuffInstance } from "../buffs";
+import type { EventSink } from "../events/event-sink";
+import { evaluateValue, type Modifier } from "../pipeline";
+import type { BuffId } from "../registry/ids";
+import type { CardEffect, ConditionNode, TargetRef } from "../registry/content";
+import { evaluateCondition, type ConditionContext } from "../registry/condition";
+import { getTarget } from "../registry/target";
+import { findUnit, livingEnemies, type Draft, type MutableUnit } from "./draft";
+
+export const POLLUTION_CRITICAL = 80;
+export const POLLUTION_MAX = 100;
+export const POLLUTION_BACKLASH = 10;
+export const POLLUTION_CRITICAL_DAMAGE = 2;
+export const CHARGE_LIMIT = 10;
+export const CHARGE_BACKLASH = 5;
+export const PLAYER_ID = "player";
+
+export function conditionContext(draft: Draft): ConditionContext {
+  return {
+    hp: draft.player.hp,
+    maxHp: draft.player.maxHp,
+    pollution: draft.player.pollution,
+    charge: draft.player.charge,
+    buffs: draft.player.buffs,
+    cardsPlayedThisTurn: draft.cardsPlayedThisTurn,
+    handSize: draft.hand.length,
+  };
+}
+
+export function unitBuffs(draft: Draft, id: string): readonly BuffInstance[] {
+  return findUnit(draft, id)?.buffs ?? [];
+}
+
+/** 攻击修饰：加区先于乘区由管线保证；此处只负责收集。 */
+export function attackModifiers(draft: Draft, actorId: string, targetId: string): Modifier[] {
+  const mods: Modifier[] = [];
+  const actor = unitBuffs(draft, actorId);
+  const target = unitBuffs(draft, targetId);
+
+  const strength = buffStacks(actor, "strength");
+  if (strength > 0) mods.push({ sourceId: "strength", layer: "buff", op: "add", value: strength });
+
+  if (actorId === PLAYER_ID && draft.player.charge > 0) {
+    mods.push({ sourceId: "charge", layer: "buff", op: "add", value: draft.player.charge });
+  }
+
+  if (buffStacks(actor, "weak") > 0) {
+    mods.push({ sourceId: "weak", layer: "buff", op: "mul", value: 0.75 });
+  }
+  if (buffStacks(target, "vulnerable") > 0) {
+    mods.push({ sourceId: "vulnerable", layer: "buff", op: "mul", value: 1.5 });
+  }
+  return mods;
+}
+
+export function resolveTargets(
+  draft: Draft,
+  ref: TargetRef | undefined,
+  actorId: string,
+  chosenTargetId: string | null,
+): string[] {
+  const fn = getTarget(ref?.type ?? "chosenEnemy");
+  return fn({
+    actorId,
+    chosenTargetId,
+    enemies: livingEnemies(draft).map((e) => ({ id: e.id, hp: e.hp })),
+    rng: draft.rng,
+  });
+}
+
+export interface DamageArgs {
+  sourceId: string;
+  actorId: string;
+  targetId: string;
+  base: number;
+  segment?: number;
+  segments?: number;
+  modifiers?: readonly Modifier[];
+}
+
+/** 单次伤害：基础值 → 修饰管线 → 格挡吸收 → HP → 死亡检查。 */
+export function dealDamage(draft: Draft, sink: EventSink, args: DamageArgs): void {
+  const target = findUnit(draft, args.targetId);
+  if (!target || target.hp <= 0) return;
+
+  const evaluated = evaluateValue(
+    "attackDamage",
+    args.base,
+    args.modifiers ?? attackModifiers(draft, args.actorId, args.targetId),
+  );
+  const value = evaluated.value;
+  const blocked = Math.min(target.block, value);
+  const hpLost = value - blocked;
+  target.block -= blocked;
+  if (blocked > 0 && target.block === 0) {
+    sink.emit("BlockBroken", { targetId: args.targetId, value: blocked });
+  }
+  target.hp = Math.max(0, target.hp - hpLost);
+
+  sink.emit("DamageDealt", {
+    sourceId: args.sourceId,
+    targetId: args.targetId,
+    base: args.base,
+    layers: evaluated.layers,
+    value,
+    blocked,
+    hpLost,
+    segment: args.segment ?? 1,
+    segments: args.segments ?? 1,
+  });
+  if (hpLost > 0) sink.emit("HpLost", { targetId: args.targetId, value: hpLost, reason: "damage" });
+  if (target.hp === 0) sink.emit("UnitDied", { unitId: args.targetId, clearedEffects: 0 });
+}
+
+export function gainBlock(draft: Draft, sink: EventSink, targetId: string, base: number): void {
+  const unit = findUnit(draft, targetId);
+  if (!unit || unit.hp <= 0) return;
+  const evaluated = evaluateValue("block", base, []);
+  unit.block += evaluated.value;
+  sink.emit("BlockGained", { targetId, value: evaluated.value, total: unit.block });
+}
+
+export function healUnit(
+  draft: Draft,
+  sink: EventSink,
+  targetId: string,
+  base: number,
+  reason: "regen" | "card" | "relic",
+): void {
+  const unit = findUnit(draft, targetId);
+  if (!unit || unit.hp <= 0) return;
+  const evaluated = evaluateValue("heal", base, []);
+  const healed = Math.min(evaluated.value, unit.maxHp - unit.hp);
+  if (healed <= 0) return;
+  unit.hp += healed;
+  sink.emit("HpHealed", { targetId, value: healed, total: unit.hp, reason });
+}
+
+export function loseHp(
+  draft: Draft,
+  sink: EventSink,
+  targetId: string,
+  value: number,
+  reason: "bloodpact" | "pollution",
+): void {
+  const unit = findUnit(draft, targetId);
+  if (!unit || value <= 0) return;
+  const lost = Math.min(unit.hp, value);
+  unit.hp -= lost;
+  sink.emit("HpLost", { targetId, value: lost, reason });
+  if (unit.hp === 0) sink.emit("UnitDied", { unitId: targetId, clearedEffects: 0 });
+}
+
+export function applyBuffToTarget(
+  draft: Draft,
+  sink: EventSink,
+  targetId: string,
+  buffId: BuffId,
+  stacks: number,
+  duration: number | null,
+): void {
+  if (buffId === "pollution" && targetId === PLAYER_ID) {
+    changePollution(draft, sink, stacks);
+    return;
+  }
+  const unit = findUnit(draft, targetId);
+  if (!unit || unit.hp <= 0) return;
+  unit.buffs = applyBuff(unit.buffs, { id: buffId, stacks, duration });
+  const applied = unit.buffs.find((b) => b.id === buffId);
+  sink.emit("BuffApplied", {
+    targetId,
+    buffId,
+    stacks: applied?.stacks ?? stacks,
+    duration: applied?.duration ?? duration,
+  });
+}
+
+function setPollutionMirror(buffs: readonly BuffInstance[], value: number): BuffInstance[] {
+  const others = buffs.filter((b) => b.id !== "pollution");
+  return value > 0 ? [...others, { id: "pollution", stacks: value, duration: null }] : others;
+}
+
+/** 污染变化：满值立即反噬（docs/03 §4 决策），不延迟到回合开始。 */
+export function changePollution(draft: Draft, sink: EventSink, delta: number): void {
+  const before = draft.player.pollution;
+  const after = Math.max(0, Math.min(POLLUTION_MAX, before + delta));
+  draft.player.pollution = after;
+  draft.player.buffs = setPollutionMirror(draft.player.buffs, after);
+  sink.emit("PollutionChanged", {
+    targetId: PLAYER_ID,
+    before,
+    after,
+    delta: after - before,
+    critical: after >= POLLUTION_CRITICAL,
+  });
+
+  if (after >= POLLUTION_MAX && before < POLLUTION_MAX) {
+    draft.player.pollution = 0;
+    draft.player.buffs = setPollutionMirror(draft.player.buffs, 0);
+    sink.emit("PollutionChanged", {
+      targetId: PLAYER_ID,
+      before: after,
+      after: 0,
+      delta: -after,
+      critical: false,
+    });
+    loseHp(draft, sink, PLAYER_ID, POLLUTION_BACKLASH, "pollution");
+  }
+}
+
+export function changeCharge(draft: Draft, sink: EventSink, delta: number): void {
+  const before = draft.player.charge;
+  const after = Math.max(0, before + delta);
+  draft.player.charge = after;
+  sink.emit("ChargeChanged", { targetId: PLAYER_ID, before, after, delta: after - before });
+  if (after > CHARGE_LIMIT) {
+    sink.emit("Overloaded", { targetId: PLAYER_ID, charge: after, backlash: CHARGE_BACKLASH });
+    loseHp(draft, sink, PLAYER_ID, CHARGE_BACKLASH, "pollution");
+    draft.player.charge = 0;
+    sink.emit("ChargeChanged", { targetId: PLAYER_ID, before: after, after: 0, delta: -after });
+  }
+}
+
+/** 相位 tick：计时型衰减 + 汇总到期事件。 */
+export function tickAllBuffs(draft: Draft, sink: EventSink, timing: "turnStart" | "turnEnd"): void {
+  const playerTick = tickBuffs(draft.player.buffs, timing);
+  draft.player.buffs = [...playerTick.buffs];
+  for (const b of playerTick.expired) sink.emit("BuffExpired", { targetId: PLAYER_ID, buffId: b.id });
+
+  for (const enemy of draft.enemies) {
+    if (enemy.hp <= 0) continue;
+    const tick = tickBuffs(enemy.buffs, timing);
+    enemy.buffs = [...tick.buffs];
+    for (const b of tick.expired) sink.emit("BuffExpired", { targetId: enemy.id, buffId: b.id });
+  }
+}
+
+/** 再生：回合开始按层数回血。 */
+export function resolveRegeneration(draft: Draft, sink: EventSink): void {
+  for (const enemy of [draft.player, ...draft.enemies]) {
+    if (enemy.hp <= 0) continue;
+    const stacks = buffStacks(enemy.buffs, "regeneration");
+    if (stacks > 0) healUnit(draft, sink, enemy.id, stacks, "regen");
+  }
+}
+
+/** 污染临界：回合开始按临界惩罚掉血。 */
+export function resolvePollutionCritical(draft: Draft, sink: EventSink): void {
+  if (draft.player.pollution >= POLLUTION_CRITICAL) {
+    loseHp(draft, sink, PLAYER_ID, POLLUTION_CRITICAL_DAMAGE, "pollution");
+  }
+}
+
+/** 抽牌；堆空时把弃牌堆洗入（唯一合法洗牌入口）。 */
+export function drawCards(draft: Draft, sink: EventSink, count: number): string[] {
+  const drawn: string[] = [];
+  for (let i = 0; i < count; i += 1) {
+    if (draft.draw.length === 0) {
+      if (draft.discard.length === 0) break;
+      draft.draw = draft.rng.stream("combat").shuffle(draft.discard);
+      sink.emit("DeckShuffled", { from: "discard", count: draft.draw.length });
+      draft.discard = [];
+    }
+    const card = draft.draw.shift();
+    if (card === undefined) break;
+    draft.hand.push(card);
+    drawn.push(card);
+  }
+  sink.emit("CardsDrawn", { cardIds: drawn });
+  return drawn;
+}
+
+export interface EffectContext {
+  readonly sourceId: string;
+  readonly actorId: string;
+  readonly chosenTargetId: string | null;
+}
+
+function defaultTarget(effect: CardEffect): TargetRef {
+  if (effect.target) return effect.target;
+  if (effect.kind === "damage") return { type: "chosenEnemy" };
+  return { type: "self" };
+}
+
+/** 依次结算一张卡/一个意图的效果列表。 */
+export function resolveEffects(
+  draft: Draft,
+  sink: EventSink,
+  effects: readonly CardEffect[],
+  ctx: EffectContext,
+): void {
+  const damageTotal = effects.filter((e) => e.kind === "damage").length;
+  let damageIndex = 0;
+
+  for (const effect of effects) {
+    if (!evaluateCondition(effect.condition, conditionContext(draft))) continue;
+    const targets = resolveTargets(draft, defaultTarget(effect), ctx.actorId, ctx.chosenTargetId);
+    const value = effect.value ?? 0;
+
+    switch (effect.kind) {
+      case "damage": {
+        damageIndex += 1;
+        for (const t of targets) {
+          dealDamage(draft, sink, {
+            sourceId: ctx.sourceId,
+            actorId: ctx.actorId,
+            targetId: t,
+            base: value,
+            segment: damageIndex,
+            segments: damageTotal,
+          });
+        }
+        break;
+      }
+      case "block":
+        for (const t of targets) gainBlock(draft, sink, t, value);
+        break;
+      case "draw":
+        drawCards(draft, sink, value);
+        break;
+      case "heal":
+        for (const t of targets) healUnit(draft, sink, t, value, "card");
+        break;
+      case "applyBuff":
+        if (effect.buff) {
+          for (const t of targets) {
+            applyBuffToTarget(draft, sink, t, effect.buff as BuffId, effect.stacks ?? 1, 2);
+          }
+        }
+        break;
+      case "gainEnergy":
+        draft.player.energy += value;
+        break;
+      case "gainPollution":
+        changePollution(draft, sink, value);
+        break;
+      case "gainCharge":
+        changeCharge(draft, sink, value);
+        break;
+      default:
+        break;
+    }
+  }
+}
+
+/** 供外部（如 Buff 触发）判断条件用。 */
+export function checkCondition(node: ConditionNode | undefined, draft: Draft): boolean {
+  return evaluateCondition(node, conditionContext(draft));
+}
+
+export function unitOf(draft: Draft, id: string): MutableUnit | undefined {
+  return findUnit(draft, id);
+}

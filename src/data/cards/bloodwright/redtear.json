@@ -1,0 +1,32 @@
+{
+  "id": "redtear",
+  "class": "bloodwright",
+  "type": "attack",
+  "rarity": "uncommon",
+  "cost": 2,
+  "keywords": [
+    "bloodpact"
+  ],
+  "bloodCost": 1,
+  "effects": [
+    {
+      "kind": "damage",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 8
+    },
+    {
+      "kind": "damage",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 8,
+      "condition": {
+        "type": "hpBelow",
+        "percent": 50
+      }
+    }
+  ],
+  "i18n": "card.redtear"
+}

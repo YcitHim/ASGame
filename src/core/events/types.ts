@@ -8,7 +8,8 @@ import type { ModifierDetail } from "../pipeline/modifier-evaluator";
 
 export interface EnemySetup {
   readonly id: string;
-  readonly maxHp: number;
+  /** 省略时由 ContentDb 的敌人定义提供 */
+  readonly maxHp?: number;
 }
 
 export interface IntentPayload {
@@ -16,6 +17,8 @@ export interface IntentPayload {
   readonly value?: number;
   readonly hits?: number;
   readonly buffId?: string;
+  readonly stacks?: number;
+  readonly duration?: number;
 }
 
 export interface EventPayloadMap {

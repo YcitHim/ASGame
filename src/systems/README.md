@@ -17,7 +17,7 @@
 - [ ] 0.5/1.0 预留：分包 / 懒加载（首屏 < 3s 目标的挂载点）
 
 ## debug/ · 调试控制台（G4，W3 必须可用）
-- [ ] 指令：`give card <id>` / `set hp <n>` / `set energy <n>` / `add buff <id> <stacks>` / `goto node <id>` / `seed <n>`
-- [ ] 战斗日志面板：实时渲染事件流（含 DamageDealt 修饰层明细）
-- [ ] 队列可视化：效果栈当前挂起动作
-- [ ] 仅开发构建注入；**所有 bug 复现步骤用控制台指令描述**（团队约定）
+- [x] 指令：`noop` / `set hp` / `set energy` / `add buff` / `give card` / `draw` / `kill` / `seed`（`goto node` 随 S5 地图接入）
+- [x] 战斗日志面板：实时渲染事件流（DamageDealt 展开修饰层明细）
+- [~] 队列可视化：效果栈转储已具备（`EffectQueue.dump`），面板绘制顺延 S6
+- [x] 仅开发构建注入；**所有 bug 复现步骤用控制台指令描述**（团队约定）

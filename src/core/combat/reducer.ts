@@ -2,16 +2,24 @@
  * core/combat · reduce 主循环入口： (state, action) → { state', events[] }
  *
  * 纯函数：同样的 (state, action) 永远产出同样的 (state', events)。
- * 随机只从 core/rng 的分源流取；状态不可变。
- *
- * S2 范围：battleStart → turnStart → draw → playerAction 空转；
- * 出牌判定、敌人行动在 S3 接入（本文件保持骨架清晰，不塞半成品）。
+ * 相位流转（docs/02 §4）：
+ *   battleStart → [turnStart → draw → playerAction → enemyAction → turnEnd] × N → battleEnd
+ * 内部用 Draft 工作副本结算，输入 state 绝不被修改。
  */
 import type { Action } from "../actions";
-import { tickBuffs, type BuffInstance } from "../buffs";
 import type { DomainEvent } from "../events";
 import { EventSink } from "../events";
-import { Rng } from "../rng";
+import { isInnate, turnEndDestination } from "../keywords";
+import { executeDebugCommand } from "./debug";
+import { definitionOf, fromDraft, livingEnemies, toDraft, type Draft } from "./draft";
+import { generateIntents, runEnemyTurn } from "./enemy-turn";
+import { effectiveCard, playCard } from "./play-card";
+import {
+  drawCards,
+  resolvePollutionCritical,
+  resolveRegeneration,
+  tickAllBuffs,
+} from "./resolve";
 import type { BattleState } from "./state";
 
 export interface ReduceResult {
@@ -19,140 +27,130 @@ export interface ReduceResult {
   readonly events: readonly DomainEvent[];
 }
 
-/** 洗牌需要的流；同一 reduce 内复用同一 Rng 实例，结束时快照回状态。 */
-function combatRng(state: BattleState): Rng {
-  return Rng.fromSnapshot(state.rootSeed, state.rng);
-}
-
-function tickAllBuffs(
-  state: BattleState,
-  sink: EventSink,
-): { player: readonly BuffInstance[]; enemies: BattleState["enemies"] } {
-  const playerTick = tickBuffs(state.player.buffs, "turnStart");
-  for (const b of playerTick.expired) sink.emit("BuffExpired", { targetId: "player", buffId: b.id });
-
-  const enemies = state.enemies.map((e) => {
-    const tick = tickBuffs(e.buffs, "turnStart");
-    for (const b of tick.expired) sink.emit("BuffExpired", { targetId: e.id, buffId: b.id });
-    return { ...e, buffs: tick.buffs };
-  });
-
-  return { player: playerTick.buffs, enemies };
-}
-
-/** 从抽牌堆抽 count 张；堆空则把弃牌堆洗入（发 DeckShuffled）。 */
-function drawCards(
-  state: BattleState,
-  rng: Rng,
-  count: number,
-  sink: EventSink,
-): { draw: readonly string[]; discard: readonly string[]; hand: readonly string[]; drawn: readonly string[] } {
-  let draw = state.piles.draw.slice();
-  let discard = state.piles.discard.slice();
-  const hand = state.piles.hand.slice();
-  const drawn: string[] = [];
-
-  for (let i = 0; i < count; i += 1) {
-    if (draw.length === 0) {
-      if (discard.length === 0) break;
-      draw = rng.stream("combat").shuffle(discard);
-      sink.emit("DeckShuffled", { from: "discard", count: draw.length });
-      discard = [];
-    }
-    const card = draw.shift();
-    if (card === undefined) break;
-    hand.push(card);
-    drawn.push(card);
+/** 战斗开始：洗牌、固有词条优先入手、发初始手牌、揭示意图。 */
+function startBattle(draft: Draft, sink: EventSink): void {
+  draft.turn = 1;
+  const shuffled = draft.rng.stream("combat").shuffle(draft.draw);
+  const innate: string[] = [];
+  const rest: string[] = [];
+  for (const id of shuffled) {
+    const def = definitionOf(draft, id);
+    const instance = draft.cardInstances[id];
+    const keywords = def && instance ? effectiveCard(def, instance).keywords : [];
+    if (isInnate({ keywords })) innate.push(id);
+    else rest.push(id);
   }
+  const hand = [...innate, ...rest].slice(0, draft.handSize);
+  const handSet = new Set(hand);
+  draft.hand = hand;
+  draft.draw = shuffled.filter((id) => !handSet.has(id));
 
-  return { draw, discard, hand, drawn };
-}
-
-/** 战斗开始：洗牌、发初始手牌、发 BattleStarted，进入玩家行动。 */
-function startBattle(state: BattleState, sink: EventSink): BattleState {
-  const rng = combatRng(state);
-  const offered: readonly string[] = rng.stream("combat").shuffle(state.piles.draw);
-
-  const base: BattleState = {
-    ...state,
-    turn: 1,
-    piles: { ...state.piles, draw: offered, hand: [], discard: [] },
-    rng: rng.snapshot(),
-    phase: "playerAction",
-  };
-
-  // BattleStarted 先行：起始手牌 = 洗牌后的前 handSize 张（与随后 drawCards 结果一致）。
   sink.emit("BattleStarted", {
-    enemies: state.enemies.map((e) => ({ id: e.id, maxHp: e.maxHp })),
-    startingHand: offered.slice(0, base.handSize),
-    turn: base.turn,
+    enemies: draft.enemies.map((e) => ({ id: e.id, maxHp: e.maxHp })),
+    startingHand: hand,
+    turn: draft.turn,
   });
+  sink.emit("CardsDrawn", { cardIds: hand });
 
-  const drawn = drawCards(base, rng, base.handSize, sink);
-  sink.emit("CardsDrawn", { cardIds: drawn.drawn });
-
-  return {
-    ...base,
-    piles: { ...base.piles, draw: drawn.draw, hand: drawn.hand, discard: drawn.discard },
-    rng: rng.snapshot(),
-  };
+  generateIntents(draft, sink);
+  draft.phase = "playerAction";
 }
 
-/** 结束回合 → 敌人行动（S2 无敌人行动）→ turnEnd → 下一回合 turnStart + 抽牌。 */
-function endTurn(state: BattleState, sink: EventSink): BattleState {
-  const rng = combatRng(state);
-  sink.emit("TurnEnded", { turn: state.turn });
+/** 回合结束的手牌关键词结算：保留 / 虚无 / 弃置。 */
+function resolveHandAtTurnEnd(draft: Draft, sink: EventSink): void {
+  const retained: string[] = [];
+  for (const instanceId of draft.hand) {
+    const def = definitionOf(draft, instanceId);
+    const instance = draft.cardInstances[instanceId];
+    if (!def || !instance) {
+      draft.discard.push(instanceId);
+      continue;
+    }
+    const eff = effectiveCard(def, instance);
+    const destination = turnEndDestination({ keywords: eff.keywords, bloodCost: eff.bloodCost });
+    if (destination === "retain") {
+      retained.push(instanceId);
+      sink.emit("CardRetained", { cardId: instance.cardId });
+    } else if (destination === "exhaust") {
+      draft.exhaust.push(instanceId);
+      sink.emit("CardExhausted", { cardId: instance.cardId });
+    } else {
+      draft.discard.push(instanceId);
+    }
+  }
+  draft.hand = retained;
+}
 
-  // 回合结束：手牌进入弃牌堆（保留/虚无等关键词由 S3 接管）
-  const discarded = [...state.piles.discard, ...state.piles.hand];
-  const ticked = tickAllBuffs({ ...state, turn: state.turn + 1 }, sink);
+function checkBattleEnd(draft: Draft, sink: EventSink): boolean {
+  if (draft.phase === "battleEnd") return true;
+  if (draft.player.hp <= 0) {
+    draft.phase = "battleEnd";
+    sink.emit("BattleEnded", { result: "lose", rewardsSeed: 0 });
+    return true;
+  }
+  if (livingEnemies(draft).length === 0) {
+    draft.phase = "battleEnd";
+    const rewardsSeed = draft.rng.stream("reward").nextInt(0, 0xffffffff);
+    sink.emit("BattleEnded", { result: "win", rewardsSeed });
+    return true;
+  }
+  return false;
+}
 
-  // 回合开始：能量重置、格挡清零（docs/03 §3 第 3 步，已拍板）
-  const started: BattleState = {
-    ...state,
-    turn: state.turn + 1,
-    phase: "playerAction",
-    player: {
-      ...state.player,
-      energy: state.player.maxEnergy,
-      block: 0,
-      buffs: ticked.player,
-    },
-    enemies: ticked.enemies.map((e) => ({ ...e, block: 0 })),
-    piles: { ...state.piles, hand: [], discard: discarded },
-  };
-  sink.emit("TurnStarted", { turn: started.turn });
+/** 结束回合 → 敌人行动 → 下一回合 turnStart → 抽牌 → 揭示意图。 */
+function endTurn(draft: Draft, sink: EventSink): void {
+  draft.phase = "turnEnd";
+  resolveHandAtTurnEnd(draft, sink);
+  tickAllBuffs(draft, sink, "turnEnd");
+  sink.emit("TurnEnded", { turn: draft.turn });
 
-  const drawn = drawCards(started, rng, started.handSize, sink);
-  sink.emit("CardsDrawn", { cardIds: drawn.drawn });
+  draft.phase = "enemyAction";
+  runEnemyTurn(draft, sink);
+  if (checkBattleEnd(draft, sink)) return;
 
-  return {
-    ...started,
-    piles: { ...started.piles, draw: drawn.draw, discard: drawn.discard, hand: drawn.hand },
-    rng: rng.snapshot(),
-  };
+  draft.phase = "turnStart";
+  draft.turn += 1;
+  tickAllBuffs(draft, sink, "turnStart");
+  resolveRegeneration(draft, sink);
+  resolvePollutionCritical(draft, sink);
+  draft.player.energy = draft.player.maxEnergy;
+  draft.player.block = 0;
+  for (const enemy of draft.enemies) enemy.block = 0;
+  draft.cardsPlayedThisTurn = 0;
+  sink.emit("TurnStarted", { turn: draft.turn });
+
+  draft.phase = "draw";
+  drawCards(draft, sink, Math.max(0, draft.handSize - draft.hand.length));
+
+  draft.phase = "playerAction";
+  generateIntents(draft, sink);
 }
 
 export function reduce(state: BattleState, action: Action): ReduceResult {
   const sink = new EventSink(state.eventSeq, action.actionId);
-  let next = state;
+  const draft = toDraft(state);
 
-  if (next.phase === "battleStart") {
-    next = startBattle(next, sink);
-  }
+  if (draft.phase === "battleStart") startBattle(draft, sink);
 
   switch (action.type) {
+    case "PlayCard":
+      if (draft.phase === "playerAction") {
+        playCard(draft, sink, action.handIndex, action.targetId ?? null);
+      }
+      break;
     case "EndTurn":
-      if (next.phase === "playerAction") next = endTurn(next, sink);
+      if (draft.phase === "playerAction") endTurn(draft, sink);
+      break;
+    case "DebugCommand":
+      executeDebugCommand(draft, sink, action.command);
       break;
     case "Noop":
-    case "DebugCommand":
-      // 空转演示 / S3 接入调试指令
       break;
     default:
-      // PlayCard / 地图与奖励类 Action 在 S3 起逐步接入
       break;
   }
 
-  return { state: { ...next, eventSeq: sink.nextSeq }, events: sink.list() };
+  checkBattleEnd(draft, sink);
+  return { state: fromDraft(draft, sink.nextSeq), events: sink.list() };
 }
+

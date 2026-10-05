@@ -37,12 +37,25 @@ const effectSchema = z.discriminatedUnion("kind", [
       target: targetSchema.optional(),
       value: z.number().int().min(0),
       hits: z.number().int().min(1).optional(),
+      condition: conditionSchema.optional(),
     })
     .strict(),
-  z.object({ kind: z.literal("block"), value: z.number().int().min(0) }).strict(),
+  z
+    .object({
+      kind: z.literal("block"),
+      target: targetSchema.optional(),
+      value: z.number().int().min(0),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
   z.object({ kind: z.literal("draw"), value: z.number().int().min(0), condition: conditionSchema.optional() }).strict(),
   z
-    .object({ kind: z.literal("heal"), target: targetSchema.optional(), value: z.number().int().min(0) })
+    .object({
+      kind: z.literal("heal"),
+      target: targetSchema.optional(),
+      value: z.number().int().min(0),
+      condition: conditionSchema.optional(),
+    })
     .strict(),
   z
     .object({
@@ -50,11 +63,12 @@ const effectSchema = z.discriminatedUnion("kind", [
       buff: z.enum(BUFF_IDS),
       stacks: z.number().int().min(0),
       target: targetSchema.optional(),
+      condition: conditionSchema.optional(),
     })
     .strict(),
-  z.object({ kind: z.literal("gainEnergy"), value: z.number().int().min(0) }).strict(),
-  z.object({ kind: z.literal("gainPollution"), value: z.number().min(0) }).strict(),
-  z.object({ kind: z.literal("gainCharge"), value: z.number().min(0) }).strict(),
+  z.object({ kind: z.literal("gainEnergy"), value: z.number().int().min(0), condition: conditionSchema.optional() }).strict(),
+  z.object({ kind: z.literal("gainPollution"), value: z.number().min(0), condition: conditionSchema.optional() }).strict(),
+  z.object({ kind: z.literal("gainCharge"), value: z.number().min(0), condition: conditionSchema.optional() }).strict(),
 ]);
 
 const playSchema = z
@@ -113,3 +127,43 @@ export type CardJson = z.infer<typeof cardSchema>;
 export type EnhancementJson = z.infer<typeof enhancementSchema>;
 
 export { ENHANCEMENT_TIERS };
+
+const enemyIntentSchema = z
+  .object({
+    intent: z
+      .object({
+        kind: z.enum(["attack", "defend", "debuff", "charge", "unknown"]),
+        value: z.number().int().min(0).optional(),
+        hits: z.number().int().min(1).optional(),
+        buffId: z.enum(BUFF_IDS).optional(),
+        stacks: z.number().int().min(1).optional(),
+        duration: z.number().int().min(1).optional(),
+      })
+      .strict(),
+    weight: z.number().min(0),
+    condition: conditionSchema.optional(),
+    maxConsecutive: z.number().int().min(1).optional(),
+  })
+  .strict();
+
+export const enemySchema = z
+  .object({
+    id: idSchema,
+    i18n: z.string(),
+    maxHp: z.number().int().min(1),
+    intents: z.array(enemyIntentSchema).min(1),
+  })
+  .strict();
+
+export const actSchema = z
+  .object({
+    id: idSchema,
+    i18n: z.string(),
+    player: z.object({ maxHp: z.number().int().min(1), energy: z.number().int().min(0) }).strict(),
+    startDeck: z.array(z.string().regex(ID_PATTERN)).min(1),
+    encounters: z.array(z.object({ id: idSchema, enemies: z.array(z.string().regex(ID_PATTERN)).min(1) }).strict()).min(1),
+  })
+  .strict();
+
+export type EnemyJson = z.infer<typeof enemySchema>;
+export type ActJson = z.infer<typeof actSchema>;

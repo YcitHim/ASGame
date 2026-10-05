@@ -1,5 +1,14 @@
 import type { ZodType } from "zod";
-import { cardSchema, enhancementSchema, type CardJson, type EnhancementJson } from "./schema";
+import {
+  actSchema,
+  cardSchema,
+  enemySchema,
+  enhancementSchema,
+  type ActJson,
+  type CardJson,
+  type EnemyJson,
+  type EnhancementJson,
+} from "./schema";
 
 export interface SourceFile {
   /** 相对仓库根的展示路径，报错定位用 */
@@ -16,6 +25,8 @@ export interface ValidationIssue {
 export interface ContentInput {
   cards: SourceFile[];
   enhancements: SourceFile[];
+  enemies?: SourceFile[];
+  acts?: SourceFile[];
   i18n: Record<string, string>;
 }
 
@@ -23,6 +34,8 @@ export interface ValidationResult {
   issues: ValidationIssue[];
   cards: CardJson[];
   enhancements: EnhancementJson[];
+  enemies: EnemyJson[];
+  acts: ActJson[];
 }
 
 function zodIssues(file: string, error: unknown): ValidationIssue[] {
@@ -48,83 +61,81 @@ export function validateContent(input: ContentInput): ValidationResult {
   const issues: ValidationIssue[] = [];
   const cards: CardJson[] = [];
   const enhancements: EnhancementJson[] = [];
+  const enemies: EnemyJson[] = [];
+  const acts: ActJson[] = [];
 
   parseAll(cardSchema, input.cards, cards, issues);
   parseAll(enhancementSchema, input.enhancements, enhancements, issues);
+  parseAll(enemySchema, input.enemies ?? [], enemies, issues);
+  parseAll(actSchema, input.acts ?? [], acts, issues);
 
   // 全局 id 唯一（docs/04 §4）
   const seen = new Map<string, string>();
-  for (const [kind, entries] of [
-    ["card", cards],
-    ["enhancement", enhancements],
-  ] as const) {
-    for (const e of entries) {
-      const key = `${kind}:${e.id}`;
-      const prev = seen.get(key);
-      if (prev) issues.push({ file: prev, path: "id", message: `id "${e.id}" 与 ${prev} 重复` });
-      else seen.set(key, kind === "card" ? `card ${e.id}` : `enhancement ${e.id}`);
-    }
-  }
-  // 卡牌与强化不得共用同一 id
-  const cardIds = new Set(cards.map((c) => c.id));
-  for (const e of enhancements) {
-    if (cardIds.has(e.id)) {
-      issues.push({ file: `enhancement ${e.id}`, path: "id", message: `强化 id "${e.id}" 与同名卡牌冲突` });
-    }
-  }
+  const checkId = (kind: string, id: string): void => {
+    const prev = seen.get(id);
+    if (prev) issues.push({ file: kind + " " + id, path: "id", message: `id "${id}" 与 ${prev} 重复` });
+    else seen.set(id, kind + " " + id);
+  };
+  for (const c of cards) checkId("card", c.id);
+  for (const e of enhancements) checkId("enhancement", e.id);
+  for (const e of enemies) checkId("enemy", e.id);
+  for (const a of acts) checkId("act", a.id);
 
-  // appliesTo 引用存在
-  const enhById = new Map(enhancements.map((e) => [e.id, e]));
+  // 强化 appliesTo / mutex 引用
+  const cardIds = new Set(cards.map((c) => c.id));
+  const enhIds = new Set(enhancements.map((e) => e.id));
   for (const e of enhancements) {
     for (const target of e.appliesTo) {
       if (!cardIds.has(target)) {
-        issues.push({
-          file: `enhancement ${e.id}`,
-          path: "appliesTo",
-          message: `引用了不存在的卡牌 "${target}"`,
-        });
+        issues.push({ file: `enhancement ${e.id}`, path: "appliesTo", message: `引用了不存在的卡牌 "${target}"` });
+      }
+    }
+    for (const other of e.mutex ?? []) {
+      if (!enhIds.has(other)) {
+        issues.push({ file: `enhancement ${e.id}`, path: "mutex", message: `互斥指向不存在的强化 "${other}"` });
       }
     }
   }
 
-  // mutex 对称
-  for (const e of enhancements) {
-    for (const other of e.mutex ?? []) {
-      const o = enhById.get(other);
-      if (!o) {
-        issues.push({ file: `enhancement ${e.id}`, path: "mutex", message: `互斥指向不存在的强化 "${other}"` });
-      } else if (!(o.mutex ?? []).includes(e.id)) {
-        issues.push({
-          file: `enhancement ${e.id}`,
-          path: "mutex",
-          message: `mutex 需互相对称："${other}" 未声明与 "${e.id}" 互斥`,
-        });
+  // act 引用：起手卡组与遭遇敌人
+  const enemyIds = new Set(enemies.map((e) => e.id));
+  for (const act of acts) {
+    for (const cardId of act.startDeck) {
+      if (!cardIds.has(cardId)) {
+        issues.push({ file: `act ${act.id}`, path: "startDeck", message: `引用了不存在的卡牌 "${cardId}"` });
       }
+    }
+    for (const enc of act.encounters) {
+      for (const enemyId of enc.enemies) {
+        if (!enemyIds.has(enemyId)) {
+          issues.push({ file: `act ${act.id}`, path: `encounters.${enc.id}`, message: `引用了不存在的敌人 "${enemyId}"` });
+        }
+      }
+    }
+    if (!(act.i18n in input.i18n)) {
+      issues.push({ file: `act ${act.id}`, path: "i18n", message: `文案缺失：zh-CN 无 "${act.i18n}"` });
     }
   }
 
   // i18n key 存在（docs/04 §4）
-  const keyOf = (raw: string | undefined, fallback: string): string => raw ?? fallback;
+  const requireKey = (file: string, key: string): void => {
+    if (!(key in input.i18n)) issues.push({ file, path: "i18n", message: `文案缺失：zh-CN 无 "${key}"` });
+  };
   for (const c of cards) {
-    const base = keyOf(c.i18n, `card.${c.id}`);
-    for (const suffix of [".name", ".desc"]) {
-      const key = base + suffix;
-      if (!(key in input.i18n)) {
-        issues.push({ file: `card ${c.id}`, path: `i18n`, message: `文案缺失：zh-CN 无 "${key}"` });
-      }
-    }
+    const base = c.i18n ?? `card.${c.id}`;
+    requireKey(`card ${c.id}`, base + ".name");
+    requireKey(`card ${c.id}`, base + ".desc");
   }
   for (const e of enhancements) {
-    const base = keyOf(e.i18n, `enh.${e.id}`);
-    for (const suffix of [".name", ".desc"]) {
-      const key = base + suffix;
-      if (!(key in input.i18n)) {
-        issues.push({ file: `enhancement ${e.id}`, path: `i18n`, message: `文案缺失：zh-CN 无 "${key}"` });
-      }
-    }
+    const base = e.i18n ?? `enh.${e.id}`;
+    requireKey(`enhancement ${e.id}`, base + ".name");
+    requireKey(`enhancement ${e.id}`, base + ".desc");
+  }
+  for (const e of enemies) {
+    requireKey(`enemy ${e.id}`, `enemy.${e.id}.name`);
   }
 
-  return { issues, cards, enhancements };
+  return { issues, cards, enhancements, enemies, acts };
 }
 
 /** 报错文本：带文件与字段定位（docs/05 G1 验收要求）。 */

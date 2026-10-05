@@ -1,0 +1,18 @@
+{
+  "id": "bloodletting",
+  "class": "bloodwright",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 0,
+  "keywords": [
+    "bloodpact"
+  ],
+  "bloodCost": 3,
+  "effects": [
+    {
+      "kind": "draw",
+      "value": 2
+    }
+  ],
+  "i18n": "card.bloodletting"
+}

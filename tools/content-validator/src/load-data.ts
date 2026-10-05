@@ -44,6 +44,8 @@ export function loadContent(): ContentInput {
   return {
     cards: loadJsonFiles(join(DATA_ROOT, "cards")),
     enhancements: loadJsonFiles(join(DATA_ROOT, "enhancements")),
+    enemies: loadJsonFiles(join(DATA_ROOT, "enemies")),
+    acts: loadJsonFiles(join(DATA_ROOT, "acts")),
     i18n,
   };
 }

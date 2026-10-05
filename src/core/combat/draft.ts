@@ -1,0 +1,153 @@
+/**
+ * core/combat · 工作副本（Draft）
+ *
+ * reducer 内部用它做可变结算，结束时一次性冻结成新的不可变 BattleState。
+ * 输入 state 绝不被修改（ADR-001）。
+ */
+import { Rng } from "../rng";
+import type { BuffInstance } from "../buffs";
+import type { ContentDb } from "../registry/content";
+import type { CardDefinition } from "../registry/content";
+import type { CardInstance, EnemyState, Phase, BattleState } from "./state";
+
+export interface MutableUnit {
+  readonly id: string;
+  readonly maxHp: number;
+  hp: number;
+  block: number;
+  buffs: BuffInstance[];
+}
+
+export interface MutablePlayer extends MutableUnit {
+  energy: number;
+  readonly maxEnergy: number;
+  pollution: number;
+  charge: number;
+}
+
+export interface MutableEnemy extends MutableUnit {
+  readonly name: string;
+  intent: EnemyState["intent"];
+  intentHistory: string[];
+}
+
+export interface Draft {
+  readonly battleId: string;
+  rootSeed: number;
+  readonly content: ContentDb;
+  readonly handSize: number;
+  rng: Rng;
+  turn: number;
+  phase: Phase;
+  eventSeq: number;
+  cardsPlayedThisTurn: number;
+  player: MutablePlayer;
+  enemies: MutableEnemy[];
+  draw: string[];
+  hand: string[];
+  discard: string[];
+  exhaust: string[];
+  cardInstances: Record<string, CardInstance>;
+}
+
+export function toDraft(state: BattleState): Draft {
+  return {
+    battleId: state.battleId,
+    rootSeed: state.rootSeed,
+    content: state.content,
+    handSize: state.handSize,
+    rng: Rng.fromSnapshot(state.rootSeed, state.rng),
+    turn: state.turn,
+    phase: state.phase,
+    eventSeq: state.eventSeq,
+    cardsPlayedThisTurn: state.cardsPlayedThisTurn,
+    player: {
+      id: "player",
+      hp: state.player.hp,
+      maxHp: state.player.maxHp,
+      block: state.player.block,
+      buffs: state.player.buffs.map((b) => ({ ...b })),
+      energy: state.player.energy,
+      maxEnergy: state.player.maxEnergy,
+      pollution: state.player.pollution,
+      charge: state.player.charge,
+    },
+    enemies: state.enemies.map((e) => ({
+      id: e.id,
+      name: e.name,
+      hp: e.hp,
+      maxHp: e.maxHp,
+      block: e.block,
+      buffs: e.buffs.map((b) => ({ ...b })),
+      intent: e.intent,
+      intentHistory: [...e.intentHistory],
+    })),
+    draw: [...state.piles.draw],
+    hand: [...state.piles.hand],
+    discard: [...state.piles.discard],
+    exhaust: [...state.piles.exhaust],
+    cardInstances: { ...state.cardInstances },
+  };
+}
+
+export function fromDraft(draft: Draft, eventSeq: number): BattleState {
+  return {
+    battleId: draft.battleId,
+    rootSeed: draft.rootSeed,
+    rng: draft.rng.snapshot(),
+    turn: draft.turn,
+    phase: draft.phase,
+    player: {
+      id: "player",
+      hp: draft.player.hp,
+      maxHp: draft.player.maxHp,
+      block: draft.player.block,
+      energy: draft.player.energy,
+      maxEnergy: draft.player.maxEnergy,
+      pollution: draft.player.pollution,
+      charge: draft.player.charge,
+      buffs: draft.player.buffs.map((b) => ({ ...b })),
+    },
+    enemies: draft.enemies.map((e) => ({
+      id: e.id,
+      name: e.name,
+      hp: e.hp,
+      maxHp: e.maxHp,
+      block: e.block,
+      buffs: e.buffs.map((b) => ({ ...b })),
+      intent: e.intent,
+      intentHistory: [...e.intentHistory],
+    })),
+    piles: {
+      draw: [...draft.draw],
+      hand: [...draft.hand],
+      discard: [...draft.discard],
+      exhaust: [...draft.exhaust],
+    },
+    cardInstances: { ...draft.cardInstances },
+    modifiers: [],
+    handSize: draft.handSize,
+    cardsPlayedThisTurn: draft.cardsPlayedThisTurn,
+    eventSeq,
+    content: draft.content,
+  };
+}
+
+export function findUnit(draft: Draft, id: string): MutableUnit | undefined {
+  if (id === "player") return draft.player;
+  return draft.enemies.find((e) => e.id === id);
+}
+
+export function livingEnemies(draft: Draft): MutableEnemy[] {
+  return draft.enemies.filter((e) => e.hp > 0);
+}
+
+export function instanceOf(draft: Draft, instanceId: string): CardInstance | undefined {
+  return draft.cardInstances[instanceId];
+}
+
+export function definitionOf(draft: Draft, instanceId: string): CardDefinition | undefined {
+  const instance = draft.cardInstances[instanceId];
+  if (!instance) return undefined;
+  return draft.content.cards.get(instance.cardId);
+}

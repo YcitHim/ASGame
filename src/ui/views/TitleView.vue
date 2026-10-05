@@ -20,7 +20,7 @@ const menu = [
 function onMenu(key: (typeof menu)[number]["key"], enabled: boolean): void {
   if (!enabled) return;
   if (key === "settings") void router.push("/settings");
-  else if (key === "expedition" || key === "continue") void router.push("/expedition");
+  else if (key === "expedition" || key === "continue") void router.push("/battle");
 }
 </script>
 

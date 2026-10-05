@@ -1,0 +1,23 @@
+{
+  "id": "bloodflail",
+  "class": "bloodwright",
+  "type": "attack",
+  "rarity": "uncommon",
+  "cost": 1,
+  "keywords": [
+    "exhaust"
+  ],
+  "play": {
+    "handler": "multihit",
+    "params": {
+      "hits": 3,
+      "split": [
+        0.4,
+        0.3,
+        0.3
+      ],
+      "value": 6
+    }
+  },
+  "i18n": "card.bloodflail"
+}

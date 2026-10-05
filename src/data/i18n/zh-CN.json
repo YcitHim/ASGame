@@ -2,6 +2,20 @@
   "card.bloodbolt.name": "血之螺栓",
   "card.bloodbolt.desc": "卖 2 血。造成 9 点伤害。HP<50% 时额外抽 1 张。",
   "card.bloodbolt.flavor": "以血为引，以锈为媒。",
+  "card.strike.name": "打击",
+  "card.strike.desc": "造成 6 点伤害。",
+  "card.defend.name": "防御",
+  "card.defend.desc": "获得 5 点格挡。",
+  "card.bloodletting.name": "输血",
+  "card.bloodletting.desc": "卖 3 血。抽 2 张牌。",
+  "card.redtear.name": "红泪迸发",
+  "card.redtear.desc": "卖 1 血。造成 8 点伤害；HP<50% 时再造成 8 点。",
+  "card.bloodflail.name": "血链",
+  "card.bloodflail.desc": "造成 3 段伤害（40% / 30% / 30%）。消耗。",
   "enh.bloodboil.name": "低血沸腾",
-  "enh.bloodboil.desc": "HP<50% 时，此牌改为三段伤害（40% / 30% / 30%），每段独立结算。"
+  "enh.bloodboil.desc": "HP<50% 时，此牌改为三段伤害（40% / 30% / 30%），每段独立结算。",
+  "enemy.rust_hound.name": "锈蚀猎犬",
+  "enemy.polluting_preacher.name": "污染布道者",
+  "enemy.rust_sentinel.name": "铁锈傀儡",
+  "act.rusty_corridor": "第一幕 · 锈蚀回廊"
 }

@@ -18,9 +18,9 @@
 | 再生 Regen | 回合开始回血 | onTurnStart |
 
 ## 待做清单
-- [ ] 关键词统一接口：注册 id + 钩子实现 + 文案 key
-- [ ] 每个关键词 × 每个钩子至少一个单测
-- [ ] 关键词在卡牌 JSON 中的参数化（如 `bloodCost`）
+- [x] 关键词统一接口：`KEYWORD_HOOKS`（afterPlay / inHandAtTurnEnd / innate / pactCost）+ 查询函数
+- [x] 每个生效关键词都有单测（消耗/保留/虚无/固有/血契 × 钩子）
+- [x] 关键词在卡牌 JSON 中的参数化（`bloodCost` + `keywords[]`，validator 校验已注册）
 
 ## 约束
 - 关键词之间不直接互相调用，交互通过触发器与管线完成
