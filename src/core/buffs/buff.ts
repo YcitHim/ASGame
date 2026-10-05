@@ -1,5 +1,13 @@
 import { buffDefinition } from "./definitions";
-import type { ApplyBuffInput, BuffInstance, BuffTickResult, BuffDecayTiming } from "./types";
+import type { ApplyBuffInput, BuffDefinition, BuffInstance, BuffTickResult, BuffDecayTiming } from "./types";
+
+/** 缺省时长：turns 型以参数为回合数；stacksAndTurns 型取定义默认值。 */
+function resolveDuration(def: BuffDefinition, input: ApplyBuffInput): number | null {
+  if (def.applyAs === "stacks") return null;
+  if (input.duration != null) return Math.max(1, input.duration);
+  if (def.applyAs === "turns") return Math.max(1, input.stacks);
+  return Math.max(1, def.defaultDuration ?? 2);
+}
 
 /** 刷新时长取较大值（后上的短时长不会缩短已有效果）。 */
 function refreshDuration(current: number | null, incoming: number | null | undefined): number | null {
@@ -11,6 +19,25 @@ function clampStacks(id: BuffInstance["id"], stacks: number): number {
   const def = buffDefinition(id);
   const capped = def.maxStacks == null ? stacks : Math.min(stacks, def.maxStacks);
   return capped < 0 ? 0 : capped;
+}
+
+/**
+ * 把「卡面参数」折算成 { stacks, duration }（策划 Q1：计时型层数 = 回合数）。
+ */
+export function buffApplication(
+  id: BuffInstance["id"],
+  amount: number,
+  explicitDuration?: number | null,
+): { stacks: number; duration: number | null } {
+  const def = buffDefinition(id);
+  switch (def.applyAs) {
+    case "stacks":
+      return { stacks: amount, duration: null };
+    case "turns":
+      return { stacks: 1, duration: Math.max(1, explicitDuration ?? amount) };
+    default:
+      return { stacks: amount, duration: Math.max(1, explicitDuration ?? def.defaultDuration ?? 2) };
+  }
 }
 
 export function findBuff(buffs: readonly BuffInstance[], id: BuffInstance["id"]): BuffInstance | undefined {
@@ -32,15 +59,15 @@ export function hasBuff(buffs: readonly BuffInstance[], id: BuffInstance["id"]):
 export function applyBuff(buffs: readonly BuffInstance[], input: ApplyBuffInput): BuffInstance[] {
   const def = buffDefinition(input.id);
   const existing = findBuff(buffs, input.id);
-  const incomingDuration = def.potency ? null : (input.duration ?? 1);
+  const incomingDuration = resolveDuration(def, input);
 
   if (!existing) {
     const fresh: BuffInstance = {
       id: input.id,
       stacks: clampStacks(input.id, input.stacks),
-      duration: def.potency ? null : incomingDuration,
+      duration: def.applyAs === "stacks" ? null : incomingDuration,
     };
-    if (fresh.stacks <= 0 && def.potency) return buffs.slice();
+    if (fresh.stacks <= 0 && def.applyAs === "stacks") return buffs.slice();
     return [...buffs, fresh];
   }
 

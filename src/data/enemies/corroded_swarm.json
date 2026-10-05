@@ -1,0 +1,24 @@
+{
+  "id": "corroded_swarm",
+  "i18n": "enemy.corroded_swarm",
+  "maxHp": 30,
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 4
+      },
+      "weight": 3,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "debuff",
+        "buffId": "pollution",
+        "stacks": 2
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    }
+  ]
+}

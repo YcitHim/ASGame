@@ -63,6 +63,7 @@ const effectSchema = z.discriminatedUnion("kind", [
       kind: z.literal("applyBuff"),
       buff: z.enum(BUFF_IDS),
       stacks: z.number().int().min(0),
+      duration: z.number().int().min(1).optional(),
       target: targetSchema.optional(),
       condition: conditionSchema.optional(),
     })

@@ -4,7 +4,8 @@
 import type { EventSink } from "../events/event-sink";
 import { generateIntent, intentToPayload } from "../intents";
 import type { BuffId } from "../registry/ids";
-import { applyBuffToTarget, conditionContext, dealDamage, gainBlock, PLAYER_ID } from "./resolve";
+import { enemyConditionContext } from "./resolve";
+import { applyBuffToTarget, dealDamage, gainBlock, PLAYER_ID } from "./resolve";
 import type { Draft } from "./draft";
 
 /** 为每个存活敌人抽取下回合意图并揭示。 */
@@ -18,7 +19,7 @@ export function generateIntents(draft: Draft, sink: EventSink): void {
       sink.emit("IntentRevealed", { enemyId: enemy.id, intent });
       continue;
     }
-    const roll = generateIntent(def, conditionContext(draft), enemy.intentHistory, draft.rng.stream("combat"));
+    const roll = generateIntent(def, enemyConditionContext(draft, enemy.id), enemy.intentHistory, draft.rng.stream("combat"));
     enemy.intent = roll.intent;
     enemy.intentHistory = [...enemy.intentHistory, roll.key];
     sink.emit("IntentRevealed", { enemyId: enemy.id, intent: roll.intent });
@@ -52,7 +53,7 @@ export function runEnemyTurn(draft: Draft, sink: EventSink): void {
         break;
       case "debuff":
         if (intent.buffId) {
-          applyBuffToTarget(draft, sink, PLAYER_ID, intent.buffId as BuffId, intent.stacks ?? 1, intent.duration ?? 2);
+          applyBuffToTarget(draft, sink, PLAYER_ID, intent.buffId as BuffId, intent.stacks ?? 1, intent.duration);
         }
         break;
       case "charge":

@@ -50,7 +50,7 @@ export function executeDebugCommand(draft: Draft, sink: EventSink, command: stri
       const id = tokens[2] as BuffId | undefined;
       const stacks = int(tokens[3]);
       if (!id || stacks === null) return { ok: false, message: "用法：add buff <id> <stacks> [duration]" };
-      const duration = tokens[4] === undefined ? null : int(tokens[4]);
+      const duration = tokens[4] === undefined ? undefined : int(tokens[4]);
       applyBuffToTarget(draft, sink, PLAYER_ID, id, stacks, duration);
       return { ok: true, message: `已施加 ${id} ×${stacks}` };
     }

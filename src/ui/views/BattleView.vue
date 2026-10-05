@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from "vue";
 import { useRouter } from "vue-router";
-import { cardEnergyCost, type BattleState } from "@/core/combat";
+import { previewEnergyCost, type BattleState } from "@/core/combat";
 import type { CardDefinition } from "@/core/registry";
 import { loadGameContent } from "@/data/load";
 import { useBattleStore } from "@/stores/battle";
@@ -44,10 +44,11 @@ const phase = computed(() => state.value?.phase ?? "battleStart");
 const canAct = computed(() => phase.value === "playerAction" && !store.playing && !store.over);
 
 const hand = computed(() =>
-  (state.value?.piles.hand ?? []).map((instanceId) => {
+  (state.value?.piles.hand ?? []).map((instanceId, index) => {
     const instance = state.value!.cardInstances[instanceId];
     const def: CardDefinition | undefined = game.content.cards.get(instance.cardId);
-    const cost = def ? cardEnergyCost(def, instance) : 99;
+    // 费用可能被强化改写，走 core 的真实费用预览
+    const cost = state.value ? previewEnergyCost(state.value, index) : 99;
     return {
       instanceId,
       cardId: instance.cardId,

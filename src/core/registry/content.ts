@@ -30,7 +30,10 @@ export interface CardEffect {
   readonly value?: number;
   readonly hits?: number;
   readonly buff?: BuffId;
+  /** 强度型=层数；计时型=回合数（策划 Q1） */
   readonly stacks?: number;
+  /** 计时型的显式回合数覆盖（再生等 stacksAndTurns 型） */
+  readonly duration?: number;
   /** 仅对该效果生效的条件（如 HP<50% 时抽牌） */
   readonly condition?: ConditionNode;
 }

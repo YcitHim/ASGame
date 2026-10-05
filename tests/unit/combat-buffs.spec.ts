@@ -79,11 +79,12 @@ describe("S3.3 六个基础 Buff 接入战斗结算", () => {
     expect(after.state.player.hp).toBe(59);
   });
 
-  it("易伤/虚弱在回合开始衰减并到期", () => {
+  it("计时型减益层数=回合数：1 层在下次回合开始即到期（策划 Q1）", () => {
     const started = withHand(["curse_weak", "strike", "strike"]);
     const weakened = play(started, "curse_weak").state;
+    expect(weakened.player.buffs.find((b) => b.id === "weak")?.duration).toBe(1);
     const after = reduce(weakened, { type: "EndTurn", actionId: "e" });
-    // 施加时长 2 → turnStart -1 → 1
-    expect(after.state.player.buffs.find((b) => b.id === "weak")?.duration).toBe(1);
+    expect(after.events.some((e) => e.type === "BuffExpired")).toBe(true);
+    expect(after.state.player.buffs.find((b) => b.id === "weak")).toBeUndefined();
   });
 });

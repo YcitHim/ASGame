@@ -48,6 +48,16 @@ describe("条件注册表（ADR-004）", () => {
     ).toBe(true);
   });
 
+  it("selfHp* 读主体自身（D-5 / 策划 Q13 阶段切换）", () => {
+    const withSelf = { ...ctx({ hp: 10 }), self: { hp: 90, maxHp: 100, buffs: [] } };
+    expect(evaluateCondition({ type: "selfHpAtLeast", percent: 50 }, withSelf)).toBe(true);
+    expect(evaluateCondition({ type: "selfHpBelow", percent: 50 }, withSelf)).toBe(false);
+    const hurt = { ...ctx({ hp: 90 }), self: { hp: 20, maxHp: 100, buffs: [] } };
+    expect(evaluateCondition({ type: "selfHpBelow", percent: 50 }, hurt)).toBe(true);
+    // 没给 self 时回落到玩家字段，卡牌条件不受影响
+    expect(evaluateCondition({ type: "selfHpBelow", percent: 50 }, ctx({ hp: 20 }))).toBe(true);
+  });
+
   it("未注册条件抛错", () => {
     expect(() => evaluateCondition({ type: "notRegistered" as never }, ctx())).toThrow(/未注册/);
   });

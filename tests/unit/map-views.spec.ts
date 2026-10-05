@@ -23,13 +23,13 @@ function mountView(component: Parameters<typeof mount>[0], setup?: (run: ReturnT
 }
 
 describe("S5 UI 流程视图挂载", () => {
-  it("MapView：5 个节点，当前节点可进入", async () => {
+  it("MapView：6 个节点，当前节点可进入", async () => {
     const { wrapper } = mountView(MapView);
     await nextTick();
     const run = useRunStore();
     run.startRun(1);
     await nextTick();
-    expect(wrapper.findAll(".node")).toHaveLength(5);
+    expect(wrapper.findAll(".node")).toHaveLength(6);
     expect(wrapper.findAll(".go")).toHaveLength(1);
     wrapper.unmount();
   });
@@ -45,7 +45,7 @@ describe("S5 UI 流程视图挂载", () => {
   it("RewardView：Boss 节点显示远征胜利而非卡奖", async () => {
     const { wrapper } = mountView(RewardView, (run) => {
       run.startRun(1);
-      for (let i = 0; i < 4; i += 1) run.advance();
+      for (let i = 0; i < 5; i += 1) run.advance();
     });
     await nextTick();
     expect(wrapper.text()).toContain("远 征 胜 利");
@@ -56,6 +56,7 @@ describe("S5 UI 流程视图挂载", () => {
   it("RestView：两个选项；选择打磨后列出卡组", async () => {
     const { wrapper, run } = mountView(RestView, (r) => {
       r.startRun(1);
+      r.advance();
       r.advance();
       r.advance();
     });

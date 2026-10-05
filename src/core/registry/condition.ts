@@ -9,7 +9,15 @@ import { buffStacks } from "../buffs";
 import type { BuffId, ConditionId } from "./ids";
 import type { ConditionNode } from "./content";
 
+/** 条件主体（D-5 / 策划 Q13）：意图表需要读「敌人自己」的 HP 来切阶段。 */
+export interface SelfContext {
+  readonly hp: number;
+  readonly maxHp: number;
+  readonly buffs: readonly BuffInstance[];
+}
+
 export interface ConditionContext {
+  /** 玩家侧（卡牌条件默认读这里） */
   readonly hp: number;
   readonly maxHp: number;
   readonly pollution: number;
@@ -17,6 +25,8 @@ export interface ConditionContext {
   readonly buffs: readonly BuffInstance[];
   readonly cardsPlayedThisTurn: number;
   readonly handSize: number;
+  /** 主体侧：敌人意图用；缺省时回落到玩家字段，卡牌条件不受影响 */
+  readonly self?: SelfContext;
 }
 
 export type ConditionFn = (
@@ -52,6 +62,19 @@ function num(params: Record<string, unknown>, key: string, fallback = 0): number
 
 registerCondition("hpBelow", (ctx, p) => (ctx.hp / Math.max(1, ctx.maxHp)) * 100 < num(p, "percent", 100));
 registerCondition("hpAtLeast", (ctx, p) => (ctx.hp / Math.max(1, ctx.maxHp)) * 100 >= num(p, "percent", 0));
+
+const selfOf = (ctx: ConditionContext): SelfContext =>
+  ctx.self ?? { hp: ctx.hp, maxHp: ctx.maxHp, buffs: ctx.buffs };
+
+/** 主体自身 HP 条件（意图表阶段切换用） */
+registerCondition("selfHpBelow", (ctx, p) => {
+  const self = selfOf(ctx);
+  return (self.hp / Math.max(1, self.maxHp)) * 100 < num(p, "percent", 100);
+});
+registerCondition("selfHpAtLeast", (ctx, p) => {
+  const self = selfOf(ctx);
+  return (self.hp / Math.max(1, self.maxHp)) * 100 >= num(p, "percent", 0);
+});
 registerCondition("pollutionAbove", (ctx, p) => ctx.pollution > num(p, "n"));
 registerCondition("pollutionBelow", (ctx, p) => ctx.pollution < num(p, "n"));
 registerCondition("chargeAtLeast", (ctx, p) => ctx.charge >= num(p, "n"));

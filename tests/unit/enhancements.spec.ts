@@ -20,6 +20,7 @@ const ENHANCEMENTS: EnhancementDefinition[] = [
   { id: "sharpen", tier: 1, appliesTo: ["strike"], handler: "empower", params: { bonus: 2 } },
   { id: "reinforce", tier: 1, appliesTo: ["defend"], handler: "fortify", params: { bonus: 3 } },
   { id: "spark", tier: 1, appliesTo: ["strike"], handler: "bloodrage", params: {} },
+  { id: "thrift", tier: 1, appliesTo: ["bloodbolt"], handler: "bloodpact_discount", params: { discount: 1 } },
 ];
 
 function content() {
@@ -83,6 +84,33 @@ describe("S4.3 强化钩子 modifyCard / onHit", () => {
     expect(hits).toHaveLength(6);
     expect(hits.reduce((a, h) => a + h.value, 0)).toBe(9);
     expect(result.state.enemies[0].hp).toBe(41);
+  });
+
+  it("锋锐走 enhancement 层修饰符：DamageDealt.layers 可追溯（D-3）", () => {
+    const state = battle([{ cardId: "strike", enhancements: ["sharpen"] }]);
+    const result = play(state, "strike");
+    const hit = result.events.find((e) => e.type === "DamageDealt");
+    expect(hit && hit.type === "DamageDealt").toBe(true);
+    if (hit && hit.type === "DamageDealt") {
+      const enhancementLayer = hit.layers.find((l) => l.layer === "enhancement");
+      expect(enhancementLayer, "强化层未出现在明细里").toBeDefined();
+      expect(enhancementLayer?.sourceId).toContain("sharpen");
+      expect(enhancementLayer?.value).toBe(2);
+    }
+  });
+
+  it("强化层在 Buff 层之前求值：（6 基础 +2 强化 +2 力量）= 10", () => {
+    const started = battle([{ cardId: "strike", enhancements: ["sharpen"] }]);
+    const buffed = reduce(started, { type: "DebugCommand", actionId: "d", command: "add buff strength 2" }).state;
+    expect(play(buffed, "strike").state.enemies[0].hp).toBe(40);
+  });
+
+  it("节油血契：卖血代价 -1（Q12 / D-2 关键字与数值同源）", () => {
+    const state = battle([{ cardId: "bloodbolt", enhancements: ["thrift"] }]);
+    const result = play(state, "bloodbolt");
+    const lost = result.events.find((e) => e.type === "HpLost");
+    expect(lost && lost.type === "HpLost" ? lost.value : -1).toBe(1);
+    expect(result.state.player.hp).toBe(65);
   });
 
   it("onHit：单段攻击触发一次", () => {

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
 import type { CardDefinition } from "@/core/registry";
+import { t } from "@/data/load";
 import { useRunStore } from "@/stores/run";
 import CardView from "@/ui/components/CardView.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
@@ -12,7 +13,11 @@ const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 
 const rewards = ref<string[]>([]);
+const relicOffers = ref<string[]>([]);
 const node = computed(() => run.current);
+const mode = computed<"boss" | "relic" | "card">(() =>
+  node.value?.kind === "boss" ? "boss" : node.value?.kind === "elite" ? "relic" : "card",
+);
 
 const RARITY_LABEL: Record<string, string> = {
   starter: "起始",
@@ -36,8 +41,15 @@ onMounted(() => {
     void router.replace("/");
     return;
   }
-  if (node.value?.kind !== "boss") rewards.value = run.cardRewards();
+  if (mode.value === "card") rewards.value = run.cardRewards();
+  else if (mode.value === "relic") relicOffers.value = run.relicChoices();
 });
+
+function takeRelic(id: string): void {
+  run.addRelic(id);
+  run.advance();
+  void router.push("/map");
+}
 
 function pick(cardId: string): void {
   run.addCard(cardId);
@@ -63,12 +75,28 @@ function rarityLabel(rarity: string | undefined): string {
 <template>
   <div class="viewport">
     <div ref="stage" class="stage reward-stage">
-      <template v-if="node?.kind === 'boss'">
+      <template v-if="mode === 'boss'">
         <div class="triumph">
           <h1 class="head">远 征 胜 利</h1>
           <p class="sub">锈喉倒下，锈蚀回廊重归死寂。</p>
           <button class="etch-btn" @click="finishRun">完成远征</button>
         </div>
+      </template>
+
+      <template v-else-if="mode === 'relic'">
+        <header class="hd">
+          <h1 class="head">遗 物</h1>
+          <p class="sub">精英战利品 · 选取一件遗物</p>
+        </header>
+        <div class="relics">
+          <button v-for="id in relicOffers" :key="id" class="relic" @click="takeRelic(id)">
+            <b>{{ t(`relic.${id}.name`, id) }}</b>
+            <p>{{ t(`relic.${id}.desc`, "") }}</p>
+            <span class="pick">取 走</span>
+          </button>
+          <p v-if="relicOffers.length === 0" class="none">没有可取走的遗物</p>
+        </div>
+        <button class="skip" @click="skip">放 弃</button>
       </template>
 
       <template v-else>
@@ -176,6 +204,43 @@ function rarityLabel(rarity: string | undefined): string {
 }
 .option:hover .pick {
   color: var(--gold);
+}
+.relics {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+}
+.relic {
+  width: 240px;
+  padding: 18px 16px 34px;
+  position: relative;
+  text-align: left;
+  border: 1px solid rgba(176, 141, 74, 0.45);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(160deg, #1c1915, #12100e);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.65), 0 12px 30px rgba(0, 0, 0, 0.55);
+  transition: transform var(--dur-hover), border-color var(--dur-hover);
+}
+.relic:hover {
+  transform: translateY(-8px);
+  border-color: var(--gold);
+}
+.relic b {
+  font-family: var(--serif-title);
+  font-size: 16px;
+  letter-spacing: 0.16em;
+  color: var(--ink-bone);
+  font-weight: 400;
+}
+.relic p {
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--ink-dim);
+}
+.none {
+  color: var(--ink-dim);
+  font-size: 12px;
 }
 .skip {
   padding: 10px 24px;

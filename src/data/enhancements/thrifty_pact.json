@@ -1,0 +1,21 @@
+{
+  "id": "thrifty_pact",
+  "tier": 1,
+  "appliesTo": [
+    "bloodbolt",
+    "bloodletting",
+    "transfusion",
+    "bloodrite",
+    "redtear",
+    "veinburst",
+    "exsanguinate",
+    "crimsonpact",
+    "bloodstorm",
+    "immortality"
+  ],
+  "handler": "bloodpact_discount",
+  "params": {
+    "discount": 1
+  },
+  "i18n": "enh.thrifty_pact"
+}

@@ -4,7 +4,7 @@
  * 所有数值走修饰符管线；所有状态变更发事件；本文件不出现具体卡牌特判
  * （卡牌逻辑在 registry/handler 与 data JSON）。
  */
-import { applyBuff, buffStacks, tickBuffs, type BuffInstance } from "../buffs";
+import { applyBuff, buffApplication, buffStacks, tickBuffs, type BuffInstance } from "../buffs";
 import type { EventSink } from "../events/event-sink";
 import { evaluateValue, type Modifier } from "../pipeline";
 import type { BuffId } from "../registry/ids";
@@ -30,7 +30,17 @@ export function conditionContext(draft: Draft): ConditionContext {
     buffs: draft.player.buffs,
     cardsPlayedThisTurn: draft.cardsPlayedThisTurn,
     handSize: draft.hand.length,
+    // 卡牌条件默认读玩家；意图表会用 enemyConditionContext 覆盖 self
+    self: { hp: draft.player.hp, maxHp: draft.player.maxHp, buffs: draft.player.buffs },
   };
+}
+
+/** 意图生成用的条件上下文：self = 该敌人自己（策划 Q13 阶段切换）。 */
+export function enemyConditionContext(draft: Draft, enemyId: string): ConditionContext {
+  const base = conditionContext(draft);
+  const enemy = draft.enemies.find((e) => e.id === enemyId);
+  if (!enemy) return base;
+  return { ...base, self: { hp: enemy.hp, maxHp: enemy.maxHp, buffs: enemy.buffs } };
 }
 
 export function unitBuffs(draft: Draft, id: string): readonly BuffInstance[] {
@@ -81,7 +91,10 @@ export interface DamageArgs {
   base: number;
   segment?: number;
   segments?: number;
+  /** 显式覆盖修饰列表（一般不传，由攻击/目标 Buff 自动推导） */
   modifiers?: readonly Modifier[];
+  /** 额外修饰（强化层等），追加在自动推导的修饰之后 */
+  extraModifiers?: readonly Modifier[];
 }
 
 /** 单次伤害：基础值 → 修饰管线 → 格挡吸收 → HP → 死亡检查。 */
@@ -89,11 +102,9 @@ export function dealDamage(draft: Draft, sink: EventSink, args: DamageArgs): voi
   const target = findUnit(draft, args.targetId);
   if (!target || target.hp <= 0) return;
 
-  const evaluated = evaluateValue(
-    "attackDamage",
-    args.base,
-    args.modifiers ?? attackModifiers(draft, args.actorId, args.targetId),
-  );
+  const auto = args.modifiers ?? attackModifiers(draft, args.actorId, args.targetId);
+  const modifiers = args.extraModifiers?.length ? [...auto, ...args.extraModifiers] : auto;
+  const evaluated = evaluateValue("attackDamage", args.base, modifiers);
   const value = evaluated.value;
   const blocked = Math.min(target.block, value);
   const hpLost = value - blocked;
@@ -118,10 +129,16 @@ export function dealDamage(draft: Draft, sink: EventSink, args: DamageArgs): voi
   if (target.hp === 0) sink.emit("UnitDied", { unitId: args.targetId, clearedEffects: 0 });
 }
 
-export function gainBlock(draft: Draft, sink: EventSink, targetId: string, base: number): void {
+export function gainBlock(
+  draft: Draft,
+  sink: EventSink,
+  targetId: string,
+  base: number,
+  extraModifiers?: readonly Modifier[],
+): void {
   const unit = findUnit(draft, targetId);
   if (!unit || unit.hp <= 0) return;
-  const evaluated = evaluateValue("block", base, []);
+  const evaluated = evaluateValue("block", base, extraModifiers ?? []);
   unit.block += evaluated.value;
   sink.emit("BlockGained", { targetId, value: evaluated.value, total: unit.block });
 }
@@ -157,27 +174,29 @@ export function loseHp(
   if (unit.hp === 0) sink.emit("UnitDied", { unitId: targetId, clearedEffects: 0 });
 }
 
+/** amount 是"卡面参数"：强度型=层数，计时型=回合数（策划 Q1）。 */
 export function applyBuffToTarget(
   draft: Draft,
   sink: EventSink,
   targetId: string,
   buffId: BuffId,
-  stacks: number,
-  duration: number | null,
+  amount: number,
+  explicitDuration?: number | null,
 ): void {
   if (buffId === "pollution" && targetId === PLAYER_ID) {
-    changePollution(draft, sink, stacks);
+    changePollution(draft, sink, amount);
     return;
   }
   const unit = findUnit(draft, targetId);
   if (!unit || unit.hp <= 0) return;
-  unit.buffs = applyBuff(unit.buffs, { id: buffId, stacks, duration });
+  const application = buffApplication(buffId, amount, explicitDuration);
+  unit.buffs = applyBuff(unit.buffs, { id: buffId, ...application });
   const applied = unit.buffs.find((b) => b.id === buffId);
   sink.emit("BuffApplied", {
     targetId,
     buffId,
-    stacks: applied?.stacks ?? stacks,
-    duration: applied?.duration ?? duration,
+    stacks: applied?.stacks ?? application.stacks,
+    duration: applied?.duration ?? application.duration,
   });
 }
 
@@ -282,6 +301,9 @@ export interface EffectContext {
   readonly chosenTargetId: string | null;
   /** 每段伤害结算后回调（强化 onHit 钩子；多段攻击每段独立触发） */
   readonly onHit?: (hitIndex: number, targetId: string) => void;
+  /** 强化层注入的修饰（layer: enhancement），走修饰符管线而非直接改值 */
+  readonly attackModifiers?: readonly Modifier[];
+  readonly blockModifiers?: readonly Modifier[];
 }
 
 function defaultTarget(effect: CardEffect): TargetRef {
@@ -317,13 +339,14 @@ export function resolveEffects(
             base: value,
             segment,
             segments: damageTotal,
+            extraModifiers: ctx.attackModifiers,
           });
           ctx.onHit?.(segment, t);
         }
         break;
       }
       case "block":
-        for (const t of targets) gainBlock(draft, sink, t, value);
+        for (const t of targets) gainBlock(draft, sink, t, value, ctx.blockModifiers);
         break;
       case "draw":
         drawCards(draft, sink, value);
@@ -334,7 +357,7 @@ export function resolveEffects(
       case "applyBuff":
         if (effect.buff) {
           for (const t of targets) {
-            applyBuffToTarget(draft, sink, t, effect.buff as BuffId, effect.stacks ?? 1, 2);
+            applyBuffToTarget(draft, sink, t, effect.buff as BuffId, effect.stacks ?? 1, effect.duration);
           }
         }
         break;

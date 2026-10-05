@@ -1,0 +1,31 @@
+{
+  "id": "riveted_heavy",
+  "i18n": "enemy.riveted_heavy",
+  "maxHp": 55,
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 10
+      },
+      "weight": 3,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "charge",
+        "value": 2
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "defend",
+        "value": 9
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    }
+  ]
+}

@@ -6,11 +6,11 @@
  *   onHit      —— 命中计数（多段攻击每段独立触发）
  * JSON 只传参，机制逻辑在这里（纯 TS，可单测）。
  */
-import { splitValues } from "../pipeline";
+import { splitValues, type ModifierOp, type ValueKind } from "../pipeline";
 import type { BuffInstance } from "../buffs";
 import type { CardDefinition, CardEffect, CardPlayHandler } from "./content";
 import { evaluateCondition, type ConditionContext } from "./condition";
-import type { EnhancementHandlerId } from "./ids";
+import type { EnhancementHandlerId, KeywordId } from "./ids";
 
 export interface EnhancementContext {
   readonly hp: number;
@@ -30,9 +30,20 @@ export interface ModifyCardInput {
   readonly play?: CardPlayHandler;
 }
 
+/** 强化注入的修饰：kind 对应修饰符管线的数值种类（layer 由框架固定为 enhancement）。 */
+export interface EnhancementModifier {
+  readonly kind: ValueKind;
+  readonly op: ModifierOp;
+  readonly value: number;
+}
+
 export interface ModifyCardResult {
   readonly effects?: readonly CardEffect[];
   readonly play?: CardPlayHandler;
+  /** 关键词覆盖（如给某张卡追加「消耗」） */
+  readonly keywords?: readonly KeywordId[];
+  /** 数值修饰：走修饰符管线，DamageDealt.layers 里可追溯 */
+  readonly modifiers?: readonly EnhancementModifier[];
 }
 
 export interface EnhancementHandler {
@@ -114,28 +125,32 @@ registerEnhancementHandler({
   },
 });
 
-/** T1「锋锐」：该牌所有伤害 +bonus。 */
+/** T1「锋锐」：该牌伤害 +bonus（走 attackDamage 的 enhancement 层）。 */
 registerEnhancementHandler({
   id: "empower",
-  modifyCard(input, params) {
+  modifyCard(_input, params) {
     const bonus = Math.trunc(asNumber(params["bonus"], 1));
     if (bonus === 0) return undefined;
-    return {
-      effects: input.effects.map((e) =>
-        e.kind === "damage" ? { ...e, value: (e.value ?? 0) + bonus } : e,
-      ),
-    };
+    return { modifiers: [{ kind: "attackDamage", op: "add", value: bonus }] };
   },
 });
 
-/** T1「加固」：该牌所有格挡 +bonus。 */
+/** T1「加固」：该牌格挡 +bonus（走 block 的 enhancement 层）。 */
 registerEnhancementHandler({
   id: "fortify",
-  modifyCard(input, params) {
+  modifyCard(_input, params) {
     const bonus = Math.trunc(asNumber(params["bonus"], 1));
     if (bonus === 0) return undefined;
-    return {
-      effects: input.effects.map((e) => (e.kind === "block" ? { ...e, value: (e.value ?? 0) + bonus } : e)),
-    };
+    return { modifiers: [{ kind: "block", op: "add", value: bonus }] };
+  },
+});
+
+/** T1「节油血契」：该牌卖血代价 -discount（走 hpCost 的 enhancement 层）。 */
+registerEnhancementHandler({
+  id: "bloodpact_discount",
+  modifyCard(_input, params) {
+    const discount = Math.trunc(asNumber(params["discount"], 1));
+    if (discount === 0) return undefined;
+    return { modifiers: [{ kind: "hpCost", op: "add", value: -discount }] };
   },
 });

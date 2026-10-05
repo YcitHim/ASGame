@@ -20,7 +20,7 @@ describe("真实内容装载（data/load）", () => {
   it("卡牌 / 敌人 / 关卡 / 文案全部可用，敌人名按 i18n 解析", () => {
     const game = loadGameContent();
     expect(game.content.cards.size).toBeGreaterThanOrEqual(30);
-    expect(game.content.enemies.size).toBe(5);
+    expect(game.content.enemies.size).toBe(7);
     expect(game.content.relics.size).toBe(4);
     expect(game.acts).toHaveLength(1);
     expect(game.content.enemies.get("rust_hound")?.name).toBe("锈蚀猎犬");
@@ -28,11 +28,12 @@ describe("真实内容装载（data/load）", () => {
     expect(game.i18n["card.strike.name"]).toBe("打击");
   });
 
-  it("线性地图 5 节点，含精英 / 休息 / 祭坛 / Boss", () => {
+  it("线性地图 6 节点（2 普通战），含精英 / 休息 / 祭坛 / Boss", () => {
     const act = loadGameContent().acts[0];
-    expect(act.map).toHaveLength(5);
-    expect(act.map.map((n) => n.kind)).toEqual(["battle", "elite", "rest", "altar", "boss"]);
-    expect(act.map[4].enemies).toEqual(["rust_throat"]);
+    expect(act.map).toHaveLength(6);
+    expect(act.map.map((n) => n.kind)).toEqual(["battle", "battle", "elite", "rest", "altar", "boss"]);
+    expect(act.map[1].enemies).toEqual(["corroded_swarm", "riveted_heavy"]);
+    expect(act.map[5].enemies).toEqual(["rust_throat"]);
   });
 
   it("起手卡组全部能在目录中找到定义", () => {

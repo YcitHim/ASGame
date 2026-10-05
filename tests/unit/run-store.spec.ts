@@ -36,13 +36,15 @@ describe("S5 局外进度（runStore）", () => {
   it("线性地图：advance 推进节点并记录已清", () => {
     const run = useRunStore();
     run.startRun(1);
-    expect(run.view?.nodes).toHaveLength(5);
+    expect(run.view?.nodes).toHaveLength(6);
+    expect(run.current?.kind).toBe("battle");
+    run.advance();
     expect(run.current?.kind).toBe("battle");
     run.advance();
     expect(run.current?.kind).toBe("elite");
     run.advance();
     expect(run.current?.kind).toBe("rest");
-    expect(run.run?.cleared).toEqual(["n1", "n2"]);
+    expect(run.run?.cleared).toEqual(["n1", "n2", "n3"]);
   });
 
   it("锻造三选一：offers 有可附着目标，applyEnhancement 受 appliesTo/重复限制", () => {
@@ -58,11 +60,15 @@ describe("S5 局外进度（runStore）", () => {
     const strikeIndex = run.deck.findIndex((c) => c.cardId === "strike");
 
     expect(run.canApply("empower", strikeIndex)).toBe(false);
+    expect(run.canApply("thrifty_pact", strikeIndex)).toBe(false);
     expect(run.canApply("empower", bloodboltIndex)).toBe(true);
     expect(run.applyEnhancement(bloodboltIndex, "empower")).toBe(true);
     expect(run.deck[bloodboltIndex].enhancements).toEqual(["empower"]);
     expect(run.applyEnhancement(bloodboltIndex, "empower")).toBe(false);
-    expect(run.canApply("fortify", braceIndex)).toBe(true);
+    // 起始卡组已无「支撑」：加固暂时没有可附着目标
+    expect(run.canApply("fortify", braceIndex)).toBe(false);
+    // 节油血契作用于血契卡
+    expect(run.canApply("thrifty_pact", bloodboltIndex)).toBe(true);
 
     // 同一强化全局唯一：给了血之螺栓后，不能再给另一张特殊卡
     const run2 = useRunStore();
@@ -95,6 +101,28 @@ describe("S5 局外进度（runStore）", () => {
     expect(a).toEqual(b);
     expect(new Set(a).size).toBe(3);
     expect(a.every((id) => run.cardDef(id)?.rarity !== "starter")).toBe(true);
+  });
+
+  it("精英遗物掉落：只给未持有，可拾取并落盘（Q10）", () => {
+    const run = useRunStore();
+    run.startRun(5);
+    const offers = run.relicChoices();
+    expect(offers.length).toBe(2);
+    expect(offers).not.toContain("broken_oil");
+    run.addRelic(offers[0]);
+    expect(run.relics).toContain(offers[0]);
+    expect(run.relicChoices()).toHaveLength(1);
+  });
+
+  it("祭坛保底：三选一至少 1 个有可附着目标（Q8）", () => {
+    const run = useRunStore();
+    run.startRun(11);
+    for (let seed = 0; seed < 20; seed += 1) {
+      const choices = run.enhancementChoices();
+      expect(choices.length).toBe(3);
+      const usable = run.usableEnhancements();
+      expect(choices.some((id) => usable.includes(id)), `seed=${seed}`).toBe(true);
+    }
   });
 
   it("G2 存档：persist → load 恢复节点/卡组/遗物/HP", () => {

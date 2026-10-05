@@ -2,13 +2,18 @@
  * core/combat/play-card · 出牌判定与结算（docs/02 §3）
  *
  * 费用 / 目标 / 血契 HP / 关键词条件全部在 core 内校验，非法操作被核心拒绝。
- * 简单效果走 JSON effects；复杂机制走注册 handler；强化走 modifyCard / onHit（ADR-005）。
+ * 简单效果走 JSON effects；复杂机制走注册 handler；强化走 modifyCard / onHit（ADR-005），
+ * 且强化数值一律经 layer:"enhancement" 的 Modifier 注入修饰符管线（ADR-003，可追溯）。
  */
 import type { CardDefinition, CardEffect, KeywordId } from "../registry";
-import { evaluateValue } from "../pipeline";
+import { evaluateValue, type Modifier } from "../pipeline";
 import { afterPlayDestination, pactHpCost } from "../keywords";
 import { getCardHandler } from "../registry/handler";
-import { getEnhancementHandler, type EnhancementContext } from "../registry/enhancement-handler";
+import {
+  getEnhancementHandler,
+  type EnhancementContext,
+  type EnhancementModifier,
+} from "../registry/enhancement-handler";
 import type { EventSink } from "../events/event-sink";
 import { livingEnemies, toDraft, type Draft } from "./draft";
 import { resolveRelics } from "./relics";
@@ -16,23 +21,70 @@ import { loseHp, resolveEffects } from "./resolve";
 import type { CardInstance, BattleState } from "./state";
 
 export interface EffectiveCard {
+  /** 合并升级 + 关键词覆盖后的基础费用（未过管线） */
+  readonly cost: number;
+  /** 过 cardCost 管线的最终能量费用 */
+  readonly energyCost: number;
+  /** 过 hpCost 管线的最终卖血代价 */
+  readonly bloodCost: number;
+  readonly effects: readonly CardEffect[];
+  readonly play: CardDefinition["play"];
+  readonly keywords: readonly KeywordId[];
+  /** 强化注入的全部修饰（含来源，便于日志追溯） */
+  readonly modifiers: readonly Modifier[];
+  readonly attackModifiers: readonly Modifier[];
+  readonly blockModifiers: readonly Modifier[];
+  readonly costModifiers: readonly Modifier[];
+  readonly hpModifiers: readonly Modifier[];
+}
+
+interface EffectiveCardInput {
   readonly cost: number;
   readonly effects: readonly CardEffect[];
   readonly play: CardDefinition["play"];
   readonly keywords: readonly KeywordId[];
-  readonly bloodCost: number;
+  /** 未过管线的卖血代价 */
+  readonly baseBloodCost: number;
+  readonly modifiers: readonly Modifier[];
+}
+
+function withComputed(input: EffectiveCardInput): EffectiveCard {
+  const byKind = (kind: EnhancementModifier["kind"]): Modifier[] =>
+    input.modifiers.filter((m) => m.value !== 0 && modifierKind(m) === kind);
+  const costModifiers = byKind("cardCost");
+  const hpModifiers = byKind("hpCost");
+  return {
+    cost: input.cost,
+    effects: input.effects,
+    play: input.play,
+    keywords: input.keywords,
+    modifiers: input.modifiers,
+    energyCost: evaluateValue("cardCost", input.cost, costModifiers).value,
+    bloodCost: Math.max(0, evaluateValue("hpCost", input.baseBloodCost, hpModifiers).value),
+    attackModifiers: byKind("attackDamage"),
+    blockModifiers: byKind("block"),
+    costModifiers,
+    hpModifiers,
+  };
+}
+
+/** 修饰符的数值种类靠 sourceId 前缀携带（enh:<id>:<kind>），避免额外字段。 */
+function modifierKind(modifier: Modifier): EnhancementModifier["kind"] {
+  const parts = modifier.sourceId.split(":");
+  return (parts[2] as EnhancementModifier["kind"]) ?? "attackDamage";
 }
 
 /** 合并「升级」后的卡面（不含强化）。 */
 export function effectiveCard(def: CardDefinition, instance: CardInstance): EffectiveCard {
   const up = instance.upgraded ? def.upgraded : undefined;
-  return {
+  return withComputed({
     cost: up?.cost ?? def.cost,
     effects: up?.effects ?? def.effects ?? [],
     play: up?.play ?? def.play,
     keywords: up?.keywords ?? def.keywords ?? [],
-    bloodCost: def.bloodCost ?? 0,
-  };
+    baseBloodCost: def.bloodCost ?? 0,
+    modifiers: [],
+  });
 }
 
 function enhancementContext(draft: Draft, hitIndex: number): EnhancementContext {
@@ -59,7 +111,10 @@ export function effectiveCardWithEnhancements(
 
   let effects = base.effects;
   let play = base.play;
+  let keywords = base.keywords;
+  const modifiers: Modifier[] = [];
   const ctx = enhancementContext(draft, 0);
+
   for (const enhancementId of instance.enhancements) {
     const enhancement = draft.content.enhancements.get(enhancementId);
     if (!enhancement) continue;
@@ -68,15 +123,44 @@ export function effectiveCardWithEnhancements(
       enhancement.params,
       ctx,
     );
-    if (result?.effects) effects = result.effects;
-    if (result?.play) play = result.play;
+    if (!result) continue;
+    if (result.effects) effects = result.effects;
+    if (result.play) play = result.play;
+    if (result.keywords) keywords = result.keywords;
+    for (const modifier of result.modifiers ?? []) {
+      modifiers.push({
+        sourceId: `enh:${enhancementId}:${modifier.kind}`,
+        layer: "enhancement",
+        op: modifier.op,
+        value: modifier.value,
+      });
+    }
   }
-  return { ...base, effects, play };
+
+  return withComputed({
+    cost: base.cost,
+    effects,
+    play,
+    keywords,
+    baseBloodCost: base.bloodCost,
+    modifiers,
+  });
 }
 
+/** 仅按卡面（不含强化）估算费用——供模拟器 AI 等无 Draft 场景使用。 */
 export function cardEnergyCost(def: CardDefinition, instance: CardInstance): number {
-  const effective = effectiveCard(def, instance);
-  return evaluateValue("cardCost", effective.cost, []).value;
+  return effectiveCard(def, instance).energyCost;
+}
+
+/** UI 预览：手牌索引 → 真实能量费用（含强化）。 */
+export function previewEnergyCost(state: BattleState, handIndex: number): number {
+  const draft = toDraft(state);
+  const instanceId = draft.hand[handIndex];
+  const instance = draft.cardInstances[instanceId];
+  if (!instance) return 99;
+  const def = draft.content.cards.get(instance.cardId);
+  if (!def) return 99;
+  return effectiveCardWithEnhancements(draft, instance, def).energyCost;
 }
 
 export type PlayValidation =
@@ -103,12 +187,12 @@ export function validatePlayCard(draft: Draft, handIndex: number, targetId: stri
   if (!def) return { ok: false, reason: `卡牌定义缺失：${instance.cardId}` };
 
   const effective = effectiveCardWithEnhancements(draft, instance, def);
-  const cost = cardEnergyCost(def, instance);
+  const cost = effective.energyCost;
   if (cost > draft.player.energy) {
     return { ok: false, reason: `能量不足（需要 ${cost}，剩余 ${draft.player.energy}）` };
   }
 
-  const bloodPaid = pactHpCost(effective);
+  const bloodPaid = pactHpCost({ keywords: effective.keywords, bloodCost: effective.bloodCost });
   if (bloodPaid >= draft.player.hp) {
     return { ok: false, reason: `血契代价过高（需要 ${bloodPaid} HP，当前 ${draft.player.hp}）` };
   }
@@ -171,6 +255,7 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
       if (!handler.onHit) continue;
       const extra = handler.onHit(enhancement.params, enhancementContext(draft, hitIndex));
       if (extra.length > 0) {
+        // 附加伤害不再叠加本卡的强化伤害修饰，避免重复计算
         resolveEffects(draft, sink, extra, {
           sourceId: instance.instanceId,
           actorId: "player",
@@ -185,6 +270,8 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
     actorId: "player",
     chosenTargetId: targetId,
     onHit,
+    attackModifiers: effective.attackModifiers,
+    blockModifiers: effective.blockModifiers,
   });
   draft.cardsPlayedThisTurn += 1;
 

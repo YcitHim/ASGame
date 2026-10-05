@@ -131,11 +131,54 @@ export const useRunStore = defineStore("run", {
       return rollCardRewards(game.content, this.act!, this.run, this.run.nodeIndex);
     },
 
-    /** 锻造祭坛三选一。 */
+    /** 可附着的强化（当前卡组至少有一张符合 appliesTo 且未持有）。 */
+    usableEnhancements(): string[] {
+      const content = loadGameContent().content;
+      return [...content.enhancements.values()]
+        .map((e) => e.id)
+        .filter((id) => this.deck.some((_, i) => this.canApply(id, i)));
+    },
+
+    /**
+     * 锻造祭坛三选一（策划 Q8 保底规则）：
+     * 先按 reward 流抽 3 个，再用"可用强化"替换掉不可用项，
+     * 保证三选一里至少 1 个对当前卡组有可附着目标。
+     */
     enhancementChoices(): string[] {
       if (!this.run) return [];
       const game = loadGameContent();
-      return rollEnhancementChoices(game.content, this.run, this.run.nodeIndex);
+      const rolled = rollEnhancementChoices(game.content, this.run, this.run.nodeIndex);
+      const usable = this.usableEnhancements();
+      const chosen = rolled.filter((id) => usable.includes(id));
+      for (const id of usable) {
+        if (chosen.length >= 3) break;
+        if (!chosen.includes(id)) chosen.push(id);
+      }
+      for (const id of rolled) {
+        if (chosen.length >= 3) break;
+        if (!chosen.includes(id)) chosen.push(id);
+      }
+      return chosen.slice(0, 3);
+    },
+
+    /** 精英战掉落：未持有遗物里抽（Q10），允许放弃。 */
+    relicChoices(): string[] {
+      if (!this.run) return [];
+      const game = loadGameContent();
+      const owned = new Set(this.relics);
+      return [...game.content.relics.values()]
+        .map((r) => r.id)
+        .filter((id) => !owned.has(id))
+        .sort()
+        .slice(0, 3);
+    },
+
+    addRelic(relicId: string): void {
+      if (this.relics.includes(relicId)) return;
+      const exists = loadGameContent().content.relics.has(relicId);
+      if (!exists) return;
+      this.relics = [...this.relics, relicId];
+      this.persist();
     },
 
     canApply(enhancementId: string, deckIndex: number): boolean {

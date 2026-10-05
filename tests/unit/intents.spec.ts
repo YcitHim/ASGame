@@ -60,6 +60,22 @@ describe("S3.5 意图 AI", () => {
     expect(second.intent.kind).toBe("defend");
   });
 
+  it("Boss 二阶段：按自身 HP 切换整套意图（selfHpAtLeast / selfHpBelow）", () => {
+    const boss: EnemyDefinition = {
+      id: "boss",
+      name: "Boss",
+      maxHp: 100,
+      intents: [
+        { intent: { kind: "attack", value: 10 }, weight: 1000, condition: { type: "selfHpAtLeast", percent: 50 } },
+        { intent: { kind: "attack", value: 30 }, weight: 1000, condition: { type: "selfHpBelow", percent: 50 } },
+      ],
+    };
+    const healthy = generateIntent(boss, { ...ctx(), self: { hp: 100, maxHp: 100, buffs: [] } }, [], new Rng(3).stream("combat"));
+    expect(healthy.intent.value).toBe(10);
+    const wounded = generateIntent(boss, { ...ctx(), self: { hp: 20, maxHp: 100, buffs: [] } }, [], new Rng(3).stream("combat"));
+    expect(wounded.intent.value).toBe(30);
+  });
+
   it("空意图表返回 unknown", () => {
     const empty: EnemyDefinition = { id: "e", name: "e", maxHp: 1, intents: [] };
     expect(generateIntent(empty, ctx(), [], new Rng(1).stream("combat")).intent.kind).toBe("unknown");

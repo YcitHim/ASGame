@@ -14,7 +14,7 @@
     "defend",
     "defend",
     "defend",
-    "brace",
+    "defend",
     "bloodbolt"
   ],
   "startRelics": [
@@ -33,29 +33,38 @@
     },
     {
       "id": "n2",
-      "kind": "elite",
+      "kind": "battle",
       "enemies": [
-        "rust_warden"
+        "corroded_swarm",
+        "riveted_heavy"
       ],
       "i18n": "node.n2"
     },
     {
       "id": "n3",
-      "kind": "rest",
+      "kind": "elite",
+      "enemies": [
+        "rust_warden"
+      ],
       "i18n": "node.n3"
     },
     {
       "id": "n4",
-      "kind": "altar",
+      "kind": "rest",
       "i18n": "node.n4"
     },
     {
       "id": "n5",
+      "kind": "altar",
+      "i18n": "node.n5"
+    },
+    {
+      "id": "n6",
       "kind": "boss",
       "enemies": [
         "rust_throat"
       ],
-      "i18n": "node.n5"
+      "i18n": "node.n6"
     }
   ]
 }
