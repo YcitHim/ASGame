@@ -32,6 +32,7 @@ export interface MutableEnemy extends MutableUnit {
   readonly name: string;
   intent: EnemyState["intent"];
   intentHistory: string[];
+  forcedIntent: EnemyState["forcedIntent"];
 }
 
 export interface Draft {
@@ -87,6 +88,7 @@ export function toDraft(state: BattleState): Draft {
       buffs: e.buffs.map((b) => ({ ...b })),
       intent: e.intent,
       intentHistory: [...e.intentHistory],
+      forcedIntent: e.forcedIntent,
     })),
     draw: [...state.piles.draw],
     hand: [...state.piles.hand],
@@ -126,6 +128,7 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
       buffs: e.buffs.map((b) => ({ ...b })),
       intent: e.intent,
       intentHistory: [...e.intentHistory],
+      forcedIntent: e.forcedIntent,
     })),
     piles: {
       draw: [...draft.draw],

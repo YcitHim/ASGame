@@ -13,13 +13,14 @@ export function intentKey(intent: IntentDefinition): string {
   return [intent.kind, intent.value ?? 0, intent.hits ?? 1, intent.buffId ?? ""].join(":");
 }
 
-export function intentToPayload(intent: IntentDefinition): IntentPayload {
+export function intentToPayload(intent: IntentDefinition, thenIntent?: IntentDefinition): IntentPayload {
   const payload: IntentPayload = { kind: intent.kind };
   return {
     ...payload,
     ...(intent.value !== undefined ? { value: intent.value } : {}),
     ...(intent.hits !== undefined ? { hits: intent.hits } : {}),
     ...(intent.buffId !== undefined ? { buffId: intent.buffId } : {}),
+    ...(thenIntent?.value !== undefined ? { thenValue: thenIntent.value } : {}),
   };
 }
 
@@ -51,6 +52,8 @@ function eligible(
 export interface IntentRoll {
   readonly intent: IntentPayload;
   readonly key: string;
+  /** 本条带 thenIntent 时，下一个意图被强制成它 */
+  readonly forcedNext?: IntentDefinition;
 }
 
 /**
@@ -69,5 +72,9 @@ export function generateIntent(
     return { intent: { kind: "unknown" }, key: "unknown:0:1:" };
   }
   const entry = rng.weighted(pool.map((e) => [e, e.weight] as const));
-  return { intent: intentToPayload(entry.intent), key: intentKey(entry.intent) };
+  return {
+    intent: intentToPayload(entry.intent, entry.thenIntent),
+    key: intentKey(entry.intent),
+    ...(entry.thenIntent ? { forcedNext: entry.thenIntent } : {}),
+  };
 }

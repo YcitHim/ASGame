@@ -130,21 +130,24 @@ export type EnhancementJson = z.infer<typeof enhancementSchema>;
 
 export { ENHANCEMENT_TIERS };
 
+const intentDefSchema = z
+  .object({
+    kind: z.enum(["attack", "defend", "debuff", "charge", "unknown"]),
+    value: z.number().int().min(0).optional(),
+    hits: z.number().int().min(1).optional(),
+    buffId: z.enum(BUFF_IDS).optional(),
+    stacks: z.number().int().min(1).optional(),
+    duration: z.number().int().min(1).optional(),
+  })
+  .strict();
+
 const enemyIntentSchema = z
   .object({
-    intent: z
-      .object({
-        kind: z.enum(["attack", "defend", "debuff", "charge", "unknown"]),
-        value: z.number().int().min(0).optional(),
-        hits: z.number().int().min(1).optional(),
-        buffId: z.enum(BUFF_IDS).optional(),
-        stacks: z.number().int().min(1).optional(),
-        duration: z.number().int().min(1).optional(),
-      })
-      .strict(),
+    intent: intentDefSchema,
     weight: z.number().min(0),
     condition: conditionSchema.optional(),
     maxConsecutive: z.number().int().min(1).optional(),
+    thenIntent: intentDefSchema.optional(),
   })
   .strict();
 

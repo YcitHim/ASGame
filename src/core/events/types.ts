@@ -19,6 +19,8 @@ export interface IntentPayload {
   readonly buffId?: string;
   readonly stacks?: number;
   readonly duration?: number;
+  /** 蓄力类招式的后续伤害（预警文案用） */
+  readonly thenValue?: number;
 }
 
 export interface EventPayloadMap {

@@ -5,6 +5,7 @@ import { previewEnergyCost, type BattleState } from "@/core/combat";
 import type { CardDefinition } from "@/core/registry";
 import { loadGameContent } from "@/data/load";
 import { useBattleStore } from "@/stores/battle";
+import { useRunStore } from "@/stores/run";
 import { useSettingsStore } from "@/stores/settings";
 import { isDebugEnabled } from "@/systems/debug";
 import { useStageFit } from "@/ui/composables/useStageFit";
@@ -21,6 +22,7 @@ import PollutionGauge from "@/ui/components/PollutionGauge.vue";
 
 const router = useRouter();
 const store = useBattleStore();
+const run = useRunStore();
 const settings = useSettingsStore();
 const stage = useTemplateRef<HTMLElement>("stage");
 const { scale: stageScale } = useStageFit(stage);
@@ -67,10 +69,24 @@ const hand = computed(() =>
 
 const logEntries = computed<LogEntry[]>(() => store.log.map((e) => describeEvent(e, store.enemyNames)));
 
-/** 蓄力预警：任意存活敌人正在蓄力 → 全屏提示（Boss 大招读招）。 */
+/** 蓄力预警：任意存活敌人正在蓄力 → 全屏提示（含"下回合多少点"的读招信息）。 */
 const chargingEnemies = computed(() =>
-  enemies.value.filter((e) => e.hp > 0 && e.intent?.kind === "charge").map((e) => intentLabel(e.id)),
+  enemies.value
+    .filter((e) => e.hp > 0 && e.intent?.kind === "charge")
+    .map((e) => ({ name: intentLabel(e.id), thenValue: e.intent?.thenValue })),
 );
+
+/** Boss 二阶段：首领节点且首领掉到半血以下 → 狂暴反馈（策划 Q13 可感知）。 */
+const isBossNode = computed(() => run.current?.kind === "boss");
+const bossEnraged = computed(
+  () => isBossNode.value && enemies.value.some((e) => e.hp > 0 && e.hp * 2 < e.maxHp),
+);
+const phaseBanner = ref(false);
+watch(bossEnraged, (now) => {
+  if (!now) return;
+  phaseBanner.value = true;
+  setTimeout(() => (phaseBanner.value = false), 1800);
+});
 
 const floatersFor = computed(() => {
   const map: Record<string, typeof store.floaters> = {};
@@ -220,6 +236,7 @@ function back(): void {
             dead: enemy.hp <= 0,
             targetable: store.targeting !== null || drag?.moved === true,
             'drop-target': drag?.hoverEnemy === enemy.id,
+            enraged: bossEnraged && enemy.hp > 0 && enemy.hp * 2 < enemy.maxHp,
           }"
           :data-enemy-id="enemy.id"
           @click="pickEnemy(enemy.id)"
@@ -244,7 +261,10 @@ function back(): void {
               </defs>
             </svg>
           </div>
-          <div class="enemy-name">{{ intentLabel(enemy.id) }}</div>
+          <div class="enemy-name">
+            {{ intentLabel(enemy.id) }}
+            <span v-if="bossEnraged && enemy.hp > 0 && enemy.hp * 2 < enemy.maxHp" class="rage-tag">狂暴</span>
+          </div>
           <HpBar :hp="enemy.hp" :max-hp="enemy.maxHp" :block="enemy.block" />
           <BuffRow :buffs="enemy.buffs" />
           <DamageFloat v-for="f in floatersFor[enemy.id] ?? []" :key="f.id" :floater="f" />
@@ -342,12 +362,19 @@ function back(): void {
         </div>
       </Teleport>
 
-      <!-- Boss 蓄力大招：全屏预警 -->
+      <!-- Boss 蓄力大招：全屏预警（带上后续伤害，读招才成立） -->
       <div v-if="chargingEnemies.length > 0" class="telegraph">
         <div class="telegraph-line" />
-        <p>{{ chargingEnemies.join("、") }} 正在蓄力 —— 准备迎接重击</p>
+        <p v-for="charge in chargingEnemies" :key="charge.name">
+          {{ charge.name }} 正在蓄力 ——
+          <template v-if="charge.thenValue !== undefined">下回合 <b>{{ charge.thenValue }}</b> 点重击</template>
+          <template v-else>准备迎接重击</template>
+        </p>
         <div class="telegraph-line" />
       </div>
+
+      <!-- 二阶段横幅 -->
+      <div v-if="phaseBanner" class="phase-banner">锈 喉 · 第 二 阶 段</div>
 
       <div v-if="store.message" class="message">{{ store.message }}</div>
 
@@ -480,7 +507,51 @@ function back(): void {
   font-family: var(--serif-title); font-size: 17px; letter-spacing: 0.34em;
   color: #f0b4a8; text-shadow: 0 0 18px rgba(192, 57, 43, 0.9), 0 2px 3px #000;
 }
+.telegraph b {
+  color: #fff;
+  font-family: var(--serif-num);
+  font-size: 20px;
+}
 .telegraph-line { width: 460px; height: 1px; background: linear-gradient(90deg, transparent, var(--blood-hi), transparent); }
+
+/* 二阶段：狂暴反馈 */
+.enemy.enraged .enemy-fig {
+  filter: drop-shadow(0 0 22px rgba(192, 57, 43, 0.9)) brightness(1.1);
+}
+.rage-tag {
+  margin-left: 8px;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: #f0b4a8;
+  border: 1px solid rgba(192, 57, 43, 0.7);
+  border-radius: 2px;
+  padding: 1px 5px;
+  background: rgba(60, 16, 10, 0.6);
+}
+.phase-banner {
+  position: absolute;
+  top: 44%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 48;
+  padding: 14px 42px;
+  font-family: var(--serif-title);
+  font-size: 26px;
+  letter-spacing: 0.5em;
+  color: #f0b4a8;
+  background: rgba(10, 6, 5, 0.86);
+  border-top: 1px solid var(--blood-hi);
+  border-bottom: 1px solid var(--blood-hi);
+  text-shadow: 0 0 22px rgba(192, 57, 43, 0.9);
+  pointer-events: none;
+  animation: banner-in 1.8s ease-out forwards;
+}
+@keyframes banner-in {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+  15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
 @keyframes telegraph-pulse {
   0%, 100% { opacity: 0.55; }
   50% { opacity: 1; }

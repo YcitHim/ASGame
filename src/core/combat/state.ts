@@ -4,7 +4,7 @@
  */
 import type { BuffInstance } from "../buffs";
 import type { EnemySetup, IntentPayload } from "../events";
-import type { ContentDb } from "../registry/content";
+import type { ContentDb, IntentDefinition } from "../registry/content";
 import { emptyContent } from "../registry/content";
 import type { Modifier } from "../pipeline";
 import { Rng, type RngSnapshot } from "../rng";
@@ -52,6 +52,8 @@ export interface EnemyState {
   readonly buffs: readonly BuffInstance[];
   readonly intent: IntentPayload | null;
   readonly intentHistory: readonly string[];
+  /** 被 thenIntent 强制的下一招（执行后会立即揭示） */
+  readonly forcedIntent: IntentDefinition | null;
 }
 
 export interface Piles {
@@ -155,6 +157,7 @@ export function createBattleState(config: BattleConfig): BattleState {
         buffs: [],
         intent: null,
         intentHistory: [],
+        forcedIntent: null,
       };
     }),
     piles: { draw, hand: [], discard: [], exhaust: [] },

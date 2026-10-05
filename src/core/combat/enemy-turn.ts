@@ -12,6 +12,16 @@ import type { Draft } from "./draft";
 export function generateIntents(draft: Draft, sink: EventSink): void {
   for (const enemy of draft.enemies) {
     if (enemy.hp <= 0) continue;
+
+    // thenIntent：上一招指定了后续，直接揭示，不再随机
+    if (enemy.forcedIntent) {
+      const forced = intentToPayload(enemy.forcedIntent);
+      enemy.intent = forced;
+      enemy.forcedIntent = null;
+      sink.emit("IntentRevealed", { enemyId: enemy.id, intent: forced });
+      continue;
+    }
+
     const def = draft.content.enemies.get(enemy.id);
     if (!def) {
       const intent = intentToPayload({ kind: "unknown" });
@@ -22,6 +32,7 @@ export function generateIntents(draft: Draft, sink: EventSink): void {
     const roll = generateIntent(def, enemyConditionContext(draft, enemy.id), enemy.intentHistory, draft.rng.stream("combat"));
     enemy.intent = roll.intent;
     enemy.intentHistory = [...enemy.intentHistory, roll.key];
+    enemy.forcedIntent = roll.forcedNext ?? null;
     sink.emit("IntentRevealed", { enemyId: enemy.id, intent: roll.intent });
   }
 }

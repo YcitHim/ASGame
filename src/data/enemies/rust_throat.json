@@ -1,7 +1,7 @@
 {
   "id": "rust_throat",
   "i18n": "enemy.rust_throat",
-  "maxHp": 112,
+  "maxHp": 108,
   "intents": [
     {
       "intent": {
@@ -9,7 +9,7 @@
         "value": 10,
         "hits": 2
       },
-      "weight": 3,
+      "weight": 4,
       "maxConsecutive": 2,
       "condition": {
         "type": "selfHpAtLeast",
@@ -32,19 +32,24 @@
     {
       "intent": {
         "kind": "charge",
-        "value": 5
+        "value": 3
       },
       "weight": 2,
       "maxConsecutive": 1,
       "condition": {
         "type": "selfHpAtLeast",
         "percent": 50
+      },
+      "thenIntent": {
+        "kind": "attack",
+        "value": 16
       }
     },
     {
       "intent": {
-        "kind": "charge",
-        "value": 6
+        "kind": "attack",
+        "value": 11,
+        "hits": 2
       },
       "weight": 3,
       "maxConsecutive": 2,
@@ -56,9 +61,9 @@
     {
       "intent": {
         "kind": "attack",
-        "value": 26
+        "value": 24
       },
-      "weight": 3,
+      "weight": 2,
       "maxConsecutive": 1,
       "condition": {
         "type": "selfHpBelow",
@@ -67,14 +72,18 @@
     },
     {
       "intent": {
-        "kind": "attack",
-        "value": 11,
-        "hits": 2
+        "kind": "charge",
+        "value": 4
       },
-      "weight": 1,
+      "weight": 2,
+      "maxConsecutive": 1,
       "condition": {
         "type": "selfHpBelow",
         "percent": 50
+      },
+      "thenIntent": {
+        "kind": "attack",
+        "value": 24
       }
     }
   ]

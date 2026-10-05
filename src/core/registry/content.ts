@@ -80,6 +80,11 @@ export interface EnemyIntentEntry {
   readonly condition?: ConditionNode;
   /** 同一意图最多连续出现次数（0.1 读招体验） */
   readonly maxConsecutive?: number;
+  /**
+   * 强制后续招式：本条被抽中后，敌人的下一个意图**直接**是这个（不再随机）。
+   * 用于「蓄力 → 大招」这类可读的读招节奏（策划 Q13）。
+   */
+  readonly thenIntent?: IntentDefinition;
 }
 
 export interface EnemyDefinition {
