@@ -55,6 +55,7 @@ const hand = computed(() =>
       cost,
       keywords: def?.keywords ?? [],
       type: def?.type ?? "skill",
+      rarity: def?.rarity ?? "common",
       enhancements: instance.enhancements.length,
       enhancementIds: instance.enhancements,
       upgraded: instance.upgraded,
@@ -285,6 +286,7 @@ function back(): void {
             :enhancements="card.enhancements"
             :enhancement-ids="card.enhancementIds"
             :upgraded="card.upgraded"
+            :rarity="card.rarity"
             @grab="onGrab"
           />
         </div>

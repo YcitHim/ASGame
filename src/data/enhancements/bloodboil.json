@@ -3,7 +3,11 @@
   "tier": 2,
   "appliesTo": [
     "bloodbolt",
-    "redtear"
+    "redtear",
+    "overloadstrike",
+    "bloodflail",
+    "plaguesurge",
+    "bloodstorm"
   ],
   "handler": "bloodboil",
   "params": {

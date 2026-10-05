@@ -52,13 +52,17 @@ describe("S5 局外进度（runStore）", () => {
     expect(offers.length).toBeGreaterThan(0);
     expect(offers.every((o) => o.targets.length > 0)).toBe(true);
 
+    // 强化只作用于特殊卡：普通打击/防御不参与
+    const bloodboltIndex = run.deck.findIndex((c) => c.cardId === "bloodbolt");
+    const braceIndex = run.deck.findIndex((c) => c.cardId === "brace");
     const strikeIndex = run.deck.findIndex((c) => c.cardId === "strike");
-    const defendIndex = run.deck.findIndex((c) => c.cardId === "defend");
-    expect(run.canApply("empower", strikeIndex)).toBe(true);
-    expect(run.canApply("empower", defendIndex)).toBe(false);
-    expect(run.applyEnhancement(strikeIndex, "empower")).toBe(true);
-    expect(run.deck[strikeIndex].enhancements).toEqual(["empower"]);
-    expect(run.applyEnhancement(strikeIndex, "empower")).toBe(false);
+
+    expect(run.canApply("empower", strikeIndex)).toBe(false);
+    expect(run.canApply("empower", bloodboltIndex)).toBe(true);
+    expect(run.applyEnhancement(bloodboltIndex, "empower")).toBe(true);
+    expect(run.deck[bloodboltIndex].enhancements).toEqual(["empower"]);
+    expect(run.applyEnhancement(bloodboltIndex, "empower")).toBe(false);
+    expect(run.canApply("fortify", braceIndex)).toBe(true);
   });
 
   it("休息点：回复 / 升级", () => {
@@ -88,7 +92,8 @@ describe("S5 局外进度（runStore）", () => {
     run.startRun(7);
     run.advance();
     run.setHp(41);
-    run.applyEnhancement(0, "empower");
+    const bloodboltIndex = run.deck.findIndex((c) => c.cardId === "bloodbolt");
+    run.applyEnhancement(bloodboltIndex, "empower");
     expect(run.persist).toBeTypeOf("function");
     run.persist();
 
@@ -99,7 +104,8 @@ describe("S5 局外进度（runStore）", () => {
     expect(reloaded.load()).toBe(true);
     expect(reloaded.run?.nodeIndex).toBe(1);
     expect(reloaded.hp).toBe(41);
-    expect(reloaded.deck[0].enhancements).toEqual(["empower"]);
+    const reloadedBloodbolt = reloaded.deck.findIndex((c) => c.cardId === "bloodbolt");
+    expect(reloaded.deck[reloadedBloodbolt].enhancements).toEqual(["empower"]);
     expect(reloaded.relics).toEqual(run.relics);
   });
 });

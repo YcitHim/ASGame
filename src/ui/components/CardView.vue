@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { t } from "@/data/load";
+import { highlightText, keywordTip } from "@/ui/glossary";
 
 const props = defineProps<{
   cardId: string;
@@ -15,6 +16,9 @@ const props = defineProps<{
   enhancements?: number;
   upgraded?: boolean;
   enhancementIds?: readonly string[];
+  rarity?: string;
+  /** 展示模式（奖励/锻造用）：不扇形、不夸张抬升 */
+  display?: boolean;
 }>();
 
 const emit = defineEmits<{ (e: "grab", index: number, event: PointerEvent): void }>();
@@ -38,27 +42,31 @@ const desc = computed(() =>
     ? t(`card.${props.cardId}.descUp`, t(`card.${props.cardId}.desc`, ""))
     : t(`card.${props.cardId}.desc`, ""),
 );
-const enhancementNames = computed(() => (props.enhancementIds ?? []).map((id) => t(`enh.${id}.name`, id)));
-const enhancementTip = computed(() =>
-  enhancementNames.value.length > 0
-    ? enhancementNames.value.map((n) => `${n}：${t(`enh.${props.enhancementIds?.[enhancementNames.value.indexOf(n)]}.desc`, "")}`).join("\n")
-    : "",
-);
+const descHtml = computed(() => highlightText(desc.value));
 const typeLabel = computed(() => TYPE_LABEL[props.type] ?? props.type);
 const keywordLabels = computed(() => props.keywords.map((k) => KEYWORD_LABEL[k] ?? k));
-/** 扇形展开：以中心为 0 度，向两侧摊开。 */
+const enhancementTip = computed(() =>
+  (props.enhancementIds ?? [])
+    .map((id) => `${t(`enh.${id}.name`, id)}：${t(`enh.${id}.desc`, "")}`)
+    .join("\n"),
+);
+
+/** 扇形展开：以中心为 0 度摊开；展示模式不旋转。 */
 const rotation = computed(() => {
-  if (props.handCount <= 1) return 0;
+  if (props.display || props.handCount <= 1) return 0;
   const center = (props.handCount - 1) / 2;
   return ((props.index - center) / Math.max(1, center)) * 9;
 });
-const lift = computed(() => Math.abs(rotation.value) * 1.8);
+const lift = computed(() => (props.display ? 0 : Math.abs(rotation.value) * 1.8));
 </script>
 
 <template>
   <div
     class="card"
-    :class="{ 'not-playable': !playable, selected, dragging }"
+    :class="[
+      `rarity-${rarity ?? 'common'}`,
+      { 'not-playable': !playable, selected, dragging, display },
+    ]"
     :style="{ transform: `rotate(${rotation}deg) translateY(${lift}px)` }"
     @pointerdown="emit('grab', index, $event)"
   >
@@ -66,8 +74,16 @@ const lift = computed(() => Math.abs(rotation.value) * 1.8);
     <div v-if="keywordLabels.includes('血契')" class="bloodcost">血契</div>
     <div class="art"><span>{{ typeLabel }}</span></div>
     <div class="cname">{{ name }}<sup v-if="upgraded" class="upmark">+</sup></div>
-    <div class="ctype">{{ typeLabel }}<template v-if="keywordLabels.length"> · {{ keywordLabels.join(" · ") }}</template></div>
-    <div class="ctext">{{ desc }}</div>
+    <div class="ctype">
+      {{ typeLabel }}
+      <template v-if="keywordLabels.length">
+        ·
+        <span v-for="(k, i) in keywordLabels" :key="k" class="kw" :data-tip="keywordTip(k)">
+          {{ k }}<template v-if="i < keywordLabels.length - 1"> / </template>
+        </span>
+      </template>
+    </div>
+    <div class="ctext" v-html="descHtml" />
     <div class="enhslots" :title="enhancementTip">
       <i v-for="n in 3" :key="n" :class="{ on: n <= (enhancements ?? 0) }" />
     </div>
@@ -93,19 +109,36 @@ const lift = computed(() => Math.abs(rotation.value) * 1.8);
 .card:active {
   cursor: grabbing;
 }
-.card.dragging {
-  opacity: 0.35;
-}
 .card:hover {
   transform: translateY(-52px) scale(1.12) rotate(0deg) !important;
   z-index: 30;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(176, 141, 74, 0.8), 0 22px 44px rgba(0, 0, 0, 0.8);
+}
+.card.display {
+  margin: 0;
+  cursor: pointer;
+  transform-origin: center center;
+}
+.card.display:hover {
+  transform: translateY(-10px) scale(1.05) rotate(0deg) !important;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(176, 141, 74, 0.9), 0 26px 46px rgba(0, 0, 0, 0.85);
+}
+/* 稀有度描边：普通暗金 / 稀有（uncommon）钢蓝 / 史诗（rare）亮金 */
+.card.rarity-uncommon {
+  border-color: rgba(107, 122, 140, 0.85);
+}
+.card.rarity-rare {
+  border-color: rgba(176, 141, 74, 0.95);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.65), inset 0 0 26px rgba(176, 141, 74, 0.12), 0 10px 26px rgba(0, 0, 0, 0.65);
 }
 .card.not-playable {
   filter: saturate(0.4) brightness(0.8);
 }
 .card.selected {
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.65), 0 0 0 2px var(--gold), 0 0 22px rgba(176, 141, 74, 0.5);
+}
+.card.dragging {
+  opacity: 0.35;
 }
 .cost {
   position: absolute;
@@ -152,11 +185,6 @@ const lift = computed(() => Math.abs(rotation.value) * 1.8);
   letter-spacing: 0.3em;
   color: rgba(176, 141, 74, 0.55);
 }
-.upmark {
-  color: var(--gold);
-  font-size: 11px;
-  margin-left: 3px;
-}
 .cname {
   text-align: center;
   font-family: var(--serif-title);
@@ -164,6 +192,11 @@ const lift = computed(() => Math.abs(rotation.value) * 1.8);
   letter-spacing: 0.14em;
   margin-top: 9px;
   color: var(--ink-bone);
+}
+.upmark {
+  color: var(--gold);
+  font-size: 11px;
+  margin-left: 3px;
 }
 .ctype {
   text-align: center;
@@ -199,5 +232,39 @@ const lift = computed(() => Math.abs(rotation.value) * 1.8);
   background: var(--blood-hi);
   border-color: var(--blood-hi);
   box-shadow: 0 0 6px rgba(192, 57, 43, 0.7);
+}
+</style>
+
+<style>
+/* 关键词：蓝字 + 悬浮解释（全局，因为 v-html 内容不参与 scoped） */
+.card .kw {
+  color: #7fa6c8;
+  border-bottom: 1px dotted rgba(127, 166, 200, 0.6);
+  position: relative;
+  cursor: help;
+}
+.card .kw:hover {
+  color: #a8c8e4;
+}
+.card .kw[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: 135%;
+  transform: translateX(-50%);
+  width: 220px;
+  padding: 8px 10px;
+  background: var(--bg-raised, #1c1915);
+  border: 1px solid rgba(176, 141, 74, 0.6);
+  border-radius: 3px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.85);
+  color: var(--ink-dim, #9a9081);
+  font-size: 10px;
+  line-height: 1.7;
+  letter-spacing: 0.04em;
+  text-align: left;
+  white-space: normal;
+  z-index: 80;
+  pointer-events: none;
 }
 </style>

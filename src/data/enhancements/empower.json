@@ -2,22 +2,15 @@
   "id": "empower",
   "tier": 1,
   "appliesTo": [
-    "strike",
-    "jab",
-    "quickcut",
-    "cleave",
-    "rustspray",
-    "ironhide",
-    "leech",
-    "reap",
+    "bloodbolt",
+    "redtear",
     "overloadstrike",
     "bloodflail",
-    "redtear",
-    "bloodbolt",
-    "veinburst",
-    "exsanguinate",
     "plaguesurge",
-    "bloodstorm"
+    "bloodstorm",
+    "exsanguinate",
+    "veinburst",
+    "rustspray"
   ],
   "handler": "empower",
   "params": {

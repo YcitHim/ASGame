@@ -24,30 +24,26 @@ const chosenOffer = computed(() => offers.value.find((o) => o.id === selected.va
 function cardName(cardId: string): string {
   return t(`card.${cardId}.name`, cardId);
 }
-
 function enhancementName(id: string): string {
   return t(`enh.${id}.name`, id);
 }
-
 function enhancementDesc(id: string): string {
   return t(`enh.${id}.desc`, "");
 }
-
 function isTarget(deckIndex: number): boolean {
-  if (!chosenOffer.value) return false;
-  return chosenOffer.value.targets.includes(deckIndex);
+  return chosenOffer.value?.targets.includes(deckIndex) ?? false;
 }
 
 function pickOffer(id: string): void {
   selected.value = selected.value === id ? null : id;
-  notice.value = selected.value ? "选择要附着的卡牌" : "";
+  notice.value = selected.value ? "选择要附着的卡牌（高亮）" : "";
 }
 
 function attach(deckIndex: number): void {
   const offer = chosenOffer.value;
   if (!offer) return;
   if (!isTarget(deckIndex)) {
-    notice.value = "该强化不适用于此牌";
+    notice.value = "该强化只适用于特殊卡（带机制关键词的牌）";
     return;
   }
   if (run.applyEnhancement(deckIndex, offer.id)) {
@@ -77,8 +73,10 @@ function backToMap(): void {
         </div>
       </div>
 
-      <h1 class="head">锻 造 祭 坛</h1>
-      <p class="sub">选择一枚强化，附着到一张卡牌上（每张上限 3 枚）</p>
+      <header class="hd">
+        <h1 class="head">锻 造 祭 坛</h1>
+        <p class="sub">从三枚强化中选择一枚，附着到一张<em>特殊卡</em>上（每张上限 3 枚）</p>
+      </header>
 
       <div class="columns">
         <section class="col offers">
@@ -87,7 +85,7 @@ function backToMap(): void {
             v-for="offer in offers"
             :key="offer.id"
             class="offer"
-            :class="{ active: selected === offer.id }"
+            :class="[`tier-${offer.tier}`, { active: selected === offer.id }]"
             @click="pickOffer(offer.id)"
           >
             <div class="offer-top">
@@ -95,9 +93,12 @@ function backToMap(): void {
               <span class="tier">T{{ offer.tier }}</span>
             </div>
             <p>{{ enhancementDesc(offer.id) }}</p>
-            <small>可附着 {{ offer.targets.length }} 张</small>
+            <div class="offer-foot">
+              <span class="count">可附着 {{ offer.targets.length }} 张</span>
+              <span class="mark">{{ selected === offer.id ? "已选中" : "点击选择" }}</span>
+            </div>
           </button>
-          <p v-if="offers.length === 0" class="empty">没有可附着的强化</p>
+          <p v-if="offers.length === 0" class="empty">当前卡组没有可附着的特殊卡</p>
         </section>
 
         <section class="col deck">
@@ -110,7 +111,7 @@ function backToMap(): void {
               :class="{ targetable: isTarget(index), upgraded: card.upgraded }"
               @click="attach(index)"
             >
-              <span class="name">{{ cardName(card.cardId) }}{{ card.upgraded ? "+" : "" }}</span>
+              <span class="name">{{ cardName(card.cardId) }}<sup v-if="card.upgraded">+</sup></span>
               <span class="slots">
                 <i v-for="n in 3" :key="n" :class="{ on: n <= card.enhancements.length }" />
               </span>
@@ -137,54 +138,236 @@ function backToMap(): void {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 34px 44px 24px;
+  padding: 40px 48px 26px;
 }
 .topbar {
-  position: absolute; top: 0; left: 0; right: 0; height: 34px; z-index: 30;
-  display: flex; align-items: center; justify-content: space-between; padding: 0 18px;
-  font-size: 12px; letter-spacing: 0.18em; color: var(--ink-dim);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 34px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--ink-dim);
   border-bottom: 1px solid rgba(110, 88, 54, 0.25);
 }
-.topbar .r { display: flex; gap: 16px; }
-.topbar .r span { cursor: pointer; }
-.topbar .r span:hover { color: var(--gold); }
+.topbar .r {
+  display: flex;
+  gap: 16px;
+}
+.topbar .r span {
+  cursor: pointer;
+}
+.topbar .r span:hover {
+  color: var(--gold);
+}
+.hd {
+  text-align: center;
+}
 .head {
-  font-family: var(--serif-title); font-size: 30px; letter-spacing: 0.5em; color: var(--ink-bone); margin-top: 8px;
+  font-family: var(--serif-title);
+  font-size: 28px;
+  letter-spacing: 0.5em;
+  color: var(--gold);
+  text-shadow: 0 0 24px rgba(176, 141, 74, 0.35);
 }
-.sub { font-size: 11px; letter-spacing: 0.2em; color: var(--ink-dim); margin-top: 8px; }
-.columns { display: flex; gap: 28px; width: 100%; flex: 1; margin-top: 22px; overflow: hidden; }
-.col { background: rgba(18, 16, 14, 0.8); border: 1px solid var(--edge-gold); border-radius: var(--radius-sm); padding: 14px 16px; box-shadow: var(--panel-shadow); }
-.col h2 { font-size: 12px; letter-spacing: 0.3em; color: var(--gold); font-weight: 400; margin-bottom: 12px; }
-.offers { width: 520px; display: flex; flex-direction: column; gap: 12px; }
+.sub {
+  margin-top: 8px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--ink-dim);
+}
+.sub em {
+  color: #7fa6c8;
+  font-style: normal;
+}
+.columns {
+  display: flex;
+  gap: 26px;
+  width: 100%;
+  flex: 1;
+  margin-top: 18px;
+  overflow: hidden;
+}
+.col {
+  background: rgba(18, 16, 14, 0.8);
+  border: 1px solid var(--edge-gold);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  box-shadow: var(--panel-shadow);
+}
+.col h2 {
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  color: var(--gold);
+  font-weight: 400;
+  margin-bottom: 12px;
+}
+.offers {
+  width: 540px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 .offer {
-  text-align: left; border: 1px solid rgba(176, 141, 74, 0.45); border-radius: var(--radius-sm);
-  padding: 12px 14px; background: linear-gradient(160deg, #1c1915, #12100e);
-  transition: border-color var(--dur-hover), box-shadow var(--dur-hover);
+  text-align: left;
+  border: 1px solid rgba(176, 141, 74, 0.45);
+  border-left-width: 3px;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  background: linear-gradient(160deg, #1f1b16, #12100e);
+  transition: border-color var(--dur-hover), box-shadow var(--dur-hover), transform var(--dur-hover);
 }
-.offer:hover { border-color: var(--gold); }
-.offer.active { border-color: var(--blood-hi); box-shadow: 0 0 18px rgba(192, 57, 43, 0.35); }
-.offer-top { display: flex; justify-content: space-between; align-items: center; }
-.offer-top b { font-family: var(--serif-title); font-size: 16px; letter-spacing: 0.15em; color: var(--ink-bone); }
-.tier { font-family: var(--serif-num); font-size: 11px; color: var(--gold-dim); }
-.offer p { font-size: 12px; line-height: 1.7; color: var(--ink-dim); margin: 8px 0 6px; }
-.offer small { font-size: 10px; color: var(--gold-dim); }
-.deck { flex: 1; display: flex; flex-direction: column; }
-.deck-list { overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.offer:hover {
+  transform: translateX(4px);
+}
+.offer.tier-1 {
+  border-left-color: #8fa1b5;
+}
+.offer.tier-2 {
+  border-left-color: var(--gold);
+}
+.offer.tier-3 {
+  border-left-color: var(--blood-hi);
+}
+.offer.active {
+  border-color: var(--blood-hi);
+  box-shadow: 0 0 20px rgba(192, 57, 43, 0.35);
+}
+.offer-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.offer-top b {
+  font-family: var(--serif-title);
+  font-size: 16px;
+  letter-spacing: 0.16em;
+  color: var(--ink-bone);
+  font-weight: 400;
+}
+.tier {
+  font-family: var(--serif-num);
+  font-size: 11px;
+  color: var(--gold-dim);
+}
+.offer p {
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--ink-dim);
+  margin: 8px 0 8px;
+}
+.offer-foot {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+}
+.count {
+  color: var(--gold-dim);
+}
+.mark {
+  color: rgba(154, 144, 129, 0.6);
+}
+.offer.active .mark {
+  color: var(--blood-hi);
+}
+.empty {
+  font-size: 12px;
+  color: var(--ink-dim);
+  text-align: center;
+  margin-top: 18px;
+}
+.deck {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.deck-list {
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 .deck-card {
-  display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; text-align: left;
-  border: 1px solid rgba(110, 88, 54, 0.35); border-radius: var(--radius-sm);
-  padding: 6px 10px; background: rgba(10, 8, 6, 0.6);
-  transition: border-color var(--dur-hover), background var(--dur-hover);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 10px;
+  align-items: center;
+  text-align: left;
+  border: 1px solid rgba(110, 88, 54, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  background: rgba(10, 8, 6, 0.6);
+  transition: border-color var(--dur-hover), background var(--dur-hover), transform var(--dur-hover);
 }
-.deck-card.targetable { border-color: rgba(176, 141, 74, 0.9); background: rgba(40, 30, 18, 0.7); cursor: pointer; }
-.deck-card.targetable:hover { background: rgba(60, 44, 24, 0.85); }
-.name { font-size: 13px; color: var(--ink-bone); letter-spacing: 0.08em; }
-.slots { display: flex; gap: 4px; }
-.slots i { width: 9px; height: 9px; border: 1px solid var(--gold-dim); transform: rotate(45deg); background: rgba(176, 141, 74, 0.12); }
-.slots i.on { background: var(--blood-hi); border-color: var(--blood-hi); box-shadow: 0 0 6px rgba(192, 57, 43, 0.7); }
-.enhs { grid-column: 1 / -1; font-size: 10px; color: var(--gold-dim); }
-.bottom { width: 100%; display: flex; align-items: center; justify-content: space-between; margin-top: 18px; }
-.relics { font-size: 11px; color: var(--ink-dim); letter-spacing: 0.1em; }
-.go { padding: 10px 26px; font-size: 13px; }
-.notice { position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--blood-hi); letter-spacing: 0.15em; }
+.deck-card.targetable {
+  border-color: rgba(176, 141, 74, 0.9);
+  background: rgba(40, 30, 18, 0.72);
+  cursor: pointer;
+}
+.deck-card.targetable:hover {
+  background: rgba(64, 47, 25, 0.9);
+  transform: translateX(3px);
+}
+.name {
+  font-size: 13px;
+  color: var(--ink-bone);
+  letter-spacing: 0.08em;
+}
+.name sup {
+  color: var(--gold);
+  font-size: 10px;
+}
+.slots {
+  display: flex;
+  gap: 4px;
+}
+.slots i {
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--gold-dim);
+  transform: rotate(45deg);
+  background: rgba(176, 141, 74, 0.12);
+}
+.slots i.on {
+  background: var(--blood-hi);
+  border-color: var(--blood-hi);
+  box-shadow: 0 0 6px rgba(192, 57, 43, 0.7);
+}
+.enhs {
+  grid-column: 1 / -1;
+  font-size: 10px;
+  color: var(--gold-dim);
+}
+.bottom {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+.relics {
+  font-size: 11px;
+  color: var(--ink-dim);
+  letter-spacing: 0.1em;
+}
+.go {
+  padding: 10px 26px;
+  font-size: 13px;
+}
+.notice {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--blood-hi);
+  letter-spacing: 0.15em;
+}
 </style>
