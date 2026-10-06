@@ -1,0 +1,13 @@
+{
+  "id": "ember_core",
+  "i18n": "relic.ember_core",
+  "timing": "onBattleStart",
+  "effects": [
+    {
+      "kind": "gainCharge",
+      "value": 3
+    }
+  ],
+  "once": "battle",
+  "unlockCondition": "engineer_first_clear"
+}

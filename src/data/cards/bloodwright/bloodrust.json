@@ -31,5 +31,5 @@
     ]
   },
   "i18n": "card.bloodrust",
-  "unlockCondition": "none"
+  "unlockCondition": "first_boss_clear"
 }

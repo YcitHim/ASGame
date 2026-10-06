@@ -27,6 +27,8 @@ export interface EventResolveContext {
   readonly ownedRelics: readonly string[];
   /** 本局职业：抽卡时做职业池隔离（缺省不过滤，兼容旧测试） */
   readonly classId?: string;
+  /** 已解锁内容 id；解锁式内容未解锁不入池（docs/36 T1） */
+  readonly unlocked?: readonly string[];
 }
 
 /** 卡池按稀有度权重（仅用于「按稀有度权重」的显式池抽取，program 默认值）。 */
@@ -101,14 +103,24 @@ export function resolveEventOption(
         pollutionDelta += effect.value ?? 0;
         break;
       case "gainRelic": {
-        const pool = [...content.relics.keys()].filter((id) => !ctx.ownedRelics.includes(id)).sort();
+        const unlocked = ctx.unlocked ?? [];
+        const available = (id: string): boolean => {
+          const cond = content.relics.get(id)?.unlockCondition;
+          return !cond || cond === "none" || unlocked.includes(id);
+        };
+        const pool = [...content.relics.keys()].filter((id) => !ctx.ownedRelics.includes(id) && available(id)).sort();
         relicIds.push(...takeWeighted(rng, pool, () => 1, effect.count ?? 1));
         break;
       }
       case "gainCard": {
         // 职业池隔离（docs/16 5.2）：显式池若含本职业卡则只在本职业内抽；
         // 若显式池与职业完全不匹配（如充能主题事件池）则保留原池，避免事件变空。
-        const byClass = (id: string): boolean => !ctx.classId || content.cards.get(id)?.class === ctx.classId;
+        const unlocked = ctx.unlocked ?? [];
+        const byUnlock = (id: string): boolean => {
+          const cond = content.cards.get(id)?.unlockCondition;
+          return !cond || cond === "none" || unlocked.includes(id);
+        };
+        const byClass = (id: string): boolean => (!ctx.classId || content.cards.get(id)?.class === ctx.classId) && byUnlock(id);
         const explicit = (effect.pool ?? []).filter((id) => content.cards.has(id));
         const explicitFiltered = explicit.some(byClass) ? explicit.filter(byClass) : explicit;
         const pool = effect.pool

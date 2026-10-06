@@ -22,6 +22,7 @@ import {
   resolveEventOption,
   setRunHp,
   setRunPollution,
+  type RunDifficulty,
   type RunState,
 } from "../../../src/core/map";
 import type { ActDefinition, ContentDb } from "../../../src/core/registry";
@@ -64,6 +65,8 @@ export interface BattleRunConfig {
   pollution?: number;
   deck: readonly SimCard[];
   relics: readonly string[];
+  /** 难度档（docs/36 T2）；缺省 normal */
+  difficulty?: RunDifficulty;
 }
 
 export interface BattleRunOutcome {
@@ -178,6 +181,7 @@ export function runBattle(content: ContentDb, config: BattleRunConfig): BattleRu
     deck: config.deck.map((c) => ({ cardId: c.cardId, upgraded: c.upgraded, enhancements: c.enhancements })),
     relics: [...config.relics],
     content,
+    difficulty: config.difficulty ?? "normal",
   });
   state = reduce(state, { type: "Noop", actionId: "s" }).state;
 
@@ -219,10 +223,16 @@ export function simulateRun(
   act: ActDefinition,
   seed: number,
   classId = "bloodwright",
+  difficulty: RunDifficulty = "normal",
 ): SimResult {
   const cls = content.classes.get(classId) ?? [...content.classes.values()][0];
   if (!cls) throw new Error("内容里没有任何职业定义");
-  let run = createRunState(act, cls, seed);
+  // sim 口径 = 老玩家快照：全部内容已解锁（与 P5 基线口径一致，docs/36 T3）
+  const unlocked = [
+    ...[...content.cards.keys()],
+    ...[...content.relics.keys()],
+  ];
+  let run = createRunState(act, cls, seed, { unlocked, difficulty });
   const deck: SimCard[] = cls.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
   const relics = [...(cls.startRelics ?? [])];
 
@@ -279,6 +289,7 @@ export function simulateRun(
         enemies: rollEncounter(run, node),
         deck,
         relics,
+        difficulty: run.difficulty,
       });
 
       turns += battle.turns;
@@ -305,7 +316,7 @@ export function simulateRun(
           cardsPicked[pick] = (cardsPicked[pick] ?? 0) + 1;
         }
       } else if (node.kind === "elite") {
-        const relic = rollRelicChoices(content, relics, 1)[0];
+        const relic = rollRelicChoices(content, relics, 1, run.unlocked)[0];
         if (relic && !relics.includes(relic)) relics.push(relic);
         const applied = applyEnhancementChoice(
           content,

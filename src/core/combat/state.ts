@@ -4,8 +4,8 @@
  */
 import type { BuffInstance } from "../buffs";
 import type { EnemySetup, IntentPayload } from "../events";
-import type { ContentDb } from "../registry/content";
-import { emptyContent } from "../registry/content";
+import type { ContentDb, RunDifficulty } from "../registry/content";
+import { DIFFICULTY_PARAMS, emptyContent } from "../registry/content";
 import type { Modifier } from "../pipeline";
 import { Rng, type RngSnapshot } from "../rng";
 
@@ -85,6 +85,8 @@ export interface BattleState {
   readonly tookDamageThisTurn: boolean;
   /** 事件全局序号计数器 */
   readonly eventSeq: number;
+  /** 难度档（docs/36 T2）：敌人 HP / 伤害倍率一并从此读 */
+  readonly difficulty: RunDifficulty;
   /** 静态内容目录（不参与回放序列化） */
   readonly content: ContentDb;
 }
@@ -106,6 +108,8 @@ export interface BattleConfig {
   readonly handSize?: number;
   readonly content?: ContentDb;
   readonly relics?: readonly string[];
+  /** 难度档（docs/36 T2）；缺省 normal */
+  readonly difficulty?: RunDifficulty;
 }
 
 export const DEFAULT_HAND_SIZE = 5;
@@ -122,6 +126,9 @@ export function createBattleState(config: BattleConfig): BattleState {
   /** 同名敌人的实例计数：第 2 个起加 `#n` 后缀，避免 id 冲突导致只能打到第一个 */
   const idCounts = new Map<string, number>();
   const startingPollution = Math.max(0, Math.min(100, Math.trunc(config.player.pollution ?? 0)));
+  const difficulty = config.difficulty ?? "normal";
+  /** 锈蚀难度：敌人 HP 上浮（伤害倍率在 attackModifiers 里生效，docs/36 T2） */
+  const enemyHpMul = DIFFICULTY_PARAMS[difficulty].enemyHpMul;
 
   config.deck.forEach((entry, index) => {
     const cardId = typeof entry === "string" ? entry : entry.cardId;
@@ -138,6 +145,7 @@ export function createBattleState(config: BattleConfig): BattleState {
   return {
     battleId: config.battleId,
     rootSeed: config.seed >>> 0,
+    difficulty,
     rng: new Rng(config.seed).snapshot(),
     turn: 0,
     phase: "battleStart",
@@ -162,7 +170,8 @@ export function createBattleState(config: BattleConfig): BattleState {
     enemies: config.enemies.map((e) => {
       const defId = e.defId ?? e.id;
       const def = content.enemies.get(defId);
-      const maxHp = e.maxHp ?? def?.maxHp ?? 1;
+      const rawMaxHp = e.maxHp ?? def?.maxHp ?? 1;
+      const maxHp = enemyHpMul === 1 ? rawMaxHp : Math.max(1, Math.round(rawMaxHp * enemyHpMul));
       const seen = (idCounts.get(defId) ?? 0) + 1;
       idCounts.set(defId, seen);
       return {

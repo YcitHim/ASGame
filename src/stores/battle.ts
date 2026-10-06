@@ -100,6 +100,8 @@ export const useBattleStore = defineStore("battle", {
         deck: run.deck.map((c) => ({ cardId: c.cardId, upgraded: c.upgraded, enhancements: c.enhancements })),
         relics: run.relics,
         content: game.content,
+        // 难度档（docs/36 T2）：敌人 HP / 伤害倍率在 core 里生效
+        difficulty: run.run?.difficulty ?? "normal",
       });
       // 图鉴「见过即解锁」：本场用到的卡 / 遗物 / 敌人都点亮（docs/16 4.7）
       const codex = useCodexStore();
@@ -118,10 +120,16 @@ export const useBattleStore = defineStore("battle", {
       if (!this.battle) return [];
       const result = reduce(this.battle, action);
       this.battle = result.state;
+      const runStore = useRunStore();
       if (result.state.phase === "battleEnd") {
         // 战斗结束把剩余 HP / 污染写回局外进度（跨节点保留，供事件结算）
-        useRunStore().setHp(result.state.player.hp);
-        useRunStore().setPollution(result.state.player.pollution);
+        runStore.setHp(result.state.player.hp);
+        runStore.setPollution(result.state.player.pollution);
+      }
+      // 成就埋点（docs/36 T1）：血契出牌 / 过载反噬从事件流里读，core 不做局外判断
+      for (const event of result.events) {
+        if (event.type === "CardPlayed" && event.bloodPaid > 0) runStore.noteBloodpact();
+        else if (event.type === "Overloaded" && event.targetId === "player") runStore.noteOverload();
       }
       if (result.events.length > 0) {
         this.log.push(...result.events);

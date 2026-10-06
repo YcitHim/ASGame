@@ -5,7 +5,7 @@
  * 起始卡组 + 2 张抓牌（走真实奖励流程）+ 1 次升级，HP 45，起始遗物。
  * 验收区间：胜率 70%~90%、平均承伤 25~40。
  */
-import { createRunState, rollCardRewards } from "../../../src/core/map";
+import { createRunState, rollCardRewards, type RunDifficulty } from "../../../src/core/map";
 import type { ActDefinition, ContentDb } from "../../../src/core/registry";
 import { bestReward, runBattle, type SimCard } from "./sim";
 
@@ -26,10 +26,12 @@ export function simulateEliteScenario(
   act: ActDefinition,
   seed: number,
   classId = "bloodwright",
+  difficulty: RunDifficulty = "normal",
 ): ScenarioResult {
   const cls = content.classes.get(classId) ?? [...content.classes.values()][0];
   if (!cls) throw new Error("内容里没有任何职业定义");
-  const run = createRunState(act, cls, seed);
+  const unlocked = [...[...content.cards.keys()], ...[...content.relics.keys()]];
+  const run = createRunState(act, cls, seed, { unlocked, difficulty });
   const deck: SimCard[] = cls.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
 
   // 2 张抓牌：走真实奖励流程，避免凭空造卡
@@ -52,6 +54,7 @@ export function simulateEliteScenario(
     enemies: [ELITE_SCENARIO_ENEMY],
     deck,
     relics: cls.startRelics ?? [],
+    difficulty,
   });
 
   return {

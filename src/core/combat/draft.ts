@@ -8,7 +8,7 @@ import { Rng } from "../rng";
 import { EffectQueue } from "../pipeline";
 import type { BuffInstance } from "../buffs";
 import type { ContentDb } from "../registry/content";
-import type { CardDefinition } from "../registry/content";
+import type { CardDefinition, RunDifficulty } from "../registry/content";
 import type { IntentPayload } from "../events";
 import type { Modifier } from "../pipeline";
 import type { CardInstance, EnemyState, Phase, BattleState } from "./state";
@@ -45,6 +45,8 @@ export interface MutableEnemy extends MutableUnit {
 export interface Draft {
   readonly battleId: string;
   rootSeed: number;
+  /** 难度档（docs/36 T2）：敌人伤害倍率在 attackModifiers 读取 */
+  readonly difficulty: RunDifficulty;
   readonly content: ContentDb;
   readonly handSize: number;
   rng: Rng;
@@ -72,6 +74,7 @@ export function toDraft(state: BattleState): Draft {
   return {
     battleId: state.battleId,
     rootSeed: state.rootSeed,
+    difficulty: state.difficulty,
     content: state.content,
     handSize: state.handSize,
     rng: Rng.fromSnapshot(state.rootSeed, state.rng),
@@ -122,6 +125,7 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
   return {
     battleId: draft.battleId,
     rootSeed: draft.rootSeed,
+    difficulty: draft.difficulty,
     rng: draft.rng.snapshot(),
     turn: draft.turn,
     phase: draft.phase,

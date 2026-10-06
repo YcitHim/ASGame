@@ -1,3 +1,4 @@
+import type { RunDifficulty } from "../../../src/core/map";
 import { loadNodeContent } from "./load";
 import { buildReport, buildScenarioReport, formatReport, formatScenarioReport } from "./report";
 import { simulateEliteScenario } from "./scenario";
@@ -7,13 +8,28 @@ import { simulateRun } from "./sim";
 const HEALTHY_MIN = 0.45;
 const HEALTHY_MAX = 0.65;
 
-/** 用法：npm run sim -- [局数] [--scenario elite_warden] [--class engineer] */
-function parseArgs(argv: string[]): { games: number; scenario: string | null; classId: string } {
+/** 用法：npm run sim -- [局数] [--scenario elite_warden] [--class engineer] [--difficulty rust] */
+function parseArgs(argv: string[]): {
+  games: number;
+  scenario: string | null;
+  classId: string;
+  difficulty: RunDifficulty;
+} {
   let games = 100;
   let scenario: string | null = null;
   let classId = "bloodwright";
+  let difficulty: RunDifficulty = "normal";
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
+    if (token === "--difficulty") {
+      difficulty = (argv[i + 1] as RunDifficulty) ?? "normal";
+      i += 1;
+      continue;
+    }
+    if (token.startsWith("--difficulty=")) {
+      difficulty = token.slice("--difficulty=".length) as RunDifficulty;
+      continue;
+    }
     if (token === "--scenario") {
       scenario = argv[i + 1] ?? "";
       i += 1;
@@ -35,11 +51,11 @@ function parseArgs(argv: string[]): { games: number; scenario: string | null; cl
     const n = Number(token);
     if (Number.isFinite(n) && n > 0) games = Math.trunc(n);
   }
-  return { games, scenario, classId };
+  return { games, scenario, classId, difficulty };
 }
 
 function main(): number {
-  const { games, scenario, classId } = parseArgs(process.argv.slice(2));
+  const { games, scenario, classId, difficulty } = parseArgs(process.argv.slice(2));
   const { content, acts } = loadNodeContent();
   const act = acts[0];
   if (!act) {
@@ -52,16 +68,26 @@ function main(): number {
       console.error(`[headless-sim] 未知场景 "${scenario}"（可用：elite_warden）`);
       return 1;
     }
-    const results = Array.from({ length: games }, (_, i) => simulateEliteScenario(content, act, i + 1, classId));
+    const results = Array.from({ length: games }, (_, i) =>
+      simulateEliteScenario(content, act, i + 1, classId, difficulty),
+    );
     const report = buildScenarioReport(results);
     console.log(formatScenarioReport(report));
     return 0;
   }
 
-  const results = Array.from({ length: games }, (_, i) => simulateRun(content, act, i + 1, classId));
-  console.log(`[headless-sim] 职业 ${classId}`);
+  const results = Array.from({ length: games }, (_, i) =>
+    simulateRun(content, act, i + 1, classId, difficulty),
+  );
+  console.log(`[headless-sim] 职业 ${classId} · 难度 ${difficulty}`);
   const report = buildReport(results);
   console.log(formatReport(report));
+
+  // 锈蚀档只摸底不设线（docs/36 §四）；普通档沿用 45~65% 健康区间
+  if (difficulty !== "normal") {
+    console.log("\n[headless-sim] 锈蚀档：只摸底，不设健康线（docs/36 §四）");
+    return 0;
+  }
 
   if (report.winRate < HEALTHY_MIN || report.winRate > HEALTHY_MAX) {
     console.error(

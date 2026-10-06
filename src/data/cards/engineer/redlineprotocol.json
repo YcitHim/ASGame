@@ -22,5 +22,6 @@
       }
     ]
   },
-  "i18n": "card.redlineprotocol"
+  "i18n": "card.redlineprotocol",
+  "unlockCondition": "overload3_clear"
 }

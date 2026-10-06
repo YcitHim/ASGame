@@ -3,12 +3,14 @@ import { computed, onMounted, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
 import type { MapLayer } from "@/core/map";
 import type { MapNode } from "@/core/registry";
-import { t } from "@/data/load";
+import { loadGameContent, t } from "@/data/load";
+import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
 const router = useRouter();
 const run = useRunStore();
+const meta = useMetaStore();
 const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 
@@ -40,6 +42,17 @@ const currentIndex = computed(() => run.view?.currentIndex ?? -1);
 const picked = computed<readonly number[]>(() => run.run?.picked ?? []);
 const finished = computed(() => run.finished);
 const isBranch = computed(() => (layers.value[currentIndex.value]?.nodes.length ?? 0) > 1);
+
+/** 通关新解锁的内容（docs/36 T1）：结算页弹一行提示 */
+const unlockLine = computed(() => {
+  const ids = meta.lastUnlocked;
+  if (ids.length === 0) return "";
+  const content = loadGameContent().content;
+  const names = ids.map((id) =>
+    content.cards.has(id) ? t(`card.${id}.name`, id) : t(`relic.${id}.name`, id),
+  );
+  return t("meta.unlock", "{name} 已解锁。").replace("{name}", names.join(" / "));
+});
 
 function nodeTitle(node: MapNode): string {
   return node.i18n ? t(node.i18n, node.id) : node.id;
@@ -124,6 +137,7 @@ function toTitle(): void {
         <div class="victory">
           <h2>远 征 胜 利</h2>
           <p>锈喉已倒下，锈蚀回廊暂时沉寂。</p>
+          <p v-if="unlockLine" class="unlock">{{ unlockLine }}</p>
           <div class="victory-actions">
             <button class="etch-btn" @click="toTitle">返回标题</button>
           </div>
@@ -200,6 +214,7 @@ function toTitle(): void {
 @keyframes victory-in { from { transform: translateY(14px) scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } }
 .victory h2 { font-family: var(--serif-title); font-size: 34px; letter-spacing: 0.4em; color: var(--gold); text-shadow: 0 0 26px rgba(176, 141, 74, 0.5); }
 .victory p { margin: 14px 0 22px; font-size: 12px; color: var(--ink-dim); letter-spacing: 0.2em; }
+.victory p.unlock { margin: -8px 0 20px; color: var(--gold); font-size: 12px; text-shadow: 0 0 14px rgba(176, 141, 74, 0.4); }
 .victory-actions { display: flex; justify-content: center; }
 .victory .etch-btn { padding: 11px 30px; font-size: 13px; }
 .relics { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--ink-dim); letter-spacing: 0.12em; }

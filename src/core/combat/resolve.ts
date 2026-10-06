@@ -9,7 +9,7 @@ import type { EventSink } from "../events/event-sink";
 import { evaluateValue, type Modifier } from "../pipeline";
 import { getEnhancementHandler } from "../registry/enhancement-handler";
 import type { BuffId } from "../registry/ids";
-import type { CardEffect, ConditionNode, TargetRef } from "../registry/content";
+import { DIFFICULTY_PARAMS, type CardEffect, type ConditionNode, type TargetRef } from "../registry/content";
 import { evaluateCondition, type ConditionContext } from "../registry/condition";
 import { getTarget } from "../registry/target";
 import { findUnit, livingEnemies, type Draft, type MutableUnit } from "./draft";
@@ -76,6 +76,12 @@ export function attackModifiers(draft: Draft, actorId: string, targetId: string)
   }
   if (buffStacks(target, "vulnerable") > 0) {
     mods.push({ sourceId: "vulnerable", layer: "buff", op: "mul", value: 1.5 });
+  }
+  // 锈蚀难度：敌人打出的伤害上浮（docs/36 T2）。只作用于敌方攻击者，
+  // 反伤 / 环境伤害的 actorId 不是敌人实例，自然不吃倍率。
+  if (actorId !== PLAYER_ID) {
+    const mul = DIFFICULTY_PARAMS[draft.difficulty].enemyDamageMul;
+    if (mul !== 1) mods.push({ sourceId: "difficulty", layer: "buff", op: "mul", value: mul });
   }
   return mods;
 }

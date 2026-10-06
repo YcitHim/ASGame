@@ -330,6 +330,7 @@ export const relicSchema = z
     timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell", "onBlock", "onGainCharge"]),
     effects: z.array(effectSchema).min(1),
     once: z.enum(["battle", "turn"]).optional(),
+    unlockCondition: z.string().optional(),
   })
   .strict();
 

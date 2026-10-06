@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, useTemplateRef } from "vue";
+import { computed, onMounted, ref, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
 import { loadGameContent, t } from "@/data/load";
+import type { RunDifficulty } from "@/core/map";
 import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
 import { useStageFit } from "@/ui/composables/useStageFit";
@@ -9,6 +10,17 @@ import { useStageFit } from "@/ui/composables/useStageFit";
 const router = useRouter();
 const run = useRunStore();
 const meta = useMetaStore();
+/** 难度档（docs/36 T2）：锈蚀需通关一次解锁 */
+const difficulty = ref<RunDifficulty>("normal");
+const rustLocked = computed(() => !meta.rustUnlocked);
+
+function pickDifficulty(next: RunDifficulty): void {
+  if (next === "rust" && rustLocked.value) return;
+  difficulty.value = next;
+}
+function difficultyDesc(): string {
+  return difficulty.value === "rust" ? t("difficulty.rust.desc", "") : "";
+}
 const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 
@@ -30,7 +42,7 @@ function relicName(id: string): string {
 
 function choose(classId: string): void {
   if (!isUnlocked(classId)) return;
-  run.startRun(classId);
+  run.startRun(classId, undefined, difficulty.value);
   void router.push("/map");
 }
 
@@ -48,6 +60,28 @@ function back(): void {
       </div>
 
       <h1 class="head">{{ t("class.select.title", "选择你的朝圣之路") }}</h1>
+
+      <div class="depth">
+        <span class="depth-label">{{ t("difficulty.title", "选择深度") }}</span>
+        <button
+          class="depth-btn"
+          :class="{ on: difficulty === 'normal' }"
+          @click="pickDifficulty('normal')"
+        >
+          {{ t("difficulty.normal", "普通") }}
+        </button>
+        <button
+          class="depth-btn"
+          :class="{ on: difficulty === 'rust', locked: rustLocked }"
+          :disabled="rustLocked"
+          :title="rustLocked ? t('difficulty.rust.locked', '') : ''"
+          @click="pickDifficulty('rust')"
+        >
+          {{ t("difficulty.rust", "锈蚀难度") }}
+        </button>
+        <span v-if="rustLocked" class="depth-desc locked">{{ t("difficulty.rust.locked", "") }}</span>
+        <span v-else-if="difficultyDesc()" class="depth-desc">{{ difficultyDesc() }}</span>
+      </div>
 
       <div class="classes">
         <article
@@ -104,6 +138,19 @@ function back(): void {
 .topbar .r span { cursor: pointer; }
 .topbar .r span:hover { color: var(--gold); }
 .head { font-family: var(--serif-title); font-size: 28px; letter-spacing: 0.42em; color: var(--ink-bone); }
+.depth { display: flex; align-items: center; gap: 12px; }
+.depth-label { font-size: 11px; letter-spacing: 0.24em; color: var(--ink-dim); }
+.depth-btn {
+  padding: 6px 16px; font-size: 12px; letter-spacing: 0.16em;
+  color: var(--ink-dim); background: rgba(18, 16, 14, 0.7);
+  border: 1px solid rgba(110, 88, 54, 0.4); border-radius: var(--radius-sm);
+  cursor: pointer; transition: border-color var(--dur-hover), color var(--dur-hover);
+}
+.depth-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.depth-btn.on { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 12px rgba(176, 141, 74, 0.24); }
+.depth-btn.locked { opacity: 0.45; cursor: not-allowed; }
+.depth-desc { font-size: 11px; color: var(--gold-dim); letter-spacing: 0.1em; }
+.depth-desc.locked { color: var(--ink-dim); }
 .classes { display: flex; gap: 34px; }
 .cls {
   width: 380px;

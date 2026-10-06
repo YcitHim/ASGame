@@ -175,6 +175,16 @@ export interface EnhancementDefinition {
   readonly i18n?: string;
 }
 
+/** 难度档（docs/36 T2）：普通 / 锈蚀。 */
+export type RunDifficulty = "normal" | "rust";
+export const DIFFICULTY_PARAMS: Record<
+  RunDifficulty,
+  { enemyHpMul: number; enemyDamageMul: number; relicChoices: number }
+> = {
+  normal: { enemyHpMul: 1, enemyDamageMul: 1, relicChoices: 3 },
+  rust: { enemyHpMul: 1.2, enemyDamageMul: 1.1, relicChoices: 2 },
+};
+
 /** 地图节点类型（0.1 用到的子集 + event 预留）。 */
 export const NODE_KINDS = ["battle", "elite", "rest", "altar", "reward", "boss", "event"] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
@@ -292,6 +302,8 @@ export interface RelicDefinition {
   readonly effects: readonly CardEffect[];
   /** 触发次数限制：battle = 整场一次；turn = 每回合一次；缺省 = 每次时机都触发 */
   readonly once?: "battle" | "turn";
+  /** 入池解锁条件（docs/36 T1）：缺省 / "none" = 默认可用；其余由 meta 层判定 */
+  readonly unlockCondition?: string;
 }
 
 export interface ContentDb {

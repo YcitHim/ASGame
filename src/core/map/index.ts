@@ -4,11 +4,24 @@
  * 玩法规则只住在 core：节点推进、奖励抽取都在这里，UI 只做展示与转发。
  * 随机一律走 reward 流（ADR-006），因此同样的种子 + 输入流可复现。
  */
+import type { RunDifficulty } from "../registry/content";
 import type { ActDefinition, ClassDefinition, EventDefinition, MapLayerSpec, MapNode, NodeKind } from "../registry/content";
 import type { ContentDb } from "../registry/content";
 import { Rng } from "../rng";
 
 export { resolveEventOption, type EventResolution } from "./event";
+
+export { DIFFICULTY_PARAMS, type RunDifficulty } from "../registry/content";
+
+/** 内容是否已解锁入池（docs/36 T1）：缺省 / "none" = 默认可用。 */
+export function isContentAvailable(
+  unlockCondition: string | undefined,
+  id: string,
+  unlocked: readonly string[],
+): boolean {
+  if (!unlockCondition || unlockCondition === "none") return true;
+  return unlocked.includes(id);
+}
 
 export interface RunState {
   readonly actId: string;
@@ -26,6 +39,24 @@ export interface RunState {
   readonly pollution: number;
   /** 职业最大 HP（休息回复 / 事件回复的上限来源；不再从 act 读） */
   readonly maxHp: number;
+  /** 本档已解锁内容 id（卡 / 遗物）；由 meta 层注入，core 据此过滤奖池 */
+  readonly unlocked: readonly string[];
+  /** 难度档（docs/36 T2） */
+  readonly difficulty: RunDifficulty;
+  /** 本局是否打出过血契卡（成就：不朽） */
+  readonly usedBloodpact: boolean;
+  /** 本局过载反噬次数（成就：红线协议） */
+  readonly overloadCount: number;
+}
+
+/** 记录一次血契出牌（成就判定用）。 */
+export function noteBloodpact(run: RunState): RunState {
+  return run.usedBloodpact ? run : { ...run, usedBloodpact: true };
+}
+
+/** 记录一次过载反噬（成就判定用）。 */
+export function addOverload(run: RunState): RunState {
+  return { ...run, overloadCount: run.overloadCount + 1 };
 }
 
 /** 写回局外 HP（战斗结束时调用）。 */
@@ -90,7 +121,19 @@ function pickKind(rng: ReturnType<Rng["stream"]>, spec: MapLayerSpec, act: ActDe
   return rng.weighted(entries);
 }
 
-export function createRunState(act: ActDefinition, cls: ClassDefinition, seed: number): RunState {
+export interface CreateRunOptions {
+  /** meta 层已解锁的内容 id（docs/36 T1） */
+  readonly unlocked?: readonly string[];
+  /** 难度档（docs/36 T2）；缺省 normal */
+  readonly difficulty?: RunDifficulty;
+}
+
+export function createRunState(
+  act: ActDefinition,
+  cls: ClassDefinition,
+  seed: number,
+  opts: CreateRunOptions = {},
+): RunState {
   return {
     actId: act.id,
     classId: cls.id,
@@ -101,6 +144,10 @@ export function createRunState(act: ActDefinition, cls: ClassDefinition, seed: n
     hp: cls.player.maxHp,
     pollution: 0,
     maxHp: cls.player.maxHp,
+    unlocked: [...(opts.unlocked ?? [])],
+    difficulty: opts.difficulty ?? "normal",
+    usedBloodpact: false,
+    overloadCount: 0,
   };
 }
 
@@ -178,7 +225,9 @@ export function rollCardRewards(
       c.class === run.classId &&
       c.rarity !== "starter" &&
       c.type !== "curse" &&
-      c.type !== "status",
+      c.type !== "status" &&
+      // 解锁式内容未解锁不入池（docs/36 T1）
+      isContentAvailable(c.unlockCondition, c.id, run.unlocked),
   );
   const poolIds = pool.map((c) => c.id).sort();
   const rng = new Rng((run.seed ^ Math.imul(nodeIndex + 1, 0x9e3779b9)) >>> 0).stream("reward");
@@ -223,9 +272,11 @@ export function rollRelicChoices(
   content: ContentDb,
   owned: readonly string[],
   count = 3,
+  unlocked: readonly string[] = [],
 ): string[] {
   const taken = new Set(owned);
   return [...content.relics.values()]
+    .filter((r) => isContentAvailable(r.unlockCondition, r.id, unlocked))
     .map((r) => r.id)
     .filter((id) => !taken.has(id))
     .sort()

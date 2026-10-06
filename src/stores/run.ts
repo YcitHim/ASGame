@@ -6,14 +6,17 @@
  */
 import { defineStore } from "pinia";
 import {
+  addOverload,
   advanceNode,
   chooseNode,
   createRunState,
+  DIFFICULTY_PARAMS,
   MAX_ENHANCEMENT_SLOTS,
   currentNode,
   healRun,
   isRunComplete,
   mapView,
+  noteBloodpact,
   pickRecastRemoval,
   RECAST_HP_COST,
   rollCardRewards,
@@ -24,6 +27,7 @@ import {
   resolveEventOption,
   setRunHp,
   setRunPollution,
+  type RunDifficulty,
   type RunState,
 } from "@/core/map";
 import type { ActDefinition, CardDefinition, ClassDefinition, EventDefinition, MapNode } from "@/core/registry";
@@ -170,12 +174,19 @@ export const useRunStore = defineStore("run", {
 
   actions: {
     /** 开新局：classId 缺省血械侍僧（存档/继续远征仍读 run.classId）。 */
-    startRun(classId = "bloodwright", seed = (Date.now() ^ 0x9e3779b9) >>> 0): void {
+    startRun(
+      classId = "bloodwright",
+      seed = (Date.now() ^ 0x9e3779b9) >>> 0,
+      difficulty: RunDifficulty = "normal",
+    ): void {
       const act = this.act;
       if (!act) return;
       const cls = loadGameContent().content.classes.get(classId) ?? loadGameContent().content.classes.get("bloodwright");
       if (!cls) return;
-      this.run = createRunState(act, cls, seed);
+      // 解锁内容随局快照（docs/36 T1）：core 只认这份 id 列表，不反向依赖 meta
+      const meta = useMetaStore();
+      meta.ensureLoaded();
+      this.run = createRunState(act, cls, seed, { unlocked: meta.unlocked, difficulty });
       this.deck = cls.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
       this.relics = [...(cls.startRelics ?? [])];
       this.acquired = [];
@@ -199,8 +210,30 @@ export const useRunStore = defineStore("run", {
     advance(): void {
       if (!this.run || !this.act) return;
       this.run = advanceNode(this.run, this.act);
-      // 通关即记 meta（职业解锁 / P6 成就的落点）
-      if (isRunComplete(this.run, this.act)) useMetaStore().markCleared(this.run.classId);
+      // 通关即记 meta（职业解锁 / P6 成就的落点，docs/36 T1）
+      if (isRunComplete(this.run, this.act)) {
+        const meta = useMetaStore();
+        meta.markCleared(this.run.classId);
+        meta.evaluateRun({
+          classId: this.run.classId,
+          usedBloodpact: this.run.usedBloodpact,
+          overloadCount: this.run.overloadCount,
+        });
+      }
+      this.persist();
+    },
+
+    /** 战斗内：打出过血契牌 → 记一笔（成就「不朽」的判定输入，docs/36 T1）。 */
+    noteBloodpact(): void {
+      if (!this.run) return;
+      this.run = noteBloodpact(this.run);
+      this.persist();
+    },
+
+    /** 战斗内：触发过一次过载反噬 → 记一笔（成就「红线协议」，docs/36 T1）。 */
+    noteOverload(): void {
+      if (!this.run) return;
+      this.run = addOverload(this.run);
       this.persist();
     },
 
@@ -275,10 +308,11 @@ export const useRunStore = defineStore("run", {
       return chosen.slice(0, 3);
     },
 
-    /** 精英战掉落：未持有遗物里抽（Q10），允许放弃。 */
+    /** 精英战掉落：未持有遗物里抽（Q10），允许放弃；锈蚀难度只给 2 选（docs/36 T2）。 */
     relicChoices(): string[] {
       if (!this.run) return [];
-      return rollRelicChoices(loadGameContent().content, this.relics, 3);
+      const count = DIFFICULTY_PARAMS[this.run.difficulty ?? "normal"].relicChoices;
+      return rollRelicChoices(loadGameContent().content, this.relics, count, this.run.unlocked);
     },
 
     setPollution(value: number): void {
@@ -452,6 +486,10 @@ export const useRunStore = defineStore("run", {
         pollution: saved.run.pollution ?? 0,
         layerIndex: saved.run.layerIndex ?? 0,
         picked: saved.run.picked ?? [],
+        unlocked: saved.run.unlocked ?? [],
+        difficulty: saved.run.difficulty ?? "normal",
+        usedBloodpact: saved.run.usedBloodpact ?? false,
+        overloadCount: saved.run.overloadCount ?? 0,
       };
       this.deck = saved.deck;
       this.relics = saved.relics ?? [];
