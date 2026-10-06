@@ -77,7 +77,8 @@ describe("S5 UI 流程视图挂载", () => {
     expect(wrapper.findAll(".choice")).toHaveLength(3);
     await wrapper.findAll(".choice")[1].trigger("click");
     await nextTick();
-    expect(wrapper.findAll(".deck-card")).toHaveLength(run.deckSize);
+    // 升级模式改为「升级后卡面」预览（docs/program 手感优化）
+    expect(wrapper.findAll(".upgrade-card")).toHaveLength(run.deckSize);
     wrapper.unmount();
   });
 });

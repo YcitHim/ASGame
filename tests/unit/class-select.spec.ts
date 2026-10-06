@@ -38,6 +38,14 @@ describe("docs/16 5.3 职业选择", () => {
     expect(cards[0].find(".go").attributes("disabled")).toBeUndefined();
     expect(cards[1].find(".go").attributes("disabled")).toBeDefined();
     expect(cards[2].find(".go").attributes("disabled")).toBeDefined();
+    // 属性块 + 起始卡组折叠（打击×N）+ 起始遗物带说明
+    expect(cards[0].findAll(".stat")).toHaveLength(2);
+    const deckText = cards[0].find(".deck-chips").text();
+    expect(deckText).toContain("×4");
+    expect(deckText).toContain("×3");
+    const relic = cards[0].find(".relic-chip");
+    expect(relic.text()).toContain("破碎圣油瓶");
+    expect(relic.text().length).toBeGreaterThan("破碎圣油瓶".length);
     wrapper.unmount();
   });
 

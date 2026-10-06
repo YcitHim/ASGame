@@ -3,6 +3,7 @@ import { computed, onMounted, ref, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
 import { t } from "@/data/load";
 import { useRunStore } from "@/stores/run";
+import CardView from "@/ui/components/CardView.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
 const router = useRouter();
@@ -26,6 +27,14 @@ function heal(): void {
 
 function enhTitle(ids: readonly string[]): string {
   return ids.map((id) => t(`enh.${id}.name`, id)).join(" · ");
+}
+
+/** 升级预览用费用：已升级看当前，未升级看升级后的费用（部分卡升级会改费）。 */
+function previewCost(card: { cardId: string; upgraded: boolean }): number {
+  const def = run.cardDef(card.cardId);
+  if (!def) return 0;
+  if (card.upgraded) return def.cost;
+  return def.upgraded?.cost ?? def.cost;
 }
 
 function chooseUpgrade(): void {
@@ -79,20 +88,32 @@ function cardName(id: string): string {
       </template>
 
       <template v-else-if="mode === 'upgrade'">
-        <p class="sub">选择一张卡升级</p>
-        <div class="deck">
+        <p class="sub">卡面为「升级后」属性 —— 看清再决定升不升</p>
+        <div class="upgrade-grid">
           <button
             v-for="(card, index) in run.deck"
             :key="index"
-            class="deck-card"
+            class="upgrade-card"
             :class="{ upgraded: card.upgraded }"
             :disabled="card.upgraded"
             @click="doUpgrade(index)"
           >
-            {{ cardName(card.cardId) }}{{ card.upgraded ? "+（已升级）" : "" }}
-            <sup v-if="card.enhancements.length" class="enh-chip" :title="enhTitle(card.enhancements)">{{
-              card.enhancements.length
-            }}</sup>
+            <span class="cap">{{ card.upgraded ? "已升级" : "升级后" }}</span>
+            <CardView
+              :card-id="card.cardId"
+              :cost="previewCost(card)"
+              :keywords="run.cardDef(card.cardId)?.keywords ?? []"
+              :type="run.cardDef(card.cardId)?.type ?? 'skill'"
+              :rarity="run.cardDef(card.cardId)?.rarity ?? 'common'"
+              :playable="true"
+              :selected="false"
+              :index="0"
+              :hand-count="1"
+              :upgraded="true"
+              :enhancements="card.enhancements.length"
+              :enhancement-ids="card.enhancements"
+              display
+            />
           </button>
         </div>
       </template>
@@ -139,6 +160,23 @@ function cardName(id: string): string {
   border: 1px solid rgba(110, 88, 54, 0.5); border-radius: var(--radius-sm); color: var(--ink-bone);
 }
 .deck-card:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.upgrade-grid {
+  display: flex; flex-wrap: wrap; gap: 14px 16px;
+  justify-content: center;
+  width: 1040px; max-height: 470px;
+  overflow-y: auto;
+  padding: 18px 6px 6px;
+}
+.upgrade-card {
+  position: relative;
+  padding: 0; background: none; border: none; cursor: pointer;
+}
+.upgrade-card:disabled { opacity: 0.45; cursor: default; }
+.upgrade-card .cap {
+  position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; letter-spacing: 0.2em; color: var(--gold-dim); white-space: nowrap;
+}
+.upgrade-card.upgraded .cap { color: var(--ink-dim); }
 .enh-chip {
   margin-left: 6px; padding: 0 5px;
   font-size: 10px; color: var(--gold);

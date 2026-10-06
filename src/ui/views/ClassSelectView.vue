@@ -60,6 +60,20 @@ function cardName(id: string): string {
 function relicName(id: string): string {
   return t(`relic.${id}.name`, id);
 }
+function relicDesc(id: string): string {
+  return t(`relic.${id}.desc`, "");
+}
+
+/** 起始卡组折叠同名：打击×5 / 防御×3 / …（新手一眼看懂构成） */
+function groupDeck(ids: readonly string[]): { id: string; count: number }[] {
+  const out: { id: string; count: number }[] = [];
+  for (const id of ids) {
+    const hit = out.find((o) => o.id === id);
+    if (hit) hit.count += 1;
+    else out.push({ id, count: 1 });
+  }
+  return out;
+}
 
 function choose(classId: string): void {
   if (!isUnlocked(classId)) return;
@@ -145,17 +159,35 @@ function back(): void {
           </p>
 
           <template v-if="isUnlocked(cls.id)">
-            <div class="stat">
-              <span>HP {{ cls.player.maxHp }}</span>
-              <span>能量 {{ cls.player.energy }}</span>
+            <div class="stats">
+              <span class="stat hp">
+                <i>♥</i>
+                <b>{{ cls.player.maxHp }}</b>
+                <small>HP</small>
+              </span>
+              <span class="stat energy">
+                <i>✦</i>
+                <b>{{ cls.player.energy }}</b>
+                <small>能量</small>
+              </span>
             </div>
             <div class="block">
               <b>起始卡组</b>
-              <p>{{ cls.startDeck.map(cardName).join(" · ") }}</p>
+              <div class="deck-chips">
+                <span v-for="g in groupDeck(cls.startDeck)" :key="g.id" class="deck-chip">
+                  {{ cardName(g.id) }}<em v-if="g.count > 1">×{{ g.count }}</em>
+                </span>
+              </div>
             </div>
             <div class="block">
               <b>起始遗物</b>
-              <p>{{ (cls.startRelics ?? []).map(relicName).join(" · ") || "无" }}</p>
+              <div v-if="(cls.startRelics ?? []).length" class="relic-list">
+                <span v-for="id in cls.startRelics" :key="id" class="relic-chip">
+                  <b>{{ relicName(id) }}</b>
+                  <span>{{ relicDesc(id) }}</span>
+                </span>
+              </div>
+              <p v-else>无</p>
             </div>
             <button class="etch-btn go" @click="choose(cls.id)">选 择</button>
           </template>
@@ -233,7 +265,41 @@ function back(): void {
 .cls h2 { font-family: var(--serif-title); font-size: 22px; letter-spacing: 0.24em; color: var(--ink-bone); font-weight: 400; }
 .cls .title { margin-top: 5px; font-size: 11px; letter-spacing: 0.16em; color: var(--gold-dim); }
 .cls .intro { margin-top: 6px; font-size: 12px; line-height: 1.8; color: var(--ink-dim); }
-.stat { display: flex; gap: 18px; font-family: var(--serif-num); font-size: 13px; color: var(--blood-hi); letter-spacing: 0.1em; }
+.stats { display: flex; gap: 10px; }
+.stat {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 7px 12px;
+  border: 1px solid rgba(176, 141, 74, 0.4);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(160deg, #1c1915, #12100e);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+.stat i { font-style: normal; font-size: 13px; color: var(--blood-hi); }
+.stat.energy i { color: var(--gold); }
+.stat b { font-family: var(--serif-num); font-size: 19px; color: var(--ink-bone); }
+.stat small { margin-left: auto; font-size: 10px; letter-spacing: 0.2em; color: var(--ink-dim); }
+.deck-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.deck-chip {
+  padding: 3px 9px; font-size: 11px; color: var(--ink-bone);
+  border: 1px solid rgba(110, 88, 54, 0.45); border-radius: 999px;
+  background: rgba(18, 16, 14, 0.7);
+}
+.deck-chip em { font-style: normal; margin-left: 2px; color: var(--gold); }
+.relic-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.relic-chip {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 6px 10px;
+  border-left: 2px solid var(--gold-dim);
+  background: rgba(18, 16, 14, 0.6);
+}
+.relic-chip b {
+  font-family: var(--serif-title); font-size: 12px;
+  letter-spacing: 0.14em; color: var(--ink-bone); font-weight: 400;
+}
+.relic-chip span { font-size: 10px; line-height: 1.5; color: var(--ink-dim); }
 .block { padding-top: 10px; border-top: 1px solid rgba(110, 88, 54, 0.28); }
 .block b { font-size: 10px; letter-spacing: 0.24em; color: var(--ink-dim); font-weight: 400; }
 .block p { margin-top: 6px; font-size: 11px; line-height: 1.7; color: var(--ink-bone); }
