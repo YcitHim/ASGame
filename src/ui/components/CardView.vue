@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { t } from "@/data/load";
+import { I18N, t } from "@/data/load";
 import { hasTip, highlightText, keywordTip, termsIn } from "@/ui/glossary";
 import { computeTipPlacement } from "@/ui/tip-position";
 
@@ -53,7 +53,8 @@ const desc = computed(() =>
 );
 const descHtml = computed(() => highlightText(desc.value));
 /** 卡面斜体小字（docs/27 §四）：只作文本，不参与任何逻辑 */
-const flavor = computed(() => t(`card.${props.cardId}.flavor`, ""));
+// 直接读 i18n 表：t(key, "") 缺失时会回退成 key 本身，炉心机士卡没有 flavor 会渲染出原始 key
+const flavor = computed(() => I18N[`card.${props.cardId}.flavor`] ?? "");
 const typeLabel = computed(() => TYPE_LABEL[props.type] ?? props.type);
 const keywordLabels = computed(() => props.keywords.map((k) => KEYWORD_LABEL[k] ?? k));
 const enhancementTip = computed(() =>

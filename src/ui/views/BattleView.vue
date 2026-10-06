@@ -33,8 +33,9 @@ const shaking = ref(false);
 const isDev = isDebugEnabled();
 
 onMounted(() => {
-  // 新战斗（或上一场已结算）时按当前局外卡组开局
-  if (!store.battle || store.over) store.start();
+  // 新战斗 / 上一场已结算 / 换了职业或开了新局（陈旧战斗）时，都按当前局外卡组重开
+  const expectedKey = `${run.run?.classId ?? ""}:${run.run?.seed ?? ""}`;
+  if (!store.battle || store.over || store.runKey !== expectedKey) store.start();
   // 当前节点不是战斗节点（例如直接访问 /battle）→ 回到地图
   if (!store.battle) void router.replace("/map");
 });
@@ -76,7 +77,8 @@ const chargingEnemies = computed(() =>
     .map((e) => ({
       id: e.id,
       name: intentLabel(e.defId),
-      line: t(`enemy.${e.id}.line.charge`, ""),
+      // 直接读 i18n 表：t(key, "") 在缺失时会回退成 key 本身，会把原始 key 渲染到屏幕上
+      line: game.i18n[`enemy.${e.defId}.line.charge`] ?? "",
       thenValue: e.intent?.thenValue,
       thenIn: e.intent?.thenIn,
       block: e.intent?.block,
@@ -107,10 +109,10 @@ watch(bossEnraged, (now) => {
 /** Boss 台词（docs/27 §五）：蓄力随预警、二阶段随横幅、死亡在结算前独白。 */
 const bossOnline = computed(() => enemies.value.some((e) => e.id === "rust_throat"));
 const bossPhaseLine = computed(() =>
-  bossOnline.value ? t("enemy.rust_throat.line.phase2", "") : "",
+  bossOnline.value ? (game.i18n["enemy.rust_throat.line.phase2"] ?? "") : "",
 );
 const bossDeathLine = computed(() =>
-  bossOnline.value && store.result === "win" ? t("enemy.rust_throat.line.death", "") : "",
+  bossOnline.value && store.result === "win" ? (game.i18n["enemy.rust_throat.line.death"] ?? "") : "",
 );
 
 /** 结算情境化文案（docs/29 ④）：按节点类型给专属句，战斗胜利两句轮换。 */
@@ -280,10 +282,18 @@ function intentLabel(id: string): string {
 
 /** 效果图基准里敌人名下方的一行称号（docs/15 §2）。 */
 function enemyTitle(id: string): string {
-  return t(`enemy.${id}.title`, "");
+  return game.i18n[`enemy.${id}.title`] ?? "";
 }
 
 const actName = computed(() => game.i18n["act.rusty_corridor"] ?? "第一幕");
+
+/** 本局职业名（不再写死血械侍僧）。 */
+const className = computed(() => {
+  const def = run.classDef;
+  return def ? t(`${def.i18n}.name`, def.id) : "血械侍僧";
+});
+/** 失控线是血械侍僧的低血阈值标识：炉心机士不卖血，不显示（docs/29 §二⑥）。 */
+const isBloodwright = computed(() => (run.run?.classId ?? "bloodwright") === "bloodwright");
 
 function restartRun(): void {
   store.restart();
@@ -374,14 +384,17 @@ function back(): void {
           class="player-panel"
           :class="{ hit: store.hitUnits.includes('player'), dying: store.dyingUnits.includes('player') }"
         >
-          <div class="pp-name">血械侍僧 <small v-if="player && player.hp * 2 < player.maxHp">失控线已激活</small></div>
+          <div class="pp-name">
+            {{ className }}
+            <small v-if="isBloodwright && player && player.hp * 2 < player.maxHp">失控线已激活</small>
+          </div>
           <HpBar
             v-if="player"
             :hp="player.hp"
             :max-hp="player.maxHp"
             :block="player.block"
             :height="18"
-            :show-limit="true"
+            :show-limit="isBloodwright"
           />
           <div v-if="player && player.buffs.length > 0" class="pp-status">
             <span class="pp-status-label">状态</span>
@@ -638,6 +651,14 @@ function back(): void {
 .telegraph p {
   font-family: var(--serif-title); font-size: 17px; letter-spacing: 0.34em;
   color: #f0b4a8; text-shadow: 0 0 18px rgba(192, 57, 43, 0.9), 0 2px 3px #000;
+}
+/* 预警文字压在敌人血条上会看不清：加暗色底衬（玩家反馈） */
+.telegraph-charge {
+  padding: 5px 22px;
+  border: 1px solid rgba(192, 57, 43, 0.4);
+  border-radius: 2px;
+  background: rgba(8, 5, 4, 0.78);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
 }
 .telegraph b {
   color: #fff;

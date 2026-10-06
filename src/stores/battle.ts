@@ -30,6 +30,8 @@ const queue = new AnimQueue();
 export const useBattleStore = defineStore("battle", {
   state: () => ({
     battle: null as BattleState | null,
+    /** 本场战斗对应的「职业:种子」标识；换职业/开新局时用来识别陈旧战斗并重开 */
+    runKey: "",
     log: [] as DomainEvent[],
     floaters: [] as Floater[],
     playing: false,
@@ -78,6 +80,7 @@ export const useBattleStore = defineStore("battle", {
       // 防呆：未开局、或上一局已阵亡（HP<=0）时，一律开新局——
       // 否则会用 0 HP 建战斗，第一帧就再次判负（表现为"再战点不动"）。
       if (!run.active || !run.run || run.hp <= 0) run.startRun();
+      this.runKey = `${run.run?.classId ?? ""}:${run.run?.seed ?? ""}`;
       const node = run.current;
       if (!node || !isCombatNode(node)) {
         this.battle = null;

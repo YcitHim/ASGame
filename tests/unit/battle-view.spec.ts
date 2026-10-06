@@ -107,4 +107,58 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
     store.skip();
     wrapper.unmount();
   });
+
+  it("玩家面板按职业显示名字；失控线只在血械侍僧出现（玩家报的 UI bug）", async () => {
+    // 血械侍僧：显示名字 + 失控线刻度
+    {
+      const pinia = createPinia();
+      setActivePinia(pinia);
+      useRunStore().startRun("bloodwright", 1);
+      const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
+      await nextTick();
+      await nextTick();
+      expect(wrapper.find(".pp-name").text()).toContain("血械侍僧");
+      expect(wrapper.find(".limit-line").exists()).toBe(true);
+      useBattleStore().skip();
+      wrapper.unmount();
+    }
+    // 炉心机士：显示炉心机士，且没有失控线
+    {
+      const pinia = createPinia();
+      setActivePinia(pinia);
+      useRunStore().startRun("engineer", 1);
+      const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
+      await nextTick();
+      await nextTick();
+      expect(wrapper.find(".pp-name").text()).toContain("炉心机士");
+      expect(wrapper.find(".limit-line").exists()).toBe(false);
+      useBattleStore().skip();
+      wrapper.unmount();
+    }
+  });
+
+  it("换职业开新局后不再复用陈旧战斗（玩家报：炉心机士却显示血械战斗）", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const run = useRunStore();
+    const battle = useBattleStore();
+    // 先打一场血械战斗（停留在战斗中，未结算）
+    run.startRun("bloodwright", 1);
+    battle.start();
+    expect(battle.battle).not.toBeNull();
+    const before = Object.values(battle.battle!.cardInstances).map((i) => i.cardId);
+    expect(before).toContain("strike");
+
+    // 直接换职业开新局，再进战斗：必须重建为炉心机士的卡组
+    run.startRun("engineer", 2);
+    const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
+    await nextTick();
+    await nextTick();
+    expect(wrapper.find(".pp-name").text()).toContain("炉心机士");
+    const after = Object.values(battle.battle!.cardInstances).map((i) => i.cardId);
+    expect(after).toContain("pistonjab");
+    expect(after).not.toContain("strike");
+    battle.skip();
+    wrapper.unmount();
+  });
 });
