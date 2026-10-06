@@ -29,6 +29,9 @@ export interface IntentPayload {
   readonly thenIn?: number;
   /** 该攻击是蓄力链的释放段（信息标记；层数已在链上算死，无需运行期清零） */
   readonly released?: boolean;
+  /** 召唤意图（docs/40 §五）：召唤物定义 id 与数量 */
+  readonly enemyId?: string;
+  readonly count?: number;
 }
 
 export interface EventPayloadMap {
@@ -69,6 +72,8 @@ export interface EventPayloadMap {
   BuffTicked: { targetId: string; buffId: string; stacks: number; damage: number };
   /** 断链（docs/38 §三 C-1）：蓄力中的敌人被虚弱/易伤命中，链条取消、本回合空转 */
   ChargeInterrupted: { enemyId: string; buffId: string; times: number };
+  /** 召唤（docs/40 §五）：敌人召唤出新单位，入场当回合不行动 */
+  UnitSummoned: { summonerId: string; enemyId: string; defId: string };
   PollutionChanged: { targetId: string; before: number; after: number; delta: number; critical: boolean };
   ChargeChanged: { targetId: string; before: number; after: number; delta: number };
   Overloaded: { targetId: string; charge: number; backlash: number };

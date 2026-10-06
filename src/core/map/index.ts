@@ -39,6 +39,14 @@ export interface RunState {
   readonly pollution: number;
   /** 职业最大 HP（休息回复 / 事件回复的上限来源；不再从 act 读） */
   readonly maxHp: number;
+  /** 当前幕下标（docs/40 §2.1）：0 = 锈蚀回廊，1 = 沉没圣堂 */
+  readonly actIndex: number;
+  /** 结算统计：最深到达的幕（1 起） */
+  readonly deepestAct: number;
+  /** 结算统计：本幕最深到达的层（1 起） */
+  readonly deepestLayer: number;
+  /** legacy 档（docs/40 §2.1）：一幕已通关的旧档，不提供继续远征 */
+  readonly legacy: boolean;
   /** 本档已解锁内容 id（卡 / 遗物）；由 meta 层注入，core 据此过滤奖池 */
   readonly unlocked: readonly string[];
   /** 随身遗物（docs/38 §一 A-2）：职业选择页从 T1 池自选 1 件；空串 = 无 */
@@ -120,8 +128,18 @@ export interface MapView {
  */
 export function generateActMap(act: ActDefinition, seed: number): MapLayer[] {
   const rng = new Rng((seed ^ 0x5f3759df) >>> 0).stream("map");
+  // 精英池抽取（docs/40 §三）：同一幕同一 Rng 流按层序抽，后一层排除前面已抽中的
+  const eliteRng = new Rng((seed ^ 0xe117e3) >>> 0).stream("map");
+  const elitesTaken: string[] = [];
   return act.layers.map((spec, layerIdx) => {
     const width = Math.max(1, Math.trunc(spec.width));
+    let elitePick: string | undefined;
+    if (spec.elitePool && spec.elitePool.length > 0) {
+      const remaining = spec.elitePool.filter((id) => !elitesTaken.includes(id));
+      const pool = remaining.length > 0 ? remaining : [...spec.elitePool];
+      elitePick = pool[eliteRng.nextInt(0, pool.length - 1)];
+      elitesTaken.push(elitePick);
+    }
     const nodes: MapNode[] = [];
     for (let i = 0; i < width; i += 1) {
       const kind = pickKind(rng, spec, act);
@@ -131,11 +149,41 @@ export function generateActMap(act: ActDefinition, seed: number): MapLayer[] {
         i18n: spec.i18n ?? `node.${kind}`,
         ...(spec.encounters && kind === "battle" ? { encounters: spec.encounters } : {}),
         ...(spec.events && kind === "event" ? { events: spec.events } : {}),
+        ...(elitePick && kind === "elite" ? { enemies: [elitePick] } : {}),
         ...(spec.enemies && (kind === "battle" || kind === "elite" || kind === "boss") ? { enemies: spec.enemies } : {}),
       });
     }
     return { id: spec.id, nodes };
   });
+}
+
+/** 当前幕（docs/40 §二）：actIndex 越界时回落到最后一幕。 */
+export function actOf(
+  run: RunState,
+  acts: readonly ActDefinition[],
+): ActDefinition | undefined {
+  if (acts.length === 0) return undefined;
+  return acts[Math.min(run.actIndex, acts.length - 1)];
+}
+
+/** 是否还有下一幕（docs/40 §2.2：一幕通关后进幕间）。 */
+export function hasNextAct(run: RunState, acts: readonly ActDefinition[]): boolean {
+  return run.actIndex + 1 < acts.length;
+}
+
+/** 幕间结算（docs/40 §2.2）：切幕 + 回血 25%（floor，最少 1）+ 污染清零，其余原样保留。 */
+export function applyIntermission(run: RunState): RunState {
+  const heal = Math.max(1, Math.floor(run.maxHp * 0.25));
+  return {
+    ...run,
+    actIndex: run.actIndex + 1,
+    layerIndex: 0,
+    picked: [],
+    cleared: [],
+    hp: Math.min(run.maxHp, run.hp + heal),
+    pollution: 0,
+    deepestAct: Math.max(run.deepestAct, run.actIndex + 2),
+  };
 }
 
 function pickKind(rng: ReturnType<Rng["stream"]>, spec: MapLayerSpec, act: ActDefinition): NodeKind {
@@ -172,6 +220,10 @@ export function createRunState(
     hp: cls.player.maxHp,
     pollution: 0,
     maxHp: cls.player.maxHp,
+    actIndex: 0,
+    deepestAct: 1,
+    deepestLayer: 0,
+    legacy: false,
     unlocked: [...(opts.unlocked ?? [])],
     pickedRelic: opts.companionRelic ?? "",
     difficulty: opts.difficulty ?? "normal",
@@ -230,7 +282,13 @@ export function isCombatNode(node: MapNode | undefined): boolean {
 export function advanceNode(run: RunState, act: ActDefinition): RunState {
   const node = currentNode(run, act);
   const cleared = node && !run.cleared.includes(node.id) ? [...run.cleared, node.id] : [...run.cleared];
-  return { ...run, layerIndex: run.layerIndex + 1, cleared };
+  return {
+    ...run,
+    layerIndex: run.layerIndex + 1,
+    cleared,
+    deepestAct: Math.max(run.deepestAct, run.actIndex + 1),
+    deepestLayer: Math.max(run.deepestLayer, run.layerIndex + 1),
+  };
 }
 
 export function isRunComplete(run: RunState, act: ActDefinition): boolean {

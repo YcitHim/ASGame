@@ -11,7 +11,9 @@ import type { EnemyDefinition, EnemyIntentEntry, IntentDefinition } from "../reg
 import type { RngStream } from "../rng";
 
 export function intentKey(intent: IntentDefinition): string {
-  return [intent.kind, intent.value ?? 0, intent.hits ?? 1, intent.buffId ?? ""].join(":");
+  const base = [intent.kind, intent.value ?? 0, intent.hits ?? 1, intent.buffId ?? ""];
+  if (intent.enemyId) base.push(intent.enemyId);
+  return base.join(":");
 }
 
 export function intentToPayload(intent: IntentDefinition): IntentPayload {
@@ -23,6 +25,8 @@ export function intentToPayload(intent: IntentDefinition): IntentPayload {
     ...(intent.stacks !== undefined ? { stacks: intent.stacks } : {}),
     ...(intent.duration !== undefined ? { duration: intent.duration } : {}),
     ...(intent.block !== undefined ? { block: intent.block } : {}),
+    ...(intent.enemyId !== undefined ? { enemyId: intent.enemyId } : {}),
+    ...(intent.count !== undefined ? { count: intent.count } : {}),
   };
 }
 
@@ -97,6 +101,23 @@ function eligible(
   });
 }
 
+/** 召唤可用性上下文（docs/40 §五-2/3）：场上总数与某召唤物已有数量。 */
+export interface SummonContext {
+  readonly fieldCount: number;
+  readonly maxField: number;
+  readonly aliveDefIds: readonly string[];
+}
+
+/** 召唤意图是否可用：场上未满员 且 该召唤物数量 < maxSummons。 */
+export function summonUsable(intent: IntentDefinition, ctx: SummonContext | undefined): boolean {
+  if (intent.kind !== "summon" || !intent.enemyId) return true;
+  if (!ctx) return true;
+  if (ctx.fieldCount >= ctx.maxField) return false;
+  const alive = ctx.aliveDefIds.filter((id) => id === intent.enemyId).length;
+  const cap = intent.maxSummons ?? Number.POSITIVE_INFINITY;
+  return alive < cap;
+}
+
 export interface IntentRoll {
   readonly intent: IntentPayload;
   readonly key: string;
@@ -114,10 +135,18 @@ export function generateIntent(
   ctx: ConditionContext,
   history: readonly string[],
   rng: RngStream,
+  summon?: SummonContext,
 ): IntentRoll {
-  let pool = eligible(def, ctx, history, true);
-  if (pool.length === 0) pool = eligible(def, ctx, history, false);
+  const usable = (entry: EnemyIntentEntry): boolean => summonUsable(entry.intent, summon);
+  let pool = eligible(def, ctx, history, true).filter(usable);
+  if (pool.length === 0) pool = eligible(def, ctx, history, false).filter(usable);
   if (pool.length === 0) {
+    // 召唤不可用时的兜底（docs/40 §五-2）：退回该敌人最低档普攻；没有普攻则 unknown
+    const attacks = def.intents.filter((e) => e.intent.kind === "attack");
+    if (attacks.length > 0) {
+      const min = attacks.reduce((m, e) => Math.min(m, e.intent.value ?? Number.POSITIVE_INFINITY), Number.POSITIVE_INFINITY);
+      if (Number.isFinite(min)) return { intent: { kind: "attack", value: min }, key: `attack:${min}:1:` };
+    }
     return { intent: { kind: "unknown" }, key: "unknown:0:1:" };
   }
   const entry = rng.weighted(pool.map((e) => [e, e.weight] as const));

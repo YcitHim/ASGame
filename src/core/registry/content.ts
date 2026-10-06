@@ -38,7 +38,9 @@ export interface CardEffect {
     /** 污染转移（docs/38 §二 B-2）：自身 −2N，目标敌人 +N 蚀锈 */
     | "transferPollution"
     /** 兑现蚀锈（docs/38 §二 B-2「终点站」）：消耗目标全部蚀锈，每层追加 value 伤害 */
-    | "consumeCorroding";
+    | "consumeCorroding"
+    /** 召唤（docs/40 §五）：亡语召唤用（tide_swarm 死亡生虫） */
+    | "summon";
   readonly target?: TargetRef;
   readonly value?: number;
   readonly hits?: number;
@@ -54,6 +56,9 @@ export interface CardEffect {
   readonly op?: ModifierOp;
   /** spendCharge / spendPollution：每点的结算方式（缺省 damage） */
   readonly mode?: "damage" | "block" | "draw";
+  /** 仅 summon：召唤物定义 id 与数量 */
+  readonly enemyId?: string;
+  readonly count?: number;
 }
 
 /**
@@ -114,7 +119,7 @@ export interface CardDefinition {
 }
 
 export interface IntentDefinition {
-  readonly kind: "attack" | "defend" | "debuff" | "charge" | "unknown";
+  readonly kind: "attack" | "defend" | "debuff" | "charge" | "summon" | "unknown";
   /**
    * 普通招式 = 伤害/数值；蓄力 = **每层一次性增幅值**（docs/18 Q2）。
    * 蓄力链的释放值 = 普攻基准 + 蓄力值 × 层数，释放即消耗、不残留。
@@ -133,6 +138,14 @@ export interface IntentDefinition {
    * 链长按敌型区分（法术 2 / 物理 1），不写无限链。
    */
   readonly thenIntent?: IntentDefinition;
+  /** 召唤意图（docs/40 §五）：召唤哪一个敌人、几只（count 本幕恒为 1） */
+  readonly enemyId?: string;
+  readonly count?: number;
+  /**
+   * 可抽中条件（docs/40 §五-3）：场上该召唤物数量 < maxSummons 时才可被抽中；
+   * 抽中后校验不满足则按 §五-2 重抽，不做成 condition 新类型。
+   */
+  readonly maxSummons?: number;
 }
 
 export interface EnemyIntentEntry {
@@ -184,6 +197,8 @@ export interface EnhancementDefinition {
   readonly handler: EnhancementHandlerId;
   readonly params: Readonly<Record<string, unknown>>;
   readonly i18n?: string;
+  /** 幕专属强化（docs/40 §七）：actScope 非空时不得出现在其它幕的奖励池 */
+  readonly actScope?: string;
 }
 
 /** 难度档（docs/36 T2）：普通 / 锈蚀。 */
@@ -263,6 +278,8 @@ export interface MapLayerSpec {
   readonly events?: readonly string[];
   /** 写死敌人（width=1 的精英 / Boss 层用） */
   readonly enemies?: readonly string[];
+  /** 精英池（docs/40 §三）：elite 层按种子池抽，同幕双精英不重复 */
+  readonly elitePool?: readonly string[];
   /** 节点文案覆盖（缺省用 node.<kind>） */
   readonly i18n?: string;
 }

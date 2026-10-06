@@ -122,6 +122,14 @@ const effectSchema = z.discriminatedUnion("kind", [
     .strict(),
   z
     .object({
+      kind: z.literal("summon"),
+      enemyId: z.string().regex(ID_PATTERN),
+      count: z.number().int().min(1).optional(),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
       kind: z.literal("gainModifier"),
       valueKind: z.enum(VALUE_KINDS),
       op: z.enum(["add", "mul"]),
@@ -190,6 +198,8 @@ export const enhancementSchema = z
     handler: z.enum(ENHANCEMENT_HANDLER_IDS),
     params: z.record(z.string(), z.unknown()),
     i18n: z.string().optional(),
+    /** 幕专属（docs/40 §七）：非空时不得进入其它幕奖励池 */
+    actScope: z.string().optional(),
   })
   .strict();
 
@@ -241,7 +251,7 @@ export { ENHANCEMENT_TIERS };
 
 /** 意图定义（可递归：蓄力链 蓄 →（可再蓄）→ 释放，docs/18 Q1） */
 export interface IntentJson {
-  kind: "attack" | "defend" | "debuff" | "charge" | "unknown";
+  kind: "attack" | "defend" | "debuff" | "charge" | "summon" | "unknown";
   value?: number;
   hits?: number;
   buffId?: string;
@@ -252,11 +262,15 @@ export interface IntentJson {
   /** Boss 例外：写死的释放值（docs/18 Q2） */
   releaseOverride?: number;
   thenIntent?: IntentJson;
+  /** 召唤（docs/40 §五）：召唤物 id / 数量 / 可抽中上限 */
+  enemyId?: string;
+  count?: number;
+  maxSummons?: number;
 }
 
 const intentBaseSchema = z
   .object({
-    kind: z.enum(["attack", "defend", "debuff", "charge", "unknown"]),
+    kind: z.enum(["attack", "defend", "debuff", "charge", "summon", "unknown"]),
     value: z.number().int().min(0).optional(),
     hits: z.number().int().min(1).optional(),
     buffId: z.enum(BUFF_IDS).optional(),
@@ -264,6 +278,10 @@ const intentBaseSchema = z
     duration: z.number().int().min(1).optional(),
     block: z.number().int().min(1).optional(),
     releaseOverride: z.number().int().min(0).optional(),
+    /** 召唤（docs/40 §五）：召唤物 id / 数量 / 可抽中上限 */
+    enemyId: z.string().regex(ID_PATTERN).optional(),
+    count: z.number().int().min(1).optional(),
+    maxSummons: z.number().int().min(1).optional(),
   })
   .strict();
 
@@ -314,6 +332,7 @@ const mapLayerSpecSchema = z
     width: z.number().int().min(1).max(4),
     kinds: z.array(z.enum(NODE_KINDS)).min(1),
     weights: z.record(z.string(), z.number().min(0)).optional(),
+    elitePool: z.array(z.string().regex(ID_PATTERN)).min(1).optional(),
     encounters: z
       .array(z.object({ enemies: z.array(z.string().regex(ID_PATTERN)).min(1), weight: z.number().min(0) }).strict())
       .min(1)

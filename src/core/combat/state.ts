@@ -61,6 +61,10 @@ export interface EnemyState {
   readonly forcedChain: readonly IntentPayload[];
   /** 已被断链次数（docs/38 §三 C-1：每只敌人每场最多 2 次） */
   readonly interruptsTaken: number;
+  /** 召唤者 id（docs/40 §五）：召唤物在被召唤者死亡时殉爆 */
+  readonly summonerId?: string;
+  /** 入场回合（docs/40 §五-4）：入场当回合不行动 */
+  readonly spawnedTurn?: number;
 }
 
 export interface Piles {

@@ -41,6 +41,8 @@ export interface MutableEnemy extends MutableUnit {
   intentHistory: string[];
   forcedChain: IntentPayload[];
   interruptsTaken: number;
+  summonerId?: string;
+  spawnedTurn?: number;
 }
 
 export interface Draft {
@@ -111,6 +113,8 @@ export function toDraft(state: BattleState): Draft {
       intentHistory: [...e.intentHistory],
       forcedChain: [...e.forcedChain],
       interruptsTaken: e.interruptsTaken,
+      ...(e.summonerId !== undefined ? { summonerId: e.summonerId } : {}),
+      ...(e.spawnedTurn !== undefined ? { spawnedTurn: e.spawnedTurn } : {}),
     })),
     draw: [...state.piles.draw],
     hand: [...state.piles.hand],
@@ -158,6 +162,8 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
       intentHistory: [...e.intentHistory],
       forcedChain: [...e.forcedChain],
       interruptsTaken: e.interruptsTaken,
+      ...(e.summonerId !== undefined ? { summonerId: e.summonerId } : {}),
+      ...(e.spawnedTurn !== undefined ? { spawnedTurn: e.spawnedTurn } : {}),
     })),
     piles: {
       draw: [...draft.draw],

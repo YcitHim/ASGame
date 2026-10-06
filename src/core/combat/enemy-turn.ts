@@ -6,8 +6,26 @@ import type { EventSink } from "../events/event-sink";
 import { generateIntent } from "../intents";
 import type { BuffId } from "../registry/ids";
 import { enemyConditionContext } from "./resolve";
-import { applyBuffToTarget, dealDamage, gainBlock, PLAYER_ID, resolveCorroding } from "./resolve";
+import {
+  applyBuffToTarget,
+  dealDamage,
+  gainBlock,
+  PLAYER_ID,
+  resolveCorroding,
+  summonUnit,
+  MAX_FIELD_ENEMIES,
+} from "./resolve";
 import type { Draft } from "./draft";
+import type { SummonContext } from "../intents";
+
+function summonContext(draft: Draft): SummonContext {
+  const alive = draft.enemies.filter((e) => e.hp > 0);
+  return {
+    fieldCount: alive.length,
+    maxField: MAX_FIELD_ENEMIES,
+    aliveDefIds: alive.map((e) => e.defId),
+  };
+}
 
 /** 为每个存活敌人抽取下回合意图并揭示。 */
 export function generateIntents(draft: Draft, sink: EventSink): void {
@@ -29,7 +47,13 @@ export function generateIntents(draft: Draft, sink: EventSink): void {
       sink.emit("IntentRevealed", { enemyId: enemy.id, intent });
       continue;
     }
-    const roll = generateIntent(def, enemyConditionContext(draft, enemy.id), enemy.intentHistory, draft.rng.stream("combat"));
+    const roll = generateIntent(
+      def,
+      enemyConditionContext(draft, enemy.id),
+      enemy.intentHistory,
+      draft.rng.stream("combat"),
+      summonContext(draft),
+    );
     enemy.intent = roll.intent;
     enemy.intentHistory = [...enemy.intentHistory, roll.key];
     enemy.forcedChain = roll.chain ? [...roll.chain] : [];
@@ -39,8 +63,11 @@ export function generateIntents(draft: Draft, sink: EventSink): void {
 
 /** 执行敌人当前意图（enemyAction 相位）。 */
 export function runEnemyTurn(draft: Draft, sink: EventSink): void {
-  for (const enemy of draft.enemies) {
+  // 快照行动者：本回合新召唤的单位不会立刻行动（docs/40 §五-4）
+  const acting = [...draft.enemies];
+  for (const enemy of acting) {
     if (enemy.hp <= 0) continue;
+    if (enemy.spawnedTurn === draft.turn) continue;
     const intent = enemy.intent;
     if (!intent) continue;
 
@@ -81,6 +108,11 @@ export function runEnemyTurn(draft: Draft, sink: EventSink): void {
         const chargeBlock = intent.block ?? 0;
         sink.emit("ChargeResolved", { enemyId: enemy.id, block: chargeBlock, released: false });
         if (chargeBlock > 0) gainBlock(draft, sink, enemy.id, chargeBlock);
+        break;
+      }
+      case "summon": {
+        // 召唤（docs/40 §五）：满员不再召唤；新单位入场当回合不行动
+        if (intent.enemyId) summonUnit(draft, sink, enemy.id, intent.enemyId, intent.count ?? 1);
         break;
       }
       default:

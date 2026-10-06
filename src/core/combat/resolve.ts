@@ -498,9 +498,56 @@ function nextWorkId(): string {
  * 死亡处理：先做死亡清理（取消该单位挂起的动作，计数写进 UnitDied），
  * 再结算亡语（onDeath，docs/16 P2.2）——顺序不可颠倒。
  */
+export const MAX_FIELD_ENEMIES = 4;
+
+/**
+ * 召唤单位（docs/40 §五）：满员不再召唤；新单位入场当回合不行动。
+ * 既是 summon 意图的执行体，也是亡语 summon 效果的执行体。
+ */
+export function summonUnit(
+  draft: Draft,
+  sink: EventSink,
+  summonerId: string,
+  defId: string,
+  count = 1,
+): void {
+  const def = draft.content.enemies.get(defId);
+  if (!def) return;
+  for (let i = 0; i < count; i += 1) {
+    if (draft.enemies.filter((e) => e.hp > 0).length >= MAX_FIELD_ENEMIES) break;
+    const seen = draft.enemies.filter((e) => e.defId === defId).length;
+    const id = seen === 0 ? defId : `${defId}#${seen + 1}`;
+    draft.enemies.push({
+      id,
+      defId,
+      name: def.name,
+      hp: def.maxHp,
+      maxHp: def.maxHp,
+      block: 0,
+      buffs: [],
+      intent: null,
+      intentHistory: [],
+      forcedChain: [],
+      interruptsTaken: 0,
+      summonerId,
+      spawnedTurn: draft.turn,
+    });
+    sink.emit("UnitSummoned", { summonerId, enemyId: id, defId });
+  }
+}
+
 export function killUnit(draft: Draft, sink: EventSink, unitId: string): number {
   const cleared = draft.queue.removeByUnit(unitId).length;
   sink.emit("UnitDied", { unitId, clearedEffects: cleared });
+
+  // 召唤物殉爆（docs/40 §五-5）：**先于亡语**——召唤者死亡时其既有召唤物立即消失，
+  // 不触发召唤物自身 onDeath；随后结算的亡语若再生出召唤物（tide_swarm），新单位保留。
+  for (const minion of draft.enemies) {
+    if (minion.hp <= 0 || minion.summonerId !== unitId) continue;
+    const minionCleared = draft.queue.removeByUnit(minion.id).length;
+    minion.hp = 0;
+    sink.emit("UnitDied", { unitId: minion.id, clearedEffects: minionCleared });
+  }
 
   const enemy = draft.enemies.find((e) => e.id === unitId);
   const deathEffects = enemy ? draft.content.enemies.get(enemy.defId)?.onDeath : undefined;
@@ -717,6 +764,11 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
           });
         }
       }
+      break;
+    }
+    case "summon": {
+      // 亡语召唤（docs/40 §五-6）：tide_swarm 死亡时生 1 只 tide_mite
+      if (effect.enemyId) summonUnit(draft, sink, ctx.actorId, effect.enemyId, effect.count ?? 1);
       break;
     }
     case "gainModifier":
