@@ -31,6 +31,16 @@ describe("docs/40 act2 数据", () => {
     }
   });
 
+  it("act2 节点文案走圣堂主题（不沿用第一幕的锈蚀回廊）", () => {
+    const map = generateActMap(act2, 42);
+    const battle = map[0].nodes[0];
+    expect(battle.i18n).toBe("node.act2.battle");
+    expect(map[7].nodes[0].i18n).toBe("node.act2.boss");
+    // 第一幕仍用通用文案
+    const map1 = generateActMap(act1, 42);
+    expect(map1[0].nodes[0].i18n).toBe("node.battle");
+  });
+
   it("幕专属强化只在对应幕入池", () => {
     const cls = game.content.classes.get("bloodwright")!;
     const run = createRunState(act2, cls, 7);

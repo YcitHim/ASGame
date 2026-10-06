@@ -657,5 +657,12 @@
   "intermission.boon.title": "圣 堂 馈 赠",
   "intermission.boon.a": "圣水洗礼 · 回复一半生命",
   "intermission.boon.b": "默记祷文 · 免费升级一张牌",
-  "intermission.boon.c": "圣堂锻核 · 获得一枚圣堂强化"
+  "intermission.boon.c": "圣堂锻核 · 获得一枚圣堂强化",
+  "node.act2.battle": "沉没长廊",
+  "node.act2.elite": "圣堂哨戒",
+  "node.act2.rest": "静水凹室",
+  "node.act2.altar": "圣水祭坛",
+  "node.act2.event": "幽声回廊",
+  "node.act2.boss": "唱诗长席",
+  "node.act2.reward": "浮起箱笼"
 }

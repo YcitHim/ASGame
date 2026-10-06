@@ -13,6 +13,15 @@
     "altar": 25,
     "event": 25
   },
+  "nodeI18n": {
+    "battle": "node.act2.battle",
+    "elite": "node.act2.elite",
+    "rest": "node.act2.rest",
+    "altar": "node.act2.altar",
+    "event": "node.act2.event",
+    "boss": "node.act2.boss",
+    "reward": "node.act2.reward"
+  },
   "layers": [
     {
       "id": "l0",

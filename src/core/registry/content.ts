@@ -306,6 +306,8 @@ export interface ActDefinition {
   readonly classes: readonly string[];
   /** 全局节点类型权重（普40 / 精15 / 休15 / 祭15 / 事15，docs/14 Q17） */
   readonly weights: Readonly<Record<string, number>>;
+  /** 本幕节点文案（按 kind，docs/40 §三补）：缺省用通用 node.<kind> */
+  readonly nodeI18n?: Readonly<Record<string, string>>;
   /** 分支地图层模板（docs/16 5.4）：顺序即推进顺序，层内候选按种子生成 */
   readonly layers: readonly MapLayerSpec[];
 }

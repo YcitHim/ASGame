@@ -351,6 +351,8 @@ export const actSchema = z
     classes: z.array(z.string().regex(ID_PATTERN)).min(1),
     /** 全局节点类型权重（docs/14 Q17） */
     weights: z.record(z.string(), z.number().min(0)),
+    /** 本幕节点文案（按 kind，docs/40 §三补） */
+    nodeI18n: z.record(z.string(), z.string()).optional(),
     /** 分支地图层模板（至少：入口 + 精英 + Boss） */
     layers: z.array(mapLayerSpecSchema).min(3),
   })

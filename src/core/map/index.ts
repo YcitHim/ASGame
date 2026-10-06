@@ -146,7 +146,7 @@ export function generateActMap(act: ActDefinition, seed: number): MapLayer[] {
       nodes.push({
         id: `${kind}_${layerIdx}_${i}`,
         kind,
-        i18n: spec.i18n ?? `node.${kind}`,
+        i18n: spec.i18n ?? act.nodeI18n?.[kind] ?? `node.${kind}`,
         ...(spec.encounters && kind === "battle" ? { encounters: spec.encounters } : {}),
         ...(spec.events && kind === "event" ? { events: spec.events } : {}),
         ...(elitePick && kind === "elite" ? { enemies: [elitePick] } : {}),
