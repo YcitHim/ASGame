@@ -77,11 +77,12 @@ export const useBattleStore = defineStore("battle", {
     start(): void {
       this.ensureConfigured();
       const game = loadGameContent();
-      const act = game.acts[0];
       const run = useRunStore();
       // 防呆：未开局、或上一局已阵亡（HP<=0）时，一律开新局——
       // 否则会用 0 HP 建战斗，第一帧就再次判负（表现为"再战点不动"）。
       if (!run.active || !run.run || run.hp <= 0) run.startRun();
+      // 当前幕（docs/40）：第二幕的战斗不再标成 act1
+      const act = run.act ?? game.acts[0];
       this.runKey = `${run.run?.classId ?? ""}:${run.run?.seed ?? ""}`;
       const node = run.current;
       if (!node || !isCombatNode(node)) {

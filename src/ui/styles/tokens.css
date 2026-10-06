@@ -37,7 +37,26 @@
   --dur-death: 500ms;
   --ease-play: cubic-bezier(0.2, 0.8, 0.3, 1);
 
+  /* 幕主题（docs/40 §四①）：第一幕=赭红（锈），第二幕=青蓝（水）。
+     组件只引用这些变量，切幕由 <html> 上的 act-N 类改令牌，不改组件。 */
+  --act-wash: rgba(58, 38, 28, 0.35);
+  --act-deep: rgba(20, 14, 10, 0.9);
+  --act-vignette: rgba(138, 43, 31, 0.42);
+  --act-warn: rgba(192, 57, 43, 0.32);
+  --act-glow: rgba(192, 57, 43, 1);
+  --act-selection: rgba(138, 43, 31, 0.6);
+
   /* 基准画布（docs/08 §4） */
   --stage-w: 1280px;
   --stage-h: 720px;
+}
+
+/* 第二幕 · 沉没圣堂 */
+:root.act-2 {
+  --act-wash: rgba(24, 48, 56, 0.38);
+  --act-deep: rgba(10, 16, 20, 0.9);
+  --act-vignette: rgba(46, 118, 138, 0.42);
+  --act-warn: rgba(78, 158, 182, 0.32);
+  --act-glow: rgba(96, 186, 210, 1);
+  --act-selection: rgba(46, 118, 138, 0.6);
 }

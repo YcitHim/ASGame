@@ -38,8 +38,8 @@ button {
   transform-origin: center center;
   transform: scale(var(--stage-scale, 1));
   background:
-    radial-gradient(ellipse 90% 60% at 50% 30%, rgba(58, 38, 28, 0.35), transparent 70%),
-    radial-gradient(ellipse 120% 90% at 50% 110%, rgba(20, 14, 10, 0.9), transparent 60%),
+    radial-gradient(ellipse 90% 60% at 50% 30%, var(--act-wash), transparent 70%),
+    radial-gradient(ellipse 120% 90% at 50% 110%, var(--act-deep), transparent 60%),
     var(--bg-abyss);
   box-shadow: 0 0 120px rgba(0, 0, 0, 0.9) inset;
   overflow: hidden;
@@ -114,7 +114,7 @@ button {
 }
 
 ::selection {
-  background: rgba(138, 43, 31, 0.6);
+  background: var(--act-selection);
 }
 
 @media (prefers-reduced-motion: reduce) {

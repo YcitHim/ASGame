@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
 import { createPinia, setActivePinia } from "pinia";
+import { nextTick } from "vue";
 import { describe, expect, it } from "vitest";
 import { createRunState, generateActMap, rollEnhancementChoices } from "@/core/map";
 import { loadGameContent } from "@/data/load";
+import { useBattleStore } from "@/stores/battle";
 import { useRunStore } from "@/stores/run";
+import { useActTheme } from "@/ui/composables/useActTheme";
 
 /** docs/40 · 第二幕数据与幕专属强化入池。 */
 
@@ -64,5 +67,34 @@ describe("docs/40 幕间馈赠", () => {
     run.applyBoon("upgrade", 0);
     expect(run.deck[0].upgraded).toBe(true);
     expect(run.run?.actIndex).toBe(1);
+  });
+});
+
+describe("docs/40 幕归属与幕主题", () => {
+  it("useActTheme：<html> 的 act-N 跟随当前幕切换", async () => {
+    window.localStorage.clear();
+    setActivePinia(createPinia());
+    const run = useRunStore();
+    run.startRun("bloodwright", 5);
+    useActTheme();
+    await nextTick();
+    expect(document.documentElement.classList.contains("act-1")).toBe(true);
+    expect(document.documentElement.classList.contains("act-2")).toBe(false);
+    run.run = { ...run.run!, actIndex: 1 };
+    await nextTick();
+    expect(document.documentElement.classList.contains("act-2")).toBe(true);
+    expect(document.documentElement.classList.contains("act-1")).toBe(false);
+    document.documentElement.className = "";
+  });
+
+  it("战斗归属当前幕（act2 不再标成 act1）", () => {
+    window.localStorage.clear();
+    setActivePinia(createPinia());
+    const run = useRunStore();
+    run.startRun("engineer", 9, "normal", undefined, { actIndex: 1, layerIndex: 0 });
+    const battle = useBattleStore();
+    battle.start();
+    expect(battle.battle?.battleId.startsWith("act2-")).toBe(true);
+    battle.skip();
   });
 });

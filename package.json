@@ -18,7 +18,8 @@
     "sim": "tsx tools/headless-sim/src/cli.ts",
     "sim:elite": "tsx tools/headless-sim/src/cli.ts --scenario elite_warden",
     "record:golden": "tsx tools/headless-sim/src/record-golden.ts",
-    "test:replay": "vitest run tests/unit/golden-replay.spec.ts"
+    "test:replay": "vitest run tests/unit/golden-replay.spec.ts",
+    "sim:2act": "tsx tools/headless-sim/src/cli.ts 400 --acts 2"
   },
   "dependencies": {
     "pinia": "^4.0.3",

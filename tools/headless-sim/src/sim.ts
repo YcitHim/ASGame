@@ -20,6 +20,7 @@ import {
   rollEvent,
   rollRelicChoices,
   resolveEventOption,
+  applyIntermission,
   relicPool,
   setRunHp,
   setRunPollution,
@@ -221,13 +222,17 @@ export function runBattle(content: ContentDb, config: BattleRunConfig): BattleRu
 
 export function simulateRun(
   content: ContentDb,
-  act: ActDefinition,
+  firstAct: ActDefinition,
   seed: number,
   classId = "bloodwright",
   difficulty: RunDifficulty = "normal",
+  /** 多幕连打（docs/40 §九-15）：传 [act1, act2] 即双幕；缺省只打第一幕 */
+  acts: readonly ActDefinition[] = [],
 ): SimResult {
   const cls = content.classes.get(classId) ?? [...content.classes.values()][0];
   if (!cls) throw new Error("内容里没有任何职业定义");
+  const actList: readonly ActDefinition[] = acts.length > 0 ? acts : [firstAct];
+  let act = actList[0];
   // sim 口径 = 老玩家快照：全部内容已解锁（与 P5 基线口径一致，docs/36 T3）
   const unlocked = [
     ...[...content.cards.keys()],
@@ -273,9 +278,12 @@ export function simulateRun(
       deck.some((c) => c.enhancements.includes("bloodboil")),
   });
 
-  while (!isRunComplete(run, act)) {
-    // 分支地图：当前层没选就按策略选一个（路线偏好见 chooseBranchIndex）
-    const layer = currentLayer(run, act);
+  // 多幕连打：一幕走完 → applyIntermission → 继续第二幕（docs/40 §2.2）
+  while (true) {
+    act = actList[run.actIndex] ?? act;
+    while (!isRunComplete(run, act)) {
+      // 分支地图：当前层没选就按策略选一个（路线偏好见 chooseBranchIndex）
+      const layer = currentLayer(run, act);
     if (!layer) break;
     if (run.picked[run.layerIndex] === undefined) {
       run = chooseNode(run, act, chooseBranchIndex(layer, run));
@@ -391,6 +399,13 @@ export function simulateRun(
     }
 
     run = advanceNode(run, act);
+  }
+
+    if (run.actIndex + 1 < actList.length) {
+      run = applyIntermission(run);
+      continue;
+    }
+    break;
   }
 
   return finish("win");

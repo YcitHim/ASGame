@@ -285,7 +285,8 @@ function enemyTitle(id: string): string {
   return game.i18n[`enemy.${id}.title`] ?? "";
 }
 
-const actName = computed(() => game.i18n["act.rusty_corridor"] ?? "第一幕");
+/** 当前幕标题（act2 起不再是锈蚀回廊，docs/40）。 */
+const actName = computed(() => t(run.act?.i18n ?? "", "第一幕 · 锈蚀回廊"));
 
 /** 本局职业名（不再写死血械侍僧）。 */
 const className = computed(() => {
@@ -557,7 +558,7 @@ function back(): void {
 }
 
 .enemy.drop-target .enemy-fig {
-  filter: drop-shadow(0 0 18px rgba(192, 57, 43, 1)) brightness(1.15);
+  filter: drop-shadow(0 0 18px var(--act-glow)) brightness(1.15);
 }
 
 .drag-ghost {
@@ -653,7 +654,7 @@ function back(): void {
 .telegraph {
   position: absolute; inset: 0; z-index: 45; pointer-events: none;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-  background: radial-gradient(ellipse 80% 70% at 50% 50%, transparent 45%, rgba(192, 57, 43, 0.32) 100%);
+  background: radial-gradient(ellipse 80% 70% at 50% 50%, transparent 45%, var(--act-warn) 100%);
   animation: telegraph-pulse 1.1s ease-in-out infinite;
 }
 .telegraph p {
@@ -815,7 +816,7 @@ function back(): void {
   inset: 0;
   z-index: 38;
   pointer-events: none;
-  background: radial-gradient(ellipse 78% 72% at 50% 50%, transparent 58%, rgba(138, 43, 31, 0.42) 100%);
+  background: radial-gradient(ellipse 78% 72% at 50% 50%, transparent 58%, var(--act-vignette) 100%);
   animation: vignette-pulse 2.6s ease-in-out infinite;
 }
 @keyframes vignette-pulse {

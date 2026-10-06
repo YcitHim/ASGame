@@ -113,7 +113,7 @@ function toTitle(): void {
   <div class="viewport">
     <div ref="stage" class="stage map-stage">
       <div class="topbar">
-        <span>{{ t("act.rusty_corridor", "第一幕") }} · 分支路线</span>
+        <span>{{ t(run.act?.i18n ?? "", "远征") }} · 分支路线</span>
         <div class="r">
           <span class="hp">HP {{ run.hp }} / {{ run.maxHp }}</span>
           <span @click="toTitle">返回标题</span>

@@ -8,7 +8,7 @@ import { simulateRun } from "./sim";
 const HEALTHY_MIN = 0.45;
 const HEALTHY_MAX = 0.65;
 
-/** 用法：npm run sim -- [局数] [--scenario elite_warden] [--class engineer] [--difficulty rust] */
+/** 用法：npm run sim -- [局数] [--scenario elite_warden] [--class engineer] [--difficulty rust] [--acts 2] */
 function parseArgs(argv: string[]): {
   games: number;
   scenario: string | null;
@@ -16,16 +16,28 @@ function parseArgs(argv: string[]): {
   difficulty: RunDifficulty;
   /** 已知 AI 下限：低于健康区间只记录、不判失败（策划裁定，见 docs/program Q2） */
   aiFloor: boolean;
+  /** 连打幕数（docs/40 §九-15）：1 = 单幕，2 = 双幕连打 */
+  actCount: number;
 } {
   let games = 100;
   let scenario: string | null = null;
   let classId = "bloodwright";
   let difficulty: RunDifficulty = "normal";
   let aiFloor = false;
+  let actCount = 1;
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (token === "--ai-floor") {
       aiFloor = true;
+      continue;
+    }
+    if (token === "--acts") {
+      actCount = Math.max(1, Math.trunc(Number(argv[i + 1] ?? 1)) || 1);
+      i += 1;
+      continue;
+    }
+    if (token.startsWith("--acts=")) {
+      actCount = Math.max(1, Math.trunc(Number(token.slice("--acts=".length))) || 1);
       continue;
     }
     if (token === "--difficulty") {
@@ -58,11 +70,11 @@ function parseArgs(argv: string[]): {
     const n = Number(token);
     if (Number.isFinite(n) && n > 0) games = Math.trunc(n);
   }
-  return { games, scenario, classId, difficulty, aiFloor };
+  return { games, scenario, classId, difficulty, aiFloor, actCount };
 }
 
 function main(): number {
-  const { games, scenario, classId, difficulty, aiFloor } = parseArgs(process.argv.slice(2));
+  const { games, scenario, classId, difficulty, aiFloor, actCount } = parseArgs(process.argv.slice(2));
   const { content, acts } = loadNodeContent();
   const act = acts[0];
   if (!act) {
@@ -83,10 +95,13 @@ function main(): number {
     return 0;
   }
 
+  const actList = actCount > 1 ? acts.slice(0, actCount) : [];
   const results = Array.from({ length: games }, (_, i) =>
-    simulateRun(content, act, i + 1, classId, difficulty),
+    simulateRun(content, act, i + 1, classId, difficulty, actList),
   );
-  console.log(`[headless-sim] 职业 ${classId} · 难度 ${difficulty}`);
+  console.log(
+    `[headless-sim] 职业 ${classId} · 难度 ${difficulty}${actList.length > 0 ? ` · 连打 ${actList.length} 幕` : ""}`,
+  );
   const report = buildReport(results);
   console.log(formatReport(report));
 

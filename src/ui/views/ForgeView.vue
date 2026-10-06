@@ -89,7 +89,7 @@ function backToMap(): void {
   <div class="viewport">
     <div ref="stage" class="stage forge-stage">
       <div class="topbar">
-        <span>锻造祭坛 · 第一幕</span>
+        <span>锻造祭坛 · {{ run.act ? t(run.act.i18n ?? "", "第一幕") : "第一幕" }}</span>
         <div class="r">
           <span @click="backToMap">返回地图</span>
           <span @click="router.push('/')">放弃远征</span>

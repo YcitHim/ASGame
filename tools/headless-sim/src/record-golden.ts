@@ -45,6 +45,18 @@ const engineerDeck: GoldenDeckEntry[] = [
   base("steambolt"),
 ];
 
+/** P11 第二幕卡组：腐蚀施加 / 腐蚀条件增伤 / 污染缩放 / 污染清除 + 召唤使 */
+const act2Deck: GoldenDeckEntry[] = [
+  ...Array.from({ length: 3 }, () => base("strike")),
+  base("strike", ["sanctum_quench"]),
+  ...Array.from({ length: 2 }, () => base("pistonjab")),
+  base("brassguard"),
+  base("steambolt", ["sunk_cost"]),
+  base("chargedhammer", ["choir_reverb"], true),
+  base("pressurevalve", ["abyssal_hush"]),
+  base("gearspin"),
+];
+
 const battles = [
   recordBattle({
     content,
@@ -100,6 +112,16 @@ const battles = [
     deck: runDeck,
     relics: ["broken_oil", "blood_pump", "redtear_ring"],
     seed: 515151,
+  }),
+  // 第二幕：沉没圣堂（召唤 / 腐蚀 / 污染缩放 / 污染清除 回归）
+  recordBattle({
+    content,
+    id: "golden-act2",
+    nodeId: "l7",
+    enemies: ["tidecaller", "bell_warden"],
+    deck: act2Deck,
+    relics: ["dentedcoil", "pressuregauge", "rust_charm"],
+    seed: 20261006,
   }),
 ];
 

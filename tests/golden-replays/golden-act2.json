@@ -1,0 +1,267 @@
+{
+  "version": 1,
+  "recordedAt": "2026-10-05",
+  "content": "rust-and-blood",
+  "battle": {
+    "id": "golden-act2",
+    "nodeId": "l7",
+    "enemies": [
+      "tidecaller",
+      "bell_warden"
+    ],
+    "deck": [
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": [
+          "sanctum_quench"
+        ]
+      },
+      {
+        "cardId": "pistonjab",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "pistonjab",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "brassguard",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "steambolt",
+        "upgraded": false,
+        "enhancements": [
+          "sunk_cost"
+        ]
+      },
+      {
+        "cardId": "chargedhammer",
+        "upgraded": true,
+        "enhancements": [
+          "choir_reverb"
+        ]
+      },
+      {
+        "cardId": "pressurevalve",
+        "upgraded": false,
+        "enhancements": [
+          "abyssal_hush"
+        ]
+      },
+      {
+        "cardId": "gearspin",
+        "upgraded": false,
+        "enhancements": []
+      }
+    ],
+    "relics": [
+      "dentedcoil",
+      "pressuregauge",
+      "rust_charm"
+    ],
+    "seed": 20261006,
+    "player": {
+      "maxHp": 66,
+      "energy": 3
+    },
+    "actions": [
+      {
+        "type": "Noop",
+        "actionId": "start"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p1",
+        "handIndex": 4,
+        "targetId": "bell_warden"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p2",
+        "handIndex": 1,
+        "targetId": "bell_warden"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p3",
+        "handIndex": 0,
+        "targetId": "bell_warden"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e4"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p5",
+        "handIndex": 0,
+        "targetId": "bell_warden"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p6",
+        "handIndex": 0,
+        "targetId": "bell_warden"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p7",
+        "handIndex": 1,
+        "targetId": "bell_warden"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e8"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p9",
+        "handIndex": 0,
+        "targetId": "bell_warden"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p10",
+        "handIndex": 0,
+        "targetId": "bell_warden"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p11",
+        "handIndex": 1,
+        "targetId": "bell_warden"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p12",
+        "handIndex": 0,
+        "targetId": "tidecaller"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e13"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p14",
+        "handIndex": 1,
+        "targetId": "tide_mite"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p15",
+        "handIndex": 1,
+        "targetId": "tidecaller"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p16",
+        "handIndex": 1,
+        "targetId": "tidecaller"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e17"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p18",
+        "handIndex": 1,
+        "targetId": "tidecaller"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p19",
+        "handIndex": 0,
+        "targetId": "tidecaller"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p20",
+        "handIndex": 1,
+        "targetId": "tidecaller"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e21"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p22",
+        "handIndex": 3,
+        "targetId": "tidecaller"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p23",
+        "handIndex": 3,
+        "targetId": "tidecaller"
+      }
+    ],
+    "eventHash": "0cc7d1b92e5aed443773527bcaee9154c8c5a8c158f7e68b20bcf44da0e7e39d",
+    "eventTypes": [
+      "BattleStarted",
+      "CardsDrawn",
+      "ChargeChanged",
+      "IntentRevealed",
+      "IntentRevealed",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "DamageDealt",
+      "HpLost",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "CardPlayed",
+      "ChargeChanged",
+      "CardsDrawn",
+      "TurnEnded",
+      "ChargeResolved",
+      "BlockGained",
+      "DamageDealt",
+      "HpLost",
+      "BuffApplied",
+      "TurnStarted",
+      "CardsDrawn",
+      "IntentRevealed",
+      "IntentRevealed",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "BuffApplied",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "TurnEnded",
+      "ChargeResolved",
+      "DamageDealt",
+      "HpLost"
+    ],
+    "turns": 6,
+    "outcome": "win"
+  }
+}

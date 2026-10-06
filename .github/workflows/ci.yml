@@ -21,8 +21,7 @@ jobs:
         run: npm run typecheck
       - name: content-validator（G1）
         run: npm run validate
-      - name: unit tests（Vitest）
+      - name: unit tests（Vitest，含 golden replay 6+1 盘重放）
         run: npm test
-      # golden replay 重放：S6 接入（tools/replay-viewer + tests/golden-replays）
-      # - name: golden replay
-      #   run: npm run test:replay
+      # 双幕模拟：样本量 400、胜率 2.5%——策划已裁定「无典型状态」的模拟指标不作门禁，
+      # 仅作记录。需要复现时手动执行：npm run sim:2act
