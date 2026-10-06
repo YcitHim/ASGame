@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { createPinia, setActivePinia } from "pinia";
 import { describe, expect, it } from "vitest";
-import { useMetaStore } from "@/stores/meta";
+import { ACHIEVEMENT_IDS, useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
 
 /** docs/38 §三 C-3 · 成就墙与最佳纪录。 */
@@ -56,6 +56,35 @@ describe("1.0-C 成就墙", () => {
     meta.evaluateRun({ classId: "bloodwright", usedBloodpact: true, overloadCount: 1, won: false });
     expect(meta.isAchieved("clear_bloodwright")).toBe(false);
     expect(meta.lastAchievements).toHaveLength(0);
+  });
+
+  it("12 条成就全部可达（一次性全满足），且都有 i18n 文案", async () => {
+    const meta = setup();
+    // 每个职业通关各结算一次（真实流程同款），最后用锈语者补齐统计类成就
+    for (const id of ["bloodwright", "engineer", "rustspeaker"]) {
+      meta.markCleared(id);
+      meta.evaluateRun({ classId: id, usedBloodpact: true, overloadCount: 0 });
+    }
+    meta.addInterruptStat(10);
+    meta.evaluateRun({
+      classId: "rustspeaker",
+      usedBloodpact: false,
+      overloadCount: 3,
+      backlashTaken: 3,
+      pollutionPeak: 99,
+      enhancementsAttached: 3,
+      difficulty: "rust",
+      codexComplete: true,
+      turns: 120,
+      hpLeft: 30,
+    });
+    expect(ACHIEVEMENT_IDS.every((id) => meta.isAchieved(id))).toBe(true);
+    const { loadGameContent } = await import("@/data/load");
+    const i18n = loadGameContent().i18n;
+    for (const id of ACHIEVEMENT_IDS) {
+      expect(i18n[`ach.${id}.name`]).toBeTruthy();
+      expect(i18n[`ach.${id}.desc`]).toBeTruthy();
+    }
   });
 
   it("最佳纪录：只记录更优值", () => {

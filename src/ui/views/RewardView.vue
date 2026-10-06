@@ -393,10 +393,11 @@ function rarityLabel(rarity: string | undefined): string {
   font-size: 12px;
 }
 .skip {
-  padding: 10px 24px;
-  font-size: 11px;
+  padding: 8px 20px;
+  font-size: 10px;
   letter-spacing: 0.3em;
   color: var(--ink-dim);
+  opacity: 0.72;
 }
 .skip:hover {
   color: var(--blood-hi);

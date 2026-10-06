@@ -17,9 +17,12 @@ const sub = computed(() => {
   const i = props.intent;
   if (!i) return "未知";
   if (i.kind === "charge") {
-    const parts = ["蓄力"];
+    // 先给「这一下有多疼」，再给回合/格挡——多敌人时一眼能看到威胁量级（C2-P-1）
+    const parts: string[] = [];
+    if (i.thenValue !== undefined) parts.push("释放 " + i.thenValue);
     if (i.block) parts.push("+" + i.block + "挡");
-    if (i.thenIn) parts.push(i.thenIn + "回合");
+    if (i.thenIn) parts.push(i.thenIn === 1 ? "下回合" : i.thenIn + "回合");
+    if (parts.length === 0) parts.push("蓄力");
     return parts.join(" · ");
   }
   return { attack: "攻击", defend: "防御", debuff: "诅咒", summon: "召唤", unknown: "未知" }[i.kind];
@@ -29,7 +32,11 @@ const color = computed(() => (props.intent?.kind === "attack" ? "#C0392B" : "#B0
 </script>
 
 <template>
-  <div class="intent" :title="sub">
+  <div
+    class="intent"
+    :class="{ imminent: intent?.kind === 'charge' && (intent?.thenIn ?? 9) <= 1 }"
+    :title="sub"
+  >
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" :stroke="color" stroke-width="1.6" stroke-linecap="round">
       <template v-if="intent?.kind === 'attack'">
         <path d="M4 20 L16 8 M14 4 L20 4 L20 10 M7 13 L11 17" />
@@ -68,8 +75,13 @@ const color = computed(() => (props.intent?.kind === "attack" ? "#C0392B" : "#B0
   text-shadow: 0 0 6px rgba(192, 57, 43, 0.6);
 }
 .sub {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--ink-dim);
   letter-spacing: 0.1em;
+  white-space: nowrap;
 }
+/* 蓄力即将释放：整颗意图转红提示（C2-P-1） */
+.intent.imminent { border-color: rgba(192, 57, 43, 0.75); }
+.intent.imminent .sub { color: var(--blood-hi); }
+.intent.imminent .num { color: var(--blood-hi); }
 </style>
