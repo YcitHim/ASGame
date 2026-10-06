@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import type { MapLayer } from "@/core/map";
 import type { MapNode } from "@/core/registry";
 import { loadGameContent, t } from "@/data/load";
+import { actCopy } from "@/ui/act-copy";
 import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
 import { useSettingsStore } from "@/stores/settings";
@@ -180,7 +181,7 @@ function toTitle(): void {
       <div v-if="finished && !interNeeded" class="victory-overlay">
         <div class="victory">
           <h2>远 征 胜 利</h2>
-          <p>锈喉已倒下，锈蚀回廊暂时沉寂。</p>
+          <p>{{ actCopy("result.victory", run.run?.actIndex ?? 0) }}</p>
           <p v-if="unlockLine" class="unlock">{{ unlockLine }}</p>
           <p v-if="achievementLine" class="achieve">{{ achievementLine }}</p>
           <div class="victory-actions">

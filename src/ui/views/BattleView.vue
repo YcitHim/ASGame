@@ -9,6 +9,7 @@ import { useRunStore } from "@/stores/run";
 import { useSettingsStore } from "@/stores/settings";
 import { isDebugEnabled } from "@/systems/debug";
 import { useStageFit } from "@/ui/composables/useStageFit";
+import { actCopy } from "@/ui/act-copy";
 import { describeEvent, type LogEntry } from "@/ui/log-format";
 import BattleLog from "@/ui/components/BattleLog.vue";
 import BuffRow from "@/ui/components/BuffRow.vue";
@@ -119,10 +120,13 @@ const bossDeathLine = computed(() =>
 const resultCopy = computed(() => {
   if (store.result !== "win") return t("result.expeditionFail");
   const kind = run.current?.kind;
-  if (kind === "boss") return t("result.bossWin");
+  if (kind === "boss") return actCopy("result.bossWin", run.run?.actIndex ?? 0);
   if (kind === "elite") return t("result.eliteWin");
   const seed = (store.battle?.battleId ?? "").length;
-  return seed % 2 === 0 ? t("result.battleWin") : t("result.battleWinAlt");
+  const act = run.run?.actIndex ?? 0;
+  return seed % 2 === 0
+    ? t("result.battleWin")
+    : actCopy("result.battleWinAlt", act);
 });
 
 const floatersFor = computed(() => {

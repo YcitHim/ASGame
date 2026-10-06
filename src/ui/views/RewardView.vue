@@ -5,6 +5,7 @@ import type { CardDefinition } from "@/core/registry";
 import { t } from "@/data/load";
 import { useCodexStore } from "@/stores/codex";
 import { useRunStore } from "@/stores/run";
+import { actCopy } from "@/ui/act-copy";
 import CardView from "@/ui/components/CardView.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
@@ -137,7 +138,7 @@ function rarityLabel(rarity: string | undefined): string {
       <template v-if="mode === 'boss'">
         <div class="triumph">
           <h1 class="head">远 征 胜 利</h1>
-          <p class="sub">锈喉倒下，锈蚀回廊重归死寂。</p>
+          <p class="sub">{{ actCopy("result.bossFall", run.run?.actIndex ?? 0) }}</p>
           <div v-if="relicOffers.length" class="relics boss-relics">
             <button
               v-for="id in relicOffers"

@@ -6,6 +6,7 @@ import { createRunState, generateActMap, rollEnhancementChoices } from "@/core/m
 import { loadGameContent } from "@/data/load";
 import { useBattleStore } from "@/stores/battle";
 import { useRunStore } from "@/stores/run";
+import { actCopy } from "@/ui/act-copy";
 import { useActTheme } from "@/ui/composables/useActTheme";
 
 /** docs/40 · 第二幕数据与幕专属强化入池。 */
@@ -95,6 +96,14 @@ describe("docs/40 幕归属与幕主题", () => {
     expect(document.documentElement.classList.contains("act-2")).toBe(true);
     expect(document.documentElement.classList.contains("act-1")).toBe(false);
     document.documentElement.className = "";
+  });
+
+  it("actCopy：有 actN 用 actN，没有则回落 act1", () => {
+    expect(actCopy("result.victory", 0)).toContain("锈喉");
+    expect(actCopy("result.victory", 1)).toContain("沉钟");
+    // 只写了 act1 的句子 → 第二幕沿用第一幕，不会露出 key
+    expect(actCopy("result.bossFall", 1)).toContain("唱诗长");
+    expect(actCopy("result.noSuchKey", 1)).toBe("result.noSuchKey");
   });
 
   it("战斗归属当前幕（act2 不再标成 act1）", () => {

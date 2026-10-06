@@ -664,5 +664,11 @@
   "node.act2.altar": "圣水祭坛",
   "node.act2.event": "幽声回廊",
   "node.act2.boss": "唱诗长席",
-  "node.act2.reward": "浮起箱笼"
+  "node.act2.reward": "浮起箱笼",
+  "result.battleWinAlt.act2": "圣堂的长廊安静下来了。",
+  "result.bossWin.act2": "唱完了。水静了。你还在。",
+  "result.victory.act1": "锈喉已倒下，锈蚀回廊暂时沉寂。",
+  "result.victory.act2": "沉钟唱罢，圣堂重新沉回水底。",
+  "result.bossFall.act1": "锈喉倒下，锈蚀回廊重归死寂。",
+  "result.bossFall.act2": "唱诗长沉入水底，圣堂重归安静。"
 }
