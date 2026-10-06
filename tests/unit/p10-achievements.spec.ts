@@ -87,6 +87,22 @@ describe("1.0-C 成就墙", () => {
     }
   });
 
+  it("成就 / 纪录 / 累计统计写入 meta 存档并可读回", () => {
+    const meta = setup();
+    meta.markCleared("bloodwright");
+    meta.evaluateRun({ classId: "bloodwright", usedBloodpact: true, overloadCount: 0 });
+    meta.updateRecord("bloodwright", 25, 30);
+    meta.addInterruptStat(4);
+    meta.persist();
+    // 模拟重开：新 pinia + 从 localStorage 读档
+    setActivePinia(createPinia());
+    const reloaded = useMetaStore();
+    reloaded.ensureLoaded();
+    expect(reloaded.isAchieved("clear_bloodwright")).toBe(true);
+    expect(reloaded.recordOf("bloodwright")).toEqual({ minTurns: 25, maxHp: 30 });
+    expect(reloaded.stats.interrupts).toBe(4);
+  });
+
   it("最佳纪录：只记录更优值", () => {
     const meta = setup();
     meta.updateRecord("bloodwright", 30, 20);
