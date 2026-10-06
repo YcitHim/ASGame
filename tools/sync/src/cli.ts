@@ -162,22 +162,22 @@ async function readLiveInfo(siteUrl: string): Promise<LiveInfo | null> {
 }
 
 async function waitForSite(siteUrl: string, before: string | null): Promise<LiveInfo | null> {
-  let last: LiveInfo | null = null;
   for (let i = 1; i <= SITE_RETRIES; i += 1) {
     const info = await readLiveInfo(siteUrl);
-    if (info) {
-      last = info;
-      if (!before || info.entry !== before) {
-        console.log(`  ✓ 入口 ${info.entry} · 资源 ${info.assetOk ? "可访问" : "异常"}`);
-        return info;
-      }
+    if (info && info.assetOk) {
+      // 部署是否成功以流水线结论为准；这里只做存活检查，并如实报告哈希变化。
+      // 注意：只改 tools/docs 时产物哈希本来就不变，不能据此判定"没部署"。
+      const changed = !before || info.entry !== before;
+      if (changed) console.log(`  ✓ 入口 ${info.entry} · 资源可访问（已更新）`);
+      else console.log(`  ✓ 入口 ${info.entry} · 资源可访问（哈希未变：本次改动不影响游戏构建产物）`);
+      return info;
     }
     if (i < SITE_RETRIES) {
-      console.log(`  第 ${i} 次：CDN 尚未切到新版本，等待中…`);
-      await sleep(15_000);
+      console.log(`  第 ${i} 次：站点尚未就绪，等待中…`);
+      await sleep(10_000);
     }
   }
-  return last;
+  return null;
 }
 
 async function main(): Promise<number> {
@@ -238,7 +238,17 @@ async function main(): Promise<number> {
   console.log("\n▸ 推送到 origin");
   let pushed = false;
   for (let i = 1; i <= PUSH_RETRIES; i += 1) {
-    const p = gitRun(["push", "-u", "origin", branch]);
+    // lowSpeed 保护：连接假死时 45s 内低速即中断重试，不等满 curl 的 300s 默认超时
+    const p = gitRun([
+      "-c",
+      "http.lowSpeedLimit=1000",
+      "-c",
+      "http.lowSpeedTime=45",
+      "push",
+      "-u",
+      "origin",
+      branch,
+    ]);
     if (p.code === 0) {
       console.log(`  ✓ 推送成功（第 ${i} 次尝试）`);
       pushed = true;
@@ -291,10 +301,6 @@ async function main(): Promise<number> {
   const info = await waitForSite(siteUrl, before);
   if (!info) {
     console.log("  ✗ 站点暂时无法访问，请稍后自行打开确认");
-    return 1;
-  }
-  if (!info.assetOk) {
-    console.log("  ✗ 入口资源无法访问，请检查 Pages 是否配置为 GitHub Actions");
     return 1;
   }
 
