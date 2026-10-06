@@ -1,10 +1,17 @@
 # 锈与血（暂名）· H5 肉鸽卡牌
 
-[![CI](https://github.com/YOUR_GITHUB/rust-and-blood/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB/rust-and-blood/actions/workflows/ci.yml)
+[![CI](https://github.com/YcitHim/ASGame/actions/workflows/ci.yml/badge.svg)](https://github.com/YcitHim/ASGame/actions/workflows/ci.yml) [![Deploy](https://github.com/YcitHim/ASGame/actions/workflows/deploy.yml/badge.svg)](https://github.com/YcitHim/ASGame/actions/workflows/deploy.yml)
 
 > 当前状态：**S6 打磨与封版**（golden replay 进 CI、打击感参数、0.1 数值锚定）。策划拍板已全部落实，详见 docs/12。
 > 推进基准：`docs/09-阶段任务分解.md`（阶段出口门禁全绿才前进），先读 `docs/`（尤其 01/02/03）。
 > 内容编辑入口：`src/data/`（卡牌 / 强化 / 遗物 / 敌人 / 关卡 / 文案，全部 JSON + validator）。
+
+## 在线试玩
+
+**https://YcitHim.github.io/ASGame/** —— 手机横屏体验最佳，直接发链接给朋友即可。
+
+部署方式：推送到 `main` 后，`.github/workflows/deploy.yml` 自动 `npm ci && npm run build` 并发布到 GitHub Pages（无需手动打包上传）。
+由于游戏使用哈希路由且内容全部打包进 bundle，不需要 404 回退页；`vite.config.ts` 的 `base` 由 CI 注入的 `BASE_PATH` 决定，本地开发仍为 `/`。
 
 ## 开发命令
 

@@ -1,0 +1,53 @@
+name: Deploy to GitHub Pages
+
+# 推送到 main 即自动构建并发布到 GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Pages 部署所需权限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只允许一个部署；排队中的旧部署直接取消
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: 安装依赖
+        run: npm ci
+      - name: 配置 Pages
+        id: pages
+        uses: actions/configure-pages@v5
+      - name: 构建（自动带子路径 base）
+        run: npm run build
+        env:
+          # 项目站点形如 /<repo>；用户站点为 /。交给 configure-pages 计算，避免手写仓库名
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+      - name: 上传构建产物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 发布到 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
