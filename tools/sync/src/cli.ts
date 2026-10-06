@@ -81,7 +81,8 @@ function aheadCount(branch: string): number {
 }
 
 function runGate(step: string): boolean {
-  const r = spawnSync("npm", ["run", step], { cwd: REPO_ROOT, stdio: "inherit", shell: true });
+  // step 来自常量数组；用整串命令避免 shell + args 的 DEP0190 弃用警告
+  const r = spawnSync(`npm run ${step}`, { cwd: REPO_ROOT, stdio: "inherit", shell: true });
   return (r.status ?? 1) === 0;
 }
 
