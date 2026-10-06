@@ -35,6 +35,10 @@ export const useMetaStore = defineStore("meta", {
     isUnlocked: (state) => (unlock: string | undefined) => {
       if (!unlock || unlock === "default" || unlock === "none") return true;
       if (unlock === "first_boss_clear") return state.clearedClasses.length > 0;
+      // 第三职业（docs/38 §二 B-1）：血械 + 炉心各通关一次
+      if (unlock === "both_classes_clear") {
+        return state.clearedClasses.includes("bloodwright") && state.clearedClasses.includes("engineer");
+      }
       return state.clearedClasses.length > 0;
     },
     /** 内容（卡/遗物）是否已解锁。 */

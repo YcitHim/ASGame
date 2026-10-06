@@ -1,0 +1,44 @@
+{
+  "id": "corrodelance",
+  "class": "rustspeaker",
+  "type": "attack",
+  "rarity": "uncommon",
+  "cost": 2,
+  "effects": [
+    {
+      "kind": "damage",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 8
+    },
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "buff": "corroding",
+      "stacks": 4
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 10
+      },
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "buff": "corroding",
+        "stacks": 5
+      }
+    ]
+  },
+  "i18n": "card.corrodelance"
+}

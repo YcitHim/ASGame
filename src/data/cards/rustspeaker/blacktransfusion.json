@@ -1,0 +1,28 @@
+{
+  "id": "blacktransfusion",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "rare",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "transferPollution",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 10
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "transferPollution",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 12
+      }
+    ]
+  },
+  "i18n": "card.blacktransfusion"
+}

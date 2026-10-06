@@ -29,6 +29,8 @@ export interface ConditionContext {
   readonly tookDamageThisTurn?: boolean;
   /** 主体侧：敌人意图用；缺省时回落到玩家字段，卡牌条件不受影响 */
   readonly self?: SelfContext;
+  /** 逐目标条件（docs/38 §二 B-3）：伤害效果按每个目标求值时注入 */
+  readonly target?: SelfContext;
 }
 
 export type ConditionFn = (
@@ -86,6 +88,13 @@ registerCondition("hasBuff", (ctx, p) => {
   if (typeof id !== "string") return false;
   const min = num(p, "stacks", 1);
   return buffStacks(ctx.buffs, id as BuffId) >= min;
+});
+/** 目标敌人身上的 Buff（docs/38 §二 B-3「疫触」）：只在逐目标求值时有 ctx.target */
+registerCondition("targetHasBuff", (ctx, p) => {
+  if (!ctx.target) return false;
+  const id = p["buffId"];
+  if (typeof id !== "string") return false;
+  return buffStacks(ctx.target.buffs, id as BuffId) >= num(p, "stacks", 1);
 });
 registerCondition("cardsPlayedThisTurn", (ctx, p) => ctx.cardsPlayedThisTurn >= num(p, "n", 1));
 registerCondition("handIsEmpty", (ctx) => ctx.handSize === 0);

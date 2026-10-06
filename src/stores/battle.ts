@@ -233,6 +233,9 @@ export const useBattleStore = defineStore("battle", {
         case "UnitDied":
           this.markUnit("dyingUnits", event.unitId, 500);
           break;
+        case "BuffTicked":
+          if (event.damage > 0) this.pushFloater(event.targetId, event.damage, "damage", false);
+          break;
         case "IntentRevealed":
           this.markUnit("flipUnits", event.enemyId, 200);
           break;

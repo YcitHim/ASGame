@@ -1,0 +1,38 @@
+{
+  "id": "grimepicker",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "draw",
+      "value": 2
+    },
+    {
+      "kind": "draw",
+      "value": 1,
+      "condition": {
+        "type": "pollutionAtLeast",
+        "n": 80
+      }
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "draw",
+        "value": 2
+      },
+      {
+        "kind": "draw",
+        "value": 2,
+        "condition": {
+          "type": "pollutionAtLeast",
+          "n": 80
+        }
+      }
+    ]
+  },
+  "i18n": "card.grimepicker"
+}

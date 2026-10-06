@@ -1,0 +1,52 @@
+{
+  "id": "plaguetide",
+  "class": "rustspeaker",
+  "type": "attack",
+  "rarity": "rare",
+  "cost": 2,
+  "effects": [
+    {
+      "kind": "damage",
+      "target": {
+        "type": "allEnemies"
+      },
+      "value": 5
+    },
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "allEnemies"
+      },
+      "buff": "corroding",
+      "stacks": 3
+    },
+    {
+      "kind": "gainPollution",
+      "value": 10
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "target": {
+          "type": "allEnemies"
+        },
+        "value": 7
+      },
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "allEnemies"
+        },
+        "buff": "corroding",
+        "stacks": 4
+      },
+      {
+        "kind": "gainPollution",
+        "value": 8
+      }
+    ]
+  },
+  "i18n": "card.plaguetide"
+}

@@ -17,6 +17,8 @@ export const KEYWORD_IDS = [
   "pollution",
   "overload",
   "regenerate",
+  /** 蚀锈（docs/38 §二 B-2）：敌人侧 DoT 标记 */
+  "corroding",
 ] as const;
 
 /** 条件（可组合：and / or / not） */
@@ -34,6 +36,8 @@ export const CONDITION_IDS = [
   "handIsEmpty",
   /** 本回合（含刚结束的敌方回合）玩家受到过攻击伤害（docs/16 P2.3） */
   "tookDamageThisTurn",
+  /** 目标敌人身上的 Buff（docs/38 §二 B-3「疫触」）：逐目标判定，不在入栈时快照 */
+  "targetHasBuff",
 ] as const;
 
 /** 目标选择器 */
@@ -56,6 +60,8 @@ export const BUFF_IDS = [
   "pollution",
   /** 反伤（荆棘血痂，docs/16 P2.1）：受攻击时对攻击者造成 stacks 点伤害 */
   "thorns",
+  /** 蚀锈（docs/38 §二 B-2）：敌人侧 DoT，stacks = 每回合伤害，duration = 剩余回合 */
+  "corroding",
 ] as const;
 
 /** 卡牌复杂逻辑 handler（ADR-005） */
@@ -76,7 +82,7 @@ export const ENHANCEMENT_HANDLER_IDS = [
 
 export const CARD_TYPES = ["attack", "skill", "power", "curse", "status"] as const;
 export const CARD_RARITIES = ["starter", "common", "uncommon", "rare", "special"] as const;
-export const CARD_CLASSES = ["bloodwright", "engineer"] as const;
+export const CARD_CLASSES = ["bloodwright", "engineer", "rustspeaker"] as const;
 export const ENHANCEMENT_TIERS = [1, 2, 3] as const;
 
 export type KeywordId = (typeof KEYWORD_IDS)[number];

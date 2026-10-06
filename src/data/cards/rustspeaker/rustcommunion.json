@@ -1,0 +1,30 @@
+{
+  "id": "rustcommunion",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "gainPollution",
+      "value": 10
+    },
+    {
+      "kind": "gainEnergy",
+      "value": 2
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainPollution",
+        "value": 8
+      },
+      {
+        "kind": "gainEnergy",
+        "value": 2
+      }
+    ]
+  },
+  "i18n": "card.rustcommunion"
+}

@@ -1,0 +1,30 @@
+{
+  "id": "toxsip",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 0,
+  "effects": [
+    {
+      "kind": "gainPollution",
+      "value": 8
+    },
+    {
+      "kind": "draw",
+      "value": 1
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainPollution",
+        "value": 6
+      },
+      {
+        "kind": "draw",
+        "value": 1
+      }
+    ]
+  },
+  "i18n": "card.toxsip"
+}

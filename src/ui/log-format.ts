@@ -59,6 +59,12 @@ export function describeEvent(event: DomainEvent, names: Record<string, string> 
       return { seq: event.seq, type: event.type, text: `${unitLabel(event.targetId, names)} ${event.buffId} 触发` };
     case "BuffExpired":
       return { seq: event.seq, type: event.type, text: `${unitLabel(event.targetId, names)} ${event.buffId} 结束` };
+    case "BuffTicked":
+      return {
+        seq: event.seq,
+        type: event.type,
+        text: `${unitLabel(event.targetId, names)} 蚀锈发作，受到 ${event.damage} 点伤害`,
+      };
     case "PollutionChanged":
       return { seq: event.seq, type: event.type, text: `污染 ${event.before} → ${event.after}${event.critical ? "（临界）" : ""}` };
     case "ChargeChanged":

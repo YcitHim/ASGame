@@ -9,7 +9,7 @@
 import type { EventSink } from "../events/event-sink";
 import type { CardPower, TriggerTiming } from "../registry/content";
 import type { Draft } from "./draft";
-import { resolveEffects } from "./resolve";
+import { resolveEffects, resolveEffectsInline } from "./resolve";
 
 /** 回合开始时清空 once:turn 的触发记录。 */
 export function resetTurnRelics(draft: Draft): void {
@@ -26,14 +26,20 @@ export function powerOf(draft: Draft, instanceId: string): CardPower | undefined
 }
 
 /** 按时机派发全部遗物与卡牌能力效果。 */
-export function resolveTriggers(draft: Draft, sink: EventSink, timing: TriggerTiming): void {
+export function resolveTriggers(
+  draft: Draft,
+  sink: EventSink,
+  timing: TriggerTiming,
+  opts: { inline?: boolean } = {},
+): void {
+  const run = opts.inline ? resolveEffectsInline : resolveEffects;
   for (const id of draft.player.relics) {
     const def = draft.content.relics.get(id);
     if (!def || def.timing !== timing) continue;
     if (def.once === "battle" && draft.player.triggeredThisBattle.includes(id)) continue;
     if (def.once === "turn" && draft.player.triggeredThisTurn.includes(id)) continue;
 
-    resolveEffects(draft, sink, def.effects, {
+    run(draft, sink, def.effects, {
       sourceId: `relic:${id}`,
       actorId: "player",
       chosenTargetId: null,
@@ -51,7 +57,7 @@ export function resolveTriggers(draft: Draft, sink: EventSink, timing: TriggerTi
     if (power.once === "battle" && draft.player.triggeredThisBattle.includes(key)) continue;
     if (power.once === "turn" && draft.player.triggeredThisTurn.includes(key)) continue;
 
-    resolveEffects(draft, sink, power.effects, {
+    run(draft, sink, power.effects, {
       sourceId: instanceId,
       actorId: "player",
       chosenTargetId: null,

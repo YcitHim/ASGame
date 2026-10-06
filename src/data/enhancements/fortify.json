@@ -8,7 +8,9 @@
     "brassguard",
     "weld",
     "insulation",
-    "gyrostabilizer"
+    "gyrostabilizer",
+    "scrapguard",
+    "toxshield"
   ],
   "handler": "fortify",
   "params": {

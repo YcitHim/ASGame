@@ -1,0 +1,44 @@
+{
+  "id": "ninety_nine",
+  "class": "rustspeaker",
+  "type": "power",
+  "rarity": "rare",
+  "cost": 2,
+  "power": {
+    "timing": "onPollutionMax",
+    "effects": [
+      {
+        "kind": "gainPollution",
+        "value": -1
+      },
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "self"
+        },
+        "buff": "strength",
+        "stacks": 5
+      }
+    ]
+  },
+  "upgraded": {
+    "power": {
+      "timing": "onPollutionMax",
+      "effects": [
+        {
+          "kind": "gainPollution",
+          "value": -1
+        },
+        {
+          "kind": "applyBuff",
+          "target": {
+            "type": "self"
+          },
+          "buff": "strength",
+          "stacks": 8
+        }
+      ]
+    }
+  },
+  "i18n": "card.ninety_nine"
+}

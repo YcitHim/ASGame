@@ -20,6 +20,7 @@ const DURATION: Partial<Record<DomainEvent["type"], number>> = {
   BuffApplied: 110,
   BuffTriggered: 110,
   BuffExpired: 110,
+  BuffTicked: 160,
   CardPlayed: 140,
   CardRetained: 110,
   CardExhausted: 110,

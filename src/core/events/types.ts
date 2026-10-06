@@ -65,6 +65,8 @@ export interface EventPayloadMap {
   BuffApplied: { targetId: string; buffId: string; stacks: number; duration: number | null };
   BuffTriggered: { targetId: string; buffId: string; stacks: number };
   BuffExpired: { targetId: string; buffId: string };
+  /** 计时 Buffer 结算（docs/38 §二 B-2 蚀锈）：目标回合结束受到 damage 点伤害 */
+  BuffTicked: { targetId: string; buffId: string; stacks: number; damage: number };
   PollutionChanged: { targetId: string; before: number; after: number; delta: number; critical: boolean };
   ChargeChanged: { targetId: string; before: number; after: number; delta: number };
   Overloaded: { targetId: string; charge: number; backlash: number };

@@ -93,6 +93,35 @@ const effectSchema = z.discriminatedUnion("kind", [
     .strict(),
   z
     .object({
+      kind: z.literal("spendPollution"),
+      target: targetSchema.optional(),
+      /** 每点污染的结算量 */
+      value: z.number().int().min(0),
+      mode: z.enum(["damage", "block", "draw"]).optional(),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("transferPollution"),
+      target: targetSchema.optional(),
+      /** N：自身污染 −2N，目标敌人 +N 蚀锈 */
+      value: z.number().int().min(0),
+      duration: z.number().int().min(1).optional(),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("consumeCorroding"),
+      target: targetSchema.optional(),
+      /** 每层蚀锈追加的伤害 */
+      value: z.number().int().min(0),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
       kind: z.literal("gainModifier"),
       valueKind: z.enum(VALUE_KINDS),
       op: z.enum(["add", "mul"]),
@@ -112,7 +141,7 @@ const playSchema = z
 /** 卡牌常驻能力（docs/29 §一②）：与遗物同构的 { timing, effects, once }。 */
 const powerSchema = z
   .object({
-    timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell", "onBlock", "onGainCharge"]),
+    timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell", "onBlock", "onGainCharge", "onPollutionMax"]),
     effects: z.array(effectSchema).min(1),
     once: z.enum(["battle", "turn"]).optional(),
   })
@@ -327,7 +356,7 @@ export const relicSchema = z
   .object({
     id: idSchema,
     i18n: z.string(),
-    timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell", "onBlock", "onGainCharge"]),
+    timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell", "onBlock", "onGainCharge", "onPollutionMax"]),
     effects: z.array(effectSchema).min(1),
     once: z.enum(["battle", "turn"]).optional(),
     /** 掉落池分级（docs/38 §一）：缺省 = 身份件，不入池 */

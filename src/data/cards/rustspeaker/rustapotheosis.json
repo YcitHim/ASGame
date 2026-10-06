@@ -1,0 +1,24 @@
+{
+  "id": "rustapotheosis",
+  "class": "rustspeaker",
+  "type": "power",
+  "rarity": "rare",
+  "cost": 2,
+  "power": {
+    "timing": "onHit",
+    "effects": [
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "buff": "corroding",
+        "stacks": 1
+      }
+    ]
+  },
+  "upgraded": {
+    "cost": 1
+  },
+  "i18n": "card.rustapotheosis"
+}

@@ -1,0 +1,46 @@
+{
+  "id": "rustspit",
+  "class": "rustspeaker",
+  "type": "attack",
+  "rarity": "common",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "damage",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 5
+    },
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "buff": "corroding",
+      "stacks": 2,
+      "duration": 2
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 7
+      },
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "buff": "corroding",
+        "stacks": 3,
+        "duration": 2
+      }
+    ]
+  },
+  "i18n": "card.rustspit"
+}

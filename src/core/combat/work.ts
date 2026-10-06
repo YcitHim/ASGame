@@ -30,4 +30,6 @@ export interface EffectWork {
   readonly damageTotal: number;
   /** 反伤动作：固定伤害、不叠加攻击修饰，且不再二次触发反伤 */
   readonly reflect?: boolean;
+  /** 条件含 targetHasBuff：入栈时不判定，改为逐目标求值（docs/38 §二 B-3） */
+  readonly targetCondition?: boolean;
 }

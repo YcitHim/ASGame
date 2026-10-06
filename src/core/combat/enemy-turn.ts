@@ -6,7 +6,7 @@ import type { EventSink } from "../events/event-sink";
 import { generateIntent } from "../intents";
 import type { BuffId } from "../registry/ids";
 import { enemyConditionContext } from "./resolve";
-import { applyBuffToTarget, dealDamage, gainBlock, PLAYER_ID } from "./resolve";
+import { applyBuffToTarget, dealDamage, gainBlock, PLAYER_ID, resolveCorroding } from "./resolve";
 import type { Draft } from "./draft";
 
 /** 为每个存活敌人抽取下回合意图并揭示。 */
@@ -87,4 +87,6 @@ export function runEnemyTurn(draft: Draft, sink: EventSink): void {
         break;
     }
   }
+  // 敌方回合结束：结算蚀锈 DoT（docs/38 §二 B-2）
+  resolveCorroding(draft, sink);
 }

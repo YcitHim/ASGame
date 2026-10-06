@@ -32,7 +32,7 @@ export function simulateEliteScenario(
   if (!cls) throw new Error("内容里没有任何职业定义");
   const unlocked = [...[...content.cards.keys()], ...[...content.relics.keys()]];
   const t1 = relicPool(content, 1, unlocked);
-  const preferred = classId === "engineer" ? "pressuregauge" : "blood_pump";
+  const preferred = classId === "engineer" ? "pressuregauge" : classId === "rustspeaker" ? "whetstone" : "blood_pump";
   const companion = t1.includes(preferred) ? preferred : (t1[0] ?? "");
   const run = createRunState(act, cls, seed, { unlocked, difficulty, companionRelic: companion });
   const deck: SimCard[] = cls.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));

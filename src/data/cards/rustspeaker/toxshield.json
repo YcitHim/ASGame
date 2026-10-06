@@ -1,0 +1,50 @@
+{
+  "id": "toxshield",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 6
+    },
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 4,
+      "condition": {
+        "type": "pollutionAtLeast",
+        "n": 50
+      }
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "block",
+        "target": {
+          "type": "self"
+        },
+        "value": 8
+      },
+      {
+        "kind": "block",
+        "target": {
+          "type": "self"
+        },
+        "value": 5,
+        "condition": {
+          "type": "pollutionAtLeast",
+          "n": 50
+        }
+      }
+    ]
+  },
+  "i18n": "card.toxshield"
+}

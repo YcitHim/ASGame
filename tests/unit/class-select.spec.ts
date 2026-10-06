@@ -32,10 +32,12 @@ describe("docs/16 5.3 职业选择", () => {
     await wrapper.vm.$nextTick();
     expect(wrapper.text()).toContain("血械侍僧");
     expect(wrapper.text()).toContain("炉心未燃");
+    expect(wrapper.text()).toContain("锈还未对你开口");
     const cards = wrapper.findAll(".cls");
-    expect(cards).toHaveLength(2);
+    expect(cards).toHaveLength(3);
     expect(cards[0].find(".go").attributes("disabled")).toBeUndefined();
     expect(cards[1].find(".go").attributes("disabled")).toBeDefined();
+    expect(cards[2].find(".go").attributes("disabled")).toBeDefined();
     wrapper.unmount();
   });
 
@@ -52,7 +54,15 @@ describe("docs/16 5.3 职业选择", () => {
     expect(run.active).toBe(true);
     expect(run.classId).toBe("engineer");
     expect(run.maxHp).toBe(66);
-    expect(run.deck.every((c) => c.cardId.startsWith("piston") || c.cardId.startsWith("brass") || c.cardId === "gearspin")).toBe(true);
+    expect(
+      run.deck.every(
+        (c) =>
+          c.cardId.startsWith("piston") ||
+          c.cardId.startsWith("brass") ||
+          c.cardId === "gearspin" ||
+          c.cardId === "weld",
+      ),
+    ).toBe(true);
     wrapper.unmount();
   });
 

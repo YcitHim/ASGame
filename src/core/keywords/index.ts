@@ -32,6 +32,7 @@ export const KEYWORD_HOOKS: Readonly<Record<KeywordId, KeywordHooks>> = {
   pollution: { id: "pollution", note: "改变污染值（gainPollution 效果驱动）" },
   overload: { id: "overload", note: "充能超限反噬（combat 结算）" },
   regenerate: { id: "regenerate", note: "回合开始回血（regeneration Buff 驱动）" },
+  corroding: { id: "corroding", note: "敌人侧蚀锈 DoT（applyBuff corroding 驱动，docs/38 §二 B-2）" },
 };
 
 export interface CardKeywordView {

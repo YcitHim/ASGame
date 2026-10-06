@@ -1,0 +1,30 @@
+{
+  "id": "guzzle",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "gainPollution",
+      "value": 20
+    },
+    {
+      "kind": "draw",
+      "value": 2
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainPollution",
+        "value": 16
+      },
+      {
+        "kind": "draw",
+        "value": 3
+      }
+    ]
+  },
+  "i18n": "card.guzzle"
+}

@@ -1,0 +1,50 @@
+{
+  "id": "corrodeblade",
+  "class": "rustspeaker",
+  "type": "attack",
+  "rarity": "common",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "damage",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 4
+    },
+    {
+      "kind": "damage",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 4,
+      "condition": {
+        "type": "pollutionAtLeast",
+        "n": 50
+      }
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 6
+      },
+      {
+        "kind": "damage",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 5,
+        "condition": {
+          "type": "pollutionAtLeast",
+          "n": 50
+        }
+      }
+    ]
+  },
+  "i18n": "card.corrodeblade"
+}

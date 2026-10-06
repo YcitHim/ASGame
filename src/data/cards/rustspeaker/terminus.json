@@ -1,0 +1,42 @@
+{
+  "id": "terminus",
+  "class": "rustspeaker",
+  "type": "attack",
+  "rarity": "rare",
+  "cost": 3,
+  "effects": [
+    {
+      "kind": "damage",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 14
+    },
+    {
+      "kind": "consumeCorroding",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 3
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 18
+      },
+      {
+        "kind": "consumeCorroding",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 4
+      }
+    ]
+  },
+  "i18n": "card.terminus"
+}

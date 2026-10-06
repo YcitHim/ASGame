@@ -32,7 +32,13 @@ export interface CardEffect {
     /** 消耗全部充能（docs/27 §二 C2 / docs/29 §二⑥）：每点充能按 mode 结算，随后清零 */
     | "spendCharge"
     /** 充能封顶（压力表改版）：超过 value 时平衡回 value */
-    | "clampCharge";
+    | "clampCharge"
+    /** 消耗全部污染（docs/38 §二 B-2）：每点污染按 mode 结算，随后清零 */
+    | "spendPollution"
+    /** 污染转移（docs/38 §二 B-2）：自身 −2N，目标敌人 +N 蚀锈 */
+    | "transferPollution"
+    /** 兑现蚀锈（docs/38 §二 B-2「终点站」）：消耗目标全部蚀锈，每层追加 value 伤害 */
+    | "consumeCorroding";
   readonly target?: TargetRef;
   readonly value?: number;
   readonly hits?: number;
@@ -46,7 +52,7 @@ export interface CardEffect {
   /** 仅 gainModifier：目标数值种类与运算 */
   readonly valueKind?: ValueKind;
   readonly op?: ModifierOp;
-  /** 仅 spendCharge：每点充能的结算方式（缺省 damage，保持既有卡口径） */
+  /** spendCharge / spendPollution：每点的结算方式（缺省 damage） */
   readonly mode?: "damage" | "block" | "draw";
 }
 
@@ -293,7 +299,9 @@ export type TriggerTiming =
   /** 获得格挡时（docs/29 §一②「动能电池 / 炉渣装甲」） */
   | "onBlock"
   /** 获得充能时（docs/29 §二⑥「飞升齿轮」） */
-  | "onGainCharge";
+  | "onGainCharge"
+  /** 污染即将触顶（docs/38 §二 B-3「九十九」）：在反噬判定前派发，效果可把污染压回 99 */
+  | "onPollutionMax";
 
 /** 遗物分级（docs/37 §一.2 / docs/38 §一）：1 起始池，2 常规池，3 稀有池。 */
 export type RelicTier = 1 | 2 | 3;

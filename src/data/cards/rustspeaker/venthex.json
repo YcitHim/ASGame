@@ -1,0 +1,38 @@
+{
+  "id": "venthex",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "gainPollution",
+      "value": -10
+    },
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "buff": "corroding",
+      "stacks": 3
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainPollution",
+        "value": -12
+      },
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "buff": "corroding",
+        "stacks": 4
+      }
+    ]
+  },
+  "i18n": "card.venthex"
+}

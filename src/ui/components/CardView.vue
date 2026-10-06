@@ -43,6 +43,7 @@ const KEYWORD_LABEL: Record<string, string> = {
   pollution: "污染",
   overload: "过载",
   regenerate: "再生",
+  corroding: "蚀锈",
 };
 
 const name = computed(() => t(`card.${props.cardId}.name`, props.cardId));

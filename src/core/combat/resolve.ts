@@ -265,7 +265,16 @@ export function loseHp(
 ): void {
   const unit = findUnit(draft, targetId);
   if (!unit || value <= 0) return;
-  const lost = Math.min(unit.hp, value);
+  // 反噬伤害乘区（docs/38 §二 B-2「铁胃」）：只作用于过载与污染反噬
+  const backlashMul =
+    reason === "backlash" || reason === "pollution"
+      ? evaluateValue(
+          "backlashTaken",
+          value,
+          draft.modifiers.filter((m) => m.kind === undefined || m.kind === "backlashTaken"),
+        ).value
+      : value;
+  const lost = Math.min(unit.hp, backlashMul);
   unit.hp -= lost;
   sink.emit("HpLost", { targetId, value: lost, reason });
   if (unit.hp === 0) killUnit(draft, sink, targetId);
@@ -317,6 +326,10 @@ export function changePollution(draft: Draft, sink: EventSink, delta: number): v
   });
 
   if (after >= POLLUTION_MAX && before < POLLUTION_MAX) {
+    // 触顶触发（docs/38 §二 B-3「九十九」）：在反噬判定前派发，
+    // 效果可把污染压回上限之下（例如 99），从而改写这次反噬。
+    resolveTriggers(draft, sink, "onPollutionMax", { inline: true });
+    if (draft.player.pollution < POLLUTION_MAX) return;
     draft.player.pollution = 0;
     draft.player.buffs = setPollutionMirror(draft.player.buffs, 0);
     sink.emit("PollutionChanged", {
@@ -364,6 +377,44 @@ export function tickAllBuffs(draft: Draft, sink: EventSink, timing: "turnStart" 
     const tick = tickBuffs(enemy.buffs, timing);
     enemy.buffs = [...tick.buffs];
     for (const b of tick.expired) sink.emit("BuffExpired", { targetId: enemy.id, buffId: b.id });
+  }
+}
+
+/**
+ * 蚀锈结算（docs/38 §二 B-2）：**敌方回合结束**，每个带蚀锈的敌人受 stacks 点固定伤害
+ * （不吃力量 / 充能 / 易伤），随后 duration −1，到期移除。
+ * 不走泛用 tick，避免被玩家回合的 turnEnd / turnStart 双重扣时。
+ */
+export function resolveCorroding(draft: Draft, sink: EventSink): void {
+  for (const enemy of draft.enemies) {
+    if (enemy.hp <= 0) continue;
+    const buff = enemy.buffs.find((b) => b.id === "corroding");
+    if (!buff || buff.stacks <= 0) continue;
+    sink.emit("BuffTicked", {
+      targetId: enemy.id,
+      buffId: "corroding",
+      stacks: buff.stacks,
+      damage: buff.stacks,
+    });
+    dealDamage(draft, sink, {
+      sourceId: "corroding",
+      actorId: enemy.id,
+      targetId: enemy.id,
+      base: buff.stacks,
+      segment: 1,
+      segments: 1,
+      modifiers: [],
+    });
+    if (enemy.hp <= 0) continue;
+    const nextDuration = buff.duration == null ? null : buff.duration - 1;
+    if (nextDuration != null && nextDuration <= 0) {
+      enemy.buffs = enemy.buffs.filter((b) => b.id !== "corroding");
+      sink.emit("BuffExpired", { targetId: enemy.id, buffId: "corroding" });
+    } else {
+      enemy.buffs = enemy.buffs.map((b) =>
+        b.id === "corroding" ? { id: b.id, stacks: b.stacks, duration: nextDuration } : b,
+      );
+    }
   }
 }
 
@@ -446,10 +497,12 @@ export function enqueueEffects(
   const pending: EffectWork[] = [];
   let damageIndex = 0;
   for (const effect of effects) {
-    if (!evaluateCondition(effect.condition, conditionContext(draft))) continue;
+    // 目标条件（targetHasBuff）必须逐目标求值，不能在这里快照（docs/38 §二 B-3）
+    const targetCondition = hasTargetCondition(effect.condition);
+    if (!targetCondition && !evaluateCondition(effect.condition, conditionContext(draft))) continue;
     if (effect.kind === "damage") damageIndex += 1;
     const targetIds = resolveTargets(draft, defaultTarget(effect), ctx.actorId, ctx.chosenTargetId);
-    pending.push({ effect, ctx, targetIds, damageIndex, damageTotal });
+    pending.push({ effect, ctx, targetIds, damageIndex, damageTotal, ...(targetCondition ? { targetCondition } : {}) });
   }
   for (let i = pending.length - 1; i >= 0; i -= 1) {
     const work = pending[i];
@@ -462,8 +515,31 @@ export function enqueueEffects(
   }
 }
 
+/** 条件树里是否含"目标侧"条件（需要逐目标求值）。 */
+function hasTargetCondition(node: ConditionNode | undefined): boolean {
+  if (!node) return false;
+  if (node.type === "and" || node.type === "or") {
+    return (node as unknown as { of: ConditionNode[] }).of.some((n) => hasTargetCondition(n));
+  }
+  if (node.type === "not") {
+    return hasTargetCondition((node as unknown as { of: ConditionNode }).of);
+  }
+  return node.type === "targetHasBuff";
+}
+
 function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
-  const { effect, ctx, targetIds, damageIndex, damageTotal } = work;
+  const { effect, ctx, damageIndex, damageTotal } = work;
+  // 目标条件：按每个目标现场求值（docs/38 §二 B-3「疫触」）
+  const targetIds = work.targetCondition
+    ? work.targetIds.filter((t) => {
+        const unit = findUnit(draft, t);
+        if (!unit) return false;
+        return evaluateCondition(effect.condition, {
+          ...conditionContext(draft),
+          target: { hp: unit.hp, maxHp: unit.maxHp, buffs: unit.buffs },
+        });
+      })
+    : work.targetIds;
   const value = effect.value ?? 0;
 
   switch (effect.kind) {
@@ -553,8 +629,71 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
       }
       break;
     }
+    case "spendPollution": {
+      // 「溅毒 / 泄毒」：消耗全部污染，按每点 value 结算（固定值，不吃增幅，同 spendCharge 口径）
+      const pollution = draft.player.pollution;
+      if (pollution <= 0) break;
+      if (value > 0) {
+        const mode = effect.mode ?? "damage";
+        if (mode === "damage") {
+          for (const t of targetIds) {
+            dealDamage(draft, sink, {
+              sourceId: ctx.sourceId,
+              actorId: ctx.actorId,
+              targetId: t,
+              base: pollution * value,
+              segment: 1,
+              segments: 1,
+              modifiers: [],
+            });
+          }
+        } else if (mode === "block") {
+          for (const t of targetIds) gainBlock(draft, sink, t, pollution * value);
+        } else {
+          drawCards(draft, sink, pollution * value);
+        }
+      }
+      changePollution(draft, sink, -pollution);
+      break;
+    }
+    case "transferPollution": {
+      // 「黑色输血」：自身污染 −2N，目标敌人 +N 蚀锈（2:1 亏比，防白嫖）
+      const n = Math.max(0, value);
+      if (n <= 0) break;
+      const pay = Math.min(draft.player.pollution, n * 2);
+      const real = Math.floor(pay / 2);
+      if (real <= 0) break;
+      if (pay > 0) changePollution(draft, sink, -pay);
+      for (const t of targetIds) {
+        applyBuffToTarget(draft, sink, t, "corroding", real, effect.duration ?? undefined);
+      }
+      break;
+    }
+    case "consumeCorroding": {
+      // 「终点站」：消耗目标全部蚀锈，每层追加 value 伤害（固定值）
+      for (const t of targetIds) {
+        const unit = findUnit(draft, t);
+        if (!unit) continue;
+        const stacks = buffStacks(unit.buffs, "corroding");
+        if (stacks <= 0) continue;
+        unit.buffs = unit.buffs.filter((b) => b.id !== "corroding");
+        sink.emit("BuffExpired", { targetId: t, buffId: "corroding" });
+        if (value > 0) {
+          dealDamage(draft, sink, {
+            sourceId: ctx.sourceId,
+            actorId: ctx.actorId,
+            targetId: t,
+            base: stacks * value,
+            segment: 1,
+            segments: 1,
+            modifiers: [],
+          });
+        }
+      }
+      break;
+    }
     case "gainModifier":
-      // 本场临时修饰（血锈光环）：写入 BattleState.modifiers，随战斗结束消失
+      // 本场临时修饰（血锈光环 / 铁胃 / 红区栖者）：写入 BattleState.modifiers，随战斗结束消失
       if (effect.valueKind && effect.op) {
         draft.modifiers.push({
           sourceId: ctx.sourceId,
@@ -586,6 +725,26 @@ export function drainQueue(draft: Draft, sink: EventSink): void {
     }
   } finally {
     draft.draining = false;
+  }
+}
+
+/**
+ * 同步结算一段效果：只处理本次新入栈的动作（以入栈前的栈深为界），
+ * 用于"必须在当前函数返回前生效"的触发（docs/38 §二 B-3「九十九」污染触顶改写反噬）。
+ * 外层挂起的动作留在栈上，由外层循环继续处理。
+ */
+export function resolveEffectsInline(
+  draft: Draft,
+  sink: EventSink,
+  effects: readonly CardEffect[],
+  ctx: EffectContext,
+): void {
+  const boundary = draft.queue.size;
+  enqueueEffects(draft, effects, ctx);
+  while (draft.queue.size > boundary) {
+    const next = draft.queue.pop();
+    if (!next) break;
+    executeWork(draft, sink, next.payload);
   }
 }
 

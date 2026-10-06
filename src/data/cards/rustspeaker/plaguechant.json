@@ -1,0 +1,41 @@
+{
+  "id": "plaguechant",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 1,
+  "keywords": [
+    "exhaust"
+  ],
+  "effects": [
+    {
+      "kind": "gainPollution",
+      "value": 15
+    },
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "self"
+      },
+      "buff": "strength",
+      "stacks": 2
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainPollution",
+        "value": 12
+      },
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "self"
+        },
+        "buff": "strength",
+        "stacks": 2
+      }
+    ]
+  },
+  "i18n": "card.plaguechant"
+}

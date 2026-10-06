@@ -1,0 +1,38 @@
+{
+  "id": "leachfield",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "allEnemies"
+      },
+      "buff": "corroding",
+      "stacks": 2
+    },
+    {
+      "kind": "gainPollution",
+      "value": 6
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "allEnemies"
+        },
+        "buff": "corroding",
+        "stacks": 3
+      },
+      {
+        "kind": "gainPollution",
+        "value": 5
+      }
+    ]
+  },
+  "i18n": "card.leachfield"
+}

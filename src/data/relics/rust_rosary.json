@@ -1,0 +1,19 @@
+{
+  "id": "rust_rosary",
+  "i18n": "relic.rust_rosary",
+  "timing": "onTurnStart",
+  "once": "turn",
+  "effects": [
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 2,
+      "condition": {
+        "type": "pollutionAtLeast",
+        "n": 50
+      }
+    }
+  ]
+}

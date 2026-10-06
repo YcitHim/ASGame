@@ -1,0 +1,28 @@
+{
+  "id": "scrapguard",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 7
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "block",
+        "target": {
+          "type": "self"
+        },
+        "value": 10
+      }
+    ]
+  },
+  "i18n": "card.scrapguard"
+}

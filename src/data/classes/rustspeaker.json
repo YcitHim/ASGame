@@ -1,0 +1,24 @@
+{
+  "id": "rustspeaker",
+  "i18n": "class.rustspeaker",
+  "player": {
+    "maxHp": 66,
+    "energy": 3
+  },
+  "startDeck": [
+    "rustspit",
+    "rustspit",
+    "rustnail",
+    "scrapguard",
+    "scrapguard",
+    "scrapguard",
+    "toxsip",
+    "toxsip",
+    "venthex",
+    "salve"
+  ],
+  "startRelics": [
+    "rust_rosary"
+  ],
+  "unlock": "both_classes_clear"
+}

@@ -1,0 +1,50 @@
+{
+  "id": "plaguetouch",
+  "class": "rustspeaker",
+  "type": "attack",
+  "rarity": "uncommon",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "damage",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 5
+    },
+    {
+      "kind": "damage",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 5,
+      "condition": {
+        "type": "targetHasBuff",
+        "buffId": "corroding"
+      }
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 7
+      },
+      {
+        "kind": "damage",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 6,
+        "condition": {
+          "type": "targetHasBuff",
+          "buffId": "corroding"
+        }
+      }
+    ]
+  },
+  "i18n": "card.plaguetouch"
+}

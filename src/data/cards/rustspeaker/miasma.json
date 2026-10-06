@@ -1,0 +1,48 @@
+{
+  "id": "miasma",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 2,
+  "effects": [
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "allEnemies"
+      },
+      "buff": "weak",
+      "stacks": 1,
+      "duration": 1
+    },
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "allEnemies"
+      },
+      "buff": "corroding",
+      "stacks": 2
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "allEnemies"
+        },
+        "buff": "weak",
+        "stacks": 1,
+        "duration": 2
+      },
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "allEnemies"
+        },
+        "buff": "corroding",
+        "stacks": 2
+      }
+    ]
+  },
+  "i18n": "card.miasma"
+}

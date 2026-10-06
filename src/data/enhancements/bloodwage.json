@@ -20,7 +20,15 @@
     "boilerrage",
     "punchthrough",
     "coreoverload",
-    "teslacage"
+    "teslacage",
+    "rustspit",
+    "rustnail",
+    "corrodeblade",
+    "corrodelance",
+    "bloodbloom",
+    "plaguetouch",
+    "plaguetide",
+    "terminus"
   ],
   "handler": "bloodwage",
   "params": {

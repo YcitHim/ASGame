@@ -3,7 +3,8 @@
   "i18n": "act.rusty_corridor",
   "classes": [
     "bloodwright",
-    "engineer"
+    "engineer",
+    "rustspeaker"
   ],
   "weights": {
     "battle": 40,

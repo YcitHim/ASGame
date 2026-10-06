@@ -44,7 +44,16 @@ export interface Modifier {
   readonly kind?: ValueKind;
 }
 
-export const VALUE_KINDS = ["cardCost", "attackDamage", "hpCost", "drawCount", "block", "heal"] as const;
+export const VALUE_KINDS = [
+  "cardCost",
+  "attackDamage",
+  "hpCost",
+  "drawCount",
+  "block",
+  "heal",
+  /** 反噬伤害乘区（docs/38 §二 B-2「铁胃」）：作用于过载/污染反噬的固定伤害 */
+  "backlashTaken",
+] as const;
 export type ValueKind = (typeof VALUE_KINDS)[number];
 
 interface PipelineSpec {
@@ -62,6 +71,7 @@ export const PIPELINE_SPECS: Record<ValueKind, PipelineSpec> = {
   drawCount: { layers: ["base", "buff", "temporary"], rounding: "round" },
   block: { layers: ["base", "upgrade", "enhancement", "buff"], rounding: "round" },
   heal: { layers: ["base", "buff"], rounding: "round" },
+  backlashTaken: { layers: ["base", "enhancement", "artifact", "relic", "buff", "temporary"], rounding: "round" },
 };
 
 export interface ModifierDetail {

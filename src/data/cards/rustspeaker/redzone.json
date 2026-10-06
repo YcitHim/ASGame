@@ -1,0 +1,34 @@
+{
+  "id": "redzone",
+  "class": "rustspeaker",
+  "type": "power",
+  "rarity": "rare",
+  "cost": 2,
+  "effects": [
+    {
+      "kind": "gainModifier",
+      "valueKind": "attackDamage",
+      "op": "add",
+      "value": 2,
+      "condition": {
+        "type": "pollutionAtLeast",
+        "n": 80
+      }
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainModifier",
+        "valueKind": "attackDamage",
+        "op": "add",
+        "value": 3,
+        "condition": {
+          "type": "pollutionAtLeast",
+          "n": 80
+        }
+      }
+    ]
+  },
+  "i18n": "card.redzone"
+}

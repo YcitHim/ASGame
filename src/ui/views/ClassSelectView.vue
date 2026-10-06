@@ -141,7 +141,7 @@ function back(): void {
             <p class="title">{{ t(cls.i18n + '.title', '') }}</p>
           </header>
           <p class="intro">
-            {{ isUnlocked(cls.id) ? t(cls.i18n + '.intro', '') : t("class.engineer.locked", "尚未解锁。") }}
+            {{ isUnlocked(cls.id) ? t(cls.i18n + '.intro', '') : t(cls.i18n + '.locked', '尚未解锁。') }}
           </p>
 
           <template v-if="isUnlocked(cls.id)">

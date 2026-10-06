@@ -1,0 +1,19 @@
+{
+  "id": "ironstomach",
+  "class": "rustspeaker",
+  "type": "power",
+  "rarity": "uncommon",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "gainModifier",
+      "valueKind": "backlashTaken",
+      "op": "mul",
+      "value": 0.5
+    }
+  ],
+  "upgraded": {
+    "cost": 0
+  },
+  "i18n": "card.ironstomach"
+}
