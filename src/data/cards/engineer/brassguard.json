@@ -10,7 +10,7 @@
       "target": {
         "type": "self"
       },
-      "value": 8
+      "value": 6
     }
   ],
   "upgraded": {
@@ -20,7 +20,7 @@
         "target": {
           "type": "self"
         },
-        "value": 11
+        "value": 8
       }
     ]
   },

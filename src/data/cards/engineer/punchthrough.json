@@ -14,7 +14,7 @@
       "value": 9,
       "condition": {
         "type": "chargeAtLeast",
-        "n": 6
+        "n": 7
       }
     }
   ],
@@ -29,7 +29,7 @@
         "value": 11,
         "condition": {
           "type": "chargeAtLeast",
-          "n": 6
+          "n": 7
         }
       }
     ]

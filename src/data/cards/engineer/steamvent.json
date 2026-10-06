@@ -7,16 +7,16 @@
   "play": {
     "handler": "multihit",
     "params": {
-      "hits": 3,
-      "value": 9
+      "hits": 2,
+      "value": 4
     }
   },
   "upgraded": {
     "play": {
       "handler": "multihit",
       "params": {
-        "hits": 3,
-        "value": 12
+        "hits": 2,
+        "value": 6
       }
     }
   },

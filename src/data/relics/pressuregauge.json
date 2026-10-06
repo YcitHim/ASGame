@@ -5,7 +5,14 @@
   "effects": [
     {
       "kind": "gainCharge",
-      "value": 1
+      "value": 1,
+      "condition": {
+        "type": "not",
+        "of": {
+          "type": "chargeAtLeast",
+          "n": 4
+        }
+      }
     }
   ],
   "once": "turn"
