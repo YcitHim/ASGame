@@ -29,7 +29,7 @@ export interface CardEffect {
     | "gainCharge"
     /** 写入本场临时修饰层（docs/16 P3.2「血锈光环」）：战斗内持续、随战斗结束消失 */
     | "gainModifier"
-    /** 消耗全部充能（docs/27 §二 C2「泄能重锤」）：每点充能造成 value 点额外伤害，随后清零 */
+    /** 消耗全部充能（docs/27 §二 C2 / docs/29 §二⑥）：每点充能按 mode 结算，随后清零 */
     | "spendCharge";
   readonly target?: TargetRef;
   readonly value?: number;
@@ -44,6 +44,22 @@ export interface CardEffect {
   /** 仅 gainModifier：目标数值种类与运算 */
   readonly valueKind?: ValueKind;
   readonly op?: ModifierOp;
+  /** 仅 spendCharge：每点充能的结算方式（缺省 damage，保持既有卡口径） */
+  readonly mode?: "damage" | "block" | "draw";
+}
+
+/**
+ * 职业定义（docs/16 5.1）：player / startDeck / startRelics 从 act 抽出，
+ * 新增职业 = 只加 JSON。act 只声明本幕开放哪些职业。
+ */
+export interface ClassDefinition {
+  readonly id: string;
+  readonly i18n: string;
+  readonly player: { readonly maxHp: number; readonly energy: number };
+  readonly startDeck: readonly string[];
+  readonly startRelics?: readonly string[];
+  /** 解锁条件：default = 初始可用；first_boss_clear 等由 meta 层判定（docs/29 §三⑨） */
+  readonly unlock?: string;
 }
 
 export interface CardUpgrade {
@@ -223,10 +239,9 @@ export interface MapNode {
 export interface ActDefinition {
   readonly id: string;
   readonly i18n: string;
-  readonly player: { readonly maxHp: number; readonly energy: number };
-  readonly startDeck: readonly string[];
-  readonly startRelics?: readonly string[];
-  /** 线性节点列表（0.1 不分支） */
+  /** 本幕可选职业 id 列表（docs/16 5.1） */
+  readonly classes: readonly string[];
+  /** 节点列表（0.1 线性不分支；P5 起可分支） */
   readonly map: readonly MapNode[];
 }
 
@@ -239,7 +254,9 @@ export type TriggerTiming =
   | "onHit"
   | "onSell"
   /** 获得格挡时（docs/29 §一②「动能电池 / 炉渣装甲」） */
-  | "onBlock";
+  | "onBlock"
+  /** 获得充能时（docs/29 §二⑥「飞升齿轮」） */
+  | "onGainCharge";
 
 export interface RelicDefinition {
   readonly id: string;
@@ -256,6 +273,7 @@ export interface ContentDb {
   readonly enhancements: ReadonlyMap<string, EnhancementDefinition>;
   readonly relics: ReadonlyMap<string, RelicDefinition>;
   readonly events: ReadonlyMap<string, EventDefinition>;
+  readonly classes: ReadonlyMap<string, ClassDefinition>;
 }
 
 export function createContentDb(partial: Partial<ContentDb> = {}): ContentDb {
@@ -265,6 +283,7 @@ export function createContentDb(partial: Partial<ContentDb> = {}): ContentDb {
     enhancements: partial.enhancements ?? new Map(),
     relics: partial.relics ?? new Map(),
     events: partial.events ?? new Map(),
+    classes: partial.classes ?? new Map(),
   };
 }
 

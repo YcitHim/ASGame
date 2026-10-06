@@ -37,6 +37,7 @@ export function resolveTriggers(draft: Draft, sink: EventSink, timing: TriggerTi
       sourceId: `relic:${id}`,
       actorId: "player",
       chosenTargetId: null,
+      fromTrigger: true,
     });
 
     if (def.once === "battle") draft.player.triggeredThisBattle.push(id);
@@ -54,6 +55,7 @@ export function resolveTriggers(draft: Draft, sink: EventSink, timing: TriggerTi
       sourceId: instanceId,
       actorId: "player",
       chosenTargetId: null,
+      fromTrigger: true,
     });
 
     if (power.once === "battle") draft.player.triggeredThisBattle.push(key);

@@ -17,7 +17,7 @@ describe("ForgeView 挂载冒烟（S4.4）", () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     const run = useRunStore();
-    run.startRun(1);
+    run.startRun("bloodwright", 1);
 
     const wrapper = mount(ForgeView, { global: { plugins: [pinia, router] } });
     await nextTick();

@@ -1,0 +1,25 @@
+{
+  "id": "bloodwright",
+  "i18n": "class.bloodwright",
+  "player": {
+    "maxHp": 66,
+    "energy": 3
+  },
+  "startDeck": [
+    "strike",
+    "strike",
+    "strike",
+    "strike",
+    "strike",
+    "defend",
+    "defend",
+    "defend",
+    "defend",
+    "bloodbolt"
+  ],
+  "startRelics": [
+    "broken_oil",
+    "blood_pump"
+  ],
+  "unlock": "default"
+}

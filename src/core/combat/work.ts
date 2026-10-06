@@ -16,6 +16,8 @@ export interface EffectContext {
   /** 强化层注入的修饰（layer: enhancement），走修饰符管线而非直接改值 */
   readonly attackModifiers?: readonly Modifier[];
   readonly blockModifiers?: readonly Modifier[];
+  /** 该动作由触发器（遗物/卡牌能力）产生：其 gainCharge 不再派发 onGainCharge（防自触发） */
+  readonly fromTrigger?: boolean;
 }
 
 /** 栈上的单个效果动作；targetIds 已解析，供死亡清理匹配。 */

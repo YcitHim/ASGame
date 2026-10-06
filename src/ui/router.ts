@@ -10,6 +10,7 @@ export const router = createRouter({
   routes: [
     { path: "/", name: "title", component: () => import("./views/TitleView.vue") },
     { path: "/settings", name: "settings", component: () => import("./views/SettingsView.vue") },
+    { path: "/class-select", name: "class-select", component: () => import("./views/ClassSelectView.vue") },
     { path: "/map", name: "map", component: () => import("./views/MapView.vue") },
     { path: "/battle", name: "battle", component: () => import("./views/BattleView.vue") },
     { path: "/reward", name: "reward", component: () => import("./views/RewardView.vue") },

@@ -1,0 +1,36 @@
+{
+  "id": "weld",
+  "class": "engineer",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 6
+    },
+    {
+      "kind": "gainCharge",
+      "value": 1
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "block",
+        "target": {
+          "type": "self"
+        },
+        "value": 8
+      },
+      {
+        "kind": "gainCharge",
+        "value": 2
+      }
+    ]
+  },
+  "i18n": "card.weld"
+}

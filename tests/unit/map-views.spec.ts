@@ -27,7 +27,7 @@ describe("S5 UI 流程视图挂载", () => {
     const { wrapper } = mountView(MapView);
     await nextTick();
     const run = useRunStore();
-    run.startRun(1);
+    run.startRun("bloodwright", 1);
     await nextTick();
     expect(wrapper.findAll(".node")).toHaveLength(7);
     expect(wrapper.findAll(".go")).toHaveLength(1);
@@ -36,7 +36,7 @@ describe("S5 UI 流程视图挂载", () => {
 
   it("MapView：通关后显示居中胜利弹窗（不是地图下方的内联块）", async () => {
     const { wrapper } = mountView(MapView, (run) => {
-      run.startRun(1);
+      run.startRun("bloodwright", 1);
       for (let i = 0; i < 7; i += 1) run.advance();
     });
     await nextTick();
@@ -47,7 +47,7 @@ describe("S5 UI 流程视图挂载", () => {
   });
 
   it("RewardView：普通节点给出三选一", async () => {
-    const { wrapper } = mountView(RewardView, (run) => run.startRun(1));
+    const { wrapper } = mountView(RewardView, (run) => run.startRun("bloodwright", 1));
     await nextTick();
     expect(wrapper.findAll(".option")).toHaveLength(3);
     expect(wrapper.find(".skip").exists()).toBe(true);
@@ -56,7 +56,7 @@ describe("S5 UI 流程视图挂载", () => {
 
   it("RewardView：Boss 节点显示远征胜利而非卡奖", async () => {
     const { wrapper } = mountView(RewardView, (run) => {
-      run.startRun(1);
+      run.startRun("bloodwright", 1);
       for (let i = 0; i < 6; i += 1) run.advance();
     });
     await nextTick();
@@ -67,7 +67,7 @@ describe("S5 UI 流程视图挂载", () => {
 
   it("RestView：三个选项；选择打磨后列出卡组", async () => {
     const { wrapper, run } = mountView(RestView, (r) => {
-      r.startRun(1);
+      r.startRun("bloodwright", 1);
       r.advance();
       r.advance();
       r.advance();

@@ -9,6 +9,7 @@ import {
   createContentDb,
   type ActDefinition,
   type CardDefinition,
+  type ClassDefinition,
   type ContentDb,
   type EnemyDefinition,
   type EnhancementDefinition,
@@ -72,6 +73,11 @@ export function loadNodeContent(): NodeGameContent {
     const e = readJson<EventDefinition>(f);
     events.set(e.id, e);
   }
+  const classes = new Map<string, ClassDefinition>();
+  for (const f of walkJson(join(DATA_ROOT, "classes"))) {
+    const c = readJson<ClassDefinition>(f);
+    classes.set(c.id, c);
+  }
   const enemies = new Map<string, EnemyDefinition>();
   for (const f of walkJson(join(DATA_ROOT, "enemies"))) {
     const e = readJson<EnemyJson>(f);
@@ -81,5 +87,5 @@ export function loadNodeContent(): NodeGameContent {
     .map((f) => readJson<ActDefinition>(f))
     .sort((a, b) => a.id.localeCompare(b.id));
 
-  return { content: createContentDb({ cards, enemies, enhancements, relics, events }), acts, i18n };
+  return { content: createContentDb({ cards, enemies, enhancements, relics, events, classes }), acts, i18n };
 }

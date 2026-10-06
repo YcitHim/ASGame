@@ -4,7 +4,11 @@
   "appliesTo": [
     "brace",
     "bloodwall",
-    "lastbreath"
+    "lastbreath",
+    "brassguard",
+    "weld",
+    "insulation",
+    "gyrostabilizer"
   ],
   "handler": "fortify",
   "params": {

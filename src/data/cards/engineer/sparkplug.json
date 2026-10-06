@@ -1,0 +1,30 @@
+{
+  "id": "sparkplug",
+  "class": "engineer",
+  "type": "attack",
+  "rarity": "common",
+  "cost": 0,
+  "effects": [
+    {
+      "kind": "damage",
+      "value": 3
+    },
+    {
+      "kind": "gainCharge",
+      "value": 1
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "value": 4
+      },
+      {
+        "kind": "gainCharge",
+        "value": 2
+      }
+    ]
+  },
+  "i18n": "card.sparkplug"
+}

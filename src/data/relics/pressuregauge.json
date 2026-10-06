@@ -1,0 +1,12 @@
+{
+  "id": "pressuregauge",
+  "i18n": "relic.pressuregauge",
+  "timing": "onTurnStart",
+  "effects": [
+    {
+      "kind": "gainCharge",
+      "value": 1
+    }
+  ],
+  "once": "turn"
+}

@@ -10,7 +10,7 @@ export const SAVE_NAMESPACE = "rustandblood";
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
 export const SCHEMA_VERSION = 4;
 
-export type SaveSlot = "settings" | "progress" | "replay" | "codex";
+export type SaveSlot = "settings" | "progress" | "replay" | "codex" | "meta";
 
 export function slotKey(slot: SaveSlot): string {
   return `${SAVE_NAMESPACE}:${slot}`;

@@ -1,0 +1,31 @@
+{
+  "id": "emergencyvent",
+  "class": "engineer",
+  "type": "skill",
+  "rarity": "rare",
+  "cost": 0,
+  "effects": [
+    {
+      "kind": "spendCharge",
+      "value": 1,
+      "mode": "draw"
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "spendCharge",
+        "value": 1,
+        "mode": "draw"
+      },
+      {
+        "kind": "heal",
+        "target": {
+          "type": "self"
+        },
+        "value": 2
+      }
+    ]
+  },
+  "i18n": "card.emergencyvent"
+}

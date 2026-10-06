@@ -87,7 +87,12 @@ export const useBattleStore = defineStore("battle", {
         battleId: `${act.id}-${node.id}`,
         seed: (Date.now() ^ (Math.floor(Date.now() / 7) << 3)) >>> 0,
         // 跨节点保留 HP；卡组带上升级与强化实例
-        player: { maxHp: act.player.maxHp, energy: act.player.energy, hp: run.hp, pollution: run.pollution ?? 0 },
+        player: {
+          maxHp: run.maxHp,
+          energy: run.classDef?.player.energy ?? 3,
+          hp: run.hp,
+          pollution: run.pollution ?? 0,
+        },
         enemies: rollEncounter(run.run!, node).map((id) => ({ id })),
         deck: run.deck.map((c) => ({ cardId: c.cardId, upgraded: c.upgraded, enhancements: c.enhancements })),
         relics: run.relics,

@@ -1,0 +1,197 @@
+{
+  "version": 1,
+  "recordedAt": "2026-10-05",
+  "content": "rust-and-blood",
+  "battle": {
+    "id": "golden-engineer",
+    "nodeId": "n2",
+    "enemies": [
+      "corroded_swarm",
+      "riveted_heavy"
+    ],
+    "deck": [
+      {
+        "cardId": "pistonjab",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "pistonjab",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "pistonjab",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "pistonjab",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "brassguard",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "brassguard",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "brassguard",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "gearspin",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "sparkplug",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "chargedhammer",
+        "upgraded": true,
+        "enhancements": []
+      },
+      {
+        "cardId": "pressurevalve",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "steambolt",
+        "upgraded": false,
+        "enhancements": []
+      }
+    ],
+    "relics": [
+      "dentedcoil",
+      "pressuregauge"
+    ],
+    "seed": 909090,
+    "player": {
+      "maxHp": 66,
+      "energy": 3
+    },
+    "actions": [
+      {
+        "type": "Noop",
+        "actionId": "start"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p1",
+        "handIndex": 1,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p2",
+        "handIndex": 3,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e3"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p4",
+        "handIndex": 1,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p5",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p6",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p7",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p8",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e9"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p10",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p11",
+        "handIndex": 1,
+        "targetId": "riveted_heavy"
+      }
+    ],
+    "eventHash": "d97dae14be01cdf613912d8a04c70babd040a5e010b7dd84d0c5c3fb279f8c2d",
+    "eventTypes": [
+      "BattleStarted",
+      "CardsDrawn",
+      "ChargeChanged",
+      "IntentRevealed",
+      "IntentRevealed",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "DamageDealt",
+      "HpLost",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "TurnEnded",
+      "DamageDealt",
+      "HpLost",
+      "DamageDealt",
+      "HpLost",
+      "ChargeChanged",
+      "TurnStarted",
+      "CardsDrawn",
+      "IntentRevealed",
+      "IntentRevealed",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "UnitDied",
+      "PollutionChanged",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "DamageDealt",
+      "HpLost",
+      "CardPlayed",
+      "BlockGained",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "ChargeChanged",
+      "CardPlayed"
+    ],
+    "turns": 3,
+    "outcome": "win"
+  }
+}

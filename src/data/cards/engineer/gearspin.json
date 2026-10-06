@@ -1,0 +1,30 @@
+{
+  "id": "gearspin",
+  "class": "engineer",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 0,
+  "effects": [
+    {
+      "kind": "gainCharge",
+      "value": 2
+    },
+    {
+      "kind": "draw",
+      "value": 1
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainCharge",
+        "value": 3
+      },
+      {
+        "kind": "draw",
+        "value": 1
+      }
+    ]
+  },
+  "i18n": "card.gearspin"
+}

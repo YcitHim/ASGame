@@ -25,7 +25,8 @@ import {
   setRunPollution,
   type RunState,
 } from "@/core/map";
-import type { ActDefinition, CardDefinition, EventDefinition, MapNode } from "@/core/registry";
+import type { ActDefinition, CardDefinition, ClassDefinition, EventDefinition, MapNode } from "@/core/registry";
+import { useMetaStore } from "@/stores/meta";
 import { loadGameContent } from "@/data/load";
 import { clearSlot, readSlot, writeSlot } from "@/systems/save";
 
@@ -94,10 +95,18 @@ export const useRunStore = defineStore("run", {
       return !!this.act && !!this.run && isRunComplete(this.run, this.act);
     },
     hp(): number {
-      return this.run?.hp ?? this.act?.player.maxHp ?? 0;
+      return this.run?.hp ?? this.classDef?.player.maxHp ?? 0;
     },
     maxHp(): number {
-      return this.act?.player.maxHp ?? 0;
+      return this.run?.maxHp ?? this.classDef?.player.maxHp ?? 0;
+    },
+    /** 本局职业定义（data/classes）。 */
+    classDef(): ClassDefinition | undefined {
+      if (!this.run) return undefined;
+      return loadGameContent().content.classes.get(this.run.classId);
+    },
+    classId(): string {
+      return this.run?.classId ?? "";
     },
     pollution(): number {
       return this.run?.pollution ?? 0;
@@ -159,12 +168,15 @@ export const useRunStore = defineStore("run", {
   },
 
   actions: {
-    startRun(seed = (Date.now() ^ 0x9e3779b9) >>> 0): void {
+    /** 开新局：classId 缺省血械侍僧（存档/继续远征仍读 run.classId）。 */
+    startRun(classId = "bloodwright", seed = (Date.now() ^ 0x9e3779b9) >>> 0): void {
       const act = this.act;
       if (!act) return;
-      this.run = createRunState(act, seed);
-      this.deck = act.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
-      this.relics = [...(act.startRelics ?? [])];
+      const cls = loadGameContent().content.classes.get(classId) ?? loadGameContent().content.classes.get("bloodwright");
+      if (!cls) return;
+      this.run = createRunState(act, cls, seed);
+      this.deck = cls.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
+      this.relics = [...(cls.startRelics ?? [])];
       this.acquired = [];
       // 每节点标记必须随新局重置，否则上一局的"已用"会卡住新局（测试抓到的真问题）
       this.recastUsedNode = null;
@@ -179,6 +191,8 @@ export const useRunStore = defineStore("run", {
     advance(): void {
       if (!this.run || !this.act) return;
       this.run = advanceNode(this.run, this.act);
+      // 通关即记 meta（职业解锁 / P6 成就的落点）
+      if (isRunComplete(this.run, this.act)) useMetaStore().markCleared(this.run.classId);
       this.persist();
     },
 
@@ -193,7 +207,7 @@ export const useRunStore = defineStore("run", {
     rest(option: "heal" | "upgrade" | "remove", deckIndex = -1): void {
       if (!this.run || !this.act) return;
       if (option === "heal") {
-        this.run = healRun(this.run, this.act.player.maxHp, Math.round(this.act.player.maxHp * REST_HEAL_RATIO));
+        this.run = healRun(this.run, this.run.maxHp, Math.round(this.run.maxHp * REST_HEAL_RATIO));
       } else if (option === "remove" && deckIndex >= 0) {
         this.removeCard(deckIndex);
       } else if (deckIndex >= 0) {
@@ -272,7 +286,7 @@ export const useRunStore = defineStore("run", {
       const def = this.eventDef;
       if (!def) return;
       const seed = (this.run.seed ^ Math.imul(this.run.nodeIndex + 11, 0x27d4eb2f)) >>> 0;
-      const res = resolveEventOption(content, def, optionId, { seed, ownedRelics: this.relics });
+      const res = resolveEventOption(content, def, optionId, { seed, ownedRelics: this.relics, classId: this.run.classId });
       if (!res) return;
       if (res.hpDelta !== 0) {
         this.run = setRunHp(this.run, Math.max(0, Math.min(this.maxHp, this.run.hp + res.hpDelta)));

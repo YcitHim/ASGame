@@ -2,12 +2,14 @@ import type { ZodType } from "zod";
 import {
   actSchema,
   cardSchema,
+  classSchema,
   enemySchema,
   enhancementSchema,
   eventSchema,
   relicSchema,
   type ActJson,
   type CardJson,
+  type ClassJson,
   type EnemyJson,
   type EnhancementJson,
   type EventJson,
@@ -33,6 +35,7 @@ export interface ContentInput {
   acts?: SourceFile[];
   relics?: SourceFile[];
   events?: SourceFile[];
+  classes?: SourceFile[];
   i18n: Record<string, string>;
 }
 
@@ -44,6 +47,7 @@ export interface ValidationResult {
   acts: ActJson[];
   relics: RelicJson[];
   events: EventJson[];
+  classes: ClassJson[];
 }
 
 function zodIssues(file: string, error: unknown): ValidationIssue[] {
@@ -73,6 +77,7 @@ export function validateContent(input: ContentInput): ValidationResult {
   const acts: ActJson[] = [];
   const relics: RelicJson[] = [];
   const events: EventJson[] = [];
+  const classes: ClassJson[] = [];
 
   parseAll(cardSchema, input.cards, cards, issues);
   parseAll(enhancementSchema, input.enhancements, enhancements, issues);
@@ -80,6 +85,7 @@ export function validateContent(input: ContentInput): ValidationResult {
   parseAll(actSchema, input.acts ?? [], acts, issues);
   parseAll(relicSchema, input.relics ?? [], relics, issues);
   parseAll(eventSchema, input.events ?? [], events, issues);
+  parseAll(classSchema, input.classes ?? [], classes, issues);
 
   // 全局 id 唯一（docs/04 §4）
   const seen = new Map<string, string>();
@@ -151,6 +157,7 @@ export function validateContent(input: ContentInput): ValidationResult {
   }
   for (const r of relics) checkId("relic", r.id);
   for (const e of events) checkId("event", e.id);
+  for (const c of classes) checkId("class", c.id);
 
   // 强化 appliesTo / mutex 引用
   const cardIds = new Set(cards.map((c) => c.id));
@@ -185,10 +192,33 @@ export function validateContent(input: ContentInput): ValidationResult {
       }
     }
   }
-  for (const act of acts) {
-    for (const cardId of act.startDeck) {
+  // 职业引用：起手卡组 / 起始遗物 / 文案；act 只声明可选职业
+  const classIds = new Set(classes.map((c) => c.id));
+  for (const cls of classes) {
+    for (const cardId of cls.startDeck) {
       if (!cardIds.has(cardId)) {
-        issues.push({ file: `act ${act.id}`, path: "startDeck", message: `引用了不存在的卡牌 "${cardId}"` });
+        issues.push({ file: `class ${cls.id}`, path: "startDeck", message: `引用了不存在的卡牌 "${cardId}"` });
+      }
+    }
+    for (const relicId of cls.startRelics ?? []) {
+      if (!relicIds.has(relicId)) {
+        issues.push({ file: `class ${cls.id}`, path: "startRelics", message: `引用了不存在的遗物 "${relicId}"` });
+      }
+    }
+    requireKeyEarly(`class ${cls.id}`, cls.i18n + ".name");
+    requireKeyEarly(`class ${cls.id}`, cls.i18n + ".title");
+    requireKeyEarly(`class ${cls.id}`, cls.i18n + ".intro");
+  }
+  // 每张卡的 class 必须是已定义职业（防止卡池隔离失效）
+  for (const c of cards) {
+    if (!classIds.has(c.class)) {
+      issues.push({ file: `card ${c.id}`, path: "class", message: `未定义的职业 "${c.class}"` });
+    }
+  }
+  for (const act of acts) {
+    for (const classId of act.classes) {
+      if (!classIds.has(classId)) {
+        issues.push({ file: `act ${act.id}`, path: "classes", message: `引用了不存在的职业 "${classId}"` });
       }
     }
     for (const node of act.map) {
@@ -208,20 +238,16 @@ export function validateContent(input: ContentInput): ValidationResult {
         }
       }
     }
-    for (const relicId of act.startRelics ?? []) {
-      if (!relicIds.has(relicId)) {
-        issues.push({ file: `act ${act.id}`, path: "startRelics", message: `引用了不存在的遗物 "${relicId}"` });
-      }
-    }
     if (!(act.i18n in input.i18n)) {
       issues.push({ file: `act ${act.id}`, path: "i18n", message: `文案缺失：zh-CN 无 "${act.i18n}"` });
     }
   }
 
   // i18n key 存在（docs/04 §4）
-  const requireKey = (file: string, key: string): void => {
+  function requireKeyEarly(file: string, key: string): void {
     if (!(key in input.i18n)) issues.push({ file, path: "i18n", message: `文案缺失：zh-CN 无 "${key}"` });
-  };
+  }
+  const requireKey = requireKeyEarly;
   for (const c of cards) {
     const base = c.i18n ?? `card.${c.id}`;
     requireKey(`card ${c.id}`, base + ".name");
@@ -248,7 +274,7 @@ export function validateContent(input: ContentInput): ValidationResult {
     }
   }
 
-  return { issues, cards, enhancements, enemies, acts, relics, events };
+  return { issues, cards, enhancements, enemies, acts, relics, events, classes };
 }
 
 /** 报错文本：带文件与字段定位（docs/05 G1 验收要求）。 */

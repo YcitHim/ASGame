@@ -1,0 +1,28 @@
+{
+  "id": "brassguard",
+  "class": "engineer",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 8
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "block",
+        "target": {
+          "type": "self"
+        },
+        "value": 11
+      }
+    ]
+  },
+  "i18n": "card.brassguard"
+}

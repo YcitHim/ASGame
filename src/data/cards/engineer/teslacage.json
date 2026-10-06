@@ -1,0 +1,24 @@
+{
+  "id": "teslacage",
+  "class": "engineer",
+  "type": "attack",
+  "rarity": "rare",
+  "cost": 2,
+  "play": {
+    "handler": "multihit",
+    "params": {
+      "hits": 4,
+      "value": 20
+    }
+  },
+  "upgraded": {
+    "play": {
+      "handler": "multihit",
+      "params": {
+        "hits": 4,
+        "value": 24
+      }
+    }
+  },
+  "i18n": "card.teslacage"
+}

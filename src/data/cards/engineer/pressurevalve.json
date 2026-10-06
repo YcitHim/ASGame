@@ -1,0 +1,24 @@
+{
+  "id": "pressurevalve",
+  "class": "engineer",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "spendCharge",
+      "value": 2,
+      "mode": "block"
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "spendCharge",
+        "value": 3,
+        "mode": "block"
+      }
+    ]
+  },
+  "i18n": "card.pressurevalve"
+}

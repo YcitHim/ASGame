@@ -24,8 +24,8 @@ function onMenu(key: (typeof menu)[number]["key"], enabled: boolean): void {
   if (key === "settings") void router.push("/settings");
   else if (key === "codex") void router.push("/codex");
   else if (key === "expedition") {
-    run.startRun();
-    void router.push("/battle");
+    // 0.5：先走职业选择页，再进图（docs/16 5.3）
+    void router.push("/class-select");
   } else if (key === "continue") {
     if (run.load()) void router.push("/map");
   }

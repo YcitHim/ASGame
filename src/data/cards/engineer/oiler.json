@@ -1,0 +1,22 @@
+{
+  "id": "oiler",
+  "class": "engineer",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "draw",
+      "value": 2
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "draw",
+        "value": 3
+      }
+    ]
+  },
+  "i18n": "card.oiler"
+}

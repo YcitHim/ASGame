@@ -92,7 +92,7 @@ describe("docs/27 §三 事件在 runStore 的落库", () => {
 
   it("推进到事件节点：抽到事件、结算写回 HP/污染、推进后清除", () => {
     const run = useRunStore();
-    run.startRun(1);
+    run.startRun("bloodwright", 1);
     run.advance();
     run.advance();
     expect(run.current?.kind).toBe("event");

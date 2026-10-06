@@ -1,0 +1,12 @@
+{
+  "id": "dentedcoil",
+  "i18n": "relic.dentedcoil",
+  "timing": "onBattleStart",
+  "effects": [
+    {
+      "kind": "gainCharge",
+      "value": 2
+    }
+  ],
+  "once": "battle"
+}

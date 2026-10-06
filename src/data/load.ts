@@ -9,6 +9,7 @@ import {
   createContentDb,
   type ActDefinition,
   type CardDefinition,
+  type ClassDefinition,
   type ContentDb,
   type EnemyDefinition,
   type EnhancementDefinition,
@@ -25,6 +26,7 @@ const enhancementModules = import.meta.glob<{ default: EnhancementDefinition }>(
 const enemyModules = import.meta.glob<{ default: EnemyJson }>("./enemies/*.json", { eager: true });
 const relicModules = import.meta.glob<{ default: RelicDefinition }>("./relics/*.json", { eager: true });
 const eventModules = import.meta.glob<{ default: EventDefinition }>("./events/*.json", { eager: true });
+const classModules = import.meta.glob<{ default: ClassDefinition }>("./classes/*.json", { eager: true });
 const actModules = import.meta.glob<{ default: ActDefinition }>("./acts/*.json", { eager: true });
 
 export const I18N: Record<string, string> = zhCN as Record<string, string>;
@@ -57,6 +59,9 @@ export function loadGameContent(): GameContent {
   const events = new Map<string, EventDefinition>();
   for (const mod of Object.values(eventModules)) events.set(mod.default.id, mod.default);
 
+  const classes = new Map<string, ClassDefinition>();
+  for (const mod of Object.values(classModules)) classes.set(mod.default.id, mod.default);
+
   const enemies = new Map<string, EnemyDefinition>();
   for (const mod of Object.values(enemyModules)) {
     const raw = mod.default;
@@ -68,7 +73,7 @@ export function loadGameContent(): GameContent {
     .sort((a, b) => a.id.localeCompare(b.id));
 
   cached = {
-    content: createContentDb({ cards, enemies, enhancements, relics, events }),
+    content: createContentDb({ cards, enemies, enhancements, relics, events, classes }),
     acts,
     i18n: I18N,
   };

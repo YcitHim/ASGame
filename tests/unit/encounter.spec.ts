@@ -60,8 +60,9 @@ describe("docs/29 §一③ 遭遇池", () => {
 
   it("rollEncounter：同种子同结果，且只产出候选组合", () => {
     const act = game.acts[0]!;
+    const cls = game.content.classes.get("bloodwright")!;
     const node = act.map[1]!; // n2 带 encounters
-    const run = createRunState(act, 12345);
+    const run = createRunState(act, cls, 12345);
     const a = rollEncounter(run, node);
     const b = rollEncounter(run, node);
     expect(a).toEqual(b);

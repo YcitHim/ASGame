@@ -104,9 +104,8 @@ function applyEnhancementChoice(
 function chooseEventOption(
   def: import("../../../src/core/registry").EventDefinition,
   run: RunState,
-  act: ActDefinition,
 ): string {
-  const hpRatio = run.hp / Math.max(1, act.player.maxHp);
+  const hpRatio = run.hp / Math.max(1, run.maxHp);
   const scoreEffect = (kind: string, value: number, count = 1): number => {
     switch (kind) {
       case "gainEnhancement":
@@ -200,10 +199,17 @@ export function runBattle(content: ContentDb, config: BattleRunConfig): BattleRu
   return { state, turns: state.turn, damageDealt, damageTaken, cardsPlayed };
 }
 
-export function simulateRun(content: ContentDb, act: ActDefinition, seed: number): SimResult {
-  let run = createRunState(act, seed);
-  const deck: SimCard[] = act.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
-  const relics = [...(act.startRelics ?? [])];
+export function simulateRun(
+  content: ContentDb,
+  act: ActDefinition,
+  seed: number,
+  classId = "bloodwright",
+): SimResult {
+  const cls = content.classes.get(classId) ?? [...content.classes.values()][0];
+  if (!cls) throw new Error("内容里没有任何职业定义");
+  let run = createRunState(act, cls, seed);
+  const deck: SimCard[] = cls.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
+  const relics = [...(cls.startRelics ?? [])];
 
   const cardsPlayed: Record<string, number> = {};
   const cardsPicked: Record<string, number> = {};
@@ -245,8 +251,8 @@ export function simulateRun(content: ContentDb, act: ActDefinition, seed: number
       const battle = runBattle(content, {
         battleId: `${act.id}-${node.id}`,
         seed: (run.seed ^ Math.imul(run.nodeIndex + 1, 0x9e3779b9)) >>> 0,
-        maxHp: act.player.maxHp,
-        energy: act.player.energy,
+        maxHp: run.maxHp,
+        energy: cls.player.energy,
         hp: run.hp,
         pollution: run.pollution,
         enemies: rollEncounter(run, node),
@@ -292,8 +298,8 @@ export function simulateRun(content: ContentDb, act: ActDefinition, seed: number
     }
 
     if (node.kind === "rest") {
-      if (run.hp < act.player.maxHp * 0.7) {
-        run = healRun(run, act.player.maxHp, Math.round(act.player.maxHp * 0.3));
+      if (run.hp < run.maxHp * 0.7) {
+        run = healRun(run, run.maxHp, Math.round(run.maxHp * 0.3));
       } else {
         const index = deck.findIndex((c) => !c.upgraded);
         if (index >= 0) deck[index] = { ...deck[index], upgraded: true };
@@ -305,12 +311,12 @@ export function simulateRun(content: ContentDb, act: ActDefinition, seed: number
     if (node.kind === "event") {
       const def = rollEvent(content, run, node);
       if (def) {
-        const optionId = chooseEventOption(def, run, act);
+        const optionId = chooseEventOption(def, run);
         const seed = (run.seed ^ Math.imul(run.nodeIndex + 11, 0x27d4eb2f)) >>> 0;
-        const res = resolveEventOption(content, def, optionId, { seed, ownedRelics: relics });
+        const res = resolveEventOption(content, def, optionId, { seed, ownedRelics: relics, classId });
         if (res) {
           if (res.hpDelta !== 0) {
-            run = setRunHp(run, Math.max(1, Math.min(act.player.maxHp, run.hp + res.hpDelta)));
+            run = setRunHp(run, Math.max(1, Math.min(run.maxHp, run.hp + res.hpDelta)));
           }
           if (res.pollutionDelta !== 0) run = setRunPollution(run, run.pollution + res.pollutionDelta);
           for (const id of res.relicIds) if (!relics.includes(id)) relics.push(id);

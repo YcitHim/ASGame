@@ -1,0 +1,50 @@
+{
+  "id": "insulation",
+  "class": "engineer",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 5
+    },
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 5,
+      "condition": {
+        "type": "chargeAtLeast",
+        "n": 5
+      }
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "block",
+        "target": {
+          "type": "self"
+        },
+        "value": 6
+      },
+      {
+        "kind": "block",
+        "target": {
+          "type": "self"
+        },
+        "value": 6,
+        "condition": {
+          "type": "chargeAtLeast",
+          "n": 5
+        }
+      }
+    ]
+  },
+  "i18n": "card.insulation"
+}

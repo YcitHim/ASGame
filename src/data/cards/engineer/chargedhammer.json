@@ -1,0 +1,38 @@
+{
+  "id": "chargedhammer",
+  "class": "engineer",
+  "type": "attack",
+  "rarity": "uncommon",
+  "cost": 2,
+  "effects": [
+    {
+      "kind": "damage",
+      "value": 10
+    },
+    {
+      "kind": "damage",
+      "value": 6,
+      "condition": {
+        "type": "chargeAtLeast",
+        "n": 4
+      }
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "value": 13
+      },
+      {
+        "kind": "damage",
+        "value": 8,
+        "condition": {
+          "type": "chargeAtLeast",
+          "n": 4
+        }
+      }
+    ]
+  },
+  "i18n": "card.chargedhammer"
+}

@@ -1,0 +1,25 @@
+{
+  "id": "engineer",
+  "i18n": "class.engineer",
+  "player": {
+    "maxHp": 66,
+    "energy": 3
+  },
+  "startDeck": [
+    "pistonjab",
+    "pistonjab",
+    "pistonjab",
+    "pistonjab",
+    "pistonjab",
+    "brassguard",
+    "brassguard",
+    "brassguard",
+    "brassguard",
+    "gearspin"
+  ],
+  "startRelics": [
+    "dentedcoil",
+    "pressuregauge"
+  ],
+  "unlock": "first_boss_clear"
+}

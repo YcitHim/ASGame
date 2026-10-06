@@ -34,6 +34,17 @@ const chainDeck: GoldenDeckEntry[] = [
   base("strike"),
 ];
 
+/** P5 炉心机士卡组：多段 / 蓄压 / spendCharge / 充能固定加伤 回归 */
+const engineerDeck: GoldenDeckEntry[] = [
+  ...Array.from({ length: 4 }, () => base("pistonjab")),
+  ...Array.from({ length: 3 }, () => base("brassguard")),
+  base("gearspin"),
+  base("sparkplug"),
+  base("chargedhammer", [], true),
+  base("pressurevalve"),
+  base("steambolt"),
+];
+
 const battles = [
   recordBattle({
     content,
@@ -70,6 +81,15 @@ const battles = [
     deck: runDeck,
     relics: ["broken_oil", "blood_pump", "redtear_ring", "rust_charm"],
     seed: 777,
+  }),
+  recordBattle({
+    content,
+    id: "golden-engineer",
+    nodeId: "n2",
+    enemies: ["corroded_swarm", "riveted_heavy"],
+    deck: engineerDeck,
+    relics: ["dentedcoil", "pressuregauge"],
+    seed: 909090,
   }),
 ];
 

@@ -5,13 +5,14 @@ import { loadGameContent } from "@/data/load";
 function battleFromAct(seed: number): BattleState {
   const game = loadGameContent();
   const act = game.acts[0];
+  const cls = game.content.classes.get("bloodwright")!;
   const node = act.map.find((n) => n.kind === "battle");
   return createBattleState({
     battleId: "smoke",
     seed,
-    player: act.player,
+    player: cls.player,
     enemies: (node?.enemies ?? []).map((id) => ({ id })),
-    deck: act.startDeck,
+    deck: cls.startDeck,
     content: game.content,
   });
 }
@@ -21,7 +22,8 @@ describe("真实内容装载（data/load）", () => {
     const game = loadGameContent();
     expect(game.content.cards.size).toBeGreaterThanOrEqual(30);
     expect(game.content.enemies.size).toBe(7);
-    expect(game.content.relics.size).toBe(4);
+    expect(game.content.relics.size).toBe(6);
+    expect(game.content.classes.size).toBe(2);
     expect(game.acts).toHaveLength(1);
     expect(game.content.enemies.get("rust_hound")?.name).toBe("锈蚀猎犬");
     expect(game.content.enemies.get("rust_throat")?.name).toBe("锈喉");
@@ -39,8 +41,8 @@ describe("真实内容装载（data/load）", () => {
 
   it("起手卡组全部能在目录中找到定义", () => {
     const game = loadGameContent();
-    for (const act of game.acts) {
-      for (const cardId of act.startDeck) expect(game.content.cards.has(cardId), cardId).toBe(true);
+    for (const cls of game.content.classes.values()) {
+      for (const cardId of cls.startDeck) expect(game.content.cards.has(cardId), cardId).toBe(true);
     }
   });
 });

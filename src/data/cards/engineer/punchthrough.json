@@ -1,0 +1,38 @@
+{
+  "id": "punchthrough",
+  "class": "engineer",
+  "type": "attack",
+  "rarity": "uncommon",
+  "cost": 2,
+  "effects": [
+    {
+      "kind": "damage",
+      "value": 9
+    },
+    {
+      "kind": "damage",
+      "value": 9,
+      "condition": {
+        "type": "chargeAtLeast",
+        "n": 6
+      }
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "value": 11
+      },
+      {
+        "kind": "damage",
+        "value": 11,
+        "condition": {
+          "type": "chargeAtLeast",
+          "n": 6
+        }
+      }
+    ]
+  },
+  "i18n": "card.punchthrough"
+}

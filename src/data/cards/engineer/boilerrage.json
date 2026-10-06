@@ -1,0 +1,30 @@
+{
+  "id": "boilerrage",
+  "class": "engineer",
+  "type": "attack",
+  "rarity": "uncommon",
+  "cost": 2,
+  "effects": [
+    {
+      "kind": "damage",
+      "value": 6
+    },
+    {
+      "kind": "spendCharge",
+      "value": 2
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "value": 8
+      },
+      {
+        "kind": "spendCharge",
+        "value": 3
+      }
+    ]
+  },
+  "i18n": "card.boilerrage"
+}

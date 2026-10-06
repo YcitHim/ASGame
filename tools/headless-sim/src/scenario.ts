@@ -21,9 +21,16 @@ export interface ScenarioResult {
   turns: number;
 }
 
-export function simulateEliteScenario(content: ContentDb, act: ActDefinition, seed: number): ScenarioResult {
-  const run = createRunState(act, seed);
-  const deck: SimCard[] = act.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
+export function simulateEliteScenario(
+  content: ContentDb,
+  act: ActDefinition,
+  seed: number,
+  classId = "bloodwright",
+): ScenarioResult {
+  const cls = content.classes.get(classId) ?? [...content.classes.values()][0];
+  if (!cls) throw new Error("内容里没有任何职业定义");
+  const run = createRunState(act, cls, seed);
+  const deck: SimCard[] = cls.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
 
   // 2 张抓牌：走真实奖励流程，避免凭空造卡
   for (let i = 0; i < 2; i += 1) {
@@ -39,12 +46,12 @@ export function simulateEliteScenario(content: ContentDb, act: ActDefinition, se
   const battle = runBattle(content, {
     battleId: `${act.id}-${ELITE_SCENARIO_ENEMY}-scenario`,
     seed: (seed ^ 0x9e3779b9) >>> 0,
-    maxHp: act.player.maxHp,
-    energy: act.player.energy,
+    maxHp: cls.player.maxHp,
+    energy: cls.player.energy,
     hp: ELITE_SCENARIO_HP,
     enemies: [ELITE_SCENARIO_ENEMY],
     deck,
-    relics: act.startRelics ?? [],
+    relics: cls.startRelics ?? [],
   });
 
   return {

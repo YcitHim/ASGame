@@ -1,0 +1,38 @@
+{
+  "id": "pistonjab",
+  "class": "engineer",
+  "type": "attack",
+  "rarity": "common",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "damage",
+      "value": 5
+    },
+    {
+      "kind": "damage",
+      "value": 3,
+      "condition": {
+        "type": "chargeAtLeast",
+        "n": 2
+      }
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "value": 7
+      },
+      {
+        "kind": "damage",
+        "value": 4,
+        "condition": {
+          "type": "chargeAtLeast",
+          "n": 2
+        }
+      }
+    ]
+  },
+  "i18n": "card.pistonjab"
+}

@@ -1,0 +1,24 @@
+{
+  "id": "steamvent",
+  "class": "engineer",
+  "type": "attack",
+  "rarity": "uncommon",
+  "cost": 1,
+  "play": {
+    "handler": "multihit",
+    "params": {
+      "hits": 3,
+      "value": 9
+    }
+  },
+  "upgraded": {
+    "play": {
+      "handler": "multihit",
+      "params": {
+        "hits": 3,
+        "value": 12
+      }
+    }
+  },
+  "i18n": "card.steamvent"
+}

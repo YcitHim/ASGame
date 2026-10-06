@@ -10,7 +10,17 @@
     "bloodwall",
     "lastbreath",
     "crimsonpact",
-    "immortality"
+    "immortality",
+    "brassguard",
+    "oiler",
+    "weld",
+    "pressurevalve",
+    "insulation",
+    "gyrostabilizer",
+    "magnetize",
+    "windup",
+    "overclock",
+    "grandwindup"
   ],
   "handler": "lighten",
   "params": {

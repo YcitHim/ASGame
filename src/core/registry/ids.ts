@@ -76,7 +76,7 @@ export const ENHANCEMENT_HANDLER_IDS = [
 
 export const CARD_TYPES = ["attack", "skill", "power", "curse", "status"] as const;
 export const CARD_RARITIES = ["starter", "common", "uncommon", "rare", "special"] as const;
-export const CARD_CLASSES = ["bloodwright"] as const;
+export const CARD_CLASSES = ["bloodwright", "engineer"] as const;
 export const ENHANCEMENT_TIERS = [1, 2, 3] as const;
 
 export type KeywordId = (typeof KEYWORD_IDS)[number];

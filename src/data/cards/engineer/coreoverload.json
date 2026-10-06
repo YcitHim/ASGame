@@ -1,0 +1,22 @@
+{
+  "id": "coreoverload",
+  "class": "engineer",
+  "type": "attack",
+  "rarity": "rare",
+  "cost": 3,
+  "effects": [
+    {
+      "kind": "spendCharge",
+      "value": 3
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "spendCharge",
+        "value": 4
+      }
+    ]
+  },
+  "i18n": "card.coreoverload"
+}

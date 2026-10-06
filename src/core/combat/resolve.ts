@@ -324,11 +324,21 @@ export function changePollution(draft: Draft, sink: EventSink, delta: number): v
   }
 }
 
-export function changeCharge(draft: Draft, sink: EventSink, delta: number): void {
+export function changeCharge(
+  draft: Draft,
+  sink: EventSink,
+  delta: number,
+  /** 触发器自身造成的充能变化（docs/29 §二⑥ 飞升齿轮）：不再派发 onGainCharge，防自触发死循环 */
+  suppressTriggers = false,
+): void {
   const before = draft.player.charge;
   const after = Math.max(0, before + delta);
   draft.player.charge = after;
   sink.emit("ChargeChanged", { targetId: PLAYER_ID, before, after, delta: after - before });
+
+  // 获得充能触发（docs/29 §二⑥ 飞升齿轮）：仅在真的加充能、且来源不是触发器本身时派发
+  if (after > before && !suppressTriggers) resolveTriggers(draft, sink, "onGainCharge");
+
   if (after > CHARGE_LIMIT) {
     sink.emit("Overloaded", { targetId: PLAYER_ID, charge: after, backlash: CHARGE_BACKLASH });
     loseHp(draft, sink, PLAYER_ID, CHARGE_BACKLASH, "backlash");
@@ -496,24 +506,32 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
       changePollution(draft, sink, value);
       break;
     case "gainCharge":
-      changeCharge(draft, sink, value);
+      changeCharge(draft, sink, value, ctx.fromTrigger === true);
       break;
     case "spendCharge": {
-      // 「泄能重锤」：先让本牌的基础伤害吃到充能固定加伤（attackModifiers），
-      // 再消耗全部充能，按每点 value 造成一笔额外伤害。消耗部分为固定值、不吃任何增幅。
+      // 「泄能重锤 / 泄压阀 / 紧急泄压」：先让本牌的基础效果吃到充能固定加伤（attackModifiers），
+      // 再消耗全部充能，按每点 value 结算一笔固定量（mode 决定是伤害 / 格挡 / 抽牌）。
+      // 消耗部分为固定值、不吃任何增幅（docs/29 §四 T2 同口径）。
       const charge = draft.player.charge;
       if (charge <= 0) break;
       if (value > 0) {
-        for (const t of targetIds) {
-          dealDamage(draft, sink, {
-            sourceId: ctx.sourceId,
-            actorId: ctx.actorId,
-            targetId: t,
-            base: charge * value,
-            segment: 1,
-            segments: 1,
-            modifiers: [],
-          });
+        const mode = effect.mode ?? "damage";
+        if (mode === "damage") {
+          for (const t of targetIds) {
+            dealDamage(draft, sink, {
+              sourceId: ctx.sourceId,
+              actorId: ctx.actorId,
+              targetId: t,
+              base: charge * value,
+              segment: 1,
+              segments: 1,
+              modifiers: [],
+            });
+          }
+        } else if (mode === "block") {
+          for (const t of targetIds) gainBlock(draft, sink, t, charge * value);
+        } else {
+          drawCards(draft, sink, charge * value);
         }
       }
       draft.player.charge = 0;

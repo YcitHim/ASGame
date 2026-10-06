@@ -4,7 +4,7 @@
  * 玩法规则只住在 core：节点推进、奖励抽取都在这里，UI 只做展示与转发。
  * 随机一律走 reward 流（ADR-006），因此同样的种子 + 输入流可复现。
  */
-import type { ActDefinition, EventDefinition, MapNode, NodeKind } from "../registry/content";
+import type { ActDefinition, ClassDefinition, EventDefinition, MapNode, NodeKind } from "../registry/content";
 import type { ContentDb } from "../registry/content";
 import { Rng } from "../rng";
 
@@ -12,6 +12,8 @@ export { resolveEventOption, type EventResolution } from "./event";
 
 export interface RunState {
   readonly actId: string;
+  /** 本局职业 id（docs/16 5.1：职业定义抽到 data/classes） */
+  readonly classId: string;
   readonly seed: number;
   /** 当前所在节点下标；等于节点数表示已通关 */
   readonly nodeIndex: number;
@@ -20,6 +22,8 @@ export interface RunState {
   readonly hp: number;
   /** 局外污染：跨节点保留（战斗开始注入、结束写回；事件可增减，docs/27 §三） */
   readonly pollution: number;
+  /** 职业最大 HP（休息回复 / 事件回复的上限来源；不再从 act 读） */
+  readonly maxHp: number;
 }
 
 /** 写回局外 HP（战斗结束时调用）。 */
@@ -44,8 +48,17 @@ export interface MapView {
   readonly finished: boolean;
 }
 
-export function createRunState(act: ActDefinition, seed: number): RunState {
-  return { actId: act.id, seed: seed >>> 0, nodeIndex: 0, cleared: [], hp: act.player.maxHp, pollution: 0 };
+export function createRunState(act: ActDefinition, cls: ClassDefinition, seed: number): RunState {
+  return {
+    actId: act.id,
+    classId: cls.id,
+    seed: seed >>> 0,
+    nodeIndex: 0,
+    cleared: [],
+    hp: cls.player.maxHp,
+    pollution: 0,
+    maxHp: cls.player.maxHp,
+  };
 }
 
 export function mapView(run: RunState, act: ActDefinition): MapView {
@@ -97,7 +110,14 @@ export function rollCardRewards(
   nodeIndex: number,
   count = REWARD_OPTION_COUNT,
 ): string[] {
-  const pool = [...content.cards.values()].filter((c) => c.rarity !== "starter" && c.type !== "curse" && c.type !== "status");
+  // 职业卡池隔离（docs/16 5.2）：只抽本局职业的卡（class === run.classId）
+  const pool = [...content.cards.values()].filter(
+    (c) =>
+      c.class === run.classId &&
+      c.rarity !== "starter" &&
+      c.type !== "curse" &&
+      c.type !== "status",
+  );
   const poolIds = pool.map((c) => c.id).sort();
   const rng = new Rng((run.seed ^ Math.imul(nodeIndex + 1, 0x9e3779b9)) >>> 0).stream("reward");
   const picks: string[] = [];

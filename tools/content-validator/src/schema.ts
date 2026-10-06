@@ -76,8 +76,10 @@ const effectSchema = z.discriminatedUnion("kind", [
     .object({
       kind: z.literal("spendCharge"),
       target: targetSchema.optional(),
-      /** 每点充能的额外伤害 */
+      /** 每点充能的结算量 */
       value: z.number().int().min(0),
+      /** 每点充能的结算方式（缺省 damage） */
+      mode: z.enum(["damage", "block", "draw"]).optional(),
       condition: conditionSchema.optional(),
     })
     .strict(),
@@ -102,7 +104,7 @@ const playSchema = z
 /** 卡牌常驻能力（docs/29 §一②）：与遗物同构的 { timing, effects, once }。 */
 const powerSchema = z
   .object({
-    timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell", "onBlock"]),
+    timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell", "onBlock", "onGainCharge"]),
     effects: z.array(effectSchema).min(1),
     once: z.enum(["battle", "turn"]).optional(),
   })
@@ -271,12 +273,25 @@ export const actSchema = z
   .object({
     id: idSchema,
     i18n: z.string(),
-    player: z.object({ maxHp: z.number().int().min(1), energy: z.number().int().min(0) }).strict(),
-    startDeck: z.array(z.string().regex(ID_PATTERN)).min(1),
-    startRelics: z.array(z.string().regex(ID_PATTERN)).optional(),
+    /** 本幕可选职业 id 列表（docs/16 5.1） */
+    classes: z.array(z.string().regex(ID_PATTERN)).min(1),
     map: z.array(mapNodeSchema).min(1),
   })
   .strict();
+
+/** 职业定义（docs/16 5.1）：player / startDeck / startRelics 自成一档。 */
+export const classSchema = z
+  .object({
+    id: idSchema,
+    i18n: z.string(),
+    player: z.object({ maxHp: z.number().int().min(1), energy: z.number().int().min(0) }).strict(),
+    startDeck: z.array(z.string().regex(ID_PATTERN)).min(1),
+    startRelics: z.array(z.string().regex(ID_PATTERN)).optional(),
+    unlock: z.string().optional(),
+  })
+  .strict();
+
+export type ClassJson = z.infer<typeof classSchema>;
 
 export type EnemyJson = z.infer<typeof enemySchema>;
 export type ActJson = z.infer<typeof actSchema>;
@@ -284,7 +299,7 @@ export const relicSchema = z
   .object({
     id: idSchema,
     i18n: z.string(),
-    timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell", "onBlock"]),
+    timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell", "onBlock", "onGainCharge"]),
     effects: z.array(effectSchema).min(1),
     once: z.enum(["battle", "turn"]).optional(),
   })

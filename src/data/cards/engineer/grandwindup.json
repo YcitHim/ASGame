@@ -1,0 +1,32 @@
+{
+  "id": "grandwindup",
+  "class": "engineer",
+  "type": "skill",
+  "rarity": "rare",
+  "cost": 2,
+  "keywords": [
+    "exhaust"
+  ],
+  "effects": [
+    {
+      "kind": "gainCharge",
+      "value": 10
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainCharge",
+        "value": 10
+      },
+      {
+        "kind": "block",
+        "target": {
+          "type": "self"
+        },
+        "value": 5
+      }
+    ]
+  },
+  "i18n": "card.grandwindup"
+}

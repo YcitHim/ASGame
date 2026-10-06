@@ -10,7 +10,17 @@
     "bloodstorm",
     "exsanguinate",
     "veinburst",
-    "rustspray"
+    "rustspray",
+    "pistonjab",
+    "sparkplug",
+    "steambolt",
+    "chargedhammer",
+    "twinpistons",
+    "steamvent",
+    "boilerrage",
+    "punchthrough",
+    "coreoverload",
+    "teslacage"
   ],
   "handler": "empower",
   "params": {

@@ -7,7 +7,17 @@
     "overloadstrike",
     "bloodflail",
     "plaguesurge",
-    "bloodstorm"
+    "bloodstorm",
+    "pistonjab",
+    "sparkplug",
+    "steambolt",
+    "chargedhammer",
+    "twinpistons",
+    "steamvent",
+    "boilerrage",
+    "punchthrough",
+    "coreoverload",
+    "teslacage"
   ],
   "handler": "bloodboil",
   "params": {

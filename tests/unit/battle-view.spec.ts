@@ -82,7 +82,7 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     const run = useRunStore();
-    run.startRun(1);
+    run.startRun("bloodwright", 1);
     for (let i = 0; i < 6; i += 1) run.advance();
     expect(run.current?.kind).toBe("boss");
 
