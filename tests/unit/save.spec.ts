@@ -74,6 +74,16 @@ describe("systems/save（ADR-008）", () => {
     expect(meta?.data).toEqual({ clearedClasses: ["bloodwright"], unlocked: [] });
   });
 
+  it("v7 进度档迁移到 v8 时补成就统计字段；非进度档不被污染", () => {
+    const progress = migrate({ version: 7, data: { run: { layerIndex: 1, picked: [], pollution: 30 }, deck: [] } });
+    expect(progress?.version).toBe(SCHEMA_VERSION);
+    expect(progress?.data).toMatchObject({
+      run: { interrupts: 0, backlashTaken: 0, turns: 0, pollutionPeak: 30 },
+    });
+    const codex = migrate({ version: 7, data: { cards: [], relics: [], enemies: [] } });
+    expect(codex?.data).toEqual({ cards: [], relics: [], enemies: [] });
+  });
+
   it("来自未来版本的存档不猜，直接丢弃", () => {
     localStorage.setItem(slotKey("progress"), JSON.stringify({ version: SCHEMA_VERSION + 5, data: {} }));
     expect(readSlot("progress", "fallback")).toBe("fallback");

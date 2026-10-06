@@ -836,4 +836,13 @@ function back(): void {
   border-radius: var(--radius-md);
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.75);
 }
+
+/* 手机横屏（ADR-007）H2 走查：短视口把手牌整体上抬，避免卡牌底部被屏幕裁掉。
+   必须放在样式表末尾——否则会被后面的基础 .hand 规则（同特异性）覆盖。 */
+@media (max-height: 520px) {
+  .hand-zone { height: 200px; }
+  /* 扇形手牌带 translateY(lift) 下沉，边缘牌会探出底边；短视口整体上抬补偿 */
+  .hand { bottom: 40px; height: 214px; }
+  .message { bottom: 246px; }
+}
 </style>

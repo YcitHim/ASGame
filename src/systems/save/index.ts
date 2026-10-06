@@ -8,7 +8,7 @@
 export const SAVE_NAMESPACE = "rustandblood";
 
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export type SaveSlot = "settings" | "progress" | "replay" | "codex" | "meta";
 
@@ -108,6 +108,26 @@ const migrations: Record<number, (data: unknown) => unknown> = {
           ? "blood_pump"
           : "";
     return { ...record, run: { ...runRecord, pickedRelic: fallback } };
+  },
+  // 7 → 8（docs/38 §三 C-3）：RunState 新增成就/纪录统计
+  // interrupts / backlashTaken / turns / pollutionPeak（pollutionPeak 旧档以当前 pollution 兜底）。
+  7: (data) => {
+    if (typeof data !== "object" || data === null) return data;
+    const record = data as Record<string, unknown>;
+    const run = record["run"];
+    if (typeof run !== "object" || run === null) return record;
+    const runRecord = run as Record<string, unknown>;
+    if (runRecord["interrupts"] !== undefined) return record;
+    return {
+      ...record,
+      run: {
+        ...runRecord,
+        interrupts: runRecord["interrupts"] ?? 0,
+        backlashTaken: runRecord["backlashTaken"] ?? 0,
+        turns: runRecord["turns"] ?? 0,
+        pollutionPeak: runRecord["pollutionPeak"] ?? runRecord["pollution"] ?? 0,
+      },
+    };
   },
 };
 
