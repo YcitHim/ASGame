@@ -1,0 +1,41 @@
+{
+  "id": "sunken_offering",
+  "i18n": "event.sunken_offering",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.sunken_offering.opt.a.result",
+      "effects": [
+        {
+          "kind": "hp",
+          "value": -6
+        }
+      ],
+      "outcomes": [
+        {
+          "weight": 1,
+          "i18n": "event.sunken_offering.opt.a.win",
+          "effects": [
+            {
+              "kind": "gainRelic"
+            }
+          ]
+        },
+        {
+          "weight": 1,
+          "i18n": "event.sunken_offering.opt.a.lose",
+          "effects": [
+            {
+              "kind": "pollution",
+              "value": 8
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.sunken_offering.opt.b.result"
+    }
+  ]
+}

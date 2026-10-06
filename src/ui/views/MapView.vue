@@ -58,6 +58,7 @@ const layers = computed<readonly MapLayer[]>(() => run.view?.layers ?? []);
 const currentIndex = computed(() => run.view?.currentIndex ?? -1);
 const picked = computed<readonly number[]>(() => run.run?.picked ?? []);
 const finished = computed(() => run.finished);
+const interNeeded = computed(() => run.needsIntermission);
 const isBranch = computed(() => (layers.value[currentIndex.value]?.nodes.length ?? 0) > 1);
 
 /** 通关新解锁的内容（docs/36 T1）：结算页弹一行提示 */
@@ -164,8 +165,19 @@ function toTitle(): void {
         </div>
       </div>
 
+      <!-- 一幕已尽：还有下一幕 → 进幕间 -->
+      <div v-if="interNeeded" class="victory-overlay">
+        <div class="victory">
+          <h2>回 廊 已 尽</h2>
+          <p>地板裂开了，下面是水声——还有歌声。</p>
+          <div class="victory-actions">
+            <button class="etch-btn" @click="router.push('/intermission')">继 续 下 潜</button>
+          </div>
+        </div>
+      </div>
+
       <!-- 远征胜利：居中弹窗 -->
-      <div v-if="finished" class="victory-overlay">
+      <div v-if="finished && !interNeeded" class="victory-overlay">
         <div class="victory">
           <h2>远 征 胜 利</h2>
           <p>锈喉已倒下，锈蚀回廊暂时沉寂。</p>

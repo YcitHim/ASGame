@@ -1,0 +1,15 @@
+{
+  "id": "tide_mite",
+  "i18n": "enemy.tide_mite",
+  "maxHp": 12,
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 4
+      },
+      "weight": 1,
+      "maxConsecutive": 2
+    }
+  ]
+}

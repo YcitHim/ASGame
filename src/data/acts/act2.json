@@ -1,0 +1,196 @@
+{
+  "id": "act2",
+  "i18n": "act.sunken_sanctum",
+  "classes": [
+    "bloodwright",
+    "engineer",
+    "rustspeaker"
+  ],
+  "weights": {
+    "battle": 50,
+    "elite": 0,
+    "rest": 0,
+    "altar": 25,
+    "event": 25
+  },
+  "layers": [
+    {
+      "id": "l0",
+      "width": 1,
+      "kinds": [
+        "battle"
+      ],
+      "encounters": [
+        {
+          "enemies": [
+            "drowned_crawler",
+            "choir_echo"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "drowned_crawler",
+            "drowned_crawler"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "tide_swarm",
+            "drowned_crawler"
+          ],
+          "weight": 3
+        }
+      ]
+    },
+    {
+      "id": "l1",
+      "width": 3,
+      "kinds": [
+        "battle",
+        "altar",
+        "event"
+      ],
+      "encounters": [
+        {
+          "enemies": [
+            "drowned_crawler",
+            "choir_echo"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "drowned_crawler",
+            "drowned_crawler"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "tide_swarm",
+            "drowned_crawler"
+          ],
+          "weight": 3
+        }
+      ],
+      "events": [
+        "sunken_offering",
+        "drowned_choir",
+        "sanctum_font",
+        "the_bell_tolls",
+        "pilgrim_remains"
+      ]
+    },
+    {
+      "id": "l2",
+      "width": 1,
+      "kinds": [
+        "battle"
+      ],
+      "encounters": [
+        {
+          "enemies": [
+            "tide_swarm",
+            "bell_warden"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "bell_warden",
+            "choir_echo"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "rust_pilgrim",
+            "drowned_crawler"
+          ],
+          "weight": 3
+        }
+      ]
+    },
+    {
+      "id": "l3",
+      "width": 1,
+      "kinds": [
+        "elite"
+      ],
+      "elitePool": [
+        "sanctum_jailer",
+        "tidecaller"
+      ]
+    },
+    {
+      "id": "l4",
+      "width": 1,
+      "kinds": [
+        "rest"
+      ]
+    },
+    {
+      "id": "l5",
+      "width": 3,
+      "kinds": [
+        "battle",
+        "altar",
+        "event"
+      ],
+      "encounters": [
+        {
+          "enemies": [
+            "bell_warden",
+            "rust_pilgrim"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "deep_diver",
+            "tide_swarm"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "deep_diver",
+            "choir_echo",
+            "drowned_crawler"
+          ],
+          "weight": 3
+        }
+      ],
+      "events": [
+        "sunken_offering",
+        "drowned_choir",
+        "sanctum_font",
+        "the_bell_tolls",
+        "pilgrim_remains"
+      ]
+    },
+    {
+      "id": "l6",
+      "width": 1,
+      "kinds": [
+        "elite"
+      ],
+      "elitePool": [
+        "sanctum_jailer",
+        "tidecaller"
+      ]
+    },
+    {
+      "id": "l7",
+      "width": 1,
+      "kinds": [
+        "boss"
+      ],
+      "enemies": [
+        "drowned_choirmaster"
+      ]
+    }
+  ]
+}

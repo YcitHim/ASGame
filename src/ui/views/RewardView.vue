@@ -113,6 +113,11 @@ function pick(cardId: string): void {
 
 function finishRun(): void {
   run.advance();
+  // 一幕通关但还有下一幕：进幕间（docs/40 §2.2）
+  if (run.needsIntermission) {
+    void router.push("/intermission");
+    return;
+  }
   void router.push("/map");
 }
 

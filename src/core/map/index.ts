@@ -425,11 +425,14 @@ export function rollRecastEnhancement(
   seed: number,
   /** 被移除的那一枚：不允许原地换回（docs/23 §6） */
   exclude: readonly string[] = [],
+  /** 当前幕 id：幕专属强化不参与其它幕的重铸池（docs/40 §七） */
+  actId?: string,
 ): string | null {
   const owned = new Set([...keep, ...ownedElsewhere, ...exclude]);
   const pool = [...content.enhancements.values()]
     .filter((e) => {
       if (e.tier !== tier) return false;
+      if (e.actScope && e.actScope !== actId) return false;
       if (!e.appliesTo.includes(cardId)) return false;
       if (owned.has(e.id)) return false;
       if ((e.mutex ?? []).some((m) => keep.includes(m))) return false;
@@ -451,8 +454,13 @@ export function rollEnhancementChoices(
   run: RunState,
   nodeIndex: number,
   count = 3,
+  /** 当前幕 id：幕专属强化（actScope）只在对应幕入池（docs/40 §七） */
+  actId?: string,
 ): string[] {
-  const ids = [...content.enhancements.values()].map((e) => e.id).sort();
+  const ids = [...content.enhancements.values()]
+    .filter((e) => !e.actScope || e.actScope === actId)
+    .map((e) => e.id)
+    .sort();
   const rng = new Rng((run.seed ^ Math.imul(nodeIndex + 7, 0x85ebca6b)) >>> 0).stream("reward");
   const picks: string[] = [];
   const remaining = [...ids];

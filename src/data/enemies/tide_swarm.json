@@ -1,0 +1,31 @@
+{
+  "id": "tide_swarm",
+  "i18n": "enemy.tide_swarm",
+  "maxHp": 40,
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 6
+      },
+      "weight": 3,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "debuff",
+        "buffId": "pollution",
+        "stacks": 3
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    }
+  ],
+  "onDeath": [
+    {
+      "kind": "summon",
+      "enemyId": "tide_mite",
+      "count": 1
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "id": "pilgrim_remains",
+  "i18n": "event.pilgrim_remains",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.pilgrim_remains.opt.a.result",
+      "effects": [
+        {
+          "kind": "gainRelic",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.pilgrim_remains.opt.b.result",
+      "effects": [
+        {
+          "kind": "hp",
+          "value": 8
+        }
+      ]
+    }
+  ]
+}

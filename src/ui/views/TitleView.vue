@@ -6,14 +6,19 @@ import EmberField from "@/ui/components/EmberField.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
 import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
-import { hasSlot } from "@/systems/save";
+import { hasSlot, readSlot } from "@/systems/save";
 
 const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 const router = useRouter();
 const run = useRunStore();
 const meta = useMetaStore();
-const canContinue = computed(() => hasSlot("progress"));
+/** legacy 档（一幕已通关的旧档）：docs/40 §2.1 不提供继续远征入口。 */
+function isLegacySave(): boolean {
+  const saved = readSlot<{ run?: { legacy?: boolean } } | null>("progress", null);
+  return saved?.run?.legacy === true;
+}
+const canContinue = computed(() => hasSlot("progress") && !isLegacySave());
 onMounted(() => meta.ensureLoaded());
 
 /** 远征纪事（docs/38 §三 C-3）：每职业最少回合 / 最高余血。 */

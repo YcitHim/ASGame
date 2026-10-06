@@ -8,7 +8,7 @@
 export const SAVE_NAMESPACE = "rustandblood";
 
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 export type SaveSlot = "settings" | "progress" | "replay" | "codex" | "meta";
 
@@ -126,6 +126,28 @@ const migrations: Record<number, (data: unknown) => unknown> = {
         backlashTaken: runRecord["backlashTaken"] ?? 0,
         turns: runRecord["turns"] ?? 0,
         pollutionPeak: runRecord["pollutionPeak"] ?? runRecord["pollution"] ?? 0,
+      },
+    };
+  },
+  // 8 → 9（docs/40 §2.1）：转地图新增 actIndex / deepestAct / deepestLayer / legacy。
+  // 旧档没有第二幕上下文：进行中的续 act1；已通关一幕（layerIndex ≥ 8）的标为 legacy，
+  // 不再提供「继续远征」入口（强行续幕会破坏 replay 一致性）。
+  8: (data) => {
+    if (typeof data !== "object" || data === null) return data;
+    const record = data as Record<string, unknown>;
+    const run = record["run"];
+    if (typeof run !== "object" || run === null) return record;
+    const runRecord = run as Record<string, unknown>;
+    if (runRecord["actIndex"] !== undefined) return record;
+    const layerIndex = typeof runRecord["layerIndex"] === "number" ? runRecord["layerIndex"] : 0;
+    return {
+      ...record,
+      run: {
+        ...runRecord,
+        actIndex: 0,
+        deepestAct: 1,
+        deepestLayer: layerIndex,
+        legacy: layerIndex >= 8,
       },
     };
   },

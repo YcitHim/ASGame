@@ -1,0 +1,36 @@
+{
+  "id": "bell_warden",
+  "i18n": "enemy.bell_warden",
+  "maxHp": 75,
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 13
+      },
+      "weight": 3,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "charge",
+        "value": 4,
+        "block": 8,
+        "thenIntent": {
+          "kind": "attack",
+          "value": 17
+        }
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "defend",
+        "value": 11
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    }
+  ]
+}

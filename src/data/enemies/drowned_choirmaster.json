@@ -1,0 +1,95 @@
+{
+  "id": "drowned_choirmaster",
+  "i18n": "enemy.drowned_choirmaster",
+  "maxHp": 150,
+  "interruptImmune": true,
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 12,
+        "hits": 2
+      },
+      "weight": 3,
+      "maxConsecutive": 1,
+      "condition": {
+        "type": "selfHpAtLeast",
+        "percent": 50
+      }
+    },
+    {
+      "intent": {
+        "kind": "summon",
+        "enemyId": "tide_mite",
+        "count": 1,
+        "maxSummons": 2
+      },
+      "weight": 2,
+      "maxConsecutive": 1,
+      "condition": {
+        "type": "selfHpAtLeast",
+        "percent": 50
+      }
+    },
+    {
+      "intent": {
+        "kind": "charge",
+        "value": 4,
+        "block": 8,
+        "thenIntent": {
+          "kind": "attack",
+          "value": 20
+        }
+      },
+      "weight": 2,
+      "maxConsecutive": 1,
+      "condition": {
+        "type": "selfHpAtLeast",
+        "percent": 50
+      }
+    },
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 14
+      },
+      "weight": 3,
+      "maxConsecutive": 2,
+      "condition": {
+        "type": "selfHpBelow",
+        "percent": 50
+      }
+    },
+    {
+      "intent": {
+        "kind": "summon",
+        "enemyId": "tide_mite",
+        "count": 1,
+        "maxSummons": 3
+      },
+      "weight": 2,
+      "maxConsecutive": 1,
+      "condition": {
+        "type": "selfHpBelow",
+        "percent": 50
+      }
+    },
+    {
+      "intent": {
+        "kind": "charge",
+        "value": 5,
+        "block": 8,
+        "thenIntent": {
+          "kind": "attack",
+          "value": 26
+        }
+      },
+      "weight": 2,
+      "maxConsecutive": 1,
+      "condition": {
+        "type": "selfHpBelow",
+        "percent": 50
+      }
+    }
+  ]
+}

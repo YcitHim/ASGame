@@ -328,7 +328,7 @@ export function simulateRun(
         const applied = applyEnhancementChoice(
           content,
           deck,
-          rollEnhancementChoices(content, run, run.layerIndex),
+          rollEnhancementChoices(content, run, run.layerIndex, 3, act.id),
         );
         if (applied) enhancements[applied] = (enhancements[applied] ?? 0) + 1;
       }
@@ -366,7 +366,11 @@ export function simulateRun(
           for (const id of res.relicIds) if (!relics.includes(id)) relics.push(id);
           for (const id of res.cardIds) deck.push({ cardId: id, upgraded: false, enhancements: [] });
           if (res.gainEnhancement) {
-            const applied = applyEnhancementChoice(content, deck, rollEnhancementChoices(content, run, run.layerIndex));
+            const applied = applyEnhancementChoice(
+              content,
+              deck,
+              rollEnhancementChoices(content, run, run.layerIndex, 3, act.id),
+            );
             if (applied) enhancements[applied] = (enhancements[applied] ?? 0) + 1;
           }
         }

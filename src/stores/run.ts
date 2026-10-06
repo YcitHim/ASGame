@@ -163,8 +163,16 @@ export const useRunStore = defineStore("run", {
               .filter((other) => other !== card)
               .flatMap((other) => [...other.enhancements]);
             return (
-              rollRecastEnhancement(content, card.cardId, keep, ownedElsewhere, def.tier, 1, [removed]) !==
-              null
+              rollRecastEnhancement(
+                content,
+                card.cardId,
+                keep,
+                ownedElsewhere,
+                def.tier,
+                1,
+                [removed],
+                this.act?.id,
+              ) !== null
             );
           }),
         )
@@ -330,11 +338,59 @@ export const useRunStore = defineStore("run", {
       this.persist();
     },
 
-    /** 幕间结算（docs/40 §2.2）：切到下一幕 + 回血 25% + 污染清零。 */
+    /** 幕间结算（docs/40 §2.2）：切到下一幕 + 回血 25% + 污染清零；祭坛的每节点标记一并重置。 */
     enterNextAct(): void {
       if (!this.run) return;
       this.run = applyIntermission(this.run);
+      this.recastUsedNode = null;
+      this.enhanceUsedNode = null;
       this.persist();
+    },
+
+    /**
+     * 圣堂馈赠（docs/40 §2.3）：
+     *  - heal：额外回复 50% 最大 HP
+     *  - upgrade：免费升级一张牌
+     *  - enhance：获得一枚圣堂强化（走正常附着校验）
+     */
+    applyBoon(boon: "heal" | "upgrade" | "enhance", deckIndex = -1, enhancementId = ""): void {
+      if (!this.run) return;
+      this.enterNextAct();
+      if (boon === "heal") {
+        this.run = healRun(this.run, this.run.maxHp, Math.floor(this.run.maxHp * 0.5));
+        this.persist();
+      } else if (boon === "upgrade" && deckIndex >= 0) {
+        this.upgradeCard(deckIndex);
+      } else if (boon === "enhance" && deckIndex >= 0 && enhancementId) {
+        this.attachBoonEnhancement(deckIndex, enhancementId);
+      }
+    },
+
+    /** 幕间附着强化：不受「每节点 1 次」限制，但仍走 canApply（槽位 / appliesTo / 全局唯一）。 */
+    attachBoonEnhancement(deckIndex: number, enhancementId: string): boolean {
+      if (!this.canApply(enhancementId, deckIndex)) return false;
+      this.deck = this.deck.map((card, i) =>
+        i === deckIndex ? { ...card, enhancements: [...card.enhancements, enhancementId] } : card,
+      );
+      this.acquired = [...this.acquired, enhancementId];
+      this.persist();
+      return true;
+    },
+
+    /** 幕间馈赠 C 项：本幕专属强化优先（docs/40 §七），全不可用回落通用池。 */
+    boonEnhancementChoices(): string[] {
+      if (!this.run) return [];
+      const content = loadGameContent().content;
+      const actId = this.act?.id;
+      const scoped = [...content.enhancements.values()].filter((e) => e.actScope === actId);
+      const owned = new Set(this.acquired);
+      const usableScoped = scoped.filter(
+        (e) => !owned.has(e.id) && this.deck.some((_, i) => this.canApply(e.id, i)),
+      );
+      const rolled = rollEnhancementChoices(content, this.run, this.run.layerIndex, 3, actId);
+      const pool = usableScoped.length > 0 ? usableScoped.map((e) => e.id) : rolled;
+      const usable = pool.filter((id) => this.deck.some((_, i) => this.canApply(id, i)));
+      return usable.slice(0, 3);
     },
 
     /** 战斗结束写回局外 HP。 */
@@ -381,7 +437,9 @@ export const useRunStore = defineStore("run", {
     /** 可附着的强化（当前卡组至少有一张符合 appliesTo 且未持有）。 */
     usableEnhancements(): string[] {
       const content = loadGameContent().content;
+      const actId = this.act?.id;
       return [...content.enhancements.values()]
+        .filter((e) => !e.actScope || e.actScope === actId)
         .map((e) => e.id)
         .filter((id) => this.deck.some((_, i) => this.canApply(id, i)));
     },
@@ -394,7 +452,7 @@ export const useRunStore = defineStore("run", {
     enhancementChoices(): string[] {
       if (!this.run) return [];
       const game = loadGameContent();
-      const rolled = rollEnhancementChoices(game.content, this.run, this.run.layerIndex);
+      const rolled = rollEnhancementChoices(game.content, this.run, this.run.layerIndex, 3, this.act?.id);
       const usable = this.usableEnhancements();
       const chosen = rolled.filter((id) => usable.includes(id));
       for (const id of usable) {
@@ -547,6 +605,7 @@ export const useRunStore = defineStore("run", {
               removedDef.tier,
               seed ^ 0x9e3779b9,
               [removed],
+              this.act?.id,
             )
           : null;
       // docs/23 §6：同阶池空 → 禁止重铸（不扣 HP、不改卡）
@@ -614,6 +673,10 @@ export const useRunStore = defineStore("run", {
         backlashTaken: saved.run.backlashTaken ?? 0,
         turns: saved.run.turns ?? 0,
         pollutionPeak: saved.run.pollutionPeak ?? saved.run.pollution ?? 0,
+        actIndex: saved.run.actIndex ?? 0,
+        deepestAct: saved.run.deepestAct ?? 1,
+        deepestLayer: saved.run.deepestLayer ?? saved.run.layerIndex ?? 0,
+        legacy: saved.run.legacy ?? false,
       };
       this.deck = saved.deck;
       this.relics = saved.relics ?? [];

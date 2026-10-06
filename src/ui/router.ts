@@ -17,6 +17,7 @@ export const router = createRouter({
     { path: "/rest", name: "rest", component: () => import("./views/RestView.vue") },
     { path: "/forge", name: "forge", component: () => import("./views/ForgeView.vue") },
     { path: "/event", name: "event", component: () => import("./views/EventView.vue") },
+    { path: "/intermission", name: "intermission", component: () => import("./views/IntermissionView.vue") },
     { path: "/codex", name: "codex", component: () => import("./views/CodexView.vue") },
     { path: "/:pathMatch(.*)*", redirect: "/" },
   ],

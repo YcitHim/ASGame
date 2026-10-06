@@ -35,14 +35,20 @@ describe("S5 UI 流程视图挂载", () => {
     wrapper.unmount();
   });
 
-  it("MapView：通关后显示居中胜利弹窗（不是地图下方的内联块）", async () => {
+  it("MapView：一幕打完先弹幕间入口，两幕打完全局胜利", async () => {
     const { wrapper } = mountView(MapView, (run) => {
       run.startRun("bloodwright", 1);
       for (let i = 0; i < 8; i += 1) run.advance();
     });
     await nextTick();
+    // docs/40：一幕通关 → 幕间，而非全局胜利
     expect(wrapper.find(".victory-overlay").exists()).toBe(true);
-    expect(wrapper.find(".victory-overlay .etch-btn").exists()).toBe(true);
+    expect(wrapper.text()).toContain("回 廊 已 尽");
+    // 过幕后再走完第二幕 → 全局胜利
+    const run = useRunStore();
+    run.enterNextAct();
+    for (let i = 0; i < 8; i += 1) run.advance();
+    await nextTick();
     expect(wrapper.text()).toContain("远 征 胜 利");
     wrapper.unmount();
   });

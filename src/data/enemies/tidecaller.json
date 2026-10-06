@@ -1,0 +1,38 @@
+{
+  "id": "tidecaller",
+  "i18n": "enemy.tidecaller",
+  "maxHp": 100,
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 10
+      },
+      "weight": 3,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "summon",
+        "enemyId": "tide_mite",
+        "count": 1,
+        "maxSummons": 3
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "charge",
+        "value": 3,
+        "block": 6,
+        "thenIntent": {
+          "kind": "attack",
+          "value": 15
+        }
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    }
+  ]
+}

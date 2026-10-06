@@ -1,0 +1,25 @@
+{
+  "id": "rust_pilgrim",
+  "i18n": "enemy.rust_pilgrim",
+  "maxHp": 50,
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 8
+      },
+      "weight": 3,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "summon",
+        "enemyId": "rust_acolyte",
+        "count": 1,
+        "maxSummons": 2
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    }
+  ]
+}

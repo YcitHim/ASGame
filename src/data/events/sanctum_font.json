@@ -1,0 +1,40 @@
+{
+  "id": "sanctum_font",
+  "i18n": "event.sanctum_font",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.sanctum_font.opt.a.result",
+      "effects": [
+        {
+          "kind": "hp",
+          "value": 12
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.sanctum_font.opt.b.result",
+      "effects": [
+        {
+          "kind": "pollution",
+          "value": -15
+        }
+      ]
+    },
+    {
+      "id": "c",
+      "i18n": "event.sanctum_font.opt.c.result",
+      "effects": [
+        {
+          "kind": "hp",
+          "value": 6
+        },
+        {
+          "kind": "pollution",
+          "value": 5
+        }
+      ]
+    }
+  ]
+}

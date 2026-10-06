@@ -78,6 +78,10 @@ export const ENHANCEMENT_HANDLER_IDS = [
   "lighten",
   "rustbite",
   "bloodwage",
+  /** docs/40 §七 幕专属强化 */
+  "abyssal_hush",
+  "sunk_cost",
+  "choir_reverb",
 ] as const;
 
 export const CARD_TYPES = ["attack", "skill", "power", "curse", "status"] as const;

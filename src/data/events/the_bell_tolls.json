@@ -1,0 +1,23 @@
+{
+  "id": "the_bell_tolls",
+  "i18n": "event.the_bell_tolls",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.the_bell_tolls.opt.a.result",
+      "effects": [
+        {
+          "kind": "gainEnhancement"
+        },
+        {
+          "kind": "pollution",
+          "value": 10
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.the_bell_tolls.opt.b.result"
+    }
+  ]
+}

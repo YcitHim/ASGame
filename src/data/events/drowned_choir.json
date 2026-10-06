@@ -1,0 +1,29 @@
+{
+  "id": "drowned_choir",
+  "i18n": "event.drowned_choir",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.drowned_choir.opt.a.result",
+      "effects": [
+        {
+          "kind": "pollution",
+          "value": 8
+        },
+        {
+          "kind": "gainEnhancement"
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.drowned_choir.opt.b.result",
+      "effects": [
+        {
+          "kind": "hp",
+          "value": -4
+        }
+      ]
+    }
+  ]
+}

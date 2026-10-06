@@ -84,6 +84,14 @@ describe("systems/save（ADR-008）", () => {
     expect(codex?.data).toEqual({ cards: [], relics: [], enemies: [] });
   });
 
+  it("v8 进度档迁移到 v9：补转地图字段；一幕已通关的档标 legacy", () => {
+    const mid = migrate({ version: 8, data: { run: { classId: "bloodwright", layerIndex: 3 }, deck: [] } });
+    expect(mid?.version).toBe(SCHEMA_VERSION);
+    expect(mid?.data).toMatchObject({ run: { actIndex: 0, deepestAct: 1, deepestLayer: 3, legacy: false } });
+    const done = migrate({ version: 8, data: { run: { classId: "bloodwright", layerIndex: 8 }, deck: [] } });
+    expect((done?.data as { run: { legacy?: boolean } }).run.legacy).toBe(true);
+  });
+
   it("来自未来版本的存档不猜，直接丢弃", () => {
     localStorage.setItem(slotKey("progress"), JSON.stringify({ version: SCHEMA_VERSION + 5, data: {} }));
     expect(readSlot("progress", "fallback")).toBe("fallback");

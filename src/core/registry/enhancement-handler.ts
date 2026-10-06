@@ -203,6 +203,61 @@ registerEnhancementHandler({
   },
 });
 
+/**
+ * 幕专属 T1「渊默」（docs/40 §七）：此牌额外给予自身 pollutionDelta 点污染（负 = 净化，下限 0）。
+ * 作为附加效果追加，走 changePollution 的 clamp。
+ */
+registerEnhancementHandler({
+  id: "abyssal_hush",
+  modifyCard(input, params) {
+    const delta = Math.trunc(asNumber(params["pollutionDelta"], -2));
+    if (delta === 0) return undefined;
+    return { effects: [...input.effects, { kind: "gainPollution", value: delta }] };
+  },
+});
+
+/**
+ * 幕专属 T2「沉没成本」（docs/40 §七）：自身污染每满 per 点，此牌伤害 +step（上限 cap）。
+ * 打出时读取局外污染（ctx.pollution），走 attackDamage 的 enhancement 层。
+ */
+registerEnhancementHandler({
+  id: "sunk_cost",
+  modifyCard(_input, params, ctx) {
+    const per = Math.max(1, Math.trunc(asNumber(params["per"], 25)));
+    const step = Math.trunc(asNumber(params["step"], 1));
+    const cap = Math.max(1, Math.trunc(asNumber(params["cap"], 4)));
+    const bonus = Math.min(cap, Math.floor(ctx.pollution / per) * step);
+    if (bonus <= 0) return undefined;
+    return { modifiers: [{ kind: "attackDamage", op: "add", value: bonus }] };
+  },
+});
+
+/**
+ * 幕专属 T2「唱诗班余音」（docs/40 §七）：命中已带蚀锈的目标时伤害 ×1.5（每段独立判定）。
+ * 实现为「每段追加半段条件伤害」——条件 targetHasBuff 在结算时逐目标求值，
+ * 因此多段卡的每一段都独立判定，且不吃乘区取整的空子。
+ */
+registerEnhancementHandler({
+  id: "choir_reverb",
+  modifyCard(input, params) {
+    const multiplier = asNumber(params["bonusMul"], 0.5);
+    const extra: CardEffect[] = [];
+    for (const e of input.effects) {
+      if (e.kind !== "damage" || e.condition) continue;
+      const value = Math.max(1, Math.floor((e.value ?? 0) * multiplier));
+      extra.push({
+        kind: "damage",
+        value,
+        ...(e.target ? { target: e.target } : {}),
+        ...(e.hits !== undefined ? { hits: e.hits } : {}),
+        condition: { type: "targetHasBuff", buffId: "corroding" },
+      });
+    }
+    if (extra.length === 0) return undefined;
+    return { effects: [...input.effects, ...extra] };
+  },
+});
+
 /** T1「节油血契」：该牌卖血代价 -discount（走 hpCost 的 enhancement 层）。 */
 registerEnhancementHandler({
   id: "bloodpact_discount",

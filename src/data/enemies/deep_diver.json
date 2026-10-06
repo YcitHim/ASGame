@@ -1,0 +1,28 @@
+{
+  "id": "deep_diver",
+  "i18n": "enemy.deep_diver",
+  "maxHp": 58,
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 10
+      },
+      "weight": 3,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "charge",
+        "value": 4,
+        "block": 6,
+        "thenIntent": {
+          "kind": "attack",
+          "value": 19
+        }
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    }
+  ]
+}
