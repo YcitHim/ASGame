@@ -328,7 +328,13 @@ export const useRunStore = defineStore("run", {
       const def = this.eventDef;
       if (!def) return;
       const seed = (this.run.seed ^ Math.imul(this.run.layerIndex + 11, 0x27d4eb2f)) >>> 0;
-      const res = resolveEventOption(content, def, optionId, { seed, ownedRelics: this.relics, classId: this.run.classId });
+      const res = resolveEventOption(content, def, optionId, {
+        seed,
+        ownedRelics: this.relics,
+        classId: this.run.classId,
+        // 解锁式内容未解锁不入事件掉落池（docs/36 T1）
+        unlocked: this.run.unlocked,
+      });
       if (!res) return;
       if (res.hpDelta !== 0) {
         this.run = setRunHp(this.run, Math.max(0, Math.min(this.maxHp, this.run.hp + res.hpDelta)));

@@ -4,9 +4,11 @@ import { createPinia, setActivePinia } from "pinia";
 import { describe, expect, it } from "vitest";
 import { createRouter, createWebHashHistory } from "vue-router";
 import { createBattleState, reduce } from "@/core/combat";
+import type { EventDefinition } from "@/core/registry";
 import {
   createRunState,
   isContentAvailable,
+  resolveEventOption,
   rollCardRewards,
   rollRelicChoices,
 } from "@/core/map";
@@ -65,6 +67,22 @@ describe("docs/36 T1 · 解锁式内容入池", () => {
   it("炉心余烬锁定时不进遗物池，解锁后进池", () => {
     expect(rollRelicChoices(game.content, [], 7, []).includes("ember_core")).toBe(false);
     expect(rollRelicChoices(game.content, [], 7, ["ember_core"]).includes("ember_core")).toBe(true);
+  });
+
+  it("事件掉落同样按解锁过滤（未解锁的炉心余烬不入池）", () => {
+    const event = {
+      id: "test_event",
+      i18n: "event.test",
+      options: [{ id: "a", i18n: "event.test.a", effects: [{ kind: "gainRelic", count: 20 }] }],
+    } as unknown as EventDefinition;
+    const locked = resolveEventOption(game.content, event, "a", { seed: 7, ownedRelics: [], unlocked: [] });
+    expect(locked?.relicIds.includes("ember_core")).toBe(false);
+    const open = resolveEventOption(game.content, event, "a", {
+      seed: 7,
+      ownedRelics: [],
+      unlocked: ["ember_core"],
+    });
+    expect(open?.relicIds.includes("ember_core")).toBe(true);
   });
 
   it("evaluateRun：首通解锁血锈光环；炉心首通解锁余烬；无血契通关解锁不朽", () => {

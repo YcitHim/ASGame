@@ -345,7 +345,12 @@ export function simulateRun(
       if (def) {
         const optionId = chooseEventOption(def, run);
         const seed = (run.seed ^ Math.imul(run.layerIndex + 11, 0x27d4eb2f)) >>> 0;
-        const res = resolveEventOption(content, def, optionId, { seed, ownedRelics: relics, classId });
+        const res = resolveEventOption(content, def, optionId, {
+          seed,
+          ownedRelics: relics,
+          classId,
+          unlocked: run.unlocked,
+        });
         if (res) {
           if (res.hpDelta !== 0) {
             run = setRunHp(run, Math.max(1, Math.min(run.maxHp, run.hp + res.hpDelta)));
