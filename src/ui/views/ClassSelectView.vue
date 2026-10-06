@@ -75,6 +75,44 @@ function groupDeck(ids: readonly string[]): { id: string; count: number }[] {
   return out;
 }
 
+/** 起始卡组悬停说明（新手看不懂「血之螺栓」时能看到完整信息）。 */
+const KEYWORD_LABEL: Record<string, string> = {
+  bloodpact: "血契",
+  exhaust: "消耗",
+  retain: "保留",
+  ethereal: "虚无",
+  innate: "固有",
+  charge: "充能",
+  pollution: "污染",
+  overload: "过载",
+  regenerate: "再生",
+  corroding: "蚀锈",
+};
+const TYPE_LABEL: Record<string, string> = {
+  attack: "攻击",
+  skill: "技能",
+  power: "能力",
+  curse: "诅咒",
+  status: "状态",
+};
+const hoverDeck = ref<{ classId: string; id: string } | null>(null);
+const deckTipInfo = computed(() => {
+  const hover = hoverDeck.value;
+  if (!hover) return null;
+  const id = hover.id;
+  const def = loadGameContent().content.cards.get(id);
+  return {
+    classId: hover.classId,
+    id,
+    name: cardName(id),
+    cost: def?.cost ?? 0,
+    type: TYPE_LABEL[def?.type ?? "skill"] ?? "",
+    rarity: def?.rarity ?? "",
+    desc: t(`card.${id}.desc`, ""),
+    keywords: (def?.keywords ?? []).map((k) => KEYWORD_LABEL[k] ?? k),
+  };
+});
+
 function choose(classId: string): void {
   if (!isUnlocked(classId)) return;
   run.startRun(classId, undefined, difficulty.value, companionDef.value);
@@ -173,10 +211,28 @@ function back(): void {
             </div>
             <div class="block">
               <b>起始卡组</b>
-              <div class="deck-chips">
-                <span v-for="g in groupDeck(cls.startDeck)" :key="g.id" class="deck-chip">
+              <div class="deck-chips" @mouseleave="hoverDeck = null">
+                <span
+                  v-for="g in groupDeck(cls.startDeck)"
+                  :key="g.id"
+                  class="deck-chip"
+                  tabindex="0"
+                  @mouseenter="hoverDeck = { classId: cls.id, id: g.id }"
+                  @focus="hoverDeck = { classId: cls.id, id: g.id }"
+                  @blur="hoverDeck = null"
+                >
                   {{ cardName(g.id) }}<em v-if="g.count > 1">×{{ g.count }}</em>
                 </span>
+                <div v-if="deckTipInfo && deckTipInfo.classId === cls.id" class="deck-tip">
+                  <b>{{ deckTipInfo.name }}</b>
+                  <span class="meta">
+                    {{ deckTipInfo.type }} · {{ deckTipInfo.cost }} 费
+                    <template v-if="deckTipInfo.keywords.length">
+                      · {{ deckTipInfo.keywords.join(" / ") }}
+                    </template>
+                  </span>
+                  <p>{{ deckTipInfo.desc }}</p>
+                </div>
               </div>
             </div>
             <div class="block">
@@ -281,7 +337,39 @@ function back(): void {
 .stat.energy i { color: var(--gold); }
 .stat b { font-family: var(--serif-num); font-size: 19px; color: var(--ink-bone); }
 .stat small { margin-left: auto; font-size: 10px; letter-spacing: 0.2em; color: var(--ink-dim); }
-.deck-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.deck-chips { position: relative; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.deck-tip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 6;
+  padding: 9px 12px;
+  text-align: left;
+  border: 1px solid var(--edge-gold);
+  border-radius: var(--radius-sm);
+  background: rgba(12, 10, 8, 0.97);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.75);
+}
+.deck-tip b {
+  font-family: var(--serif-title);
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  color: var(--ink-bone);
+  font-weight: 400;
+}
+.deck-tip .meta {
+  margin-left: 8px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--gold-dim);
+}
+.deck-tip p {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--ink-bone);
+}
 .deck-chip {
   padding: 3px 9px; font-size: 11px; color: var(--ink-bone);
   border: 1px solid rgba(110, 88, 54, 0.45); border-radius: 999px;

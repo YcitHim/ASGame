@@ -46,6 +46,14 @@ describe("docs/16 5.3 职业选择", () => {
     const relic = cards[0].find(".relic-chip");
     expect(relic.text()).toContain("破碎圣油瓶");
     expect(relic.text().length).toBeGreaterThan("破碎圣油瓶".length);
+    // 起始卡组 chip 悬停出信息卡（新手看不懂「血之螺栓」时能看到属性）
+    const bolts = cards[0].findAll(".deck-chip").filter((c) => c.text().includes("血之螺栓"));
+    await bolts[0].trigger("mouseenter");
+    const tip = cards[0].find(".deck-tip");
+    expect(tip.exists()).toBe(true);
+    expect(tip.text()).toContain("血之螺栓");
+    expect(tip.text()).toContain("攻击");
+    expect(tip.text()).toContain("卖 2 血");
     wrapper.unmount();
   });
 
