@@ -56,8 +56,8 @@ function onMenu(key: (typeof menu)[number]["key"], enabled: boolean): void {
       </nav>
 
       <footer class="foot">
-        <span>0.1 · 工程地基 S1</span>
-        <span class="dim">docs/08 令牌驱动 · 效果图 docs/mockups/battle-screen.html</span>
+        <span>0.5 封版 · 2026-10-06</span>
+        <span class="dim">docs/38 版本总结 · 效果图 docs/mockups/battle-screen.html</span>
       </footer>
     </div>
   </div>

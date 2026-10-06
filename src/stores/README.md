@@ -4,12 +4,13 @@
 核心状态在 UI 侧的**投影**：订阅核心事件流，重放/增量应用到响应式状态。
 **不写任何数值逻辑**——所有数字来自事件载荷。
 
-## 待做
-- [ ] `battleStore`：玩家/敌人/牌堆/相位的响应式投影
-- [ ] `mapStore`：当前 Act 进度
-- [ ] `collectionStore`：卡组实例（含强化）、遗物
-- [x] `settingsStore`：音量/倍速/屏震/语言（接 systems/save 持久化）—— S1 完成
-- [ ] 事件 → store 的应用器（applier）：每种事件一个纯函数映射
+## 现状
+- [x] `battleStore`：玩家/敌人/牌堆/相位的响应式投影 + 动画队列编排
+- [x] `runStore`：一次远征的进度（分支地图 / 卡组实例含强化 / 遗物 / 跨节点 HP 与污染 / 事件结算）
+- [x] `metaStore`：局外解锁（通关职业 + 已解锁内容 id + 结算页解锁提示）
+- [x] `codexStore`：图鉴「见过即解锁」
+- [x] `settingsStore`：音量/倍速/屏震（接 systems/save 持久化）
+- [x] 事件 → 表现的应用器：`battleStore.onAnimEvent`（floater / 闪白 / 死亡 / 意图翻入）
 
 ## 约束
 - store 状态必须能由「初始状态 + 事件流」完整重建（回放/跳过的正确性依赖这一点）
