@@ -34,11 +34,11 @@ describe("1.0-C 成就墙", () => {
   it("统计型成就：贴线 / 打断 10 次 / 反噬 3 次 / 三枚强化 / 锈蚀难度 / 全图鉴", () => {
     const meta = setup();
     meta.markCleared("bloodwright");
+    meta.addInterruptStat(10);
     meta.evaluateRun({
       classId: "bloodwright",
       usedBloodpact: false,
       overloadCount: 3,
-      interrupts: 10,
       backlashTaken: 3,
       pollutionPeak: 99,
       enhancementsAttached: 3,

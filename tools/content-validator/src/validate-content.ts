@@ -263,6 +263,32 @@ export function validateContent(input: ContentInput): ValidationResult {
     }
   }
 
+  // 1.0 新机制语义（docs/38 §五.3：新机制先进 validator 再进内容）
+  const ENEMY_TARGETS = new Set(["chosenEnemy", "randomEnemy", "allEnemies", "lowestHpEnemy", "highestHpEnemy"]);
+  type MechanicEffect = { kind?: string; buff?: string; target?: { type: string }; value?: number };
+  const checkMechanics = (file: string, effects: readonly MechanicEffect[] | undefined): void => {
+    for (const e of effects ?? []) {
+      const target = e.target?.type ?? "self";
+      if (e.kind === "applyBuff" && e.buff === "corroding" && !ENEMY_TARGETS.has(target)) {
+        issues.push({ file, path: "effects", message: "蚀锈 corroding 只能施加给敌人目标（docs/38 §二 B-2）" });
+      }
+      if ((e.kind === "transferPollution" || e.kind === "consumeCorroding") && !ENEMY_TARGETS.has(target)) {
+        issues.push({ file, path: "effects", message: `${e.kind} 的目标必须是敌人` });
+      }
+      if (e.kind === "spendPollution" && (e.value ?? 0) <= 0) {
+        issues.push({ file, path: "effects", message: "spendPollution 的每点结算量必须 > 0" });
+      }
+    }
+  };
+  for (const c of cards) {
+    checkMechanics(`card ${c.id}`, c.effects);
+    checkMechanics(`card ${c.id} (upgraded)`, c.upgraded?.effects);
+    checkMechanics(`card ${c.id} (power)`, c.power?.effects);
+    checkMechanics(`card ${c.id} (power upgraded)`, c.upgraded?.power?.effects);
+  }
+  for (const r of relics) checkMechanics(`relic ${r.id}`, r.effects);
+  for (const e of enemies) checkMechanics(`enemy ${e.id}`, e.onDeath);
+
   // i18n key 存在（docs/04 §4）
   function requireKeyEarly(file: string, key: string): void {
     if (!(key in input.i18n)) issues.push({ file, path: "i18n", message: `文案缺失：zh-CN 无 "${key}"` });

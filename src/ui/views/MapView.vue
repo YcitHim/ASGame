@@ -186,7 +186,12 @@ function toTitle(): void {
   background: rgba(18, 16, 14, 0.7); box-shadow: var(--edge-inner);
   transition: border-color var(--dur-hover), box-shadow var(--dur-hover);
 }
-.node.current { border-color: var(--gold); box-shadow: 0 0 16px rgba(176, 141, 74, 0.28); }
+.node.current {
+  border-color: var(--gold);
+  border-left: 3px solid var(--gold);
+  box-shadow: 0 0 16px rgba(176, 141, 74, 0.28);
+}
+.layer.current .rail { background: linear-gradient(180deg, transparent, var(--gold), transparent); opacity: 0.85; }
 .node.done { opacity: 0.62; }
 .node.skipped { opacity: 0.28; }
 .node.locked { opacity: 0.35; }

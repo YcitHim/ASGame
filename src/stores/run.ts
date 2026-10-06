@@ -281,6 +281,7 @@ export const useRunStore = defineStore("run", {
     noteInterrupt(): void {
       if (!this.run) return;
       this.run = addInterrupt(this.run);
+      useMetaStore().addInterruptStat();
       this.persist();
     },
 

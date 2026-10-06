@@ -24,6 +24,10 @@ function heal(): void {
   void router.push("/map");
 }
 
+function enhTitle(ids: readonly string[]): string {
+  return ids.map((id) => t(`enh.${id}.name`, id)).join(" · ");
+}
+
 function chooseUpgrade(): void {
   mode.value = "upgrade";
 }
@@ -86,6 +90,9 @@ function cardName(id: string): string {
             @click="doUpgrade(index)"
           >
             {{ cardName(card.cardId) }}{{ card.upgraded ? "+（已升级）" : "" }}
+            <sup v-if="card.enhancements.length" class="enh-chip" :title="enhTitle(card.enhancements)">{{
+              card.enhancements.length
+            }}</sup>
           </button>
         </div>
       </template>
@@ -101,6 +108,9 @@ function cardName(id: string): string {
             @click="doRemove(index)"
           >
             {{ cardName(card.cardId) }}
+            <sup v-if="card.enhancements.length" class="enh-chip" :title="enhTitle(card.enhancements)">{{
+              card.enhancements.length
+            }}</sup>
           </button>
         </div>
       </template>
@@ -129,5 +139,11 @@ function cardName(id: string): string {
   border: 1px solid rgba(110, 88, 54, 0.5); border-radius: var(--radius-sm); color: var(--ink-bone);
 }
 .deck-card:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+.enh-chip {
+  margin-left: 6px; padding: 0 5px;
+  font-size: 10px; color: var(--gold);
+  border: 1px solid rgba(176, 141, 74, 0.5); border-radius: 999px;
+  vertical-align: super;
+}
 .deck-card:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>

@@ -37,6 +37,8 @@ interface MetaState {
   unlocked: string[];
   achievements: string[];
   records: Record<string, RunRecord>;
+  /** 跨局累计统计（成就判定用）：累计断链次数 */
+  stats: { interrupts: number };
 }
 
 /** 一次远征的成就输入（由 run store 汇总）。 */
@@ -72,6 +74,7 @@ export const useMetaStore = defineStore("meta", {
     unlocked: [] as string[],
     achievements: [] as string[],
     records: {} as Record<string, RunRecord>,
+    stats: { interrupts: 0 },
     /** 最近一次通关新解锁的内容 id（结算页弹提示用） */
     lastUnlocked: [] as string[],
     /** 最近一次通关新达成的成就 id（结算页弹提示用） */
@@ -107,6 +110,7 @@ export const useMetaStore = defineStore("meta", {
         this.unlocked = saved.unlocked ?? [];
         this.achievements = saved.achievements ?? [];
         this.records = saved.records ?? {};
+        this.stats = { interrupts: saved.stats?.interrupts ?? 0 };
       }
       this.loaded = true;
     },
@@ -116,6 +120,7 @@ export const useMetaStore = defineStore("meta", {
         unlocked: [...this.unlocked],
         achievements: [...this.achievements],
         records: { ...this.records },
+        stats: { ...this.stats },
       } satisfies MetaState);
     },
     unlock(ids: readonly string[]): string[] {
@@ -156,6 +161,12 @@ export const useMetaStore = defineStore("meta", {
       }
       return gained;
     },
+    /** 累计断链次数（成就「打断施法者」跨局累计，docs/38 §三 C-3）。 */
+    addInterruptStat(n = 1): void {
+      this.ensureLoaded();
+      this.stats = { ...this.stats, interrupts: this.stats.interrupts + Math.max(0, n) };
+      this.persist();
+    },
     /** 更新某职业最佳纪录（只在更优时写入）。 */
     updateRecord(classId: string, turns: number, hpLeft: number): void {
       this.ensureLoaded();
@@ -190,7 +201,7 @@ export const useMetaStore = defineStore("meta", {
         if (!ach.usedBloodpact) achieved.push("no_bloodpact_clear");
         if (ach.overloadCount >= 3) achieved.push("overload3_clear");
         if ((ach.pollutionPeak ?? 0) >= 99) achieved.push("pollution99_end");
-        if ((ach.interrupts ?? 0) >= 10) achieved.push("interrupt10");
+        if (this.stats.interrupts >= 10) achieved.push("interrupt10");
         if ((ach.enhancementsAttached ?? 0) >= 3) achieved.push("enhance3");
         if ((ach.backlashTaken ?? 0) >= 3) achieved.push("backlash3_win");
         if (ach.difficulty === "rust") achieved.push("rust_clear");
@@ -215,6 +226,7 @@ export const useMetaStore = defineStore("meta", {
       this.unlocked = [];
       this.achievements = [];
       this.records = {};
+      this.stats = { interrupts: 0 };
       this.lastUnlocked = [];
       this.lastAchievements = [];
       this.persist();
