@@ -54,8 +54,14 @@ function toMap(): void {
 function relicName(id: string): string {
   return t(`relic.${id}.name`, id);
 }
+function relicDesc(id: string): string {
+  return t(`relic.${id}.desc`, "");
+}
 function cardName(id: string): string {
   return t(`card.${id}.name`, id);
+}
+function cardDesc(id: string): string {
+  return t(`card.${id}.desc`, "");
 }
 function enhancementName(id: string): string {
   return t(`enh.${id}.name`, id);
@@ -97,8 +103,28 @@ function enhancementDesc(id: string): string {
               污染 {{ result.pollutionDelta > 0 ? "+" : "" }}{{ result.pollutionDelta }}
             </span>
           </p>
-          <p v-if="result.relicIds.length" class="gained">获得遗物：{{ result.relicIds.map(relicName).join("、") }}</p>
-          <p v-if="result.cardIds.length" class="gained">获得卡牌：{{ result.cardIds.map(cardName).join("、") }}</p>
+          <div v-if="result.relicIds.length" class="gains">
+            <b class="gains-label">获得遗物</b>
+            <div class="gain-list">
+              <div v-for="id in result.relicIds" :key="id" class="gain-item relic-item">
+                <span class="gain-name">
+                  <i class="gain-dot" />{{ relicName(id) }}
+                </span>
+                <span class="gain-desc">{{ relicDesc(id) }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-if="result.cardIds.length" class="gains">
+            <b class="gains-label">获得卡牌</b>
+            <div class="gain-list">
+              <div v-for="id in result.cardIds" :key="id" class="gain-item card-item">
+                <span class="gain-name">
+                  <i class="gain-dot card" />{{ cardName(id) }}
+                </span>
+                <span class="gain-desc">{{ cardDesc(id) }}</span>
+              </div>
+            </div>
+          </div>
 
           <template v-if="result.gainEnhancement && offers.length > 0">
             <h2 class="sub">从旅商的针管里挑一条新规矩</h2>
@@ -196,7 +222,31 @@ function enhancementDesc(id: string): string {
 .deltas .bad { color: var(--blood-hi); }
 .deltas .good { color: var(--gold); }
 .deltas .rot { color: var(--rot); }
-.gained { font-size: 12px; letter-spacing: 0.12em; color: var(--gold); }
+.gains { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.gains-label { font-size: 10px; font-weight: 400; letter-spacing: 0.3em; color: var(--gold-dim); }
+.gain-list { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 860px; }
+.gain-item {
+  display: flex; flex-direction: column; gap: 4px;
+  min-width: 200px; max-width: 280px;
+  padding: 8px 14px;
+  text-align: left;
+  border: 1px solid rgba(176, 141, 74, 0.45);
+  border-radius: var(--radius-sm);
+  background: linear-gradient(165deg, #1c1915, #12100e);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+}
+.gain-item.card-item { border-color: rgba(107, 122, 140, 0.5); }
+.gain-name {
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--serif-title); font-size: 13px; letter-spacing: 0.14em; color: var(--gold);
+}
+.card-item .gain-name { color: var(--ink-bone); }
+.gain-dot {
+  width: 7px; height: 7px; flex: none; transform: rotate(45deg);
+  background: var(--gold); box-shadow: 0 0 6px rgba(176, 141, 74, 0.7);
+}
+.gain-dot.card { background: var(--steel); box-shadow: 0 0 6px rgba(107, 122, 140, 0.7); }
+.gain-desc { font-size: 11px; line-height: 1.6; color: var(--ink-dim); }
 .deck { display: flex; flex-wrap: wrap; gap: 8px; width: 760px; justify-content: center; }
 .deck-card {
   padding: 8px 14px; font-size: 12px;
