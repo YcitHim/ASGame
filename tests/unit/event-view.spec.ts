@@ -4,6 +4,8 @@ import { createPinia, setActivePinia } from "pinia";
 import { describe, expect, it } from "vitest";
 import { createRouter, createWebHashHistory } from "vue-router";
 import EventView from "@/ui/views/EventView.vue";
+import { generateActMap } from "@/core/map";
+import { loadGameContent } from "@/data/load";
 import { useRunStore } from "@/stores/run";
 
 /**
@@ -27,9 +29,17 @@ describe("EventView 结算信息", () => {
   it("获得遗物时显示遗物名与效果描述", async () => {
     const pinia = setup();
     const run = useRunStore();
-    run.startRun("bloodwright", 1);
-    run.advance();
-    run.advance();
+    const act = loadGameContent().acts[0];
+    // 找到第一个能生成事件节点的种子，并把 run 定位到该事件节点
+    let seed = 1;
+    for (; seed < 50; seed += 1) {
+      if (generateActMap(act, seed).some((l) => l.nodes.some((n) => n.kind === "event"))) break;
+    }
+    run.startRun("bloodwright", seed);
+    const map = generateActMap(act, run.run!.seed);
+    const li = map.findIndex((l) => l.nodes.some((n) => n.kind === "event"));
+    const ni = map[li].nodes.findIndex((n) => n.kind === "event");
+    run.run = { ...run.run!, layerIndex: li, picked: [...Array(li).fill(0), ni] };
     run.eventResult = {
       optionId: "a",
       outcomeIndex: -1,

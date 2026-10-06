@@ -7,6 +7,7 @@
 import { defineStore } from "pinia";
 import {
   advanceNode,
+  chooseNode,
   createRunState,
   MAX_ENHANCEMENT_SLOTS,
   currentNode,
@@ -146,11 +147,11 @@ export const useRunStore = defineStore("run", {
      */
     canEnhanceHere(): boolean {
       if (!this.run) return false;
-      return this.enhanceUsedNode !== this.run.nodeIndex;
+      return this.enhanceUsedNode !== this.run.layerIndex;
     },
     canRecast(): boolean {
       if (!this.run) return false;
-      if (this.recastUsedNode === this.run.nodeIndex) return false;
+      if (this.recastUsedNode === this.run.layerIndex) return false;
       if (this.run.hp <= RECAST_HP_COST) return false;
       return this.recastableCards.length > 0;
     },
@@ -187,7 +188,14 @@ export const useRunStore = defineStore("run", {
       this.persist();
     },
 
-    /** 节点结算完成 → 推进到下一个节点。 */
+    /** 分支地图：在当前层选定候选（进入节点前调用）。 */
+    pickNode(index: number): void {
+      if (!this.run || !this.act) return;
+      this.run = chooseNode(this.run, this.act, index);
+      this.persist();
+    },
+
+    /** 节点结算完成 → 推进到下一层。 */
     advance(): void {
       if (!this.run || !this.act) return;
       this.run = advanceNode(this.run, this.act);
@@ -234,7 +242,7 @@ export const useRunStore = defineStore("run", {
     cardRewards(): string[] {
       if (!this.run) return [];
       const game = loadGameContent();
-      return rollCardRewards(game.content, this.act!, this.run, this.run.nodeIndex);
+      return rollCardRewards(game.content, this.act!, this.run, this.run.layerIndex);
     },
 
     /** 可附着的强化（当前卡组至少有一张符合 appliesTo 且未持有）。 */
@@ -253,7 +261,7 @@ export const useRunStore = defineStore("run", {
     enhancementChoices(): string[] {
       if (!this.run) return [];
       const game = loadGameContent();
-      const rolled = rollEnhancementChoices(game.content, this.run, this.run.nodeIndex);
+      const rolled = rollEnhancementChoices(game.content, this.run, this.run.layerIndex);
       const usable = this.usableEnhancements();
       const chosen = rolled.filter((id) => usable.includes(id));
       for (const id of usable) {
@@ -285,7 +293,7 @@ export const useRunStore = defineStore("run", {
       const content = loadGameContent().content;
       const def = this.eventDef;
       if (!def) return;
-      const seed = (this.run.seed ^ Math.imul(this.run.nodeIndex + 11, 0x27d4eb2f)) >>> 0;
+      const seed = (this.run.seed ^ Math.imul(this.run.layerIndex + 11, 0x27d4eb2f)) >>> 0;
       const res = resolveEventOption(content, def, optionId, { seed, ownedRelics: this.relics, classId: this.run.classId });
       if (!res) return;
       if (res.hpDelta !== 0) {
@@ -355,7 +363,7 @@ export const useRunStore = defineStore("run", {
         i === deckIndex ? { ...card, enhancements: [...card.enhancements, enhancementId] } : card,
       );
       this.acquired = [...this.acquired, enhancementId];
-      this.enhanceUsedNode = this.run?.nodeIndex ?? null;
+      this.enhanceUsedNode = this.run?.layerIndex ?? null;
       this.persist();
       return true;
     },
@@ -371,7 +379,7 @@ export const useRunStore = defineStore("run", {
 
       const seed =
         (this.run.seed ^
-          Math.imul(this.run.nodeIndex + 3, 0x85ebca6b) ^
+          Math.imul(this.run.layerIndex + 3, 0x85ebca6b) ^
           Math.imul(deckIndex + 1, 0xc2b2ae35)) >>>
         0;
       const removed = pickRecastRemoval(card.enhancements, seed);
@@ -402,7 +410,7 @@ export const useRunStore = defineStore("run", {
       this.deck = this.deck.map((c, i) => (i === deckIndex ? { ...c, enhancements: next } : c));
       this.acquired = [...this.acquired.filter((id) => id !== removed), ...(added ? [added] : [])];
       this.run = setRunHp(this.run, Math.max(0, this.run.hp - RECAST_HP_COST));
-      this.recastUsedNode = this.run.nodeIndex;
+      this.recastUsedNode = this.run.layerIndex;
       this.persist();
       return { removed, added };
     },
@@ -438,8 +446,13 @@ export const useRunStore = defineStore("run", {
     load(): boolean {
       const saved = readSlot<SavedRun | null>("progress", null);
       if (!saved || !saved.run || !Array.isArray(saved.deck)) return false;
-      // 老档没有 pollution 字段：默认 0（save 迁移链已补，双保险）
-      this.run = { ...saved.run, pollution: saved.run.pollution ?? 0 };
+      // 老档缺字段：默认补齐（save 迁移链已处理，双保险）
+      this.run = {
+        ...saved.run,
+        pollution: saved.run.pollution ?? 0,
+        layerIndex: saved.run.layerIndex ?? 0,
+        picked: saved.run.picked ?? [],
+      };
       this.deck = saved.deck;
       this.relics = saved.relics ?? [];
       this.acquired = saved.acquired ?? [];

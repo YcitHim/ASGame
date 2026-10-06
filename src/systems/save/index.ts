@@ -8,7 +8,7 @@
 export const SAVE_NAMESPACE = "rustandblood";
 
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export type SaveSlot = "settings" | "progress" | "replay" | "codex" | "meta";
 
@@ -53,6 +53,24 @@ const migrations: Record<number, (data: unknown) => unknown> = {
     if (typeof run !== "object" || run === null) return record;
     const runRecord = run as Record<string, unknown>;
     return { ...record, run: { ...runRecord, pollution: runRecord["pollution"] ?? 0 } };
+  },
+  // 4 → 5（docs/16 5.4）：进度档的线性 nodeIndex 升级为「层 + 分支」layerIndex + picked。
+  // 旧档按 nodeIndex 近似落在同一层，picked 置空（到分支层时玩家重新选路）。
+  4: (data) => {
+    if (typeof data !== "object" || data === null) return data;
+    const record = data as Record<string, unknown>;
+    const run = record["run"];
+    if (typeof run !== "object" || run === null) return record;
+    const runRecord = run as Record<string, unknown>;
+    if (runRecord["layerIndex"] !== undefined) return record;
+    return {
+      ...record,
+      run: {
+        ...runRecord,
+        layerIndex: typeof runRecord["nodeIndex"] === "number" ? runRecord["nodeIndex"] : 0,
+        picked: runRecord["picked"] ?? [],
+      },
+    };
   },
 };
 

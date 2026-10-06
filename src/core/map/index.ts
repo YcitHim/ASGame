@@ -4,7 +4,7 @@
  * 玩法规则只住在 core：节点推进、奖励抽取都在这里，UI 只做展示与转发。
  * 随机一律走 reward 流（ADR-006），因此同样的种子 + 输入流可复现。
  */
-import type { ActDefinition, ClassDefinition, EventDefinition, MapNode, NodeKind } from "../registry/content";
+import type { ActDefinition, ClassDefinition, EventDefinition, MapLayerSpec, MapNode, NodeKind } from "../registry/content";
 import type { ContentDb } from "../registry/content";
 import { Rng } from "../rng";
 
@@ -15,8 +15,10 @@ export interface RunState {
   /** 本局职业 id（docs/16 5.1：职业定义抽到 data/classes） */
   readonly classId: string;
   readonly seed: number;
-  /** 当前所在节点下标；等于节点数表示已通关 */
-  readonly nodeIndex: number;
+  /** 当前层下标（docs/16 5.4 分支地图）；等于层数表示已通关 */
+  readonly layerIndex: number;
+  /** 每层选中的候选下标（与 layerIndex 对齐；未选中的层为空缺） */
+  readonly picked: readonly number[];
   readonly cleared: readonly string[];
   /** 局外 HP：跨节点保留（战斗结束写回，休息回复） */
   readonly hp: number;
@@ -41,11 +43,51 @@ export function healRun(run: RunState, maxHp: number, amount: number): RunState 
   return { ...run, hp: Math.min(maxHp, run.hp + Math.max(0, Math.trunc(amount))) };
 }
 
-export interface MapView {
+/** 运行时的地图层：层内候选节点由 generateActMap 按种子实例化。 */
+export interface MapLayer {
+  readonly id: string;
   readonly nodes: readonly MapNode[];
+}
+
+export interface MapView {
+  readonly layers: readonly MapLayer[];
   readonly currentIndex: number;
   readonly current: MapNode | undefined;
+  readonly picked: readonly number[];
   readonly finished: boolean;
+}
+
+/**
+ * 分支地图生成（docs/16 5.4）：同一 seed → 同一地图。
+ * width=1 为必经/汇合点；width≥2 时每个候选按 weights 独立抽类型（docs/14 Q17）。
+ */
+export function generateActMap(act: ActDefinition, seed: number): MapLayer[] {
+  const rng = new Rng((seed ^ 0x5f3759df) >>> 0).stream("map");
+  return act.layers.map((spec, layerIdx) => {
+    const width = Math.max(1, Math.trunc(spec.width));
+    const nodes: MapNode[] = [];
+    for (let i = 0; i < width; i += 1) {
+      const kind = pickKind(rng, spec, act);
+      nodes.push({
+        id: `${kind}_${layerIdx}_${i}`,
+        kind,
+        i18n: spec.i18n ?? `node.${kind}`,
+        ...(spec.encounters && kind === "battle" ? { encounters: spec.encounters } : {}),
+        ...(spec.events && kind === "event" ? { events: spec.events } : {}),
+        ...(spec.enemies && (kind === "battle" || kind === "elite" || kind === "boss") ? { enemies: spec.enemies } : {}),
+      });
+    }
+    return { id: spec.id, nodes };
+  });
+}
+
+function pickKind(rng: ReturnType<Rng["stream"]>, spec: MapLayerSpec, act: ActDefinition): NodeKind {
+  const weights = spec.weights ?? act.weights;
+  const entries = spec.kinds
+    .map((k) => [k, Math.max(0, weights[k] ?? 0)] as const)
+    .filter(([, w]) => w > 0);
+  if (entries.length === 0) return spec.kinds[0] ?? "battle";
+  return rng.weighted(entries);
 }
 
 export function createRunState(act: ActDefinition, cls: ClassDefinition, seed: number): RunState {
@@ -53,7 +95,8 @@ export function createRunState(act: ActDefinition, cls: ClassDefinition, seed: n
     actId: act.id,
     classId: cls.id,
     seed: seed >>> 0,
-    nodeIndex: 0,
+    layerIndex: 0,
+    picked: [],
     cleared: [],
     hp: cls.player.maxHp,
     pollution: 0,
@@ -62,17 +105,36 @@ export function createRunState(act: ActDefinition, cls: ClassDefinition, seed: n
 }
 
 export function mapView(run: RunState, act: ActDefinition): MapView {
-  const nodes = act.map;
+  const layers = generateActMap(act, run.seed);
   return {
-    nodes,
-    currentIndex: run.nodeIndex,
-    current: nodes[run.nodeIndex],
-    finished: run.nodeIndex >= nodes.length,
+    layers,
+    currentIndex: run.layerIndex,
+    current: currentNode(run, act),
+    picked: run.picked,
+    finished: run.layerIndex >= layers.length,
   };
 }
 
+export function currentLayer(run: RunState, act: ActDefinition): MapLayer | undefined {
+  return generateActMap(act, run.seed)[run.layerIndex];
+}
+
 export function currentNode(run: RunState, act: ActDefinition): MapNode | undefined {
-  return act.map[run.nodeIndex];
+  const layer = currentLayer(run, act);
+  if (!layer) return undefined;
+  const idx = run.picked[run.layerIndex];
+  if (idx !== undefined) return layer.nodes[idx];
+  // 必经 / 汇合层（width=1）无需选择，直接生效；分支层必须显式 chooseNode
+  return layer.nodes.length === 1 ? layer.nodes[0] : undefined;
+}
+
+/** 在当前层选定候选（分支二选一）。 */
+export function chooseNode(run: RunState, act: ActDefinition, index: number): RunState {
+  const layer = currentLayer(run, act);
+  if (!layer || !Number.isInteger(index) || index < 0 || index >= layer.nodes.length) return run;
+  const picked = [...run.picked];
+  picked[run.layerIndex] = index;
+  return { ...run, picked };
 }
 
 export function nodeKindOf(node: MapNode | undefined): NodeKind | null {
@@ -84,15 +146,15 @@ export function isCombatNode(node: MapNode | undefined): boolean {
   return node?.kind === "battle" || node?.kind === "elite" || node?.kind === "boss";
 }
 
-/** 推进到下一个节点并记录已清节点。 */
+/** 推进到下一层并记录已清节点。 */
 export function advanceNode(run: RunState, act: ActDefinition): RunState {
-  const node = act.map[run.nodeIndex];
+  const node = currentNode(run, act);
   const cleared = node && !run.cleared.includes(node.id) ? [...run.cleared, node.id] : [...run.cleared];
-  return { ...run, nodeIndex: run.nodeIndex + 1, cleared };
+  return { ...run, layerIndex: run.layerIndex + 1, cleared };
 }
 
 export function isRunComplete(run: RunState, act: ActDefinition): boolean {
-  return run.nodeIndex >= act.map.length;
+  return run.layerIndex >= act.layers.length;
 }
 
 export const REWARD_OPTION_COUNT = 3;
@@ -140,7 +202,7 @@ export function rollCardRewards(
  */
 export function rollEncounter(run: RunState, node: MapNode): string[] {
   if (!node.encounters || node.encounters.length === 0) return [...(node.enemies ?? [])];
-  const rng = new Rng((run.seed ^ Math.imul(run.nodeIndex + 1, 0x85ebca6b)) >>> 0).stream("map");
+  const rng = new Rng((run.seed ^ Math.imul(run.layerIndex + 1, 0x85ebca6b)) >>> 0).stream("map");
   const entry = rng.weighted(node.encounters.map((e) => [e, e.weight] as const));
   return [...entry.enemies];
 }
@@ -153,7 +215,7 @@ export function rollEvent(content: ContentDb, run: RunState, node: MapNode): Eve
   if (node.event) return content.events.get(node.event);
   const ids = node.events && node.events.length > 0 ? [...node.events] : [...content.events.keys()].sort();
   if (ids.length === 0) return undefined;
-  const rng = new Rng((run.seed ^ Math.imul(run.nodeIndex + 5, 0x27d4eb2f)) >>> 0).stream("map");
+  const rng = new Rng((run.seed ^ Math.imul(run.layerIndex + 5, 0x27d4eb2f)) >>> 0).stream("map");
   return content.events.get(ids[rng.nextInt(0, ids.length - 1)]);
 }
 

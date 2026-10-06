@@ -91,6 +91,16 @@ const battles = [
     relics: ["dentedcoil", "pressuregauge"],
     seed: 909090,
   }),
+  // 分支地图：在「中期分支层」的遭遇池里打一场（docs/16 5.4 golden）
+  recordBattle({
+    content,
+    id: "golden-branch",
+    nodeId: "l5",
+    enemies: ["rust_sentinel", "corroded_swarm"],
+    deck: runDeck,
+    relics: ["broken_oil", "blood_pump", "redtear_ring"],
+    seed: 515151,
+  }),
 ];
 
 const outDir = join(REPO_ROOT, "tests", "golden-replays");

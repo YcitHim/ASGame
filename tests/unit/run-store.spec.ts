@@ -31,23 +31,26 @@ describe("S5 局外进度（runStore）", () => {
     expect(run.deck).toHaveLength(10);
     expect(run.relics.length).toBeGreaterThan(0);
     expect(run.hp).toBe(run.maxHp);
-    expect(run.run?.nodeIndex).toBe(0);
+    expect(run.run?.layerIndex).toBe(0);
   });
 
-  it("线性地图：advance 推进节点并记录已清", () => {
+  it("分支地图：pickNode 选路 + advance 推进并记录已清", () => {
     const run = useRunStore();
     run.startRun("bloodwright", 1);
-    expect(run.view?.nodes).toHaveLength(7);
+    expect(run.view?.layers).toHaveLength(8);
+    // l0 是 width=1 的必经战斗：自动生效
     expect(run.current?.kind).toBe("battle");
+    const firstId = run.current!.id;
     run.advance();
-    expect(run.current?.kind).toBe("battle");
+    expect(run.run?.layerIndex).toBe(1);
+    // l1 是分支层：3 个候选，未选路时没有 current
+    expect(run.view?.layers[1].nodes).toHaveLength(3);
+    expect(run.current).toBeUndefined();
+    run.pickNode(1);
+    const secondId = run.current!.id;
     run.advance();
-    expect(run.current?.kind).toBe("event");
-    run.advance();
-    expect(run.current?.kind).toBe("elite");
-    run.advance();
-    expect(run.current?.kind).toBe("rest");
-    expect(run.run?.cleared).toEqual(["n1", "n2", "n2e", "n3"]);
+    expect(run.run?.cleared).toEqual([firstId, secondId]);
+    expect(run.run?.layerIndex).toBe(2);
   });
 
   it("锻造三选一：offers 有可附着目标，applyEnhancement 受 appliesTo/重复限制", () => {
@@ -233,7 +236,7 @@ describe("S5 局外进度（runStore）", () => {
     const reloaded = useRunStore();
     expect(reloaded.active).toBe(false);
     expect(reloaded.load()).toBe(true);
-    expect(reloaded.run?.nodeIndex).toBe(1);
+    expect(reloaded.run?.layerIndex).toBe(1);
     expect(reloaded.hp).toBe(41);
     const reloadedBloodbolt = reloaded.deck.findIndex((c) => c.cardId === "bloodbolt");
     expect(reloaded.deck[reloadedBloodbolt].enhancements).toEqual(["empower"]);

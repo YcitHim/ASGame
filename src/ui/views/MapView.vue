@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
+import type { MapLayer } from "@/core/map";
 import type { MapNode } from "@/core/registry";
 import { t } from "@/data/load";
 import { useRunStore } from "@/stores/run";
@@ -34,16 +35,29 @@ const KIND_GLYPH: Record<string, string> = {
   event: "？",
 };
 
-const nodes = computed<readonly MapNode[]>(() => run.view?.nodes ?? []);
+const layers = computed<readonly MapLayer[]>(() => run.view?.layers ?? []);
 const currentIndex = computed(() => run.view?.currentIndex ?? -1);
+const picked = computed<readonly number[]>(() => run.run?.picked ?? []);
 const finished = computed(() => run.finished);
+const isBranch = computed(() => (layers.value[currentIndex.value]?.nodes.length ?? 0) > 1);
 
 function nodeTitle(node: MapNode): string {
-  return node.i18n ? t(node.i18n, node.id) : `节点 ${node.id}`;
+  return node.i18n ? t(node.i18n, node.id) : node.id;
 }
 
-function enter(node: MapNode, index: number): void {
-  if (index !== currentIndex.value || finished.value) return;
+function nodeState(layerIndex: number, nodeIndex: number): "current" | "done" | "skipped" | "locked" {
+  if (layerIndex < currentIndex.value || finished.value) {
+    return picked.value[layerIndex] === nodeIndex ? "done" : "skipped";
+  }
+  if (layerIndex === currentIndex.value) return "current";
+  return "locked";
+}
+
+function enter(layerIndex: number, nodeIndex: number): void {
+  if (layerIndex !== currentIndex.value || finished.value) return;
+  const node = layers.value[layerIndex]?.nodes[nodeIndex];
+  if (!node) return;
+  run.pickNode(nodeIndex);
   if (node.kind === "rest") void router.push("/rest");
   else if (node.kind === "altar") void router.push("/forge");
   else if (node.kind === "reward") void router.push("/reward");
@@ -60,7 +74,7 @@ function toTitle(): void {
   <div class="viewport">
     <div ref="stage" class="stage map-stage">
       <div class="topbar">
-        <span>{{ t("act.rusty_corridor", "第一幕") }} · 线性地图</span>
+        <span>{{ t("act.rusty_corridor", "第一幕") }} · 分支路线</span>
         <div class="r">
           <span class="hp">HP {{ run.hp }} / {{ run.maxHp }}</span>
           <span @click="toTitle">返回标题</span>
@@ -68,31 +82,44 @@ function toTitle(): void {
       </div>
 
       <h1 class="head">远 征 路 线</h1>
+      <p v-if="isBranch" class="hint">前方分岔 —— 选择一条路</p>
 
       <div class="track">
         <div
-          v-for="(node, index) in nodes"
-          :key="node.id"
-          class="node"
-          :class="{
-            current: index === currentIndex && !finished,
-            cleared: index < currentIndex || finished,
-            locked: index > currentIndex,
-            boss: node.kind === 'boss',
-          }"
+          v-for="(layer, layerIndex) in layers"
+          :key="layer.id"
+          class="layer"
+          :class="{ current: layerIndex === currentIndex && !finished, branch: layer.nodes.length > 1 }"
         >
-          <div class="glyph">{{ KIND_GLYPH[node.kind] ?? "?" }}</div>
-          <div class="info">
-            <b>{{ nodeTitle(node) }}</b>
-            <small>{{ KIND_LABEL[node.kind] ?? node.kind }}</small>
+          <div class="rail" />
+          <div class="layer-nodes">
+            <div
+              v-for="(node, nodeIndex) in layer.nodes"
+              :key="node.id"
+              class="node"
+              :class="[nodeState(layerIndex, nodeIndex), { boss: node.kind === 'boss' }]"
+            >
+              <div class="glyph">{{ KIND_GLYPH[node.kind] ?? "?" }}</div>
+              <div class="info">
+                <b>{{ nodeTitle(node) }}</b>
+                <small>{{ KIND_LABEL[node.kind] ?? node.kind }}</small>
+              </div>
+              <button
+                v-if="layerIndex === currentIndex && !finished"
+                class="etch-btn go"
+                @click="enter(layerIndex, nodeIndex)"
+              >
+                进入
+              </button>
+              <span v-else class="state">
+                {{ nodeState(layerIndex, nodeIndex) === "done" ? "已通过" : nodeState(layerIndex, nodeIndex) === "skipped" ? "未选择" : "未抵达" }}
+              </span>
+            </div>
           </div>
-          <button v-if="index === currentIndex && !finished" class="etch-btn go" @click="enter(node, index)">进入</button>
-          <span v-else-if="index < currentIndex || finished" class="state">已通过</span>
-          <span v-else class="state locked">未抵达</span>
         </div>
       </div>
 
-      <!-- 远征胜利：居中弹窗（不再挂在地图下方） -->
+      <!-- 远征胜利：居中弹窗 -->
       <div v-if="finished" class="victory-overlay">
         <div class="victory">
           <h2>远 征 胜 利</h2>
@@ -109,7 +136,7 @@ function toTitle(): void {
 </template>
 
 <style scoped>
-.map-stage { display: flex; flex-direction: column; align-items: center; padding: 44px 60px 24px; }
+.map-stage { display: flex; flex-direction: column; align-items: center; padding: 40px 60px 20px; }
 .topbar {
   position: absolute; top: 0; left: 0; right: 0; height: 34px; z-index: 30;
   display: flex; align-items: center; justify-content: space-between; padding: 0 18px;
@@ -119,29 +146,37 @@ function toTitle(): void {
 .topbar .r { display: flex; gap: 18px; }
 .topbar .r span { cursor: pointer; }
 .topbar .hp { color: var(--blood-hi); font-family: var(--serif-num); }
-.head { font-family: var(--serif-title); font-size: 26px; letter-spacing: 0.5em; color: var(--ink-bone); }
-.track { margin-top: 26px; display: flex; flex-direction: column; gap: 12px; width: 620px; }
+.head { font-family: var(--serif-title); font-size: 24px; letter-spacing: 0.5em; color: var(--ink-bone); }
+.hint { margin-top: 6px; font-size: 11px; letter-spacing: 0.24em; color: var(--gold-dim); }
+.track { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; width: 760px; max-height: 470px; overflow-y: auto; padding: 2px 6px 8px; }
+.layer { display: flex; align-items: stretch; gap: 10px; }
+.layer-nodes { flex: 1; display: flex; gap: 10px; }
+.layer.branch .layer-nodes { justify-content: center; }
+.layer:not(.branch) .layer-nodes { justify-content: center; }
+.rail { width: 2px; flex: none; background: linear-gradient(180deg, transparent, rgba(176, 141, 74, 0.35), transparent); }
 .node {
-  display: flex; align-items: center; gap: 14px; padding: 10px 16px;
+  flex: 1;
+  min-width: 0;
+  max-width: 240px;
+  display: flex; align-items: center; gap: 10px; padding: 8px 12px;
   border: 1px solid rgba(110, 88, 54, 0.4); border-radius: var(--radius-sm);
   background: rgba(18, 16, 14, 0.7); box-shadow: var(--edge-inner);
   transition: border-color var(--dur-hover), box-shadow var(--dur-hover);
 }
-.node.current { border-color: var(--gold); box-shadow: 0 0 18px rgba(176, 141, 74, 0.3); }
-.node.cleared { opacity: 0.5; }
+.node.current { border-color: var(--gold); box-shadow: 0 0 16px rgba(176, 141, 74, 0.28); }
+.node.done { opacity: 0.62; }
+.node.skipped { opacity: 0.28; }
 .node.locked { opacity: 0.35; }
 .node.boss.current { border-color: var(--blood-hi); box-shadow: 0 0 22px rgba(192, 57, 43, 0.45); }
 .glyph {
-  width: 34px; height: 34px; flex: none; display: flex; align-items: center; justify-content: center;
-  border: 1px solid var(--gold-dim); transform: rotate(45deg); color: var(--gold); font-family: var(--serif-title);
+  width: 26px; height: 26px; flex: none; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--gold-dim); transform: rotate(45deg); color: var(--gold); font-family: var(--serif-title); font-size: 12px;
 }
-.glyph > * { transform: rotate(-45deg); }
-.info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.info b { font-family: var(--serif-title); font-size: 14px; letter-spacing: 0.2em; color: var(--ink-bone); font-weight: 400; }
-.info small { font-size: 10px; letter-spacing: 0.2em; color: var(--ink-dim); }
-.go { padding: 7px 18px; font-size: 12px; }
-.state { font-size: 11px; color: var(--ink-dim); letter-spacing: 0.15em; }
-.state.locked { color: rgba(154, 144, 129, 0.5); }
+.info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.info b { font-family: var(--serif-title); font-size: 12px; letter-spacing: 0.16em; color: var(--ink-bone); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.info small { font-size: 9px; letter-spacing: 0.2em; color: var(--ink-dim); }
+.go { padding: 5px 14px; font-size: 11px; flex: none; }
+.state { font-size: 10px; color: var(--ink-dim); letter-spacing: 0.12em; flex: none; }
 .victory-overlay {
   position: absolute;
   inset: 0;
@@ -152,10 +187,7 @@ function toTitle(): void {
   background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(10, 7, 5, 0.86), rgba(4, 3, 2, 0.94));
   animation: overlay-in 200ms ease-out;
 }
-@keyframes overlay-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+@keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
 .victory {
   text-align: center;
   padding: 34px 64px 28px;
@@ -165,13 +197,10 @@ function toTitle(): void {
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.7), 0 22px 50px rgba(0, 0, 0, 0.8);
   animation: victory-in 260ms cubic-bezier(0.2, 0.8, 0.3, 1);
 }
-@keyframes victory-in {
-  from { transform: translateY(14px) scale(0.96); opacity: 0; }
-  to { transform: none; opacity: 1; }
-}
+@keyframes victory-in { from { transform: translateY(14px) scale(0.96); opacity: 0; } to { transform: none; opacity: 1; } }
 .victory h2 { font-family: var(--serif-title); font-size: 34px; letter-spacing: 0.4em; color: var(--gold); text-shadow: 0 0 26px rgba(176, 141, 74, 0.5); }
 .victory p { margin: 14px 0 22px; font-size: 12px; color: var(--ink-dim); letter-spacing: 0.2em; }
 .victory-actions { display: flex; justify-content: center; }
 .victory .etch-btn { padding: 11px 30px; font-size: 13px; }
-.relics { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--ink-dim); letter-spacing: 0.12em; }
+.relics { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--ink-dim); letter-spacing: 0.12em; }
 </style>

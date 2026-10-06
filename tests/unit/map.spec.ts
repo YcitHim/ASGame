@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   advanceNode,
+  chooseNode,
   createRunState,
+  currentLayer,
   currentNode,
+  generateActMap,
   healRun,
   isCombatNode,
   isRunComplete,
@@ -17,30 +20,64 @@ const game = loadGameContent();
 const act = game.acts[0];
 const cls = game.content.classes.get("bloodwright")!;
 
-describe("S5.1 线性地图（core/map）", () => {
-  it("createRunState：满血开局、节点 0、无已清记录", () => {
+describe("S5.1 分支地图（core/map）", () => {
+  it("createRunState：满血开局、层 0、未选、无已清记录", () => {
     const run = createRunState(act, cls, 42);
     expect(run.hp).toBe(cls.player.maxHp);
-    expect(run.nodeIndex).toBe(0);
+    expect(run.layerIndex).toBe(0);
+    expect(run.picked).toEqual([]);
     expect(run.cleared).toEqual([]);
   });
 
-  it("advanceNode：推进并记录已清；末尾变为通关", () => {
+  it("分支层：未选时没有 currentNode，chooseNode 后可进入，advance 记录已清", () => {
     let run = createRunState(act, cls, 1);
-    for (let i = 0; i < act.map.length; i += 1) {
+    // l0 是 width=1 的必经战斗：无需选择自动生效
+    expect(currentNode(run, act)?.kind).toBe("battle");
+    run = advanceNode(run, act);
+    expect(run.layerIndex).toBe(1);
+    expect(run.cleared).toHaveLength(1);
+    // l1 是 3 选 1：未选时没有 currentNode
+    const layer = currentLayer(run, act);
+    expect(layer?.nodes).toHaveLength(3);
+    expect(currentNode(run, act)).toBeUndefined();
+    run = chooseNode(run, act, 2);
+    expect(currentNode(run, act)?.id).toBe(layer!.nodes[2].id);
+  });
+
+  it("chooseNode 拒绝越界；advanceNode 全程走完可通关", () => {
+    let run = createRunState(act, cls, 7);
+    const same = chooseNode(run, act, 99);
+    expect(same).toBe(run);
+    for (let i = 0; i < act.layers.length; i += 1) {
       expect(isRunComplete(run, act)).toBe(false);
+      run = chooseNode(run, act, 0);
       run = advanceNode(run, act);
     }
     expect(isRunComplete(run, act)).toBe(true);
-    expect(run.cleared).toEqual(act.map.map((n) => n.id));
+    expect(run.cleared).toHaveLength(act.layers.length);
+  });
+
+  it("汇合点：精英后（l4 休息）与 Boss 前（l6 祭坛）各一个 width=1 层", () => {
+    const layers = generateActMap(act, 99);
+    expect(layers[3].nodes).toHaveLength(1); // 精英
+    expect(layers[4].nodes).toHaveLength(1); // 精英后汇合（休息）
+    expect(layers[6].nodes).toHaveLength(1); // Boss 前汇合（祭坛）
+    expect(layers[7].nodes).toHaveLength(1); // Boss
   });
 
   it("mapView / currentNode / isCombatNode", () => {
-    const run = createRunState(act, cls, 1);
+    let run = createRunState(act, cls, 1);
+    run = chooseNode(run, act, 0);
     const view = mapView(run, act);
-    expect(view.current?.id).toBe("n1");
+    expect(view.layers).toHaveLength(8);
+    expect(view.current?.kind).toBe("battle");
     expect(isCombatNode(currentNode(run, act))).toBe(true);
-    const restRun = { ...run, nodeIndex: 4 };
+    // 精英层（l3）
+    const eliteRun = { ...run, layerIndex: 3, picked: [0, 0, 0, 0] };
+    expect(isCombatNode(currentNode(eliteRun, act))).toBe(true);
+    expect(currentNode(eliteRun, act)?.kind).toBe("elite");
+    // 精英后汇合点（l4）是休息
+    const restRun = { ...run, layerIndex: 4, picked: [0, 0, 0, 0, 0] };
     expect(isCombatNode(currentNode(restRun, act))).toBe(false);
     expect(currentNode(restRun, act)?.kind).toBe("rest");
   });

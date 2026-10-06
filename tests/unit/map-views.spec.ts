@@ -23,13 +23,14 @@ function mountView(component: Parameters<typeof mount>[0], setup?: (run: ReturnT
 }
 
 describe("S5 UI 流程视图挂载", () => {
-  it("MapView：7 个节点，当前节点可进入", async () => {
+  it("MapView：分支地图共 12 个候选节点，当前层可进入", async () => {
     const { wrapper } = mountView(MapView);
     await nextTick();
     const run = useRunStore();
     run.startRun("bloodwright", 1);
     await nextTick();
-    expect(wrapper.findAll(".node")).toHaveLength(7);
+    expect(wrapper.findAll(".node")).toHaveLength(12);
+    // 入口层（l0）只有一个必经节点
     expect(wrapper.findAll(".go")).toHaveLength(1);
     wrapper.unmount();
   });
@@ -37,7 +38,7 @@ describe("S5 UI 流程视图挂载", () => {
   it("MapView：通关后显示居中胜利弹窗（不是地图下方的内联块）", async () => {
     const { wrapper } = mountView(MapView, (run) => {
       run.startRun("bloodwright", 1);
-      for (let i = 0; i < 7; i += 1) run.advance();
+      for (let i = 0; i < 8; i += 1) run.advance();
     });
     await nextTick();
     expect(wrapper.find(".victory-overlay").exists()).toBe(true);
@@ -57,7 +58,7 @@ describe("S5 UI 流程视图挂载", () => {
   it("RewardView：Boss 节点显示远征胜利而非卡奖", async () => {
     const { wrapper } = mountView(RewardView, (run) => {
       run.startRun("bloodwright", 1);
-      for (let i = 0; i < 6; i += 1) run.advance();
+      for (let i = 0; i < 7; i += 1) run.advance();
     });
     await nextTick();
     expect(wrapper.text()).toContain("远 征 胜 利");
@@ -68,10 +69,8 @@ describe("S5 UI 流程视图挂载", () => {
   it("RestView：三个选项；选择打磨后列出卡组", async () => {
     const { wrapper, run } = mountView(RestView, (r) => {
       r.startRun("bloodwright", 1);
-      r.advance();
-      r.advance();
-      r.advance();
-      r.advance();
+      // 推进到精英后的汇合点（l4，必为休息）
+      for (let i = 0; i < 4; i += 1) r.advance();
     });
     await nextTick();
     // 休息点三选一：憩息 / 打磨 / 剔除（docs/16 P3.5）

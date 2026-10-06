@@ -6,12 +6,13 @@ function battleFromAct(seed: number): BattleState {
   const game = loadGameContent();
   const act = game.acts[0];
   const cls = game.content.classes.get("bloodwright")!;
-  const node = act.map.find((n) => n.kind === "battle");
+  // 分支地图：入口层（l0）是必经战斗，用它的首个遭遇池做冒烟
+  const enemies = act.layers[0]?.encounters?.[0]?.enemies ?? [];
   return createBattleState({
     battleId: "smoke",
     seed,
     player: cls.player,
-    enemies: (node?.enemies ?? []).map((id) => ({ id })),
+    enemies: enemies.map((id) => ({ id })),
     deck: cls.startDeck,
     content: game.content,
   });
@@ -30,13 +31,41 @@ describe("真实内容装载（data/load）", () => {
     expect(game.i18n["card.strike.name"]).toBe("打击");
   });
 
-  it("线性地图 7 节点（2 普通战 + 1 事件），含精英 / 休息 / 祭坛 / Boss", () => {
+  it("分支地图层模板：入口/精英/汇合/Boss，分支层带遭遇与事件池", () => {
     const act = loadGameContent().acts[0];
-    expect(act.map).toHaveLength(7);
-    expect(act.map.map((n) => n.kind)).toEqual(["battle", "battle", "event", "elite", "rest", "altar", "boss"]);
-    expect(act.map[1].enemies).toEqual(["corroded_swarm", "riveted_heavy"]);
-    expect(act.map[2].events?.length).toBe(5);
-    expect(act.map[6].enemies).toEqual(["rust_throat"]);
+    expect(act.layers).toHaveLength(8);
+    expect(act.weights).toEqual({ battle: 40, elite: 15, rest: 15, altar: 15, event: 15 });
+    // 入口必经战斗、精英层、Boss 层
+    expect(act.layers[0].width).toBe(1);
+    expect(act.layers[0].kinds).toEqual(["battle"]);
+    expect(act.layers[3].kinds).toEqual(["elite"]);
+    expect(act.layers[3].enemies).toEqual(["rust_warden"]);
+    expect(act.layers[7].kinds).toEqual(["boss"]);
+    expect(act.layers[7].enemies).toEqual(["rust_throat"]);
+    // 精英后（l4=休息）与 Boss 前（l6=祭坛）各一个汇合点（width=1）
+    expect(act.layers[4].width).toBe(1);
+    expect(act.layers[4].kinds).toEqual(["rest"]);
+    expect(act.layers[6].width).toBe(1);
+    expect(act.layers[6].kinds).toEqual(["altar"]);
+    // 分支层：3 选 1，带遭遇池与事件池
+    expect(act.layers[1].width).toBe(3);
+    expect(act.layers[1].encounters?.length).toBe(3);
+    expect(act.layers[1].events?.length).toBe(5);
+  });
+
+  it("同种子生成同一张分支地图；不同种子不同（map 流独立可复现）", async () => {
+    const { generateActMap } = await import("@/core/map");
+    const act = loadGameContent().acts[0];
+    const a = generateActMap(act, 12345);
+    const b = generateActMap(act, 12345);
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+    expect(a).toHaveLength(8);
+    // 分支层数量正确
+    expect(a[1].nodes).toHaveLength(3);
+    expect(a[3].nodes).toHaveLength(1);
+    // 分支层节点 id 唯一
+    const ids = a.flatMap((l) => l.nodes.map((n) => n.id));
+    expect(new Set(ids).size).toBe(ids.length);
   });
 
   it("敌人不会连续两回合防御（玩家反馈：防御后又防御）", () => {

@@ -6,7 +6,9 @@ import type { DomainEvent } from "../../../src/core/events";
 import { createBattleState, reduce, type BattleState } from "../../../src/core/combat";
 import {
   advanceNode,
+  chooseNode,
   createRunState,
+  currentLayer,
   currentNode,
   healRun,
   isCombatNode,
@@ -98,6 +100,19 @@ function applyEnhancementChoice(
     }
   }
   return null;
+}
+
+/** 分支路线评分：低血优先休息，否则优先事件/祭坛/战斗，尽量避开精英。 */
+function chooseBranchIndex(layer: { nodes: readonly { kind: string }[] }, run: RunState): number {
+  const lowHp = run.hp < run.maxHp * 0.55;
+  const order = lowHp
+    ? ["rest", "altar", "event", "battle", "elite"]
+    : ["event", "altar", "battle", "rest", "elite"];
+  for (const kind of order) {
+    const index = layer.nodes.findIndex((n) => n.kind === kind);
+    if (index >= 0) return index;
+  }
+  return 0;
 }
 
 /** 事件选项评分（贪心 AI）：优先强化/遗物/卡，HP 越低越避忌付费；赌博按期望值。 */
@@ -224,7 +239,7 @@ export function simulateRun(
   const finish = (outcome: "win" | "lose"): SimResult => ({
     seed,
     outcome,
-    nodeReached: run.nodeIndex,
+    nodeReached: run.layerIndex,
     battles,
     turns,
     damageDealt,
@@ -243,6 +258,12 @@ export function simulateRun(
   });
 
   while (!isRunComplete(run, act)) {
+    // 分支地图：当前层没选就按策略选一个（路线偏好见 chooseBranchIndex）
+    const layer = currentLayer(run, act);
+    if (!layer) break;
+    if (run.picked[run.layerIndex] === undefined) {
+      run = chooseNode(run, act, chooseBranchIndex(layer, run));
+    }
     const node = currentNode(run, act);
     if (!node) break;
 
@@ -250,7 +271,7 @@ export function simulateRun(
       battles += 1;
       const battle = runBattle(content, {
         battleId: `${act.id}-${node.id}`,
-        seed: (run.seed ^ Math.imul(run.nodeIndex + 1, 0x9e3779b9)) >>> 0,
+        seed: (run.seed ^ Math.imul(run.layerIndex + 1, 0x9e3779b9)) >>> 0,
         maxHp: run.maxHp,
         energy: cls.player.energy,
         hp: run.hp,
@@ -277,7 +298,7 @@ export function simulateRun(
       // 战后奖励（对齐游戏真实流程）：
       //   普通战 = 卡奖；精英 = 遗物 + 强化三选一（docs/25 §1，无卡奖）；Boss = 结束
       if (node.kind === "battle") {
-        const rewards = rollCardRewards(content, act, run, run.nodeIndex);
+        const rewards = rollCardRewards(content, act, run, run.layerIndex);
         const pick = bestReward(rewards, content);
         if (pick) {
           deck.push({ cardId: pick, upgraded: false, enhancements: [] });
@@ -289,7 +310,7 @@ export function simulateRun(
         const applied = applyEnhancementChoice(
           content,
           deck,
-          rollEnhancementChoices(content, run, run.nodeIndex),
+          rollEnhancementChoices(content, run, run.layerIndex),
         );
         if (applied) enhancements[applied] = (enhancements[applied] ?? 0) + 1;
       }
@@ -312,7 +333,7 @@ export function simulateRun(
       const def = rollEvent(content, run, node);
       if (def) {
         const optionId = chooseEventOption(def, run);
-        const seed = (run.seed ^ Math.imul(run.nodeIndex + 11, 0x27d4eb2f)) >>> 0;
+        const seed = (run.seed ^ Math.imul(run.layerIndex + 11, 0x27d4eb2f)) >>> 0;
         const res = resolveEventOption(content, def, optionId, { seed, ownedRelics: relics, classId });
         if (res) {
           if (res.hpDelta !== 0) {
@@ -322,7 +343,7 @@ export function simulateRun(
           for (const id of res.relicIds) if (!relics.includes(id)) relics.push(id);
           for (const id of res.cardIds) deck.push({ cardId: id, upgraded: false, enhancements: [] });
           if (res.gainEnhancement) {
-            const applied = applyEnhancementChoice(content, deck, rollEnhancementChoices(content, run, run.nodeIndex));
+            const applied = applyEnhancementChoice(content, deck, rollEnhancementChoices(content, run, run.layerIndex));
             if (applied) enhancements[applied] = (enhancements[applied] ?? 0) + 1;
           }
         }
@@ -335,7 +356,7 @@ export function simulateRun(
       const applied = applyEnhancementChoice(
         content,
         deck,
-        rollEnhancementChoices(content, run, run.nodeIndex),
+        rollEnhancementChoices(content, run, run.layerIndex),
       );
       if (applied) enhancements[applied] = (enhancements[applied] ?? 0) + 1;
       run = advanceNode(run, act);

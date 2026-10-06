@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createBattleState, reduce, type BattleState } from "@/core/combat";
 import { createContentDb } from "@/core/registry";
-import { createRunState, rollEncounter } from "@/core/map";
+import { createRunState, generateActMap, rollEncounter } from "@/core/map";
 import { loadGameContent } from "@/data/load";
 
 /**
@@ -61,8 +61,9 @@ describe("docs/29 §一③ 遭遇池", () => {
   it("rollEncounter：同种子同结果，且只产出候选组合", () => {
     const act = game.acts[0]!;
     const cls = game.content.classes.get("bloodwright")!;
-    const node = act.map[1]!; // n2 带 encounters
     const run = createRunState(act, cls, 12345);
+    // 入口层（l0）是必经战斗，带早期遭遇池
+    const node = generateActMap(act, run.seed)[0].nodes[0]!;
     const a = rollEncounter(run, node);
     const b = rollEncounter(run, node);
     expect(a).toEqual(b);

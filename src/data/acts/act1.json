@@ -5,72 +5,188 @@
     "bloodwright",
     "engineer"
   ],
-  "map": [
+  "weights": {
+    "battle": 40,
+    "elite": 15,
+    "rest": 15,
+    "altar": 15,
+    "event": 15
+  },
+  "layers": [
     {
-      "id": "n1",
-      "kind": "battle",
-      "enemies": [
-        "rust_hound",
-        "polluting_preacher"
+      "id": "l0",
+      "width": 1,
+      "kinds": [
+        "battle"
       ],
       "encounters": [
-        { "enemies": ["rust_hound", "polluting_preacher"], "weight": 4 },
-        { "enemies": ["rust_hound", "rust_hound"], "weight": 3 },
-        { "enemies": ["corroded_swarm", "rust_hound"], "weight": 3 }
-      ],
-      "i18n": "node.n1"
+        {
+          "enemies": [
+            "rust_hound",
+            "polluting_preacher"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "rust_hound",
+            "rust_hound"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "corroded_swarm",
+            "rust_hound"
+          ],
+          "weight": 3
+        }
+      ]
     },
     {
-      "id": "n2",
-      "kind": "battle",
-      "enemies": [
-        "corroded_swarm",
-        "riveted_heavy"
+      "id": "l1",
+      "width": 3,
+      "kinds": [
+        "battle",
+        "rest",
+        "altar",
+        "event"
       ],
       "encounters": [
-        { "enemies": ["corroded_swarm", "riveted_heavy"], "weight": 4 },
-        { "enemies": ["riveted_heavy", "polluting_preacher"], "weight": 3 },
-        { "enemies": ["rust_sentinel", "corroded_swarm"], "weight": 3 }
+        {
+          "enemies": [
+            "rust_hound",
+            "polluting_preacher"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "rust_hound",
+            "rust_hound"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "corroded_swarm",
+            "rust_hound"
+          ],
+          "weight": 3
+        }
       ],
-      "i18n": "node.n2"
-    },
-    {
-      "id": "n2e",
-      "kind": "event",
       "events": [
         "gear_gamble",
         "blood_trader",
         "pure_spring",
         "power_station",
         "dying_pilgrim"
-      ],
-      "i18n": "node.n2e"
+      ]
     },
     {
-      "id": "n3",
-      "kind": "elite",
+      "id": "l2",
+      "width": 1,
+      "kinds": [
+        "battle"
+      ],
+      "encounters": [
+        {
+          "enemies": [
+            "corroded_swarm",
+            "riveted_heavy"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "riveted_heavy",
+            "polluting_preacher"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "rust_sentinel",
+            "corroded_swarm"
+          ],
+          "weight": 3
+        }
+      ]
+    },
+    {
+      "id": "l3",
+      "width": 1,
+      "kinds": [
+        "elite"
+      ],
       "enemies": [
         "rust_warden"
+      ]
+    },
+    {
+      "id": "l4",
+      "width": 1,
+      "kinds": [
+        "rest"
+      ]
+    },
+    {
+      "id": "l5",
+      "width": 3,
+      "kinds": [
+        "battle",
+        "elite",
+        "rest",
+        "altar",
+        "event"
       ],
-      "i18n": "node.n3"
+      "encounters": [
+        {
+          "enemies": [
+            "corroded_swarm",
+            "riveted_heavy"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "riveted_heavy",
+            "polluting_preacher"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "rust_sentinel",
+            "corroded_swarm"
+          ],
+          "weight": 3
+        }
+      ],
+      "events": [
+        "gear_gamble",
+        "blood_trader",
+        "pure_spring",
+        "power_station",
+        "dying_pilgrim"
+      ]
     },
     {
-      "id": "n4",
-      "kind": "rest",
-      "i18n": "node.n4"
+      "id": "l6",
+      "width": 1,
+      "kinds": [
+        "altar"
+      ]
     },
     {
-      "id": "n5",
-      "kind": "altar",
-      "i18n": "node.n5"
-    },
-    {
-      "id": "n6",
-      "kind": "boss",
+      "id": "l7",
+      "width": 1,
+      "kinds": [
+        "boss"
+      ],
       "enemies": [
         "rust_throat"
-      ],
-      "i18n": "node.n6"
+      ]
     }
   ]
 }

@@ -223,6 +223,29 @@ export interface EventDefinition {
   readonly options: readonly EventOption[];
 }
 
+/**
+ * 分支地图的「层模板」（docs/16 5.4 / docs/14 Q17）。
+ * 运行时由 generateActMap 按种子实例化成 MapLayer[]：
+ * width=1 为必经/汇合点，width≥2 为该层二选一的分支候选。
+ */
+export interface MapLayerSpec {
+  readonly id: string;
+  /** 候选节点数（1 = 必经/汇合，2~3 = 分支） */
+  readonly width: number;
+  /** 本层允许生成的节点类型；实际类型按 weights 抽取 */
+  readonly kinds: readonly NodeKind[];
+  /** 本层类型权重覆盖（缺省用 act 的全局权重） */
+  readonly weights?: Readonly<Record<string, number>>;
+  /** battle 节点的遭遇池（docs/29 §一③） */
+  readonly encounters?: readonly EncounterEntry[];
+  /** event 节点的事件池 */
+  readonly events?: readonly string[];
+  /** 写死敌人（width=1 的精英 / Boss 层用） */
+  readonly enemies?: readonly string[];
+  /** 节点文案覆盖（缺省用 node.<kind>） */
+  readonly i18n?: string;
+}
+
 export interface MapNode {
   readonly id: string;
   readonly kind: NodeKind;
@@ -243,8 +266,10 @@ export interface ActDefinition {
   readonly i18n: string;
   /** 本幕可选职业 id 列表（docs/16 5.1） */
   readonly classes: readonly string[];
-  /** 节点列表（0.1 线性不分支；P5 起可分支） */
-  readonly map: readonly MapNode[];
+  /** 全局节点类型权重（普40 / 精15 / 休15 / 祭15 / 事15，docs/14 Q17） */
+  readonly weights: Readonly<Record<string, number>>;
+  /** 分支地图层模板（docs/16 5.4）：顺序即推进顺序，层内候选按种子生成 */
+  readonly layers: readonly MapLayerSpec[];
 }
 
 /** 触发器时机（triggers README 的 v0 时机表）。 */

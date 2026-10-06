@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it } from "vitest";
-import { resolveEventOption } from "@/core/map";
+import { generateActMap, resolveEventOption } from "@/core/map";
 import { loadGameContent } from "@/data/load";
 import { useRunStore } from "@/stores/run";
 
@@ -90,11 +90,18 @@ describe("docs/27 §三 事件在 runStore 的落库", () => {
     setActivePinia(createPinia());
   });
 
-  it("推进到事件节点：抽到事件、结算写回 HP/污染、推进后清除", () => {
+  it("推进到事件节点：抽到事件、结算写回 HP/污染、推进后清除", async () => {
     const run = useRunStore();
-    run.startRun("bloodwright", 1);
-    run.advance();
-    run.advance();
+    const act = game.acts[0];
+    let seed = 1;
+    for (; seed < 50; seed += 1) {
+      if (generateActMap(act, seed).some((l) => l.nodes.some((n) => n.kind === "event"))) break;
+    }
+    run.startRun("bloodwright", seed);
+    const map = generateActMap(act, run.run!.seed);
+    const li = map.findIndex((l) => l.nodes.some((n) => n.kind === "event"));
+    const ni = map[li].nodes.findIndex((n) => n.kind === "event");
+    run.run = { ...run.run!, layerIndex: li, picked: [...Array(li).fill(0), ni] };
     expect(run.current?.kind).toBe("event");
     const def = run.eventDef;
     expect(def).toBeTruthy();
@@ -110,7 +117,6 @@ describe("docs/27 §三 事件在 runStore 的落库", () => {
     run.eventContinue();
     expect(run.eventResult).toBeNull();
     expect(keepResult?.hpDelta ?? 0).toBeLessThanOrEqual(0);
-    expect(run.current?.kind).toBe("elite");
     void before;
   });
 });

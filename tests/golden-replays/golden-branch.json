@@ -1,0 +1,203 @@
+{
+  "version": 1,
+  "recordedAt": "2026-10-05",
+  "content": "rust-and-blood",
+  "battle": {
+    "id": "golden-branch",
+    "nodeId": "l5",
+    "enemies": [
+      "rust_sentinel",
+      "corroded_swarm"
+    ],
+    "deck": [
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "strike",
+        "upgraded": false,
+        "enhancements": [
+          "empower"
+        ]
+      },
+      {
+        "cardId": "defend",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "defend",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "defend",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "bloodbolt",
+        "upgraded": false,
+        "enhancements": [
+          "thrifty_pact"
+        ]
+      },
+      {
+        "cardId": "bloodflail",
+        "upgraded": false,
+        "enhancements": [
+          "empower"
+        ]
+      },
+      {
+        "cardId": "redtear",
+        "upgraded": false,
+        "enhancements": [
+          "bloodboil"
+        ]
+      },
+      {
+        "cardId": "brace",
+        "upgraded": true,
+        "enhancements": []
+      },
+      {
+        "cardId": "exsanguinate",
+        "upgraded": false,
+        "enhancements": []
+      }
+    ],
+    "relics": [
+      "broken_oil",
+      "blood_pump",
+      "redtear_ring"
+    ],
+    "seed": 515151,
+    "player": {
+      "maxHp": 66,
+      "energy": 3
+    },
+    "actions": [
+      {
+        "type": "Noop",
+        "actionId": "start"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p1",
+        "handIndex": 3,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p2",
+        "handIndex": 0,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p3",
+        "handIndex": 1,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e4"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p5",
+        "handIndex": 4,
+        "targetId": "rust_sentinel"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e6"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p7",
+        "handIndex": 4,
+        "targetId": "rust_sentinel"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p8",
+        "handIndex": 1,
+        "targetId": "rust_sentinel"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e9"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p10",
+        "handIndex": 2,
+        "targetId": "rust_sentinel"
+      }
+    ],
+    "eventHash": "7ff9835a30b9db3ddf4e9c9dad3962c8c06e510eebadac0d443d00e8f895dc04",
+    "eventTypes": [
+      "BattleStarted",
+      "CardsDrawn",
+      "BuffApplied",
+      "IntentRevealed",
+      "IntentRevealed",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "DamageDealt",
+      "HpLost",
+      "DamageDealt",
+      "HpLost",
+      "CardExhausted",
+      "HpLost",
+      "HpHealed",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "UnitDied",
+      "PollutionChanged",
+      "TurnEnded",
+      "ChargeResolved",
+      "BlockGained",
+      "BlockGained",
+      "TurnStarted",
+      "CardsDrawn",
+      "IntentRevealed",
+      "HpLost",
+      "HpHealed",
+      "CardPlayed",
+      "BlockBroken",
+      "DamageDealt",
+      "HpLost",
+      "CardExhausted",
+      "TurnEnded",
+      "ChargeResolved",
+      "BlockBroken"
+    ],
+    "turns": 4,
+    "outcome": "win"
+  }
+}

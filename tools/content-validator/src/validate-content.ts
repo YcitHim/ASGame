@@ -221,20 +221,40 @@ export function validateContent(input: ContentInput): ValidationResult {
         issues.push({ file: `act ${act.id}`, path: "classes", message: `引用了不存在的职业 "${classId}"` });
       }
     }
-    for (const node of act.map) {
-      const needsEnemies = node.kind === "battle" || node.kind === "elite" || node.kind === "boss";
-      if (needsEnemies && (!node.enemies || node.enemies.length === 0)) {
-        issues.push({ file: `act ${act.id}`, path: `map.${node.id}`, message: `${node.kind} 节点必须配置 enemies` });
+    // 分支地图层校验（docs/16 5.4）：种类合法、敌人/遭遇/事件引用存在、文案存在
+    const layerIds = new Set<string>();
+    for (const layer of act.layers) {
+      if (layerIds.has(layer.id)) {
+        issues.push({ file: `act ${act.id}`, path: "layers", message: `层 id "${layer.id}" 重复` });
       }
-      for (const enemyId of node.enemies ?? []) {
+      layerIds.add(layer.id);
+      const isMerge = layer.width === 1;
+      for (const kind of layer.kinds) {
+        requireKeyEarly(`act ${act.id}`, layer.i18n ?? `node.${kind}`);
+      }
+      // 写死敌人只允许出现在必经层（分支层的候选种类由生成器决定）
+      if (!isMerge && layer.enemies && layer.enemies.length > 0) {
+        issues.push({ file: `act ${act.id}`, path: `layers.${layer.id}`, message: "分支层不能写死 enemies" });
+      }
+      if (!isMerge && layer.kinds.some((k) => k === "elite" || k === "boss") && !layer.kinds.includes("battle")) {
+        // 允许精英作为分支候选，但必须至少有一种非 Boss 类型，避免全层 Boss
+        issues.push({ file: `act ${act.id}`, path: `layers.${layer.id}`, message: "分支层类型异常" });
+      }
+      for (const enemyId of layer.enemies ?? []) {
         if (!enemyIds.has(enemyId)) {
-          issues.push({ file: `act ${act.id}`, path: `map.${node.id}`, message: `引用了不存在的敌人 "${enemyId}"` });
+          issues.push({ file: `act ${act.id}`, path: `layers.${layer.id}`, message: `引用了不存在的敌人 "${enemyId}"` });
         }
       }
-      const eventRefs = [...(node.events ?? []), ...(node.event ? [node.event] : [])];
-      for (const eventId of eventRefs) {
+      for (const entry of layer.encounters ?? []) {
+        for (const enemyId of entry.enemies) {
+          if (!enemyIds.has(enemyId)) {
+            issues.push({ file: `act ${act.id}`, path: `layers.${layer.id}`, message: `遭遇池引用了不存在的敌人 "${enemyId}"` });
+          }
+        }
+      }
+      for (const eventId of layer.events ?? []) {
         if (!eventIds.has(eventId)) {
-          issues.push({ file: `act ${act.id}`, path: `map.${node.id}`, message: `引用了不存在的事件 "${eventId}"` });
+          issues.push({ file: `act ${act.id}`, path: `layers.${layer.id}`, message: `引用了不存在的事件 "${eventId}"` });
         }
       }
     }

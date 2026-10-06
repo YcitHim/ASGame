@@ -277,13 +277,33 @@ export const mapNodeSchema = z
   })
   .strict();
 
+/** 分支地图层模板（docs/16 5.4）：width=1 必经/汇合，width≥2 分支候选。 */
+const mapLayerSpecSchema = z
+  .object({
+    id: idSchema,
+    width: z.number().int().min(1).max(4),
+    kinds: z.array(z.enum(NODE_KINDS)).min(1),
+    weights: z.record(z.string(), z.number().min(0)).optional(),
+    encounters: z
+      .array(z.object({ enemies: z.array(z.string().regex(ID_PATTERN)).min(1), weight: z.number().min(0) }).strict())
+      .min(1)
+      .optional(),
+    events: z.array(z.string().regex(ID_PATTERN)).min(1).optional(),
+    enemies: z.array(z.string().regex(ID_PATTERN)).min(1).optional(),
+    i18n: z.string().optional(),
+  })
+  .strict();
+
 export const actSchema = z
   .object({
     id: idSchema,
     i18n: z.string(),
     /** 本幕可选职业 id 列表（docs/16 5.1） */
     classes: z.array(z.string().regex(ID_PATTERN)).min(1),
-    map: z.array(mapNodeSchema).min(1),
+    /** 全局节点类型权重（docs/14 Q17） */
+    weights: z.record(z.string(), z.number().min(0)),
+    /** 分支地图层模板（至少：入口 + 精英 + Boss） */
+    layers: z.array(mapLayerSpecSchema).min(3),
   })
   .strict();
 
