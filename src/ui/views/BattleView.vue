@@ -520,7 +520,11 @@ function back(): void {
       <!-- 日志抽屉 -->
       <div v-if="showLog" class="log-drawer">
         <BattleLog :entries="logEntries" />
-        <DebugConsole v-if="isDev" :feedback="store.message" @command="store.debug($event)" />
+        <DebugConsole
+        v-if="isDev || settings.values.developerMode"
+        :feedback="store.message"
+        @command="store.debug($event)"
+      />
       </div>
 
       <!-- 结算 -->

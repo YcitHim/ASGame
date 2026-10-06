@@ -6,11 +6,28 @@ import type { MapNode } from "@/core/registry";
 import { loadGameContent, t } from "@/data/load";
 import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
+import { useSettingsStore } from "@/stores/settings";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
 const router = useRouter();
 const run = useRunStore();
 const meta = useMetaStore();
+const settings = useSettingsStore();
+const devMode = computed(() => settings.values.developerMode);
+
+/** 开发者模式：跳过当前层（不结算），用于快速抵达后续内容。 */
+function devSkipLayer(): void {
+  if (run.finished) return;
+  run.advance();
+}
+/** 开发者模式：一路推进到 Boss 层。 */
+function devToBoss(): void {
+  for (let i = 0; i < 12 && !run.finished; i += 1) {
+    const node = run.current;
+    if (node?.kind === "boss") break;
+    run.advance();
+  }
+}
 const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 
@@ -102,6 +119,13 @@ function toTitle(): void {
         </div>
       </div>
 
+      <div v-if="devMode" class="dev-panel">
+        <span class="dev-tag">DEV</span>
+        <button class="dev-btn" @click="devSkipLayer">跳过本层</button>
+        <button class="dev-btn" @click="devToBoss">直达 Boss</button>
+        <span class="dev-hint">幕 {{ (run.run?.actIndex ?? 0) + 1 }} · 层 {{ run.run?.layerIndex ?? 0 }}</span>
+      </div>
+
       <h1 class="head">远 征 路 线</h1>
       <p v-if="isBranch" class="hint">前方分岔 —— 选择一条路</p>
 
@@ -171,6 +195,11 @@ function toTitle(): void {
 .topbar .hp { color: var(--blood-hi); font-family: var(--serif-num); }
 .head { font-family: var(--serif-title); font-size: 24px; letter-spacing: 0.5em; color: var(--ink-bone); }
 .hint { margin-top: 6px; font-size: 11px; letter-spacing: 0.24em; color: var(--gold-dim); }
+.dev-panel { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 5px 12px; border: 1px dashed rgba(192,57,43,.5); border-radius: var(--radius-sm); background: rgba(30,12,10,.35); }
+.dev-tag { font-size: 10px; letter-spacing: .2em; color: var(--blood-hi); border: 1px solid rgba(192,57,43,.6); padding: 1px 6px; border-radius: 999px; }
+.dev-btn { padding: 4px 10px; font-size: 11px; color: var(--ink-dim); background: rgba(18,16,14,.7); border: 1px solid rgba(110,88,54,.4); border-radius: var(--radius-sm); cursor: pointer; }
+.dev-btn:hover { color: var(--gold); border-color: var(--gold); }
+.dev-hint { font-size: 10px; color: var(--ink-dim); }
 .track { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; width: 760px; max-height: 470px; overflow-y: auto; padding: 2px 6px 8px; }
 .layer { display: flex; align-items: stretch; gap: 10px; }
 .layer-nodes { flex: 1; display: flex; gap: 10px; }

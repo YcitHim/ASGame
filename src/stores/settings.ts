@@ -13,6 +13,8 @@ export interface Settings {
   /** 跳过单场动画（docs/08 §6：支持跳过与 2× 倍速） */
   animationSpeed: 1 | 2;
   language: "zh-CN";
+  /** 开发者模式（测试用）：解锁全部内容，并在选人/地图页露出跳关入口 */
+  developerMode: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -22,6 +24,7 @@ export const DEFAULT_SETTINGS: Settings = {
   screenShake: true,
   animationSpeed: 1,
   language: "zh-CN",
+  developerMode: false,
 };
 
 function clamp01(n: unknown, fallback: number): number {
@@ -38,6 +41,7 @@ export function normalizeSettings(raw: Partial<Settings> | null | undefined): Se
     screenShake: typeof r.screenShake === "boolean" ? r.screenShake : DEFAULT_SETTINGS.screenShake,
     animationSpeed: r.animationSpeed === 2 ? 2 : 1,
     language: "zh-CN",
+    developerMode: typeof r.developerMode === "boolean" ? r.developerMode : DEFAULT_SETTINGS.developerMode,
   };
 }
 

@@ -5,11 +5,19 @@ import { loadGameContent, t } from "@/data/load";
 import { relicPool, type RunDifficulty } from "@/core/map";
 import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
+import { useSettingsStore } from "@/stores/settings";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
 const router = useRouter();
 const run = useRunStore();
 const meta = useMetaStore();
+const settings = useSettingsStore();
+/** 开发者模式（测试跳关）：解锁全部 + 指定起始幕/层 */
+const devMode = computed(() => settings.values.developerMode);
+const devAct = ref(0);
+const devLayer = ref(0);
+const devActs = computed(() => loadGameContent().acts);
+const devLayerCount = computed(() => devActs.value[devAct.value]?.layers.length ?? 0);
 /** 难度档（docs/36 T2）：锈蚀需通关一次解锁 */
 const difficulty = ref<RunDifficulty>("normal");
 const rustLocked = computed(() => !meta.rustUnlocked);
@@ -115,7 +123,13 @@ const deckTipInfo = computed(() => {
 
 function choose(classId: string): void {
   if (!isUnlocked(classId)) return;
-  run.startRun(classId, undefined, difficulty.value, companionDef.value);
+  run.startRun(
+    classId,
+    undefined,
+    difficulty.value,
+    companionDef.value,
+    devMode.value ? { actIndex: devAct.value, layerIndex: devLayer.value } : {},
+  );
   void router.push("/map");
 }
 
@@ -126,7 +140,7 @@ function back(): void {
 
 <template>
   <div class="viewport">
-    <div ref="stage" class="stage class-stage">
+    <div ref="stage" class="stage class-stage" :class="{ 'dev-on': devMode }">
       <div class="topbar">
         <span>开始远征</span>
         <div class="r"><span @click="back">返回标题</span></div>
@@ -179,6 +193,24 @@ function back(): void {
           <span>{{ companionDesc(companionDef) }}</span>
           <em>{{ companionFlavor(companionDef) }}</em>
         </div>
+      </div>
+
+      <!-- 开发者模式：指定起始幕 / 层（测试跳关） -->
+      <div v-if="devMode" class="dev-panel">
+        <span class="dev-tag">DEV</span>
+        <span class="dev-label">起始幕</span>
+        <button
+          v-for="(a, i) in devActs"
+          :key="a.id"
+          class="dev-btn"
+          :class="{ on: devAct === i }"
+          @click="devAct = i; devLayer = 0"
+        >
+          {{ t(a.i18n, a.id) }}
+        </button>
+        <span class="dev-label">起始层</span>
+        <input v-model.number="devLayer" class="dev-num" type="number" min="0" :max="devLayerCount - 1" />
+        <span class="dev-hint">/ {{ devLayerCount }} 层（0 = 入口）</span>
       </div>
 
       <div class="classes">
@@ -263,6 +295,9 @@ function back(): void {
   gap: 22px;
   padding: 44px 60px 24px;
 }
+/* 开发者模式下多一行 DEV 面板：收紧间距，避免把「选择」挤出屏幕 */
+.class-stage.dev-on { gap: 10px; padding: 34px 60px 12px; }
+.class-stage.dev-on .cls { min-height: 350px; }
 .topbar {
   position: absolute; top: 0; left: 0; right: 0; height: 34px; z-index: 30;
   display: flex; align-items: center; justify-content: space-between; padding: 0 18px;
@@ -285,6 +320,19 @@ function back(): void {
 .depth-btn.locked { opacity: 0.45; cursor: not-allowed; }
 .depth-desc { font-size: 11px; color: var(--gold-dim); letter-spacing: 0.1em; }
 .depth-desc.locked { color: var(--ink-dim); }
+.dev-panel {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center;
+  padding: 6px 14px;
+  border: 1px dashed rgba(192, 57, 43, 0.5);
+  border-radius: var(--radius-sm);
+  background: rgba(30, 12, 10, 0.35);
+}
+.dev-tag { font-size: 10px; letter-spacing: 0.2em; color: var(--blood-hi); border: 1px solid rgba(192,57,43,.6); padding: 1px 6px; border-radius: 999px; }
+.dev-label { font-size: 11px; color: var(--ink-dim); letter-spacing: 0.12em; }
+.dev-btn { padding: 4px 10px; font-size: 11px; color: var(--ink-dim); background: rgba(18,16,14,.7); border: 1px solid rgba(110,88,54,.4); border-radius: var(--radius-sm); cursor: pointer; }
+.dev-btn.on { color: var(--gold); border-color: var(--gold); }
+.dev-num { width: 56px; padding: 3px 6px; font-size: 12px; color: var(--ink-bone); background: rgba(10,8,6,.9); border: 1px solid rgba(176,141,74,.5); border-radius: var(--radius-sm); }
+.dev-hint { font-size: 10px; color: var(--ink-dim); }
 .companion { display: flex; flex-direction: column; align-items: center; gap: 7px; }
 .companion-head { display: flex; align-items: center; gap: 12px; }
 .companion-hint { font-size: 11px; color: var(--ink-dim); letter-spacing: 0.08em; }

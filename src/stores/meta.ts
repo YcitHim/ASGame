@@ -6,7 +6,13 @@
  * 铁律：全部奖励 = 内容解锁或纪录，禁永久数值成长。
  */
 import { defineStore } from "pinia";
+import { useSettingsStore } from "@/stores/settings";
 import { readSlot, writeSlot } from "@/systems/save";
+
+/** 开发者模式：解锁全部局外内容（测试跳关用）。 */
+function devMode(): boolean {
+  return useSettingsStore().values.developerMode;
+}
 
 /** 成就墙首批 12 条（docs/38 §三 C-3）。 */
 export const ACHIEVEMENT_IDS = [
@@ -85,6 +91,7 @@ export const useMetaStore = defineStore("meta", {
     hasCleared: (state) => (classId: string) => state.clearedClasses.includes(classId),
     /** 职业解锁判定：unlock 缺省 / default = 初始可用；first_boss_clear = 任一职业通关一次。 */
     isUnlocked: (state) => (unlock: string | undefined) => {
+      if (devMode()) return true;
       if (!unlock || unlock === "default" || unlock === "none") return true;
       if (unlock === "first_boss_clear") return state.clearedClasses.length > 0;
       // 第三职业（docs/38 §二 B-1）：血械 + 炉心各通关一次
@@ -94,9 +101,9 @@ export const useMetaStore = defineStore("meta", {
       return state.clearedClasses.length > 0;
     },
     /** 内容（卡/遗物）是否已解锁。 */
-    isContentUnlocked: (state) => (id: string | undefined) => !id || state.unlocked.includes(id),
+    isContentUnlocked: (state) => (id: string | undefined) => devMode() || !id || state.unlocked.includes(id),
     /** 锈蚀难度是否解锁（通关一次）。 */
-    rustUnlocked: (state) => state.clearedClasses.length > 0,
+    rustUnlocked: (state) => devMode() || state.clearedClasses.length > 0,
     isAchieved: (state) => (id: string) => state.achievements.includes(id),
     recordOf: (state) => (classId: string) =>
       state.records[classId] ?? { minTurns: null, maxHp: null },

@@ -10,6 +10,9 @@ import {
   addInterrupt,
   addOverload,
   addTurns,
+  actOf,
+  applyIntermission,
+  hasNextAct,
   advanceNode,
   chooseNode,
   createRunState,
@@ -92,8 +95,17 @@ export const useRunStore = defineStore("run", {
   }),
 
   getters: {
+    acts(): readonly ActDefinition[] {
+      return loadGameContent().acts;
+    },
+    /** 当前幕（docs/40 §二）：随 actIndex 切换。 */
     act(): ActDefinition | undefined {
-      return loadGameContent().acts[0];
+      if (!this.run) return this.acts[0];
+      return actOf(this.run, this.acts) ?? this.acts[0];
+    },
+    /** 一幕打完且还有下一幕 → 需要进幕间。 */
+    needsIntermission(): boolean {
+      return !!this.run && !!this.act && isRunComplete(this.run, this.act) && hasNextAct(this.run, this.acts);
     },
     view(): ReturnType<typeof mapView> | null {
       return this.act && this.run ? mapView(this.run, this.act) : null;
@@ -193,8 +205,12 @@ export const useRunStore = defineStore("run", {
       seed = (Date.now() ^ 0x9e3779b9) >>> 0,
       difficulty: RunDifficulty = "normal",
       companionRelic = "",
+      /** 开发者模式跳关（docs/program 开发模式）：直接落在指定幕 / 层 */
+      opts: { actIndex?: number; layerIndex?: number } = {},
     ): void {
-      const act = this.act;
+      const acts = this.acts;
+      const startActIndex = Math.max(0, Math.min(opts.actIndex ?? 0, Math.max(0, acts.length - 1)));
+      const act = acts[startActIndex];
       if (!act) return;
       const cls = loadGameContent().content.classes.get(classId) ?? loadGameContent().content.classes.get("bloodwright");
       if (!cls) return;
@@ -211,6 +227,16 @@ export const useRunStore = defineStore("run", {
         difficulty,
         companionRelic: companion,
       });
+      const startLayer = Math.max(0, opts.layerIndex ?? 0);
+      if (startActIndex > 0 || startLayer > 0) {
+        this.run = {
+          ...this.run,
+          actIndex: startActIndex,
+          layerIndex: startLayer,
+          deepestAct: startActIndex + 1,
+          deepestLayer: startLayer,
+        };
+      }
       this.deck = cls.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
       this.relics = [...(cls.startRelics ?? []), ...(companion ? [companion] : [])];
       this.acquired = [];
@@ -235,6 +261,11 @@ export const useRunStore = defineStore("run", {
       if (!this.run || !this.act) return;
       this.run = advanceNode(this.run, this.act);
       // 通关即记 meta（职业解锁 / P6 成就的落点，docs/36 T1）
+      if (isRunComplete(this.run, this.act) && hasNextAct(this.run, this.acts)) {
+        // 一幕通关但还有下一幕：交给幕间（docs/40 §2.2），本局尚未结束
+        this.persist();
+        return;
+      }
       if (isRunComplete(this.run, this.act)) {
         const meta = useMetaStore();
         const codex = useCodexStore();
@@ -296,6 +327,13 @@ export const useRunStore = defineStore("run", {
     noteTurns(turns: number): void {
       if (!this.run) return;
       this.run = addTurns(this.run, turns);
+      this.persist();
+    },
+
+    /** 幕间结算（docs/40 §2.2）：切到下一幕 + 回血 25% + 污染清零。 */
+    enterNextAct(): void {
+      if (!this.run) return;
+      this.run = applyIntermission(this.run);
       this.persist();
     },
 

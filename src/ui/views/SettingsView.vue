@@ -29,7 +29,7 @@ function onVolume(key: VolumeRow["key"], event: Event): void {
   store.update({ [key]: value });
 }
 
-function onToggle(key: "screenShake", event: Event): void {
+function onToggle(key: "screenShake" | "developerMode", event: Event): void {
   store.update({ [key]: (event.target as HTMLInputElement).checked });
 }
 
@@ -86,6 +86,22 @@ function back(): void {
             <label><input type="radio" name="speed" :checked="values.animationSpeed === 1" value="1" @change="onSpeed" /> 1×</label>
             <label><input type="radio" name="speed" :checked="values.animationSpeed === 2" value="2" @change="onSpeed" /> 2×</label>
           </div>
+        </div>
+
+        <h3 class="group">开发者</h3>
+        <div class="row">
+          <div class="label">
+            <b>开发者模式</b>
+            <small>解锁全部职业与内容，并在选人 / 地图页露出跳关入口（仅供测试）</small>
+          </div>
+          <label class="switch">
+            <input
+              type="checkbox"
+              :checked="values.developerMode"
+              @change="onToggle('developerMode', $event)"
+            />
+            <span>{{ values.developerMode ? "开" : "关" }}</span>
+          </label>
         </div>
 
         <h3 class="group">语言</h3>
