@@ -10,7 +10,7 @@
 
 **https://YcitHim.github.io/ASGame/** —— 手机横屏体验最佳，直接发链接给朋友即可。
 
-部署方式：推送到 `main` 后，`.github/workflows/deploy.yml` 自动 `npm ci && npm run build` 并发布到 GitHub Pages（无需手动打包上传）。
+部署方式：推送到 `main` 后，`.github/workflows/deploy.yml` 先跑 `lint / typecheck / validate / test` 硬门禁，全绿才 `npm run build` 并发布到 GitHub Pages（无需手动打包上传；门禁任一失败即不会发布）。
 由于游戏使用哈希路由且内容全部打包进 bundle，不需要 404 回退页；`vite.config.ts` 的 `base` 由 CI 注入的 `BASE_PATH` 决定，本地开发仍为 `/`。
 
 ## 开发命令
@@ -25,7 +25,11 @@ npm test           # Vitest 单测
 npm run test:coverage  # 单测 + 覆盖率（门禁：pipeline ≥ 90%）
 npm run sim -- 100 # 无头模拟器（G6）：跑 100 局线性地图，产出胜率/回合/伤害/抓用率报表
 npm run ci         # lint → typecheck → validate → test:coverage → sim 100（CI 同款）
+npm run sync       # 一键同步上线：门禁 → 提交 → 推送 → 等流水线 → 校验线上
 ```
+
+> `npm run sync` 用法：`npm run sync -- "提交信息"`；加 `--no-check` 跳过本地门禁，加 `--no-wait` 推完即走。
+> 它内置了推送重试（HTTPS 到 GitHub 偶发连接重置）并会一直确认到线上产物真正更新，避免"推了但没部署"。
 
 ## 目录导航
 
