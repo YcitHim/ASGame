@@ -64,6 +64,16 @@ describe("systems/save（ADR-008）", () => {
     expect(settings?.data).toEqual({ masterVolume: 0.5 });
   });
 
+  it("v5 进度档迁移到 v6 时补 unlocked / difficulty / 成就计数；非进度档不被污染", () => {
+    const progress = migrate({ version: 5, data: { run: { layerIndex: 2, picked: [] }, deck: [] } });
+    expect(progress?.version).toBe(SCHEMA_VERSION);
+    expect(progress?.data).toMatchObject({
+      run: { layerIndex: 2, unlocked: [], difficulty: "normal", usedBloodpact: false, overloadCount: 0 },
+    });
+    const meta = migrate({ version: 5, data: { clearedClasses: ["bloodwright"], unlocked: [] } });
+    expect(meta?.data).toEqual({ clearedClasses: ["bloodwright"], unlocked: [] });
+  });
+
   it("来自未来版本的存档不猜，直接丢弃", () => {
     localStorage.setItem(slotKey("progress"), JSON.stringify({ version: SCHEMA_VERSION + 5, data: {} }));
     expect(readSlot("progress", "fallback")).toBe("fallback");

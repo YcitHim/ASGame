@@ -8,7 +8,7 @@
 export const SAVE_NAMESPACE = "rustandblood";
 
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export type SaveSlot = "settings" | "progress" | "replay" | "codex" | "meta";
 
@@ -69,6 +69,25 @@ const migrations: Record<number, (data: unknown) => unknown> = {
         ...runRecord,
         layerIndex: typeof runRecord["nodeIndex"] === "number" ? runRecord["nodeIndex"] : 0,
         picked: runRecord["picked"] ?? [],
+      },
+    };
+  },
+  // 5 → 6（docs/36 T1/T2）：RunState 新增局外解锁快照 unlocked、难度 difficulty、
+  // 成就计数 usedBloodpact / overloadCount。meta 槽同样过链，只碰带 run 的进度档。
+  5: (data) => {
+    if (typeof data !== "object" || data === null) return data;
+    const record = data as Record<string, unknown>;
+    const run = record["run"];
+    if (typeof run !== "object" || run === null) return record;
+    const runRecord = run as Record<string, unknown>;
+    return {
+      ...record,
+      run: {
+        ...runRecord,
+        unlocked: runRecord["unlocked"] ?? [],
+        difficulty: runRecord["difficulty"] ?? "normal",
+        usedBloodpact: runRecord["usedBloodpact"] ?? false,
+        overloadCount: runRecord["overloadCount"] ?? 0,
       },
     };
   },
