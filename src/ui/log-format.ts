@@ -71,6 +71,12 @@ export function describeEvent(event: DomainEvent, names: Record<string, string> 
       return { seq: event.seq, type: event.type, text: `充能 ${event.before} → ${event.after}` };
     case "Overloaded":
       return { seq: event.seq, type: event.type, text: `过载！充能 ${event.charge}，反噬 ${event.backlash}` };
+    case "ChargeInterrupted":
+      return {
+        seq: event.seq,
+        type: event.type,
+        text: `${unitLabel(event.enemyId, names)}的蓄力被打断了！`,
+      };
     case "ChargeResolved":
       return {
         seq: event.seq,

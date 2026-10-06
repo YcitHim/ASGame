@@ -6,7 +6,10 @@
  */
 import { defineStore } from "pinia";
 import {
+  addBacklash,
+  addInterrupt,
   addOverload,
+  addTurns,
   advanceNode,
   chooseNode,
   createRunState,
@@ -32,6 +35,7 @@ import {
   type RunState,
 } from "@/core/map";
 import type { ActDefinition, CardDefinition, ClassDefinition, EventDefinition, MapNode } from "@/core/registry";
+import { useCodexStore } from "@/stores/codex";
 import { useMetaStore } from "@/stores/meta";
 import { loadGameContent } from "@/data/load";
 import { clearSlot, readSlot, writeSlot } from "@/systems/save";
@@ -233,11 +237,27 @@ export const useRunStore = defineStore("run", {
       // 通关即记 meta（职业解锁 / P6 成就的落点，docs/36 T1）
       if (isRunComplete(this.run, this.act)) {
         const meta = useMetaStore();
+        const codex = useCodexStore();
+        codex.ensureLoaded();
+        const content = loadGameContent().content;
+        // 全图鉴成就（docs/38 §三 C-3「全图鉴」）
+        const codexComplete =
+          [...content.cards.keys()].every((id) => codex.cardSeen(id)) &&
+          [...content.relics.keys()].every((id) => codex.relicSeen(id)) &&
+          [...content.enemies.keys()].every((id) => codex.enemySeen(id));
         meta.markCleared(this.run.classId);
         meta.evaluateRun({
           classId: this.run.classId,
           usedBloodpact: this.run.usedBloodpact,
           overloadCount: this.run.overloadCount,
+          interrupts: this.run.interrupts,
+          backlashTaken: this.run.backlashTaken,
+          turns: this.run.turns,
+          pollutionPeak: this.run.pollutionPeak,
+          enhancementsAttached: this.acquired.length,
+          difficulty: this.run.difficulty,
+          codexComplete,
+          hpLeft: this.run.hp,
         });
       }
       this.persist();
@@ -254,6 +274,27 @@ export const useRunStore = defineStore("run", {
     noteOverload(): void {
       if (!this.run) return;
       this.run = addOverload(this.run);
+      this.persist();
+    },
+
+    /** 战斗内：断链一次（成就「打断蓄力 10 次」，docs/38 §三 C-1/C-3）。 */
+    noteInterrupt(): void {
+      if (!this.run) return;
+      this.run = addInterrupt(this.run);
+      this.persist();
+    },
+
+    /** 战斗内：承受一次污染反噬（成就「承受 3 次反噬仍胜」）。 */
+    noteBacklash(): void {
+      if (!this.run) return;
+      this.run = addBacklash(this.run);
+      this.persist();
+    },
+
+    /** 战斗结束：累加回合数（最佳纪录「最少回合通关」）。 */
+    noteTurns(turns: number): void {
+      if (!this.run) return;
+      this.run = addTurns(this.run, turns);
       this.persist();
     },
 
@@ -530,6 +571,10 @@ export const useRunStore = defineStore("run", {
         difficulty: saved.run.difficulty ?? "normal",
         usedBloodpact: saved.run.usedBloodpact ?? false,
         overloadCount: saved.run.overloadCount ?? 0,
+        interrupts: saved.run.interrupts ?? 0,
+        backlashTaken: saved.run.backlashTaken ?? 0,
+        turns: saved.run.turns ?? 0,
+        pollutionPeak: saved.run.pollutionPeak ?? saved.run.pollution ?? 0,
       };
       this.deck = saved.deck;
       this.relics = saved.relics ?? [];

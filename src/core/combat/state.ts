@@ -59,6 +59,8 @@ export interface EnemyState {
   readonly intentHistory: readonly string[];
   /** 蓄力链的剩余环节（下一招由链决定，执行后逐个揭示；空 = 正常随机） */
   readonly forcedChain: readonly IntentPayload[];
+  /** 已被断链次数（docs/38 §三 C-1：每只敌人每场最多 2 次） */
+  readonly interruptsTaken: number;
 }
 
 export interface Piles {
@@ -185,6 +187,7 @@ export function createBattleState(config: BattleConfig): BattleState {
         intent: null,
         intentHistory: [],
         forcedChain: [],
+        interruptsTaken: 0,
       };
     }),
     piles: { draw, hand: [], discard: [], exhaust: [] },

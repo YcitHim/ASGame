@@ -149,6 +149,8 @@ export interface RawEnemyDefinition {
   readonly maxHp: number;
   readonly intents: readonly EnemyIntentEntry[];
   readonly onDeath?: readonly CardEffect[];
+  /** 免疫断链（docs/38 §三 C-1）：Boss 例外条款，与 releaseOverride 同一登记处 */
+  readonly interruptImmune?: boolean;
 }
 
 /** 由 JSON 原始对象 + 解析后的显示名构造敌人定义。 */
@@ -159,6 +161,7 @@ export function buildEnemyDefinition(raw: RawEnemyDefinition, name: string): Ene
     maxHp: raw.maxHp,
     intents: raw.intents,
     ...(raw.onDeath ? { onDeath: raw.onDeath } : {}),
+    ...(raw.interruptImmune ? { interruptImmune: true } : {}),
   };
 }
 
@@ -169,6 +172,8 @@ export interface EnemyDefinition {
   readonly intents: readonly EnemyIntentEntry[];
   /** 亡语（docs/16 P2.2）：该单位死亡并完成死亡清理后结算的效果 */
   readonly onDeath?: readonly CardEffect[];
+  /** 免疫断链（docs/38 §三 C-1）：蓄力被虚弱/易伤命中时不被打断 */
+  readonly interruptImmune?: boolean;
 }
 
 export interface EnhancementDefinition {

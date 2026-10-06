@@ -304,6 +304,33 @@ export function applyBuffToTarget(
     stacks: applied?.stacks ?? application.stacks,
     duration: applied?.duration ?? application.duration,
   });
+  maybeInterruptCharge(draft, sink, targetId, buffId);
+}
+
+/** 每只敌人每场最多被断链次数（docs/38 §三 C-1 护栏：防无限白嫖）。 */
+export const MAX_CHARGE_INTERRUPTS = 2;
+
+/**
+ * 断链（docs/38 §三 C-1）：蓄力链中的敌人被施加虚弱 / 易伤即断链——
+ * 剩余链取消（蓄力层清零）、本回合空转。Boss 由数据 interruptImmune 免疫。
+ */
+function maybeInterruptCharge(
+  draft: Draft,
+  sink: EventSink,
+  targetId: string,
+  buffId: BuffId,
+): void {
+  if (targetId === PLAYER_ID) return;
+  if (buffId !== "weak" && buffId !== "vulnerable") return;
+  const enemy = draft.enemies.find((e) => e.id === targetId);
+  if (!enemy || enemy.hp <= 0) return;
+  if (enemy.intent?.kind !== "charge") return;
+  if (draft.content.enemies.get(enemy.defId)?.interruptImmune) return;
+  if (enemy.interruptsTaken >= MAX_CHARGE_INTERRUPTS) return;
+  enemy.forcedChain = [];
+  enemy.intent = { kind: "unknown" };
+  enemy.interruptsTaken += 1;
+  sink.emit("ChargeInterrupted", { enemyId: enemy.id, buffId, times: enemy.interruptsTaken });
 }
 
 function setPollutionMirror(buffs: readonly BuffInstance[], value: number): BuffInstance[] {

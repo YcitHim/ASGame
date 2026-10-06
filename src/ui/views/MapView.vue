@@ -54,6 +54,14 @@ const unlockLine = computed(() => {
   return t("meta.unlock", "{name} 已解锁。").replace("{name}", names.join(" / "));
 });
 
+/** 通关新达成的成就（docs/38 §三 C-3）：结算页再弹一行 */
+const achievementLine = computed(() => {
+  const ids = meta.lastAchievements;
+  if (ids.length === 0) return "";
+  const names = ids.map((id) => t(`ach.${id}.name`, id));
+  return t("meta.achieve", "已铭刻：{name}").replace("{name}", names.join(" / "));
+});
+
 function nodeTitle(node: MapNode): string {
   return node.i18n ? t(node.i18n, node.id) : node.id;
 }
@@ -138,6 +146,7 @@ function toTitle(): void {
           <h2>远 征 胜 利</h2>
           <p>锈喉已倒下，锈蚀回廊暂时沉寂。</p>
           <p v-if="unlockLine" class="unlock">{{ unlockLine }}</p>
+          <p v-if="achievementLine" class="achieve">{{ achievementLine }}</p>
           <div class="victory-actions">
             <button class="etch-btn" @click="toTitle">返回标题</button>
           </div>
@@ -215,6 +224,7 @@ function toTitle(): void {
 .victory h2 { font-family: var(--serif-title); font-size: 34px; letter-spacing: 0.4em; color: var(--gold); text-shadow: 0 0 26px rgba(176, 141, 74, 0.5); }
 .victory p { margin: 14px 0 22px; font-size: 12px; color: var(--ink-dim); letter-spacing: 0.2em; }
 .victory p.unlock { margin: -8px 0 20px; color: var(--gold); font-size: 12px; text-shadow: 0 0 14px rgba(176, 141, 74, 0.4); }
+.victory p.achieve { margin: -14px 0 20px; color: var(--blood-hi); font-size: 11px; letter-spacing: 0.16em; }
 .victory-actions { display: flex; justify-content: center; }
 .victory .etch-btn { padding: 11px 30px; font-size: 13px; }
 .relics { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--ink-dim); letter-spacing: 0.12em; }

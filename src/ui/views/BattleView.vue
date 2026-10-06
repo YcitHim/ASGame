@@ -340,8 +340,12 @@ function back(): void {
           :data-enemy-id="enemy.id"
           @click="pickEnemy(enemy.id)"
         >
-          <div class="intent-slot" :class="{ flip: store.flipUnits.includes(enemy.id) }">
+          <div
+            class="intent-slot"
+            :class="{ flip: store.flipUnits.includes(enemy.id), broken: store.brokenUnits.includes(enemy.id) }"
+          >
             <IntentIcon :intent="enemy.intent" />
+            <span v-if="store.brokenUnits.includes(enemy.id)" class="broken-tag">断链</span>
           </div>
           <div class="enemy-fig">
             <svg width="150" height="150" viewBox="0 0 170 170" aria-hidden="true">
@@ -771,6 +775,32 @@ function back(): void {
 }
 .intent-slot.flip {
   animation: intent-in 200ms ease-out;
+}
+.intent-slot.broken {
+  filter: grayscale(0.4);
+}
+.intent-slot.broken::after {
+  content: "";
+  position: absolute;
+  inset: 6% 14%;
+  background: linear-gradient(45deg, transparent 46%, var(--blood-hi) 47%, var(--blood-hi) 53%, transparent 54%),
+    linear-gradient(-45deg, transparent 46%, var(--blood-hi) 47%, var(--blood-hi) 53%, transparent 54%);
+  opacity: 0.85;
+  pointer-events: none;
+}
+.broken-tag {
+  position: absolute;
+  bottom: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 8px;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  color: var(--blood-hi);
+  background: rgba(10, 7, 5, 0.85);
+  border: 1px solid rgba(192, 57, 43, 0.5);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
 }
 @keyframes intent-in {
   0% { transform: rotateX(90deg) scale(0.82); opacity: 0; }

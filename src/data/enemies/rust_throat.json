@@ -105,5 +105,6 @@
         "percent": 50
       }
     }
-  ]
+  ],
+  "interruptImmune": true
 }

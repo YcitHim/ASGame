@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from "vue";
+import { computed, onMounted, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
+import { loadGameContent, t } from "@/data/load";
 import EmberField from "@/ui/components/EmberField.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
+import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
 import { hasSlot } from "@/systems/save";
 
@@ -10,7 +12,18 @@ const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 const router = useRouter();
 const run = useRunStore();
+const meta = useMetaStore();
 const canContinue = computed(() => hasSlot("progress"));
+onMounted(() => meta.ensureLoaded());
+
+/** 远征纪事（docs/38 §三 C-3）：每职业最少回合 / 最高余血。 */
+const recordRows = computed(() =>
+  [...loadGameContent().content.classes.keys()].map((id) => ({
+    id,
+    name: t(`class.${id}.name`, id),
+    rec: meta.recordOf(id),
+  })),
+);
 
 const menu = [
   { key: "expedition", label: "开始远征", enabled: true },
@@ -54,6 +67,23 @@ function onMenu(key: (typeof menu)[number]["key"], enabled: boolean): void {
           {{ item.label }}
         </button>
       </nav>
+
+      <section v-if="recordRows.length" class="records">
+        <h2>{{ t("title.records", "远征纪事") }}</h2>
+        <div class="record-rows">
+          <div v-for="row in recordRows" :key="row.id" class="record">
+            <span class="rname">{{ row.name }}</span>
+            <span class="rval">
+              {{ t("title.record.turns", "最少回合") }}
+              {{ row.rec.minTurns ?? t("title.record.empty", "—") }}
+            </span>
+            <span class="rval">
+              {{ t("title.record.hp", "最高余血") }}
+              {{ row.rec.maxHp ?? t("title.record.empty", "—") }}
+            </span>
+          </div>
+        </div>
+      </section>
 
       <footer class="foot">
         <span>0.5 封版 · 2026-10-06</span>
@@ -114,6 +144,43 @@ function onMenu(key: (typeof menu)[number]["key"], enabled: boolean): void {
   width: 268px;
   padding: 13px 22px;
   font-size: 15px;
+}
+.records {
+  position: relative;
+  z-index: 2;
+  margin-top: 26px;
+  text-align: center;
+}
+.records h2 {
+  font-family: var(--serif-title);
+  font-size: 12px;
+  letter-spacing: 0.42em;
+  color: var(--gold-dim);
+  font-weight: 400;
+}
+.record-rows {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.record {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--ink-dim);
+  letter-spacing: 0.1em;
+}
+.record .rname {
+  width: 88px;
+  text-align: right;
+  color: var(--ink-bone);
+}
+.record .rval {
+  width: 116px;
+  text-align: left;
+  font-family: var(--serif-num);
 }
 
 .foot {

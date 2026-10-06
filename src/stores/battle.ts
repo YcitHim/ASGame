@@ -43,6 +43,8 @@ export const useBattleStore = defineStore("battle", {
     hitUnits: [] as string[],
     dyingUnits: [] as string[],
     flipUnits: [] as string[],
+    /** 被断链的敌人（docs/38 §三 C-1）：短暂显示打叉 + 「断链」 */
+    brokenUnits: [] as string[],
     cardPlayed: null as { cardId: string; targetId: string | null; seq: number } | null,
   }),
   getters: {
@@ -125,11 +127,14 @@ export const useBattleStore = defineStore("battle", {
         // 战斗结束把剩余 HP / 污染写回局外进度（跨节点保留，供事件结算）
         runStore.setHp(result.state.player.hp);
         runStore.setPollution(result.state.player.pollution);
+        runStore.noteTurns(result.state.turn);
       }
-      // 成就埋点（docs/36 T1）：血契出牌 / 过载反噬从事件流里读，core 不做局外判断
+      // 成就埋点（docs/36 T1 / docs/38 §三 C-3）：从事件流里读，core 不做局外判断
       for (const event of result.events) {
         if (event.type === "CardPlayed" && event.bloodPaid > 0) runStore.noteBloodpact();
         else if (event.type === "Overloaded" && event.targetId === "player") runStore.noteOverload();
+        else if (event.type === "ChargeInterrupted") runStore.noteInterrupt();
+        else if (event.type === "HpLost" && event.reason === "pollution") runStore.noteBacklash();
       }
       if (result.events.length > 0) {
         this.log.push(...result.events);
@@ -236,6 +241,9 @@ export const useBattleStore = defineStore("battle", {
         case "BuffTicked":
           if (event.damage > 0) this.pushFloater(event.targetId, event.damage, "damage", false);
           break;
+        case "ChargeInterrupted":
+          this.markUnit("brokenUnits", event.enemyId, 1100);
+          break;
         case "IntentRevealed":
           this.markUnit("flipUnits", event.enemyId, 200);
           break;
@@ -248,7 +256,7 @@ export const useBattleStore = defineStore("battle", {
     },
 
     /** 给某个单位打一段限时状态（命中闪白 / 死亡 / 意图翻入）。 */
-    markUnit(key: "hitUnits" | "dyingUnits" | "flipUnits", unitId: string, ms: number): void {
+    markUnit(key: "hitUnits" | "dyingUnits" | "flipUnits" | "brokenUnits", unitId: string, ms: number): void {
       if (!this[key].includes(unitId)) this[key] = [...this[key], unitId];
       setTimeout(() => {
         this[key] = this[key].filter((id) => id !== unitId);

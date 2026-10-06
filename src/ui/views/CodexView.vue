@@ -5,7 +5,7 @@ import { isContentAvailable } from "@/core/map";
 import type { RelicDefinition } from "@/core/registry";
 import { loadGameContent, t } from "@/data/load";
 import { useCodexStore } from "@/stores/codex";
-import { useMetaStore } from "@/stores/meta";
+import { ACHIEVEMENT_IDS, useMetaStore } from "@/stores/meta";
 import CardView from "@/ui/components/CardView.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
@@ -16,7 +16,7 @@ const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 
 const game = loadGameContent();
-type Tab = "card" | "relic" | "enemy";
+type Tab = "card" | "relic" | "enemy" | "achievement";
 const tab = ref<Tab>("card");
 
 onMounted(() => {
@@ -47,6 +47,7 @@ function relicKnown(r: RelicDefinition): boolean {
 function relicFlavor(id: string): string {
   return t(`relic.${id}.flavor`, "");
 }
+const achievedCount = computed(() => ACHIEVEMENT_IDS.filter((id) => meta.isAchieved(id)).length);
 
 const cards = computed(() =>
   [...game.content.cards.values()].filter((c) => c.rarity !== "starter" || codex.cardSeen(c.id)).sort((a, b) => a.id.localeCompare(b.id)),
@@ -70,6 +71,9 @@ function back(): void {
         <button class="tab" :class="{ active: tab === 'card' }" @click="tab = 'card'">卡牌 {{ cards.length }}</button>
         <button class="tab" :class="{ active: tab === 'relic' }" @click="tab = 'relic'">遗物 {{ game.content.relics.size }}</button>
         <button class="tab" :class="{ active: tab === 'enemy' }" @click="tab = 'enemy'">敌人 {{ enemies.length }}</button>
+        <button class="tab" :class="{ active: tab === 'achievement' }" @click="tab = 'achievement'">
+          {{ t("codex.tab.achievement", "成就") }} {{ achievedCount }}/{{ ACHIEVEMENT_IDS.length }}
+        </button>
       </nav>
 
       <div class="body">
@@ -108,6 +112,15 @@ function back(): void {
                 <p v-if="relicKnown(r) && relicFlavor(r.id)" class="flavor">{{ relicFlavor(r.id) }}</p>
               </article>
             </template>
+          </div>
+        </template>
+
+        <template v-else-if="tab === 'achievement'">
+          <div class="rows">
+            <article v-for="id in ACHIEVEMENT_IDS" :key="id" class="row" :class="{ locked: !meta.isAchieved(id) }">
+              <h3>{{ meta.isAchieved(id) ? t(`ach.${id}.name`, id) : "？？？" }}</h3>
+              <p>{{ meta.isAchieved(id) ? t(`ach.${id}.desc`, "") : "尚未达成。" }}</p>
+            </article>
           </div>
         </template>
 

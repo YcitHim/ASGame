@@ -288,6 +288,7 @@ export const enemySchema = z
     intents: z.array(enemyIntentSchema).min(1),
     /** 亡语（docs/16 P2.2）：死亡清理后结算 */
     onDeath: z.array(effectSchema).optional(),
+    interruptImmune: z.boolean().optional(),
   })
   .strict();
 

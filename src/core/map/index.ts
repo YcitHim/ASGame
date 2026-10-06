@@ -49,6 +49,14 @@ export interface RunState {
   readonly usedBloodpact: boolean;
   /** 本局过载反噬次数（成就：红线协议） */
   readonly overloadCount: number;
+  /** 本局断链次数（成就：打断蓄力 10 次，docs/38 §三 C-3） */
+  readonly interrupts: number;
+  /** 本局承受过的反噬总次数（过载 + 污染满值，成就：承受 3 次仍胜） */
+  readonly backlashTaken: number;
+  /** 本局累计战斗回合（最佳纪录：最少回合通关） */
+  readonly turns: number;
+  /** 本局污染峰值（成就：贴线 —— 曾在 99 结束回合） */
+  readonly pollutionPeak: number;
 }
 
 /** 记录一次血契出牌（成就判定用）。 */
@@ -58,7 +66,22 @@ export function noteBloodpact(run: RunState): RunState {
 
 /** 记录一次过载反噬（成就判定用）。 */
 export function addOverload(run: RunState): RunState {
-  return { ...run, overloadCount: run.overloadCount + 1 };
+  return { ...run, overloadCount: run.overloadCount + 1, backlashTaken: run.backlashTaken + 1 };
+}
+
+/** 记录一次断链（成就判定用）。 */
+export function addInterrupt(run: RunState): RunState {
+  return { ...run, interrupts: run.interrupts + 1 };
+}
+
+/** 记录一次污染反噬（成就判定用）。 */
+export function addBacklash(run: RunState): RunState {
+  return { ...run, backlashTaken: run.backlashTaken + 1 };
+}
+
+/** 累加战斗回合（最佳纪录用）。 */
+export function addTurns(run: RunState, turns: number): RunState {
+  return { ...run, turns: run.turns + Math.max(0, Math.trunc(turns)) };
 }
 
 /** 写回局外 HP（战斗结束时调用）。 */
@@ -68,7 +91,8 @@ export function setRunHp(run: RunState, hp: number): RunState {
 
 /** 写回局外污染（战斗结束 / 事件结算时调用）。 */
 export function setRunPollution(run: RunState, pollution: number): RunState {
-  return { ...run, pollution: Math.max(0, Math.min(100, Math.trunc(pollution))) };
+  const next = Math.max(0, Math.min(100, Math.trunc(pollution)));
+  return { ...run, pollution: next, pollutionPeak: Math.max(run.pollutionPeak, next) };
 }
 
 /** 休息点回复（按最大 HP 上限截断）。 */
@@ -153,6 +177,10 @@ export function createRunState(
     difficulty: opts.difficulty ?? "normal",
     usedBloodpact: false,
     overloadCount: 0,
+    interrupts: 0,
+    backlashTaken: 0,
+    turns: 0,
+    pollutionPeak: 0,
   };
 }
 
