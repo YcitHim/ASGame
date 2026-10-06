@@ -8,7 +8,7 @@
     "handler": "multihit",
     "params": {
       "hits": 2,
-      "value": 8
+      "value": 6
     }
   },
   "upgraded": {
@@ -16,7 +16,7 @@
       "handler": "multihit",
       "params": {
         "hits": 2,
-        "value": 10
+        "value": 8
       }
     }
   },

@@ -7,7 +7,7 @@
   "effects": [
     {
       "kind": "gainCharge",
-      "value": 2
+      "value": 1
     },
     {
       "kind": "draw",
@@ -18,7 +18,7 @@
     "effects": [
       {
         "kind": "gainCharge",
-        "value": 3
+        "value": 2
       },
       {
         "kind": "draw",

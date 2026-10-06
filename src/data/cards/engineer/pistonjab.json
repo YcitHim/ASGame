@@ -7,7 +7,7 @@
   "effects": [
     {
       "kind": "damage",
-      "value": 5
+      "value": 4
     },
     {
       "kind": "damage",
@@ -22,7 +22,7 @@
     "effects": [
       {
         "kind": "damage",
-        "value": 7
+        "value": 6
       },
       {
         "kind": "damage",

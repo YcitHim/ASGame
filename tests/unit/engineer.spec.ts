@@ -59,16 +59,16 @@ const dealt = (events: readonly { type: string }[]) =>
   events.filter((e): e is { type: string; value: number } => e.type === "DamageDealt").map((e) => e.value);
 
 describe("docs/29 §二⑥ 炉心机士卡牌", () => {
-  it("活塞冲拳：基础 5；充能 ≥2 时追加 3", () => {
-    expect(dealt(play(battle(["pistonjab"]), "pistonjab").events)).toEqual([5]);
+  it("活塞冲拳：基础 4（docs/32 第二刀）；充能 ≥2 时追加 3", () => {
+    expect(dealt(play(battle(["pistonjab"]), "pistonjab").events)).toEqual([4]);
     const charged = play(battle(["charge4", "pistonjab"]), "charge4");
     expect(charged.state.player.charge).toBe(4);
-    // 充能按固定加伤计入每一次攻击判定（docs/20 §3.1）：5+4 / 3+4
-    expect(dealt(play(charged.state, "pistonjab").events)).toEqual([9, 7]);
+    // 充能按固定加伤计入每一次攻击判定（docs/20 §3.1）：4+4 / 3+4
+    expect(dealt(play(charged.state, "pistonjab").events)).toEqual([8, 7]);
   });
 
-  it("蒸汽弹：多段 4×2", () => {
-    expect(dealt(play(battle(["steambolt"]), "steambolt").events)).toEqual([4, 4]);
+  it("蒸汽弹：多段 3×2（docs/32 第三刀①）", () => {
+    expect(dealt(play(battle(["steambolt"]), "steambolt").events)).toEqual([3, 3]);
   });
 
   it("泄压阀：消耗全部充能，每点 2 格挡（spendCharge mode=block）", () => {
@@ -98,7 +98,7 @@ describe("docs/29 §二⑥ 炉心机士卡牌", () => {
     // 4 基础 + 1 额外
     expect(gain.state.player.charge).toBe(5);
     const gain2 = play(gain.state, "gearspin");
-    // 2 基础 + 1 额外
-    expect(gain2.state.player.charge).toBe(8);
+    // 1 基础（docs/32 第二刀）+ 1 额外
+    expect(gain2.state.player.charge).toBe(7);
   });
 });
