@@ -39,6 +39,16 @@ describe("真实内容装载（data/load）", () => {
     expect(act.map[6].enemies).toEqual(["rust_throat"]);
   });
 
+  it("敌人不会连续两回合防御（玩家反馈：防御后又防御）", () => {
+    const game = loadGameContent();
+    for (const enemy of game.content.enemies.values()) {
+      for (const entry of enemy.intents) {
+        if (entry.intent.kind !== "defend") continue;
+        expect(entry.maxConsecutive, `${enemy.id} 的防御意图必须限 1 次连续`).toBe(1);
+      }
+    }
+  });
+
   it("起手卡组全部能在目录中找到定义", () => {
     const game = loadGameContent();
     for (const cls of game.content.classes.values()) {

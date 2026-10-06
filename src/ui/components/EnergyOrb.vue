@@ -6,7 +6,15 @@ defineProps<{ energy: number; maxEnergy: number; charge: number; bloodHp: number
   <div class="energy">
     <div class="orb" :title="`能量 ${energy}/${maxEnergy}`">{{ energy }}<small>/{{ maxEnergy }}</small></div>
     <div class="pact">血契 {{ bloodHp }}/{{ maxHp }}</div>
-    <div v-if="charge > 0" class="charge">充能 +{{ charge }}</div>
+    <!-- 充能悬浮说明（docs/29 炉心）：悬停/聚焦显示「充能」与「过载」口径 -->
+    <div class="charge" :class="{ zero: charge <= 0 }" tabindex="0">
+      <span class="charge-value">充能 +{{ charge }}</span>
+      <span class="charge-pop" role="tooltip">
+        <b>充能 · {{ charge }} / 10</b>
+        <em>每点使你所有攻击的各段伤害 +1。</em>
+        <em class="warn">超过 10 触发过载：立即受 5 点伤害并清零。</em>
+      </span>
+    </div>
   </div>
 </template>
 
@@ -22,5 +30,60 @@ defineProps<{ energy: number; maxEnergy: number; charge: number; bloodHp: number
 }
 .orb small { font-size: 11px; color: var(--ink-dim); }
 .pact { margin-top: 8px; font-size: 10px; color: #e0705a; letter-spacing: 0.1em; }
-.charge { margin-top: 4px; font-size: 10px; color: #8fa1b5; letter-spacing: 0.1em; }
+.charge {
+  position: relative;
+  margin-top: 5px;
+  display: inline-block;
+  font-size: 10px;
+  color: #8fa1b5;
+  letter-spacing: 0.1em;
+  cursor: help;
+  outline: none;
+}
+.charge.zero { color: rgba(143, 161, 181, 0.45); }
+.charge:hover .charge-value,
+.charge:focus-visible .charge-value { color: #cfe0f0; }
+.charge-pop {
+  display: none;
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  width: 250px;
+  padding: 9px 11px;
+  text-align: left;
+  font-size: 10.5px;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  color: var(--ink-dim);
+  background: linear-gradient(180deg, #1d1811, #100c07);
+  border: 1px solid rgba(176, 141, 74, 0.65);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.7), 0 10px 26px rgba(0, 0, 0, 0.75);
+  z-index: 120;
+  pointer-events: none;
+}
+.charge-pop::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 10px; height: 10px;
+  transform: translateX(-50%) rotate(45deg);
+  background: #100c07;
+  border-right: 1px solid rgba(176, 141, 74, 0.65);
+  border-bottom: 1px solid rgba(176, 141, 74, 0.65);
+}
+.charge:hover .charge-pop,
+.charge:focus-visible .charge-pop { display: block; }
+.charge-pop b {
+  display: block;
+  margin-bottom: 5px;
+  font-family: var(--serif-title);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--ink-bone);
+}
+.charge-pop em { display: block; font-style: normal; }
+.charge-pop .warn { margin-top: 5px; padding-top: 5px; border-top: 1px solid rgba(110, 88, 54, 0.4); color: #e0a08c; }
 </style>

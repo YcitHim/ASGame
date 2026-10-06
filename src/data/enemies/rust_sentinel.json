@@ -9,7 +9,7 @@
         "value": 8
       },
       "weight": 2,
-      "maxConsecutive": 2
+      "maxConsecutive": 1
     },
     {
       "intent": {

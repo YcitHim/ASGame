@@ -10,7 +10,7 @@
         "type": "not",
         "of": {
           "type": "chargeAtLeast",
-          "n": 3
+          "n": 2
         }
       }
     }
