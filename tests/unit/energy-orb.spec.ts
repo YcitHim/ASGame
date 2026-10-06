@@ -24,8 +24,8 @@ describe("EnergyOrb 充能悬浮说明", () => {
     const wrapper = mount(EnergyOrb, {
       props: { energy: 3, maxEnergy: 3, charge: 0, bloodHp: 66, maxHp: 66 },
     });
-    expect(wrapper.find(".charge").exists()).toBe(true);
-    expect(wrapper.find(".charge").classes()).toContain("zero");
+    expect(wrapper.find(".charge-chip").exists()).toBe(true);
+    expect(wrapper.find(".charge-chip").classes()).toContain("zero");
     wrapper.unmount();
   });
 });

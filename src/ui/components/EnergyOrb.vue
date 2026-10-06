@@ -7,7 +7,7 @@ defineProps<{ energy: number; maxEnergy: number; charge: number; bloodHp: number
     <div class="orb" :title="`能量 ${energy}/${maxEnergy}`">{{ energy }}<small>/{{ maxEnergy }}</small></div>
     <div class="pact">血契 {{ bloodHp }}/{{ maxHp }}</div>
     <!-- 充能悬浮说明（docs/29 炉心）：悬停/聚焦显示「充能」与「过载」口径 -->
-    <div class="charge" :class="{ zero: charge <= 0 }" tabindex="0">
+    <div class="charge-chip" :class="{ zero: charge <= 0 }" tabindex="0">
       <span class="charge-value">充能 +{{ charge }}</span>
       <span class="charge-pop" role="tooltip">
         <b>充能 · {{ charge }} / 10</b>
@@ -30,7 +30,7 @@ defineProps<{ energy: number; maxEnergy: number; charge: number; bloodHp: number
 }
 .orb small { font-size: 11px; color: var(--ink-dim); }
 .pact { margin-top: 8px; font-size: 10px; color: #e0705a; letter-spacing: 0.1em; }
-.charge {
+.charge-chip {
   position: relative;
   margin-top: 5px;
   display: inline-block;
@@ -40,15 +40,15 @@ defineProps<{ energy: number; maxEnergy: number; charge: number; bloodHp: number
   cursor: help;
   outline: none;
 }
-.charge.zero { color: rgba(143, 161, 181, 0.45); }
-.charge:hover .charge-value,
-.charge:focus-visible .charge-value { color: #cfe0f0; }
+.charge-chip.zero { color: rgba(143, 161, 181, 0.45); }
+.charge-chip:hover .charge-value,
+.charge-chip:focus-visible .charge-value { color: #cfe0f0; }
 .charge-pop {
   display: none;
   position: absolute;
-  left: 50%;
+  /* 贴着充能入口左缘向右展开：入口在屏幕左下角，居中会溢出视口左边界 */
+  left: 0;
   bottom: calc(100% + 8px);
-  transform: translateX(-50%);
   width: 250px;
   padding: 9px 11px;
   text-align: left;
@@ -66,16 +66,16 @@ defineProps<{ energy: number; maxEnergy: number; charge: number; bloodHp: number
 .charge-pop::after {
   content: "";
   position: absolute;
-  left: 50%;
+  left: 24px;
   bottom: -6px;
   width: 10px; height: 10px;
-  transform: translateX(-50%) rotate(45deg);
+  transform: rotate(45deg);
   background: #100c07;
   border-right: 1px solid rgba(176, 141, 74, 0.65);
   border-bottom: 1px solid rgba(176, 141, 74, 0.65);
 }
-.charge:hover .charge-pop,
-.charge:focus-visible .charge-pop { display: block; }
+.charge-chip:hover .charge-pop,
+.charge-chip:focus-visible .charge-pop { display: block; }
 .charge-pop b {
   display: block;
   margin-bottom: 5px;
