@@ -14,13 +14,20 @@ function parseArgs(argv: string[]): {
   scenario: string | null;
   classId: string;
   difficulty: RunDifficulty;
+  /** 已知 AI 下限：低于健康区间只记录、不判失败（策划裁定，见 docs/program Q2） */
+  aiFloor: boolean;
 } {
   let games = 100;
   let scenario: string | null = null;
   let classId = "bloodwright";
   let difficulty: RunDifficulty = "normal";
+  let aiFloor = false;
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
+    if (token === "--ai-floor") {
+      aiFloor = true;
+      continue;
+    }
     if (token === "--difficulty") {
       difficulty = (argv[i + 1] as RunDifficulty) ?? "normal";
       i += 1;
@@ -51,11 +58,11 @@ function parseArgs(argv: string[]): {
     const n = Number(token);
     if (Number.isFinite(n) && n > 0) games = Math.trunc(n);
   }
-  return { games, scenario, classId, difficulty };
+  return { games, scenario, classId, difficulty, aiFloor };
 }
 
 function main(): number {
-  const { games, scenario, classId, difficulty } = parseArgs(process.argv.slice(2));
+  const { games, scenario, classId, difficulty, aiFloor } = parseArgs(process.argv.slice(2));
   const { content, acts } = loadNodeContent();
   const act = acts[0];
   if (!act) {
@@ -89,6 +96,14 @@ function main(): number {
     return 0;
   }
 
+  // AI 下限记录（策划裁定 2026-10-06 Q2：血械起手放血在 sim 里被 AI 误判，
+  // 真人手感优先，不拿 sim 数字逼数值）——只提示、不判失败。
+  if (aiFloor && report.winRate < HEALTHY_MIN) {
+    console.log(
+      `\n[headless-sim] AI 下限记录：${(report.winRate * 100).toFixed(1)}% 低于 ${HEALTHY_MIN * 100}%，按 Q2 裁定不判失败`,
+    );
+    return 0;
+  }
   if (report.winRate < HEALTHY_MIN || report.winRate > HEALTHY_MAX) {
     console.error(
       `\n[headless-sim] 胜率 ${(report.winRate * 100).toFixed(1)}% 不在健康区间 ${HEALTHY_MIN * 100}%~${HEALTHY_MAX * 100}%，需要修数值`,
