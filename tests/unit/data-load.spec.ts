@@ -23,7 +23,7 @@ describe("真实内容装载（data/load）", () => {
     const game = loadGameContent();
     expect(game.content.cards.size).toBeGreaterThanOrEqual(30);
     expect(game.content.enemies.size).toBe(7);
-    expect(game.content.relics.size).toBe(7);
+    expect(game.content.relics.size).toBe(24);
     expect(game.content.classes.size).toBe(2);
     expect(game.acts).toHaveLength(1);
     expect(game.content.enemies.get("rust_hound")?.name).toBe("锈蚀猎犬");

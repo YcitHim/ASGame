@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
+import { isContentAvailable } from "@/core/map";
+import type { RelicDefinition } from "@/core/registry";
 import { loadGameContent, t } from "@/data/load";
 import { useCodexStore } from "@/stores/codex";
+import { useMetaStore } from "@/stores/meta";
 import CardView from "@/ui/components/CardView.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
 const router = useRouter();
 const codex = useCodexStore();
+const meta = useMetaStore();
 const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 
@@ -15,12 +19,38 @@ const game = loadGameContent();
 type Tab = "card" | "relic" | "enemy";
 const tab = ref<Tab>("card");
 
-onMounted(() => codex.ensureLoaded());
+onMounted(() => {
+  codex.ensureLoaded();
+  meta.ensureLoaded();
+});
+
+/** 遗物按 tier 分组（docs/38 §一 A-1）：0 = 身份件（不入池），1/2/3 = 起始/常规/稀有。 */
+const TIER_LABEL: Record<number, string> = { 0: "身份件", 1: "起始池", 2: "常规池", 3: "稀有池" };
+const relicGroups = computed<{ tier: number; label: string; items: RelicDefinition[] }[]>(() => {
+  const buckets = new Map<number, RelicDefinition[]>();
+  for (const r of game.content.relics.values()) {
+    const key = r.tier ?? 0;
+    buckets.set(key, [...(buckets.get(key) ?? []), r]);
+  }
+  return [...buckets.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([tier, items]) => ({
+      tier,
+      label: TIER_LABEL[tier] ?? "其它",
+      items: [...items].sort((a, b) => a.id.localeCompare(b.id)),
+    }));
+});
+
+function relicKnown(r: RelicDefinition): boolean {
+  return codex.relicSeen(r.id) && isContentAvailable(r.unlockCondition, r.id, meta.unlocked);
+}
+function relicFlavor(id: string): string {
+  return t(`relic.${id}.flavor`, "");
+}
 
 const cards = computed(() =>
   [...game.content.cards.values()].filter((c) => c.rarity !== "starter" || codex.cardSeen(c.id)).sort((a, b) => a.id.localeCompare(b.id)),
 );
-const relics = computed(() => [...game.content.relics.values()].sort((a, b) => a.id.localeCompare(b.id)));
 const enemies = computed(() => [...game.content.enemies.values()].sort((a, b) => a.id.localeCompare(b.id)));
 
 function back(): void {
@@ -38,7 +68,7 @@ function back(): void {
 
       <nav class="tabs">
         <button class="tab" :class="{ active: tab === 'card' }" @click="tab = 'card'">卡牌 {{ cards.length }}</button>
-        <button class="tab" :class="{ active: tab === 'relic' }" @click="tab = 'relic'">遗物 {{ relics.length }}</button>
+        <button class="tab" :class="{ active: tab === 'relic' }" @click="tab = 'relic'">遗物 {{ game.content.relics.size }}</button>
         <button class="tab" :class="{ active: tab === 'enemy' }" @click="tab = 'enemy'">敌人 {{ enemies.length }}</button>
       </nav>
 
@@ -70,10 +100,14 @@ function back(): void {
 
         <template v-else-if="tab === 'relic'">
           <div class="rows">
-            <article v-for="r in relics" :key="r.id" class="row" :class="{ locked: !codex.relicSeen(r.id) }">
-              <h3>{{ codex.relicSeen(r.id) ? t(`relic.${r.id}.name`, r.id) : "？？？" }}</h3>
-              <p>{{ codex.relicSeen(r.id) ? t(`relic.${r.id}.desc`, "") : "尚未记述。" }}</p>
-            </article>
+            <template v-for="group in relicGroups" :key="group.tier">
+              <h4 class="tier-head">{{ group.label }} · {{ group.items.length }}</h4>
+              <article v-for="r in group.items" :key="r.id" class="row" :class="{ locked: !relicKnown(r) }">
+                <h3>{{ relicKnown(r) ? t(`relic.${r.id}.name`, r.id) : "？？？" }}</h3>
+                <p>{{ relicKnown(r) ? t(`relic.${r.id}.desc`, "") : "尚未记述。" }}</p>
+                <p v-if="relicKnown(r) && relicFlavor(r.id)" class="flavor">{{ relicFlavor(r.id) }}</p>
+              </article>
+            </template>
           </div>
         </template>
 
@@ -139,4 +173,9 @@ function back(): void {
 .row h3 small { margin-left: 12px; font-family: var(--serif-body); font-size: 11px; letter-spacing: 0.12em; color: var(--gold-dim); }
 .row p { margin-top: 7px; font-size: 12px; line-height: 1.8; color: var(--ink-dim); }
 .row.locked h3 { color: rgba(154, 144, 129, 0.45); }
+.tier-head {
+  margin-top: 6px; font-family: var(--serif-title); font-size: 12px;
+  letter-spacing: 0.24em; color: var(--gold-dim); font-weight: 400;
+}
+.row p.flavor { color: var(--gold-dim); font-style: italic; }
 </style>

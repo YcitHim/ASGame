@@ -295,6 +295,9 @@ export type TriggerTiming =
   /** 获得充能时（docs/29 §二⑥「飞升齿轮」） */
   | "onGainCharge";
 
+/** 遗物分级（docs/37 §一.2 / docs/38 §一）：1 起始池，2 常规池，3 稀有池。 */
+export type RelicTier = 1 | 2 | 3;
+
 export interface RelicDefinition {
   readonly id: string;
   readonly i18n: string;
@@ -302,6 +305,11 @@ export interface RelicDefinition {
   readonly effects: readonly CardEffect[];
   /** 触发次数限制：battle = 整场一次；turn = 每回合一次；缺省 = 每次时机都触发 */
   readonly once?: "battle" | "turn";
+  /**
+   * 进入哪个掉落池（docs/38 §一 A-1）：T1 起始池（随身遗物自选）/ T2 精英池 / T3 Boss 稀有池。
+   * **缺省 = 身份件**，不参与任何掉落池。
+   */
+  readonly tier?: RelicTier;
   /** 入池解锁条件（docs/36 T1）：缺省 / "none" = 默认可用；其余由 meta 层判定 */
   readonly unlockCondition?: string;
 }

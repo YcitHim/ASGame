@@ -8,5 +8,6 @@
       "value": 5
     }
   ],
-  "once": "turn"
+  "once": "turn",
+  "tier": 1
 }

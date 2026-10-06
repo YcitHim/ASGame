@@ -283,6 +283,30 @@ export function validateContent(input: ContentInput): ValidationResult {
   }
   for (const r of relics) {
     requireKey(`relic ${r.id}`, r.i18n + ".name");
+    requireKey(`relic ${r.id}`, r.i18n + ".desc");
+    // docs/38 §一：遗物全部含 flavor
+    requireKey(`relic ${r.id}`, r.i18n + ".flavor");
+  }
+  // 遗物分级（docs/38 §一 A-1）：T1 起始池至少 6 件；身份件（无 tier）不入任何掉落池
+  const t1 = relics.filter((r) => r.tier === 1);
+  if (t1.length < 6) {
+    issues.push({
+      file: "relics",
+      path: "tier",
+      message: `T1 起始池至少 6 件（随身遗物可选项），当前 ${t1.length} 件`,
+    });
+  }
+  for (const cls of classes) {
+    for (const id of cls.startRelics ?? []) {
+      const relic = relics.find((r) => r.id === id);
+      if (relic && relic.tier !== undefined) {
+        issues.push({
+          file: `class ${cls.id}`,
+          path: "startRelics",
+          message: `起始配置只能是身份件（无 tier），"${id}" 是 T${relic.tier} 掉落件`,
+        });
+      }
+    }
   }
   for (const ev of events) {
     requireKey(`event ${ev.id}`, ev.i18n + ".title");

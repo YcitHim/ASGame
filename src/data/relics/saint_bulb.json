@@ -1,0 +1,17 @@
+{
+  "id": "saint_bulb",
+  "i18n": "relic.saint_bulb",
+  "timing": "onTurnEnd",
+  "effects": [
+    {
+      "kind": "gainPollution",
+      "value": -5,
+      "condition": {
+        "type": "pollutionAtLeast",
+        "n": 50
+      }
+    }
+  ],
+  "once": "turn",
+  "tier": 2
+}

@@ -1,0 +1,22 @@
+{
+  "id": "third_ash",
+  "i18n": "relic.third_ash",
+  "timing": "onTurnEnd",
+  "effects": [
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 2,
+      "condition": {
+        "type": "not",
+        "of": {
+          "type": "tookDamageThisTurn"
+        }
+      }
+    }
+  ],
+  "once": "turn",
+  "tier": 2
+}

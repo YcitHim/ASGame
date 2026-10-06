@@ -1,0 +1,20 @@
+{
+  "id": "furnace_heart",
+  "i18n": "relic.furnace_heart",
+  "timing": "onTurnEnd",
+  "effects": [
+    {
+      "kind": "damage",
+      "target": {
+        "type": "allEnemies"
+      },
+      "value": 3,
+      "condition": {
+        "type": "chargeAtLeast",
+        "n": 8
+      }
+    }
+  ],
+  "once": "turn",
+  "tier": 3
+}

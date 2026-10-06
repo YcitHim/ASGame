@@ -20,6 +20,7 @@ import {
   rollEvent,
   rollRelicChoices,
   resolveEventOption,
+  relicPool,
   setRunHp,
   setRunPollution,
   type RunDifficulty,
@@ -232,9 +233,14 @@ export function simulateRun(
     ...[...content.cards.keys()],
     ...[...content.relics.keys()],
   ];
-  let run = createRunState(act, cls, seed, { unlocked, difficulty });
+  // 随身遗物（docs/38 §一 A-2）：sim 模拟"会挑"的玩家——血械取血泵（卖血联动）、
+  // 炉心取压力表（充能联动，即它被下放前的原配），其余回落到池首件。
+  const t1 = relicPool(content, 1, unlocked);
+  const preferred = classId === "engineer" ? "pressuregauge" : "blood_pump";
+  const companion = t1.includes(preferred) ? preferred : (t1[0] ?? "");
+  let run = createRunState(act, cls, seed, { unlocked, difficulty, companionRelic: companion });
   const deck: SimCard[] = cls.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
-  const relics = [...(cls.startRelics ?? [])];
+  const relics = [...(cls.startRelics ?? []), ...(companion ? [companion] : [])];
 
   const cardsPlayed: Record<string, number> = {};
   const cardsPicked: Record<string, number> = {};
@@ -316,7 +322,8 @@ export function simulateRun(
           cardsPicked[pick] = (cardsPicked[pick] ?? 0) + 1;
         }
       } else if (node.kind === "elite") {
-        const relic = rollRelicChoices(content, relics, 1, run.unlocked)[0];
+        const relicSeed = (run.seed ^ Math.imul(run.layerIndex + 13, 0x9e3779b9)) >>> 0;
+        const relic = rollRelicChoices(content, relics, 1, run.unlocked, [2], relicSeed)[0];
         if (relic && !relics.includes(relic)) relics.push(relic);
         const applied = applyEnhancementChoice(
           content,

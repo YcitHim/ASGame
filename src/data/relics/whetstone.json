@@ -1,7 +1,7 @@
 {
-  "id": "rust_charm",
-  "i18n": "relic.rust_charm",
-  "timing": "onTurnStart",
+  "id": "whetstone",
+  "i18n": "relic.whetstone",
+  "timing": "onBattleStart",
   "effects": [
     {
       "kind": "applyBuff",
@@ -12,6 +12,6 @@
       "stacks": 1
     }
   ],
-  "once": "turn",
-  "tier": 2
+  "once": "battle",
+  "tier": 1
 }

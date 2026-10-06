@@ -1,16 +1,16 @@
 {
-  "id": "redtear_ring",
-  "i18n": "relic.redtear_ring",
-  "timing": "onTurnStart",
-  "once": "turn",
+  "id": "bandage",
+  "i18n": "relic.bandage",
+  "timing": "onBattleStart",
   "effects": [
     {
       "kind": "block",
       "target": {
         "type": "self"
       },
-      "value": 3
+      "value": 4
     }
   ],
+  "once": "battle",
   "tier": 1
 }

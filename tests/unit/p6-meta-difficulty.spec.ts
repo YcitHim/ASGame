@@ -64,16 +64,16 @@ describe("docs/36 T1 · 解锁式内容入池", () => {
     expect(openIds.has("bloodrust")).toBe(true);
   });
 
-  it("炉心余烬锁定时不进遗物池，解锁后进池", () => {
-    expect(rollRelicChoices(game.content, [], 7, []).includes("ember_core")).toBe(false);
-    expect(rollRelicChoices(game.content, [], 7, ["ember_core"]).includes("ember_core")).toBe(true);
+  it("炉心余烬锁定时不进遗物池，解锁后进池（T3 Boss 池）", () => {
+    expect(rollRelicChoices(game.content, [], 5, [], [3]).includes("ember_core")).toBe(false);
+    expect(rollRelicChoices(game.content, [], 5, ["ember_core"], [3]).includes("ember_core")).toBe(true);
   });
 
-  it("事件掉落同样按解锁过滤（未解锁的炉心余烬不入池）", () => {
+  it("事件掉落只取 T1+T2 池：T3 稀有件（炉心余烬）即便解锁也不出事件", () => {
     const event = {
       id: "test_event",
       i18n: "event.test",
-      options: [{ id: "a", i18n: "event.test.a", effects: [{ kind: "gainRelic", count: 20 }] }],
+      options: [{ id: "a", i18n: "event.test.a", effects: [{ kind: "gainRelic", count: 30 }] }],
     } as unknown as EventDefinition;
     const locked = resolveEventOption(game.content, event, "a", { seed: 7, ownedRelics: [], unlocked: [] });
     expect(locked?.relicIds.includes("ember_core")).toBe(false);
@@ -82,7 +82,9 @@ describe("docs/36 T1 · 解锁式内容入池", () => {
       ownedRelics: [],
       unlocked: ["ember_core"],
     });
-    expect(open?.relicIds.includes("ember_core")).toBe(true);
+    // 解锁也不进事件池——tier 3 只走 Boss 遗物槽（docs/38 §一 A-1）
+    expect(open?.relicIds.includes("ember_core")).toBe(false);
+    expect(open?.relicIds.length).toBeGreaterThan(0);
   });
 
   it("evaluateRun：首通解锁血锈光环；炉心首通解锁余烬；无血契通关解锁不朽", () => {

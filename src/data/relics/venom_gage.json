@@ -1,6 +1,6 @@
 {
-  "id": "rust_charm",
-  "i18n": "relic.rust_charm",
+  "id": "venom_gage",
+  "i18n": "relic.venom_gage",
   "timing": "onTurnStart",
   "effects": [
     {
@@ -9,7 +9,11 @@
         "type": "self"
       },
       "buff": "strength",
-      "stacks": 1
+      "stacks": 2,
+      "condition": {
+        "type": "pollutionAtLeast",
+        "n": 80
+      }
     }
   ],
   "once": "turn",

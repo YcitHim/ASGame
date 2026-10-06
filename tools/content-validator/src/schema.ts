@@ -330,6 +330,8 @@ export const relicSchema = z
     timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell", "onBlock", "onGainCharge"]),
     effects: z.array(effectSchema).min(1),
     once: z.enum(["battle", "turn"]).optional(),
+    /** 掉落池分级（docs/38 §一）：缺省 = 身份件，不入池 */
+    tier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
     unlockCondition: z.string().optional(),
   })
   .strict();

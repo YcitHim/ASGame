@@ -18,8 +18,7 @@
     "gearspin"
   ],
   "startRelics": [
-    "dentedcoil",
-    "pressuregauge"
+    "dentedcoil"
   ],
   "unlock": "first_boss_clear"
 }

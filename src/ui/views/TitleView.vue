@@ -57,7 +57,7 @@ function onMenu(key: (typeof menu)[number]["key"], enabled: boolean): void {
 
       <footer class="foot">
         <span>0.5 封版 · 2026-10-06</span>
-        <span class="dim">docs/38 版本总结 · 效果图 docs/mockups/battle-screen.html</span>
+        <span class="dim">docs/program/0.5封版总结.md · 效果图 docs/mockups/battle-screen.html</span>
       </footer>
     </div>
   </div>

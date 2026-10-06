@@ -1,0 +1,13 @@
+{
+  "id": "blood_gear",
+  "i18n": "relic.blood_gear",
+  "timing": "onSell",
+  "effects": [
+    {
+      "kind": "gainCharge",
+      "value": 1
+    }
+  ],
+  "once": "turn",
+  "tier": 2
+}

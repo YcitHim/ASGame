@@ -41,6 +41,8 @@ export interface RunState {
   readonly maxHp: number;
   /** 本档已解锁内容 id（卡 / 遗物）；由 meta 层注入，core 据此过滤奖池 */
   readonly unlocked: readonly string[];
+  /** 随身遗物（docs/38 §一 A-2）：职业选择页从 T1 池自选 1 件；空串 = 无 */
+  readonly pickedRelic: string;
   /** 难度档（docs/36 T2） */
   readonly difficulty: RunDifficulty;
   /** 本局是否打出过血契卡（成就：不朽） */
@@ -126,6 +128,8 @@ export interface CreateRunOptions {
   readonly unlocked?: readonly string[];
   /** 难度档（docs/36 T2）；缺省 normal */
   readonly difficulty?: RunDifficulty;
+  /** 随身遗物（docs/38 §一 A-2）；缺省空串（调用方负责给默认） */
+  readonly companionRelic?: string;
 }
 
 export function createRunState(
@@ -145,6 +149,7 @@ export function createRunState(
     pollution: 0,
     maxHp: cls.player.maxHp,
     unlocked: [...(opts.unlocked ?? [])],
+    pickedRelic: opts.companionRelic ?? "",
     difficulty: opts.difficulty ?? "normal",
     usedBloodpact: false,
     overloadCount: 0,
@@ -268,19 +273,47 @@ export function rollEvent(content: ContentDb, run: RunState, node: MapNode): Eve
   return content.events.get(ids[rng.nextInt(0, ids.length - 1)]);
 }
 
+/** 某 tier 的全部可入池遗物 id（已解锁过滤、按 id 排序）；随身遗物栏与 sim 默认用。 */
+export function relicPool(
+  content: ContentDb,
+  tier: number,
+  unlocked: readonly string[] = [],
+): string[] {
+  return [...content.relics.values()]
+    .filter((r) => r.tier === tier)
+    .filter((r) => isContentAvailable(r.unlockCondition, r.id, unlocked))
+    .map((r) => r.id)
+    .sort();
+}
+
 export function rollRelicChoices(
   content: ContentDb,
   owned: readonly string[],
   count = 3,
   unlocked: readonly string[] = [],
+  /** 只取这些 tier 的遗物（docs/38 §一 A-1）：T2 精英池 / T3 Boss 池 / [1,2] 事件池 */
+  tiers?: readonly number[],
+  /** 给定种子时按 reward 流随机抽 count 件（同种子同结果）；缺省取池内前 N 件 */
+  seed?: number,
 ): string[] {
   const taken = new Set(owned);
-  return [...content.relics.values()]
+  const pool = [...content.relics.values()]
+    .filter((r) => r.tier !== undefined)
+    .filter((r) => !tiers || tiers.includes(r.tier as number))
     .filter((r) => isContentAvailable(r.unlockCondition, r.id, unlocked))
     .map((r) => r.id)
     .filter((id) => !taken.has(id))
-    .sort()
-    .slice(0, count);
+    .sort();
+  if (seed === undefined) return pool.slice(0, count);
+  const rng = new Rng(seed >>> 0).stream("reward");
+  const remaining = [...pool];
+  const picks: string[] = [];
+  while (picks.length < count && remaining.length > 0) {
+    const index = rng.nextInt(0, remaining.length - 1);
+    picks.push(remaining[index]);
+    remaining.splice(index, 1);
+  }
+  return picks;
 }
 
 /** 重铸 HP 消耗（docs/16 P3.4 / docs/14 Q15）。 */

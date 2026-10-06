@@ -1,0 +1,13 @@
+{
+  "id": "rust_dowsing",
+  "i18n": "relic.rust_dowsing",
+  "timing": "onBattleStart",
+  "effects": [
+    {
+      "kind": "draw",
+      "value": 2
+    }
+  ],
+  "once": "battle",
+  "tier": 1
+}

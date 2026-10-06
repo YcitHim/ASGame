@@ -18,8 +18,7 @@
     "bloodbolt"
   ],
   "startRelics": [
-    "broken_oil",
-    "blood_pump"
+    "broken_oil"
   ],
   "unlock": "default"
 }

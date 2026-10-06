@@ -1,15 +1,16 @@
 {
-  "id": "blood_pump",
-  "i18n": "relic.blood_pump",
-  "timing": "onSell",
+  "id": "old_photo",
+  "i18n": "relic.old_photo",
+  "timing": "onBattleStart",
   "effects": [
     {
       "kind": "heal",
       "target": {
         "type": "self"
       },
-      "value": 2
+      "value": 4
     }
   ],
+  "once": "battle",
   "tier": 1
 }

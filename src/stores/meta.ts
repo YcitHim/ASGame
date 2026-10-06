@@ -92,6 +92,8 @@ export const useMetaStore = defineStore("meta", {
       if (this.hasCleared("engineer")) ids.push("ember_core");
       if (!ach.usedBloodpact) ids.push("immortality");
       if (ach.overloadCount >= 3) ids.push("redlineprotocol");
+      // 三职业各通关一次 → 朝圣者之铃（docs/38 §一.4 T3）
+      if (this.clearedClasses.length >= 3) ids.push("pilgrim_bell");
       const gained = this.unlock(ids);
       this.lastUnlocked = gained;
       return gained;

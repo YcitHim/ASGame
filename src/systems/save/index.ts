@@ -8,7 +8,7 @@
 export const SAVE_NAMESPACE = "rustandblood";
 
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export type SaveSlot = "settings" | "progress" | "replay" | "codex" | "meta";
 
@@ -90,6 +90,24 @@ const migrations: Record<number, (data: unknown) => unknown> = {
         overloadCount: runRecord["overloadCount"] ?? 0,
       },
     };
+  },
+  // 6 → 7（docs/38 §一 A-3）：随身遗物 pickedRelic 进 RunState。
+  // 旧档没有这次自选，按「身份件原配的第二件」补回（血械 blood_pump / 炉心 pressuregauge），
+  // 保证旧档强度不突变；职业 JSON 的 startRelics 已收敛为单件身份件。
+  6: (data) => {
+    if (typeof data !== "object" || data === null) return data;
+    const record = data as Record<string, unknown>;
+    const run = record["run"];
+    if (typeof run !== "object" || run === null) return record;
+    const runRecord = run as Record<string, unknown>;
+    if (runRecord["pickedRelic"] !== undefined) return record;
+    const fallback =
+      runRecord["classId"] === "engineer"
+        ? "pressuregauge"
+        : runRecord["classId"] === "bloodwright"
+          ? "blood_pump"
+          : "";
+    return { ...record, run: { ...runRecord, pickedRelic: fallback } };
   },
 };
 

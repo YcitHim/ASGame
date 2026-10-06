@@ -9,5 +9,6 @@
     }
   ],
   "once": "battle",
-  "unlockCondition": "engineer_first_clear"
+  "unlockCondition": "engineer_first_clear",
+  "tier": 3
 }

@@ -1,0 +1,13 @@
+{
+  "id": "purge_filter",
+  "i18n": "relic.purge_filter",
+  "timing": "onBattleStart",
+  "effects": [
+    {
+      "kind": "gainPollution",
+      "value": -15
+    }
+  ],
+  "once": "battle",
+  "tier": 2
+}

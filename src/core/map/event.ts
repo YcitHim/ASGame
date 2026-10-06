@@ -108,7 +108,12 @@ export function resolveEventOption(
           const cond = content.relics.get(id)?.unlockCondition;
           return !cond || cond === "none" || unlocked.includes(id);
         };
-        const pool = [...content.relics.keys()].filter((id) => !ctx.ownedRelics.includes(id) && available(id)).sort();
+        // 事件遗物 = T1+T2 混合池（docs/38 §一 A-1）；身份件（无 tier）不入池
+        const pool = [...content.relics.values()]
+          .filter((r) => r.tier === 1 || r.tier === 2)
+          .map((r) => r.id)
+          .filter((id) => !ctx.ownedRelics.includes(id) && available(id))
+          .sort();
         relicIds.push(...takeWeighted(rng, pool, () => 1, effect.count ?? 1));
         break;
       }

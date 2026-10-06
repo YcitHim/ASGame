@@ -19,6 +19,7 @@ import {
   noteBloodpact,
   pickRecastRemoval,
   RECAST_HP_COST,
+  relicPool,
   rollCardRewards,
   rollEnhancementChoices,
   rollEvent,
@@ -105,6 +106,15 @@ export const useRunStore = defineStore("run", {
     maxHp(): number {
       return this.run?.maxHp ?? this.classDef?.player.maxHp ?? 0;
     },
+    /** 职业身份件（唯一，不参与掉落池）。 */
+    identityRelics(): readonly string[] {
+      return this.classDef?.startRelics ?? [];
+    },
+    /** 随身遗物可直接选用的 T1 池（已解锁过滤，按 id 排序）。 */
+    companionPool(): string[] {
+      const unlocked = this.run?.unlocked ?? [];
+      return relicPool(loadGameContent().content, 1, unlocked);
+    },
     /** 本局职业定义（data/classes）。 */
     classDef(): ClassDefinition | undefined {
       if (!this.run) return undefined;
@@ -178,6 +188,7 @@ export const useRunStore = defineStore("run", {
       classId = "bloodwright",
       seed = (Date.now() ^ 0x9e3779b9) >>> 0,
       difficulty: RunDifficulty = "normal",
+      companionRelic = "",
     ): void {
       const act = this.act;
       if (!act) return;
@@ -186,9 +197,18 @@ export const useRunStore = defineStore("run", {
       // 解锁内容随局快照（docs/36 T1）：core 只认这份 id 列表，不反向依赖 meta
       const meta = useMetaStore();
       meta.ensureLoaded();
-      this.run = createRunState(act, cls, seed, { unlocked: meta.unlocked, difficulty });
+      // 随身遗物（docs/38 §一 A-2）：显式选择优先；程序化调用（测试 / sim）回落到 T1 池首件
+      const pool = relicPool(loadGameContent().content, 1, meta.unlocked);
+      // 默认件 = 血泵（docs/38 §一 A-2「默认选中第一件（血泵）」）；池内没有才回落首件
+      const fallback = pool.includes("blood_pump") ? "blood_pump" : (pool[0] ?? "");
+      const companion = pool.includes(companionRelic) ? companionRelic : fallback;
+      this.run = createRunState(act, cls, seed, {
+        unlocked: meta.unlocked,
+        difficulty,
+        companionRelic: companion,
+      });
       this.deck = cls.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
-      this.relics = [...(cls.startRelics ?? [])];
+      this.relics = [...(cls.startRelics ?? []), ...(companion ? [companion] : [])];
       this.acquired = [];
       // 每节点标记必须随新局重置，否则上一局的"已用"会卡住新局（测试抓到的真问题）
       this.recastUsedNode = null;
@@ -308,11 +328,17 @@ export const useRunStore = defineStore("run", {
       return chosen.slice(0, 3);
     },
 
-    /** 精英战掉落：未持有遗物里抽（Q10），允许放弃；锈蚀难度只给 2 选（docs/36 T2）。 */
-    relicChoices(): string[] {
+    /**
+     * 遗物掉落池（docs/38 §一 A-1）：
+     * 精英 / 残骸锻核 = T2 池；Boss = T3 稀有池；事件走 core 的 [1,2] 混合池。
+     * 锈蚀难度只给 2 选（docs/36 T2）。
+     */
+    relicChoices(tiers: readonly number[] = [2]): string[] {
       if (!this.run) return [];
       const count = DIFFICULTY_PARAMS[this.run.difficulty ?? "normal"].relicChoices;
-      return rollRelicChoices(loadGameContent().content, this.relics, count, this.run.unlocked);
+      // 掉落 RNG 走 reward 流：同种子 / 同层 → 同三件（docs/38 §一 A-1）
+      const seed = (this.run.seed ^ Math.imul(this.run.layerIndex + 13, 0x9e3779b9)) >>> 0;
+      return rollRelicChoices(loadGameContent().content, this.relics, count, this.run.unlocked, tiers, seed);
     },
 
     setPollution(value: number): void {
@@ -493,6 +519,14 @@ export const useRunStore = defineStore("run", {
         layerIndex: saved.run.layerIndex ?? 0,
         picked: saved.run.picked ?? [],
         unlocked: saved.run.unlocked ?? [],
+        // v6 旧档没有随身遗物：按身份件原配的第二件补回（与 save 迁移同口径）
+        pickedRelic:
+          saved.run.pickedRelic ??
+          (saved.run.classId === "engineer"
+            ? "pressuregauge"
+            : saved.run.classId === "bloodwright"
+              ? "blood_pump"
+              : ""),
         difficulty: saved.run.difficulty ?? "normal",
         usedBloodpact: saved.run.usedBloodpact ?? false,
         overloadCount: saved.run.overloadCount ?? 0,

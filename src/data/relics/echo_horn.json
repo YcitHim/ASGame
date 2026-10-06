@@ -1,0 +1,18 @@
+{
+  "id": "echo_horn",
+  "i18n": "relic.echo_horn",
+  "timing": "onBattleStart",
+  "effects": [
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "allEnemies"
+      },
+      "buff": "vulnerable",
+      "stacks": 1,
+      "duration": 1
+    }
+  ],
+  "once": "battle",
+  "tier": 2
+}

@@ -1,0 +1,20 @@
+{
+  "id": "iron_rations",
+  "i18n": "relic.iron_rations",
+  "timing": "onBattleStart",
+  "effects": [
+    {
+      "kind": "heal",
+      "target": {
+        "type": "self"
+      },
+      "value": 2
+    },
+    {
+      "kind": "draw",
+      "value": 1
+    }
+  ],
+  "once": "battle",
+  "tier": 2
+}

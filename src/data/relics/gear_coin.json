@@ -1,0 +1,13 @@
+{
+  "id": "gear_coin",
+  "i18n": "relic.gear_coin",
+  "timing": "onSell",
+  "effects": [
+    {
+      "kind": "draw",
+      "value": 1
+    }
+  ],
+  "once": "turn",
+  "tier": 1
+}

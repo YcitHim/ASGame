@@ -1,0 +1,21 @@
+{
+  "id": "rust_crown",
+  "i18n": "relic.rust_crown",
+  "timing": "onBattleStart",
+  "effects": [
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "self"
+      },
+      "buff": "strength",
+      "stacks": 3
+    },
+    {
+      "kind": "gainPollution",
+      "value": 15
+    }
+  ],
+  "once": "battle",
+  "tier": 3
+}

@@ -1,8 +1,12 @@
 {
-  "id": "rust_charm",
-  "i18n": "relic.rust_charm",
+  "id": "choir_battery",
+  "i18n": "relic.choir_battery",
   "timing": "onTurnStart",
   "effects": [
+    {
+      "kind": "gainCharge",
+      "value": 1
+    },
     {
       "kind": "applyBuff",
       "target": {
@@ -13,5 +17,5 @@
     }
   ],
   "once": "turn",
-  "tier": 2
+  "tier": 3
 }

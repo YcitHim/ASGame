@@ -1,0 +1,16 @@
+{
+  "id": "insul_brick",
+  "i18n": "relic.insul_brick",
+  "timing": "onBattleStart",
+  "effects": [
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 6
+    }
+  ],
+  "once": "battle",
+  "tier": 2
+}

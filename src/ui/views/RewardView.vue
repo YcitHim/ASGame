@@ -22,6 +22,8 @@ const mode = computed<"boss" | "elite" | "card">(() =>
 
 /** 精英战两段式（docs/25 §1）：先遗物三选一，再「残骸锻核」强化三选一，都可放弃。 */
 const step = ref<"relic" | "enhance">("relic");
+/** Boss 遗物槽（docs/38 §一 A-1）：T3 稀有池，可取走 1 件 */
+const bossTaken = ref<string | null>(null);
 const enhanceChoices = ref<string[]>([]);
 const selectedOffer = ref<string | null>(null);
 const enhanceOffers = computed(() => run.offers(enhanceChoices.value));
@@ -64,7 +66,12 @@ onMounted(() => {
     rewards.value = run.cardRewards();
     codex.markCards(rewards.value);
   } else if (mode.value === "elite") {
-    relicOffers.value = run.relicChoices();
+    // 精英 / 残骸锻核 = T2 常规池（docs/38 §一 A-1）
+    relicOffers.value = run.relicChoices([2]);
+    codex.markRelics(relicOffers.value);
+  } else if (mode.value === "boss") {
+    // Boss 掉落 = T3 稀有池
+    relicOffers.value = run.relicChoices([3]);
     codex.markRelics(relicOffers.value);
   }
 });
@@ -82,6 +89,11 @@ function afterRelic(): void {
 function takeRelic(id: string): void {
   run.addRelic(id);
   afterRelic();
+}
+
+function takeBossRelic(id: string): void {
+  run.addRelic(id);
+  bossTaken.value = id;
 }
 
 function pickEnhanceOffer(id: string): void {
@@ -121,6 +133,19 @@ function rarityLabel(rarity: string | undefined): string {
         <div class="triumph">
           <h1 class="head">远 征 胜 利</h1>
           <p class="sub">锈喉倒下，锈蚀回廊重归死寂。</p>
+          <div v-if="relicOffers.length" class="relics boss-relics">
+            <button
+              v-for="id in relicOffers"
+              :key="id"
+              class="relic"
+              :class="{ taken: bossTaken === id }"
+              @click="takeBossRelic(id)"
+            >
+              <b>{{ t(`relic.${id}.name`, id) }}</b>
+              <p>{{ t(`relic.${id}.desc`, "") }}</p>
+              <span class="pick">{{ bossTaken === id ? "已取走" : "取 走" }}</span>
+            </button>
+          </div>
           <button class="etch-btn" @click="finishRun">完成远征</button>
         </div>
       </template>
@@ -389,5 +414,17 @@ function rarityLabel(rarity: string | undefined): string {
 .triumph .etch-btn {
   padding: 11px 26px;
   font-size: 13px;
+}
+.boss-relics {
+  justify-content: center;
+  margin: 0 0 22px;
+}
+.boss-relics .relic {
+  width: 200px;
+  padding: 14px 14px 30px;
+}
+.boss-relics .relic.taken {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.65), 0 0 18px rgba(176, 141, 74, 0.35);
 }
 </style>
