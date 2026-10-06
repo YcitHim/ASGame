@@ -7,11 +7,11 @@
   "effects": [
     {
       "kind": "damage",
-      "value": 4
+      "value": 3
     },
     {
       "kind": "damage",
-      "value": 3,
+      "value": 2,
       "condition": {
         "type": "chargeAtLeast",
         "n": 2
@@ -22,11 +22,11 @@
     "effects": [
       {
         "kind": "damage",
-        "value": 6
+        "value": 5
       },
       {
         "kind": "damage",
-        "value": 4,
+        "value": 3,
         "condition": {
           "type": "chargeAtLeast",
           "n": 2

@@ -21,7 +21,7 @@ const CHARGE4: CardDefinition = {
 const content = createContentDb({
   cards: new Map([...game.content.cards, ["charge4", CHARGE4]]),
   enhancements: game.content.enhancements,
-  relics: new Map(),
+  relics: game.content.relics,
   classes: game.content.classes,
   enemies: new Map([
     [
@@ -36,7 +36,7 @@ const content = createContentDb({
   ]),
 });
 
-function battle(deck: string[]): BattleState {
+function battle(deck: string[], relics: string[] = []): BattleState {
   return reduce(
     createBattleState({
       battleId: "eng",
@@ -44,6 +44,7 @@ function battle(deck: string[]): BattleState {
       player: { maxHp: 66, energy: 9 },
       enemies: [{ id: "dummy" }],
       deck,
+      relics,
       content,
     }),
     { type: "Noop", actionId: "s" },
@@ -59,12 +60,12 @@ const dealt = (events: readonly { type: string }[]) =>
   events.filter((e): e is { type: string; value: number } => e.type === "DamageDealt").map((e) => e.value);
 
 describe("docs/29 §二⑥ 炉心机士卡牌", () => {
-  it("活塞冲拳：基础 4（docs/32 第二刀）；充能 ≥2 时追加 3", () => {
-    expect(dealt(play(battle(["pistonjab"]), "pistonjab").events)).toEqual([4]);
+  it("活塞冲拳：基础 3；充能 ≥2 时追加 2", () => {
+    expect(dealt(play(battle(["pistonjab"]), "pistonjab").events)).toEqual([3]);
     const charged = play(battle(["charge4", "pistonjab"]), "charge4");
     expect(charged.state.player.charge).toBe(4);
-    // 充能按固定加伤计入每一次攻击判定（docs/20 §3.1）：4+4 / 3+4
-    expect(dealt(play(charged.state, "pistonjab").events)).toEqual([8, 7]);
+    // 充能按固定加伤计入每一次攻击判定（docs/20 §3.1）：3+4 / 2+4
+    expect(dealt(play(charged.state, "pistonjab").events)).toEqual([7, 6]);
   });
 
   it("蒸汽弹：多段 3×2（docs/32 第三刀①）", () => {
@@ -89,6 +90,21 @@ describe("docs/29 §二⑥ 炉心机士卡牌", () => {
   it("炉心过载：每点充能 3 伤害", () => {
     const charged = play(battle(["charge4", "coreoverload"]), "charge4");
     expect(dealt(play(charged.state, "coreoverload").events)).toEqual([12]);
+  });
+
+  it("压力表（clampCharge）：回合开始时充能高于 5 时平衡回 5", () => {
+    let s = play(battle(["charge4", "charge4"], ["pressuregauge"]), "charge4").state;
+    s = play(s, "charge4").state;
+    expect(s.player.charge).toBe(8);
+    // 结束回合 → 敌人行动 → 下一回合开始触发压力表
+    s = reduce(s, { type: "EndTurn", actionId: "e" }).state;
+    expect(s.player.charge).toBe(5);
+  });
+
+  it("减重可作用于炉心攻击牌（活塞冲拳）", () => {
+    const def = game.content.enhancements.get("lighten");
+    expect(def?.appliesTo).toContain("pistonjab");
+    expect(def?.appliesTo).toContain("coreoverload");
   });
 
   it("飞升齿轮（onGainCharge）：获得充能时额外 +1，且不自触发死循环", () => {

@@ -176,6 +176,9 @@ function onLeave(): void {
   flex: none;
   margin: 0 -22px;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 20px;
   border-radius: var(--radius-md);
   background: linear-gradient(165deg, #1c1915 0%, #12100e 60%, #171310 100%);
   border: 1px solid var(--edge-gold);
@@ -254,8 +257,8 @@ function onLeave(): void {
   white-space: nowrap;
 }
 .art {
-  height: 96px;
-  margin: 10px 10px 0;
+  height: 82px;
+  margin: 8px 10px 0;
   border: 1px solid rgba(110, 88, 54, 0.4);
   background:
     radial-gradient(circle at 50% 42%, rgba(176, 141, 74, 0.16), transparent 62%),
@@ -276,7 +279,7 @@ function onLeave(): void {
   font-family: var(--serif-title);
   font-size: 15px;
   letter-spacing: 0.14em;
-  margin-top: 9px;
+  margin-top: 6px;
   color: var(--ink-bone);
 }
 .upmark {
@@ -292,21 +295,23 @@ function onLeave(): void {
   color: var(--gold-dim);
 }
 .ctext {
-  margin: 9px 12px 0;
+  margin: 6px 12px 0;
   font-size: 11px;
-  line-height: 1.65;
+  line-height: 1.55;
   color: var(--ink-dim);
   text-align: center;
+  overflow: hidden;
 }
 .cflavor {
-  position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 22px;
+  /* 放在描述之后的正向流里：以前绝对定位会被长描述顶穿（玩家报「黄字和介绍重叠」） */
+  margin: 5px 10px 0;
   text-align: center;
   font-family: var(--serif-body);
   font-size: 9px;
   line-height: 1.45;
+  /* 最多两行：更长的 flavor 裁掉，避免顶到强化槽（卡面本身不裁，否则会砍掉费用角标） */
+  max-height: 27px;
+  overflow: hidden;
   font-style: italic;
   letter-spacing: 0.06em;
   color: var(--gold-dim);

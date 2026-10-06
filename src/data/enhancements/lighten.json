@@ -20,7 +20,17 @@
     "magnetize",
     "windup",
     "overclock",
-    "grandwindup"
+    "grandwindup",
+    "pistonjab",
+    "sparkplug",
+    "steambolt",
+    "chargedhammer",
+    "twinpistons",
+    "steamvent",
+    "boilerrage",
+    "punchthrough",
+    "coreoverload",
+    "teslacage"
   ],
   "handler": "lighten",
   "params": {

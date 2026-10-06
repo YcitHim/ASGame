@@ -5,7 +5,7 @@
   "effects": [
     {
       "kind": "gainCharge",
-      "value": 1
+      "value": 2
     }
   ],
   "once": "battle"

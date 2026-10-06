@@ -538,6 +538,15 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
       sink.emit("ChargeChanged", { targetId: PLAYER_ID, before: charge, after: 0, delta: -charge });
       break;
     }
+    case "clampCharge": {
+      // 充能封顶（玩家指定）：高于 value 时平衡回 value，不触发 onGainCharge
+      const before = draft.player.charge;
+      if (value > 0 && before > value) {
+        draft.player.charge = value;
+        sink.emit("ChargeChanged", { targetId: PLAYER_ID, before, after: value, delta: value - before });
+      }
+      break;
+    }
     case "gainModifier":
       // 本场临时修饰（血锈光环）：写入 BattleState.modifiers，随战斗结束消失
       if (effect.valueKind && effect.op) {

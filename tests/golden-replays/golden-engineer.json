@@ -110,13 +110,13 @@
       {
         "type": "PlayCard",
         "actionId": "p5",
-        "handIndex": 2,
+        "handIndex": 1,
         "targetId": "riveted_heavy"
       },
       {
         "type": "PlayCard",
         "actionId": "p6",
-        "handIndex": 0,
+        "handIndex": 1,
         "targetId": "riveted_heavy"
       },
       {
@@ -152,9 +152,15 @@
         "actionId": "p12",
         "handIndex": 1,
         "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p13",
+        "handIndex": 1,
+        "targetId": "riveted_heavy"
       }
     ],
-    "eventHash": "e8631de5a2da2766b3b2cba05961b543def5ec0d3c1029fb3cb9548e178ff17b",
+    "eventHash": "35d6874cc424e18a658627e317077cbb70ef7a25b32cdf42d70ea49a2d2a6bba",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -174,7 +180,6 @@
       "HpLost",
       "DamageDealt",
       "HpLost",
-      "ChargeChanged",
       "TurnStarted",
       "CardsDrawn",
       "IntentRevealed",
@@ -182,10 +187,12 @@
       "CardPlayed",
       "DamageDealt",
       "HpLost",
-      "DamageDealt",
-      "HpLost",
       "UnitDied",
       "PollutionChanged",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "ChargeChanged",
       "CardPlayed",
       "DamageDealt",
       "HpLost",
@@ -194,8 +201,7 @@
       "CardPlayed",
       "BlockGained",
       "CardPlayed",
-      "DamageDealt",
-      "HpLost"
+      "ChargeChanged"
     ],
     "turns": 3,
     "outcome": "win"

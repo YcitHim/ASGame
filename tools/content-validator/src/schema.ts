@@ -85,6 +85,14 @@ const effectSchema = z.discriminatedUnion("kind", [
     .strict(),
   z
     .object({
+      kind: z.literal("clampCharge"),
+      /** 充能上限：超过则平衡到该值 */
+      value: z.number().int().min(1),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
       kind: z.literal("gainModifier"),
       valueKind: z.enum(VALUE_KINDS),
       op: z.enum(["add", "mul"]),

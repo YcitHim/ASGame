@@ -30,7 +30,9 @@ export interface CardEffect {
     /** 写入本场临时修饰层（docs/16 P3.2「血锈光环」）：战斗内持续、随战斗结束消失 */
     | "gainModifier"
     /** 消耗全部充能（docs/27 §二 C2 / docs/29 §二⑥）：每点充能按 mode 结算，随后清零 */
-    | "spendCharge";
+    | "spendCharge"
+    /** 充能封顶（压力表改版）：超过 value 时平衡回 value */
+    | "clampCharge";
   readonly target?: TargetRef;
   readonly value?: number;
   readonly hits?: number;

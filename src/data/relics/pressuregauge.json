@@ -4,15 +4,8 @@
   "timing": "onTurnStart",
   "effects": [
     {
-      "kind": "gainCharge",
-      "value": 1,
-      "condition": {
-        "type": "not",
-        "of": {
-          "type": "chargeAtLeast",
-          "n": 2
-        }
-      }
+      "kind": "clampCharge",
+      "value": 5
     }
   ],
   "once": "turn"
