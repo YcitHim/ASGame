@@ -18,7 +18,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # 发布前的硬门禁：任何一步失败都不会部署，坏内容上不了线
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: 安装依赖
+        run: npm ci
+      - name: lint（含 G3 核心层确定性规则）
+        run: npm run lint
+      - name: typecheck
+        run: npm run typecheck
+      - name: content-validator（G1）
+        run: npm run validate
+      - name: unit tests（Vitest）
+        run: npm test
+
   build:
+    needs: verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
