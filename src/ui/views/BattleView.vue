@@ -448,6 +448,19 @@ function skipTutorial(): void {
 function back(): void {
   void router.push("/");
 }
+
+/**
+ * 战斗中途回主菜单（甲方验收 2026-10-07）：原来只有「阵亡结算页」能回主菜单。
+ * **保留远征进度**——标题页的「继续远征」还能回来，本场战斗从头再打。
+ */
+const menuOpen = ref(false);
+
+function quitToTitleKeepRun(): void {
+  menuOpen.value = false;
+  run.persist();
+  store.skip();
+  void router.push("/");
+}
 </script>
 
 <template>
@@ -470,6 +483,7 @@ function back(): void {
           </button>
           <span @click="store.toggleSpeed()">{{ store.speed }}×</span>
           <span @click="router.push('/settings')">设置</span>
+          <span class="menu-entry" @click="menuOpen = true">主菜单</span>
         </div>
         <!-- 教学旁白（docs/42 速成版）：第一行"这是什么 / 做什么"，第二行"为什么" -->
         <div v-if="showTutHint" class="tut-hint" :class="{ step: tutorial.needsAcknowledge }">
@@ -591,8 +605,16 @@ function back(): void {
             data-tut-label="异常挂在这"
           >
             <span class="pp-status-label">状态</span>
-            <BuffRow v-if="player && player.buffs.length > 0" :buffs="player.buffs" align="start" />
-            <span v-else class="pp-empty">暂无异常</span>
+            <div class="pp-buffs">
+              <!-- 状态多到超过一排时切紧凑芯片，保证 3 排以内装得下 -->
+              <BuffRow
+                v-if="player && player.buffs.length > 0"
+                :buffs="player.buffs"
+                align="start"
+                :compact="player.buffs.length > 4"
+              />
+              <span v-else class="pp-empty">暂无异常</span>
+            </div>
           </div>
           <template v-if="showFloaters">
             <DamageFloat v-for="f in floatersFor['player'] ?? []" :key="f.id" :floater="f" />
@@ -723,6 +745,18 @@ function back(): void {
       />
       </div>
 
+      <!-- 战斗中途回主菜单的确认（避免手滑丢掉这一局的战场） -->
+      <div v-if="menuOpen" class="menu-confirm" @click.self="menuOpen = false">
+        <div class="menu-box">
+          <p class="menu-title">回 到 主 菜 单 ？</p>
+          <p class="menu-note">远征进度会保留——标题页点「继续远征」能回来，本场战斗从头再打。</p>
+          <div class="menu-actions">
+            <button class="etch-btn" @click="quitToTitleKeepRun">返回标题</button>
+            <button class="etch-btn ghost" @click="menuOpen = false">取消</button>
+          </div>
+        </div>
+      </div>
+
       <!-- 结算 -->
       <div v-if="store.over" class="result">
         <p v-if="bossDeathLine" class="boss-last">「{{ bossDeathLine }}」</p>
@@ -774,6 +808,8 @@ function back(): void {
 .topbar .r { display: flex; gap: 16px; }
 .topbar .r span { cursor: pointer; }
 .topbar .r span:hover { color: var(--gold); }
+/* 回主菜单：战斗中途唯一出口，给一点可见度，但不喧宾夺主 */
+.topbar .r .menu-entry { color: var(--ink-bone); opacity: 0.9; }
 /* 跳过：原来只有一个 17×10px 的文字，点不中就像"按了没用"（玩家反馈） */
 .skip-btn {
   padding: 4px 10px; margin: -4px 0;
@@ -800,11 +836,15 @@ function back(): void {
 .enemy-title { font-size: 10px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 4px; }
 
 .field-band {
-  position: absolute; left: 0; right: 0; bottom: 212px; height: 128px; z-index: 10;
+  /* height 168（原 128）：状态行满 3 排也装得下（甲方验收 2026-10-07） */
+  position: absolute; left: 0; right: 0; bottom: 212px; height: 168px; z-index: 10;
   display: flex; align-items: center; justify-content: space-between; padding: 0 42px;
 }
 .player-panel {
-  position: relative; width: 340px; background: rgba(18, 16, 14, 0.82);
+  /* width 420（原 340）：带名字的状态芯片一行放得下 4 枚，8 个状态只占 2 排 */
+  position: relative; width: 420px; background: rgba(18, 16, 14, 0.82);
+  /* 底边贴住手牌区上沿（bottom:212）：面板只会往上长，绝不会被手牌压住看不见 */
+  align-self: flex-end; max-height: 100%;
   border: 1px solid rgba(176, 141, 74, 0.4);
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.65), 0 8px 24px rgba(0, 0, 0, 0.5);
   padding: 12px 16px; border-radius: var(--radius-sm);
@@ -815,6 +855,20 @@ function back(): void {
 .pp-status {
   display: flex; align-items: flex-start; gap: 8px;
   padding-top: 7px; border-top: 1px solid rgba(110, 88, 54, 0.28);
+  /* 允许被压缩：面板高度封顶时，先压状态行，而不是让内容溢到面板外面 */
+  min-height: 0;
+}
+/* 状态芯片的滚动兜底放在内层：.pp-status 本身不能变成滚动容器，
+   否则教学导览贴在它右边的那枚标签会被 overflow-x 裁掉。 */
+.pp-buffs {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  /* 66px = 恰好两排芯片（30 + 6 + 30），不露半排。
+     超出就在这里内部滚动——绝不允许外溢到面板外面被手牌盖住。 */
+  max-height: 66px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .pp-status-label { flex: none; padding-top: 7px; font-size: 10px; letter-spacing: 0.24em; color: var(--ink-dim); }
 .pp-status .buffrow { margin-top: 0; }
@@ -972,6 +1026,30 @@ function back(): void {
   display: flex; flex-direction: column;
 }
 .log-drawer :deep(.log) { flex: 1; }
+
+/* 战斗中途回主菜单：轻量确认（甲方验收 2026-10-07）。
+   不弹 window.confirm——那会跳出游戏画面，和整套自制 UI 割裂。 */
+.menu-confirm {
+  position: absolute; inset: 0; z-index: 55;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(6, 4, 3, 0.72);
+}
+.menu-box {
+  width: 430px; padding: 22px 26px;
+  text-align: center;
+  background: linear-gradient(165deg, #1c1915, #100d0a);
+  border: 1px solid var(--edge-gold);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.7), 0 18px 44px rgba(0, 0, 0, 0.8);
+}
+.menu-title { font-family: var(--serif-title); font-size: 20px; letter-spacing: 0.34em; color: var(--ink-bone); }
+.menu-note { margin-top: 12px; font-size: 11px; line-height: 1.9; letter-spacing: 0.12em; color: var(--ink-dim); }
+.menu-actions { display: flex; justify-content: center; gap: 14px; margin-top: 20px; }
+.menu-actions .etch-btn { padding: 9px 22px; font-size: 12px; }
+.menu-actions .etch-btn.ghost {
+  background: none; border-color: rgba(110, 88, 54, 0.5); color: var(--ink-dim);
+}
+.menu-actions .etch-btn.ghost:hover { color: var(--gold); border-color: var(--gold); }
 
 .result {
   position: absolute; inset: 0; z-index: 50; display: flex; flex-direction: column;

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createRouter, createWebHashHistory } from "vue-router";
@@ -10,7 +10,10 @@ import { useRunStore } from "@/stores/run";
 
 const router = createRouter({
   history: createWebHashHistory(),
-  routes: [{ path: "/", component: { template: "<div />" } }],
+  routes: [
+    { path: "/", component: { template: "<div />" } },
+    { path: "/battle", component: { template: "<div />" } },
+  ],
 });
 
 describe("BattleView 挂载冒烟（S3.7）", () => {
@@ -160,6 +163,43 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
     expect(after).toContain("pistonjab");
     expect(after).not.toContain("strike");
     battle.skip();
+    wrapper.unmount();
+  });
+
+  it("战斗中途能回主菜单：顶栏入口 → 确认 → 回标题，且保留远征进度（甲方验收）", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const run = useRunStore();
+    run.startRun("bloodwright", 1);
+    await router.push("/battle");
+    const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
+    await nextTick();
+    await nextTick();
+    const battle = useBattleStore();
+    battle.skip();
+
+    // 顶栏必须有出口（原来战斗中没有任何回主菜单的路）
+    const entry = wrapper.findAll(".topbar .r span").find((s) => s.text() === "主菜单");
+    expect(entry, "顶栏缺少「主菜单」入口").toBeDefined();
+    expect(wrapper.find(".menu-confirm").exists()).toBe(false);
+
+    await entry!.trigger("click");
+    await nextTick();
+    expect(wrapper.find(".menu-confirm").exists()).toBe(true);
+
+    // 取消：只关浮层，不动路由
+    await wrapper.find(".menu-actions .ghost").trigger("click");
+    await nextTick();
+    expect(wrapper.find(".menu-confirm").exists()).toBe(false);
+    expect(router.currentRoute.value.path).toBe("/battle");
+
+    // 确认：回标题，且这一局的进度还在（标题页能「继续远征」）
+    await entry!.trigger("click");
+    await nextTick();
+    await wrapper.find(".menu-actions .etch-btn").trigger("click");
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe("/");
+    expect(run.active).toBe(true);
     wrapper.unmount();
   });
 });
