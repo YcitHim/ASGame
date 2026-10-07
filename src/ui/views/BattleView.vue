@@ -62,15 +62,13 @@ function startTutorialBattle(): void {
   applyStepGrant();
 }
 
-/** 教学章走完 → 下一章。战斗章就地重开，其余回教学页。 */
+/**
+ * 教学章走完 → 回教学页看下一章的「课时卡 / 幕间」。
+ * 不在这里直接开下一场战斗：否则玩家看不到课时卡，只会看到一闪而过的兜底页（玩家反馈）。
+ */
 function advanceTutorialChapter(): void {
-  const hasNext = tutorial.nextChapter();
-  if (!hasNext) {
-    void router.push("/tutorial");
-    return;
-  }
-  if (tutorial.chapter?.kind === "battle") startTutorialBattle();
-  else void router.push("/tutorial");
+  tutorial.nextChapter();
+  void router.push("/tutorial");
 }
 
 /**

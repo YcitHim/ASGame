@@ -6,7 +6,7 @@ import { useRunStore } from "@/stores/run";
 import { useTutorialStore } from "@/stores/tutorial";
 import EmberField from "@/ui/components/EmberField.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
-import { TUTORIAL_TITLE, tutorialChapter } from "@/ui/tutorial";
+import { TUTORIAL_TITLE } from "@/ui/tutorial";
 
 /**
  * 「第一班岗」的章间页面（docs/42）：序章 / 幕间 A 奖励 / 幕间 B 地图与篝火 / 结业。
@@ -21,18 +21,32 @@ useStageFit(stage);
 const game = loadGameContent();
 const chapter = computed(() => tutorial.chapter);
 
+onMounted(() => {
+  // 从首页/设置页进来时已 begin；直接访问 /tutorial 时补一次
+  if (!tutorial.active && !tutorial.finished) tutorial.begin();
+  // 注意：这里**不再**自动跳去战斗。战斗章要停在自己的「课时卡」上，
+  // 让玩家看清这一课教什么再点开始——早先会先渲染一帧兜底页再自动跳，
+  // 玩家看到的是一闪而过、根本读不清的按钮（玩家反馈）。
+});
+
+/** 战斗章的课时序号（三课里的第几课）。 */
+const lessonIndex = computed(() => {
+  const id = chapter.value?.id ?? "";
+  const order = ["lesson1", "lesson2", "lesson3"];
+  const at = order.indexOf(id);
+  return at >= 0 ? at + 1 : 0;
+});
+const lessonTotal = 3;
+/** 这一课的对手名。 */
 const enemyNames = computed(() =>
   (chapter.value?.kind === "battle" ? chapter.value.enemies : [])
     .map((id) => game.content.enemies.get(id)?.name ?? id)
     .join(" · "),
 );
-
-onMounted(() => {
-  // 从首页/设置页进来时已 begin；直接访问 /tutorial 时补一次
-  if (!tutorial.active && !tutorial.finished) tutorial.begin();
-  // 战斗章交给 BattleView
-  if (tutorial.active && chapter.value?.kind === "battle") void router.replace("/battle");
-});
+/** 这一课第一句旁白（让玩家在进场前就知道要学什么）。 */
+const lessonTeaser = computed(() =>
+  chapter.value?.kind === "battle" ? (chapter.value.steps[0]?.why ?? "") : "",
+);
 
 function enterBattle(): void {
   void router.push("/battle");
@@ -42,18 +56,20 @@ function cardName(id: string): string {
   return game.i18n[`card.${id}.name`] ?? id;
 }
 
-/** 序章等纯文本章：点 CTA 进下一章（下一章是战斗就交给 BattleView）。 */
+/** 序章等纯文本章：推进到下一章，由本页继续渲染（不跳路由，避免闪一帧）。 */
 function nextFromScreen(): void {
-  const hasNext = tutorial.nextChapter();
-  if (!hasNext) void router.push("/tutorial");
-  else if (chapter.value?.kind === "battle") enterBattle();
+  tutorial.nextChapter();
 }
 
 function takeReward(id: string): void {
   tutorial.takeReward(id);
-  const hasNext = tutorial.nextChapter();
-  if (!hasNext) void router.push("/tutorial");
-  else if (chapter.value?.kind === "battle") enterBattle();
+  tutorial.nextChapter();
+}
+
+/** 结业：走完最后一章（记完成 / 解锁徽章），然后无缝进正式远征。 */
+function graduate(): void {
+  tutorial.nextChapter();
+  finish();
 }
 
 /** 结业 → 无缝进正式远征第一层（不回首页：教学是这一局的序章）。 */
@@ -78,33 +94,42 @@ function leave(): void {
         <div class="r"><span @click="leave">跳过教学</span></div>
       </div>
 
-      <!-- 结业（docs/42 §三.8） -->
-      <template v-if="tutorial.finished">
-        <h1 class="head">结 业</h1>
-        <ul class="checklist">
-          <li v-for="(line, i) in (chapter ?? tutorialChapter(6)) && (tutorialChapter(6) as { checklist?: readonly string[] })?.checklist" :key="i">
-            <span class="tick">✓</span>{{ line }}
-          </li>
-        </ul>
-        <p class="sub dim">这班你值完了。往后的岗，自己站——忘了就回标题页翻「图鉴」，或者从设置里再叫我。</p>
-        <button class="tut-cta main" @click="finish">开 始 远 征</button>
-      </template>
+      <template v-if="chapter">
+        <!-- 战斗章：课时卡（docs/42）。停在这里让玩家看清"这一课学什么"，点了才开始 -->
+        <template v-if="chapter.kind === 'battle'">
+          <div class="lesson-tag">第 {{ lessonIndex }} 课 / 共 {{ lessonTotal }} 课</div>
+          <h1 class="head">{{ chapter.title }}</h1>
+          <p class="theme">「{{ chapter.theme }}」</p>
+          <div class="plan">
+            <div class="step-row"><b>对手</b><small>{{ enemyNames }}</small></div>
+            <div v-if="lessonTeaser" class="step-row"><b>这一课</b><small>{{ lessonTeaser }}</small></div>
+            <div class="step-row">
+              <b>怎么走</b>
+              <small>跟着屏幕上方的一句话走，做对了才会推进；随时可以点右上角「跳过教学」。</small>
+            </div>
+          </div>
+          <button class="tut-cta main" @click="enterBattle">
+            <span class="glyph">▶</span>{{ lessonIndex === 1 ? "开 始 第 一 课" : "开 始 这 一 课" }}
+          </button>
+        </template>
 
-      <template v-else-if="chapter">
-        <!-- 序章 / 一般幕间 -->
-        <h1 class="head">{{ chapter.title }}</h1>
-        <div v-if="chapter.kind === 'screen' || chapter.kind === 'graduation'" class="lines">
-          <p v-for="(line, i) in chapter.lines" :key="i">{{ line }}</p>
-        </div>
-        <button v-if="chapter.kind === 'screen'" class="tut-cta main" @click="nextFromScreen">
-          {{ chapter.cta }}
-        </button>
+        <!-- 结业（docs/42 §三.8） -->
+        <template v-else-if="chapter.kind === 'graduation'">
+          <h1 class="head">{{ chapter.title.replace(" ", "  ") }}</h1>
+          <ul class="checklist">
+            <li v-for="(line, i) in chapter.checklist" :key="i">
+              <span class="tick">✓</span>{{ line }}
+            </li>
+          </ul>
+          <p v-for="(line, i) in chapter.lines" :key="'l' + i" class="sub dim">{{ line }}</p>
+          <button class="tut-cta main" @click="graduate">开 始 远 征</button>
+        </template>
 
-        <!-- 战斗章（理论上会跳到 /battle，这里兜底） -->
-        <template v-else-if="chapter.kind === 'battle'">
-          <p class="sub">{{ chapter.theme }}</p>
-          <p class="sub dim">对手：{{ enemyNames }}</p>
-          <button class="tut-cta main" @click="enterBattle">进 入</button>
+        <!-- 序章 -->
+        <template v-else-if="chapter.kind === 'screen'">
+          <h1 class="head">{{ chapter.title }}</h1>
+          <div class="lines"><p v-for="(line, i) in chapter.lines" :key="i">{{ line }}</p></div>
+          <button class="tut-cta main" @click="nextFromScreen">{{ chapter.cta }}</button>
         </template>
 
         <!-- 幕间 A：三选一（按职业固定候选） -->
@@ -176,6 +201,13 @@ function leave(): void {
 }
 .lines { display: flex; flex-direction: column; gap: 8px; max-width: 760px; }
 .lines p { font-size: 14px; line-height: 1.9; letter-spacing: 0.1em; color: var(--ink-bone); }
+.lesson-tag {
+  font-family: var(--serif-title); font-size: 12px; letter-spacing: 0.32em; color: var(--gold-dim);
+}
+.theme {
+  font-size: 14px; letter-spacing: 0.12em; color: var(--gold);
+  font-style: italic;
+}
 .sub { font-size: 13px; letter-spacing: 0.16em; color: var(--ink-bone); }
 .sub.dim { color: var(--ink-dim); font-size: 12px; }
 .main { padding: 12px 40px; font-size: 14px; }
@@ -191,6 +223,24 @@ function leave(): void {
 .offer b { font-family: var(--serif-title); font-size: 15px; letter-spacing: 0.18em; color: var(--ink-bone); font-weight: 400; }
 .offer small { font-size: 11px; line-height: 1.7; color: var(--ink-dim); letter-spacing: 0.04em; }
 .offer .pick { margin-top: auto; font-size: 11px; letter-spacing: 0.2em; color: var(--gold-dim); }
+/* 课时卡的「这一课教什么」信息块 */
+.plan {
+  display: flex; flex-direction: column; gap: 10px;
+  width: 620px; padding: 16px 22px;
+  text-align: left;
+  border: 1px solid rgba(110, 88, 54, 0.4);
+  border-radius: var(--radius-md);
+  background: rgba(18, 16, 14, 0.72);
+}
+.step-row { display: flex; gap: 12px; align-items: baseline; }
+.step-row b {
+  flex: none; width: 84px;
+  font-family: var(--serif-title); font-size: 12px; letter-spacing: 0.2em;
+  color: var(--gold-dim); font-weight: 400;
+}
+.step-row b::after { content: "："; }
+.step-row small { font-size: 12px; line-height: 1.7; color: var(--ink-dim); letter-spacing: 0.06em; }
+
 .checklist {
   list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 34px;
   max-width: 720px; margin: 4px 0;
