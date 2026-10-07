@@ -79,7 +79,7 @@ describe("1.0-C 成就墙", () => {
       hpLeft: 30,
     });
     // 「引路人」来自教学完成，不属于远征结算（docs/41 §4.3）
-    meta.markTutorialDone();
+    meta.markTutorialDone("bloodwright");
     expect(meta.isAchieved("guide")).toBe(true);
     expect(ACHIEVEMENT_IDS.every((id) => meta.isAchieved(id))).toBe(true);
     const { loadGameContent } = await import("@/data/load");

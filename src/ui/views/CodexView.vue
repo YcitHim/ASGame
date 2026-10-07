@@ -7,6 +7,8 @@ import { loadGameContent, t } from "@/data/load";
 import { useCodexStore } from "@/stores/codex";
 import { ACHIEVEMENT_IDS, useMetaStore } from "@/stores/meta";
 import { useTipsStore } from "@/stores/tips";
+import { useTutorialStore } from "@/stores/tutorial";
+import { TUTORIAL_CHAPTERS, TUTORIAL_TITLE } from "@/ui/tutorial";
 import CardView from "@/ui/components/CardView.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
@@ -14,11 +16,15 @@ const router = useRouter();
 const codex = useCodexStore();
 const meta = useMetaStore();
 const tips = useTipsStore();
+const tutorial = useTutorialStore();
 const stage = useTemplateRef<HTMLElement>("stage");
+/** 结业清单（docs/42 §三.8）：图鉴里可随时回看 */
+const graduation = TUTORIAL_CHAPTERS.find((c) => c.kind === "graduation");
+const checklist = graduation?.kind === "graduation" ? graduation.checklist : [];
 useStageFit(stage);
 
 const game = loadGameContent();
-type Tab = "card" | "relic" | "enemy" | "tip" | "achievement";
+type Tab = "card" | "relic" | "enemy" | "tip" | "tutorial" | "achievement";
 const tab = ref<Tab>("card");
 
 onMounted(() => {
@@ -56,6 +62,12 @@ const cards = computed(() =>
 );
 const enemies = computed(() => [...game.content.enemies.values()].sort((a, b) => a.id.localeCompare(b.id)));
 
+/** 图鉴里重进「第一班岗」（docs/42 §四「回放」）。 */
+function replayTutorial(): void {
+  tutorial.begin(meta.tutorialDone.length > 0);
+  void router.push("/tutorial");
+}
+
 function back(): void {
   void router.push("/");
 }
@@ -75,6 +87,9 @@ function back(): void {
         <button class="tab" :class="{ active: tab === 'enemy' }" @click="tab = 'enemy'">敌人 {{ enemies.length }}</button>
         <button class="tab" :class="{ active: tab === 'tip' }" @click="tab = 'tip'">
           {{ t("codex.tab.tip", "提示") }} {{ meta.tips.length }}/{{ tips.all.length }}
+        </button>
+        <button class="tab" :class="{ active: tab === 'tutorial' }" @click="tab = 'tutorial'">
+          {{ TUTORIAL_TITLE }}
         </button>
         <button class="tab" :class="{ active: tab === 'achievement' }" @click="tab = 'achievement'">
           {{ t("codex.tab.achievement", "成就") }} {{ achievedCount }}/{{ ACHIEVEMENT_IDS.length }}
@@ -129,6 +144,30 @@ function back(): void {
             <article v-for="tip in tips.all" :key="tip.id" class="row" :class="{ locked: !meta.hasSeenTip(tip.id) }">
               <h3>{{ tip.title }}<small>{{ meta.hasSeenTip(tip.id) ? "已读" : "未读" }}</small></h3>
               <p class="tip-body">{{ tip.body }}</p>
+            </article>
+          </div>
+        </template>
+
+        <template v-else-if="tab === 'tutorial'">
+          <div class="rows">
+            <div class="tip-actions">
+              <span>
+                {{
+                  meta.tutorialDone.length > 0
+                    ? `已完成「${TUTORIAL_TITLE}」：${meta.tutorialDone.length} 个职业`
+                    : "还没走过「第一班岗」——它只有 10 分钟，第一次玩强烈建议走一遍。"
+                }}
+              </span>
+              <button class="etch-btn tip-reset" @click="replayTutorial">重 进 第 一 班 岗</button>
+            </div>
+            <article v-for="(line, i) in checklist" :key="i" class="row">
+              <h3>✓ {{ line }}</h3>
+            </article>
+            <article class="row">
+              <h3>三课脚本</h3>
+              <p v-for="chapter in TUTORIAL_CHAPTERS" :key="chapter.id" class="tip-body">
+                · {{ chapter.kind === "battle" ? "战斗" : "幕间" }} —— {{ chapter.title }}
+              </p>
             </article>
           </div>
         </template>

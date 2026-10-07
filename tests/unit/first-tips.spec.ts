@@ -14,13 +14,35 @@ describe("docs/41 §4.1 首遇提示", () => {
     setActivePinia(createPinia());
   });
 
-  it("五个首批触发点都有词条，正文 2 行以内", () => {
-    expect(FIRST_TIPS.map((t) => t.id)).toEqual(["discard", "bloodpact", "retain", "charge", "energy"]);
+  it("12 条词条：5 条战斗层 + 7 条循环层（docs/42 §五）", () => {
+    expect(FIRST_TIPS.map((t) => t.id)).toEqual([
+      "discard",
+      "bloodpact",
+      "retain",
+      "charge",
+      "energy",
+      "map_route",
+      "reward_pick",
+      "elite",
+      "rest",
+      "upgrade",
+      "relic_pick",
+      "boss_warning",
+    ]);
     for (const tip of FIRST_TIPS) {
       expect(tip.title.length).toBeGreaterThan(0);
       expect(tip.body.split("\n").length).toBeGreaterThanOrEqual(2);
       expect(tip.body.split("\n").length).toBeLessThanOrEqual(4);
     }
+  });
+
+  it("教学里讲过的机制直接标记已读，不再重复弹（triggerUnlessTaught）", () => {
+    const tips = useTipsStore();
+    tips.triggerUnlessTaught("map_route", true);
+    expect(tips.current).toBeNull();
+    expect(useMetaStore().hasSeenTip("map_route")).toBe(true);
+    tips.triggerUnlessTaught("rest", false);
+    expect(tips.current).toBe("rest");
   });
 
   it("同一条只弹一次；点掉后写入存档，跨局不再出现", () => {

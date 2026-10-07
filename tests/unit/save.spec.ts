@@ -71,13 +71,13 @@ describe("systems/save（ADR-008）", () => {
       run: { layerIndex: 2, unlocked: [], difficulty: "normal", usedBloodpact: false, overloadCount: 0 },
     });
     const meta = migrate({ version: 5, data: { clearedClasses: ["bloodwright"], unlocked: [] } });
-    // 9 → 10 会给 meta 槽补 tips 与教学状态（docs/41 §4.1 / §4.3）
+    // 一路迁到 v11：meta 槽补 tips 与按职业的教学字段（docs/41 §4.1 / docs/42 §三.0）
     expect(meta?.data).toEqual({
       clearedClasses: ["bloodwright"],
       unlocked: [],
       tips: [],
-      tutorialOffered: false,
-      tutorialDone: false,
+      tutorialOffered: [],
+      tutorialDone: [],
     });
   });
 
@@ -105,13 +105,17 @@ describe("systems/save（ADR-008）", () => {
   });
 });
 
-describe("存档迁移 9 → 10（docs/41 §4.1）", () => {
-  it("meta 槽补 tips 数组；进度档不被污染", async () => {
+describe("存档迁移 9 → 11（docs/41 §4.1 / docs/42 §三.0）", () => {
+  it("meta 槽补 tips 与按职业的教学字段；进度档不被污染", async () => {
     const { migrate, SCHEMA_VERSION } = await import("@/systems/save");
-    expect(SCHEMA_VERSION).toBe(10);
+    expect(SCHEMA_VERSION).toBe(11);
 
     const meta = migrate({ version: 9, savedAt: 0, data: { clearedClasses: ["bloodwright"], achievements: [] } });
-    expect((meta?.data as { tips: string[] }).tips).toEqual([]);
+    const metaData = meta?.data as { tips: string[]; tutorialOffered: string[]; tutorialDone: string[] };
+    expect(metaData.tips).toEqual([]);
+    // 9→10 先给布尔，10→11 再改成按职业的数组（旧档无法回推职业 → 重置为"没被问过"）
+    expect(metaData.tutorialOffered).toEqual([]);
+    expect(metaData.tutorialDone).toEqual([]);
 
     const progress = migrate({ version: 9, savedAt: 0, data: { run: { actIndex: 1 } } });
     expect((progress?.data as Record<string, unknown>).tips).toBeUndefined();
@@ -119,6 +123,19 @@ describe("存档迁移 9 → 10（docs/41 §4.1）", () => {
     // 已有 tips 的存档不被覆盖
     const kept = migrate({ version: 9, savedAt: 0, data: { clearedClasses: [], tips: ["discard"] } });
     expect((kept?.data as { tips: string[] }).tips).toEqual(["discard"]);
+  });
+
+  it("10 → 11：布尔教学字段改成按职业数组", async () => {
+    const { migrate } = await import("@/systems/save");
+    const meta = migrate({
+      version: 10,
+      savedAt: 0,
+      data: { clearedClasses: ["bloodwright"], tips: ["discard"], tutorialOffered: true, tutorialDone: true },
+    });
+    const data = meta?.data as { tips: string[]; tutorialOffered: string[]; tutorialDone: string[] };
+    expect(data.tips).toEqual(["discard"]);
+    expect(data.tutorialOffered).toEqual([]);
+    expect(data.tutorialDone).toEqual([]);
   });
 });
 

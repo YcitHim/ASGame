@@ -8,7 +8,7 @@
 export const SAVE_NAMESPACE = "rustandblood";
 
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 export type SaveSlot = "settings" | "progress" | "replay" | "codex" | "meta";
 
@@ -164,6 +164,14 @@ const migrations: Record<number, (data: unknown) => unknown> = {
       tutorialOffered: record["tutorialOffered"] ?? false,
       tutorialDone: record["tutorialDone"] ?? false,
     };
+  },
+  // 10 → 11（docs/42 §三.0）：教学改为**按职业**记录（换职业只补教机制课）。
+  // 旧档的布尔值无法回推是哪个职业，按策划裁定重置为"没被问过"——代价是再被问一次，可接受。
+  10: (data) => {
+    if (typeof data !== "object" || data === null) return data;
+    const record = data as Record<string, unknown>;
+    if (!("achievements" in record) && !("clearedClasses" in record)) return record;
+    return { ...record, tutorialOffered: [], tutorialDone: [] };
   },
 };
 

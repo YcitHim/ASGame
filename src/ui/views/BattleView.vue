@@ -12,7 +12,7 @@ import { useTutorialStore } from "@/stores/tutorial";
 import { isDebugEnabled } from "@/systems/debug";
 import { useStageFit } from "@/ui/composables/useStageFit";
 import { actCopy } from "@/ui/act-copy";
-import { tutorialStage } from "@/ui/tutorial";
+import { TUTORIAL_TITLE } from "@/ui/tutorial";
 import { describeEvent, type LogEntry } from "@/ui/log-format";
 import BattleLog from "@/ui/components/BattleLog.vue";
 import BuffRow from "@/ui/components/BuffRow.vue";
@@ -39,12 +39,42 @@ const showLog = ref(false);
 const shaking = ref(false);
 const isDev = isDebugEnabled();
 
-/** 教学进行中时，战斗来自脚本（docs/41 §4.3）而不是 run 进度。 */
-function startTutorialStage(): void {
-  const stage = tutorialStage(tutorial.stageIndex);
-  if (!stage) return;
-  store.startTutorial({ stageId: stage.id, seed: stage.seed, enemies: stage.enemies });
+/** 教学进行中时，战斗来自脚本（docs/42）而不是 run 进度；卡组与 HP 由教学局带着走。 */
+function startTutorialBattle(): void {
+  const chapter = tutorial.chapter;
+  if (!chapter || chapter.kind !== "battle" || !tutorial.run) return;
+  store.startTutorial({
+    chapterId: chapter.id,
+    seed: chapter.seed,
+    enemies: chapter.enemies,
+    deck: tutorial.run.deck,
+    hp: tutorial.run.hp,
+    maxHp: tutorial.run.maxHp,
+    relics: run.classDef?.startRelics ?? [],
+  });
 }
+
+/** 教学章走完 → 下一章。战斗章就地重开，其余回教学页。 */
+function advanceTutorialChapter(): void {
+  const hasNext = tutorial.nextChapter();
+  if (!hasNext) {
+    void router.push("/tutorial");
+    return;
+  }
+  if (tutorial.chapter?.kind === "battle") startTutorialBattle();
+  else void router.push("/tutorial");
+}
+
+// 教学步骤带 grant 时，把这几个「样例牌」塞进手牌（走 core 的 DebugCommand，确定性）
+watch(
+  () => [tutorial.chapterIndex, tutorial.stepIndex] as const,
+  () => {
+    for (const cardId of tutorial.step?.grant ?? []) {
+      store.debug(`give card ${cardId}`);
+    }
+  },
+  { immediate: true },
+);
 
 /** ESC 打开设置（玩家习惯：ESC = 菜单）。设置页自 v1.0.3 起可滚动，能看全。 */
 function onKeydown(event: KeyboardEvent): void {
@@ -56,9 +86,12 @@ function onKeydown(event: KeyboardEvent): void {
 onMounted(() => {
   window.addEventListener("keydown", onKeydown);
   if (tutorial.active) {
-    const stage = tutorialStage(tutorial.stageIndex);
-    const expected = stage ? `tutorial:${stage.id}` : "";
-    if (!store.battle || store.over || store.runKey !== expected) startTutorialStage();
+    if (tutorial.chapter?.kind !== "battle") {
+      void router.replace("/tutorial");
+      return;
+    }
+    const expected = `tutorial:${tutorial.chapter.id}`;
+    if (!store.battle || store.over || store.runKey !== expected) startTutorialBattle();
     return;
   }
   // 新战斗 / 上一场已结算 / 换了职业或开了新局（陈旧战斗）时，都按当前局外卡组重开
@@ -346,7 +379,7 @@ const isBloodwright = computed(() => (run.run?.classId ?? "bloodwright") === "bl
 
 function restartRun(): void {
   if (tutorial.active) {
-    startTutorialStage();
+    startTutorialBattle();
     return;
   }
   store.restart();
@@ -354,10 +387,11 @@ function restartRun(): void {
 
 function goReward(): void {
   store.skip();
-  // 教学：打完一场直接进下一场，三场走完回教学页收尾（docs/41 §4.3）
+  // 教学：打完一场直接进下一章，走完回教学页收尾（docs/42）
   if (tutorial.active) {
-    if (tutorial.completeStage() === "next") startTutorialStage();
-    else void router.push("/tutorial");
+    // 把本场结束时的 HP 带回教学局（下一场从这里开始；幕间篝火才有意义）
+    if (store.battle && tutorial.run) tutorial.run.hp = Math.max(1, store.battle.player.hp);
+    advanceTutorialChapter();
     return;
   }
   void router.push("/reward");
@@ -379,7 +413,7 @@ function back(): void {
     <div ref="stage" class="stage battle-stage" :class="{ shaking, 'tut-on': showTutHint }">
       <!-- 顶栏 -->
       <div class="topbar" :class="{ 'with-tut-hint': showTutHint }">
-        <span v-if="tutorial.active">教 学 · {{ tutorial.stage?.title ?? "" }}</span>
+        <span v-if="tutorial.active">{{ TUTORIAL_TITLE }} · {{ tutorial.chapter?.title ?? "" }}</span>
         <span v-else>{{ actName }} — 遭遇 {{ store.battle?.battleId ?? "" }}</span>
         <div class="r">
           <span v-if="tutorial.active" @click="skipTutorial">跳过教学</span>
@@ -395,10 +429,16 @@ function back(): void {
           <span @click="store.toggleSpeed()">{{ store.speed }}×</span>
           <span @click="router.push('/settings')">设置</span>
         </div>
-        <!-- 教学步骤提示（docs/41 §4.3）：占顶栏第二行，敌人区同步下移，不遮意图 -->
-        <div v-if="showTutHint && tutorial.step" class="tut-hint">
-          <span class="tut-step">{{ tutorial.stageIndex + 1 }}/{{ tutorial.total }} · {{ tutorial.stepIndex + 1 }}/{{ tutorial.stage?.steps.length }}</span>
-          <span class="tut-text">{{ tutorial.step.hint }}</span>
+        <!-- 教学旁白（docs/42）：why = 为什么，how = 怎么做；占顶栏第二行，敌人区同步下移，不遮意图 -->
+        <div v-if="showTutHint" class="tut-hint">
+          <span class="tut-step">{{ tutorial.chapterIndex + 1 }}/{{ tutorial.total }} · {{ tutorial.stepIndex + 1 }}/{{ tutorial.stepCount }}</span>
+          <div class="tut-copy">
+            <p v-if="tutorial.correction" class="tut-correct">{{ tutorial.correction }}</p>
+            <p v-else>
+              <b class="tut-why">{{ tutorial.step?.why }}</b>
+              <span class="tut-how">{{ tutorial.step?.how }}</span>
+            </p>
+          </div>
         </div>
       </div>
 
@@ -926,15 +966,20 @@ function back(): void {
 }
 .tut-hint {
   flex: none; width: 100%;
-  display: flex; align-items: center; justify-content: center; gap: 14px;
+  display: flex; align-items: flex-start; justify-content: center; gap: 14px;
   padding: 7px 18px;
   background: rgba(12, 10, 8, 0.9);
   border: 1px solid var(--edge-gold); border-radius: var(--radius-sm);
 }
 .tut-step {
-  flex: none; font-family: var(--serif-title); font-size: 11px; letter-spacing: 0.14em; color: var(--gold-dim);
+  flex: none; padding-top: 2px;
+  font-family: var(--serif-title); font-size: 11px; letter-spacing: 0.14em; color: var(--gold-dim);
 }
-.tut-text { font-size: 13px; letter-spacing: 0.1em; color: var(--ink-bone); }
+.tut-copy { max-width: 860px; text-align: left; }
+.tut-why { margin-right: 10px; font-size: 12px; font-weight: 400; color: var(--gold); letter-spacing: 0.06em; }
+.tut-how { font-size: 12px; letter-spacing: 0.06em; color: var(--ink-bone); }
+/* 纠错（docs/42 §四）：做错了不推进，但也不惩罚——只说一句该怎么改 */
+.tut-correct { font-size: 12px; letter-spacing: 0.06em; color: var(--blood-hi); }
 /* 顶栏加高后，敌人区整体下移同样高度，意图图标重新露出来 */
 .battle-stage.tut-on .enemy-zone { top: 96px; }
 

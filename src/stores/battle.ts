@@ -5,7 +5,13 @@
  * 不写任何数值逻辑——所有数字来自 core 事件载荷。
  */
 import { defineStore } from "pinia";
-import { createBattleState, reduce, validatePlayCardState, type BattleState } from "@/core/combat";
+import {
+  createBattleState,
+  previewEnergyCost,
+  reduce,
+  validatePlayCardState,
+  type BattleState,
+} from "@/core/combat";
 import { isCombatNode, rollEncounter } from "@/core/map";
 import type { Action } from "@/core/actions";
 import type { DomainEvent } from "@/core/events";
@@ -27,11 +33,16 @@ import { useTutorialStore } from "@/stores/tutorial";
  */
 export type FloaterKind = "damage" | "heal" | "block" | "guard" | "debuff" | "net" | "pact";
 
-/** 教学战斗配置（docs/41 §4.3）：不挂 run 进度，敌人 / 种子固定。 */
+/** 教学战斗配置（docs/42）：不挂 run 进度，敌人 / 种子固定，卡组与 HP 由教学局带着走。 */
 export interface TutorialBattleConfig {
-  readonly stageId: string;
+  readonly chapterId: string;
   readonly seed: number;
   readonly enemies: readonly string[];
+  /** 教学局卡组（含幕间拿到的牌与升级） */
+  readonly deck: readonly { cardId: string; upgraded: boolean }[];
+  readonly hp: number;
+  readonly maxHp: number;
+  readonly relics: readonly string[];
 }
 
 export interface Floater {
@@ -66,8 +77,10 @@ let pactTimer: ReturnType<typeof setTimeout> | null = null;
 export const useBattleStore = defineStore("battle", {
   state: () => ({
     battle: null as BattleState | null,
-    /** 非空 = 当前是教学战斗（docs/41 §4.3）：不写 run 进度、打完交 tutorial store 接管 */
+    /** 非空 = 当前是教学战斗（docs/42）：不写 run 进度、打完交 tutorial store 接管 */
     tutorialConfig: null as TutorialBattleConfig | null,
+    /** 教学：敌人的蓄力重击已揭示，等玩家回合开始判定"活着扛过释放" */
+    tutorialReleasePending: false,
     /** 本场战斗对应的「职业:种子」标识；换职业/开新局时用来识别陈旧战斗并重开 */
     runKey: "",
     log: [] as DomainEvent[],
@@ -131,21 +144,23 @@ export const useBattleStore = defineStore("battle", {
       const cls = run.classDef ?? [...game.content.classes.values()][0];
       if (!cls) return;
       this.tutorialConfig = config;
-      this.runKey = `tutorial:${config.stageId}`;
+      this.runKey = `tutorial:${config.chapterId}`;
       this.battle = createBattleState({
-        battleId: `tutorial-${config.stageId}`,
+        battleId: `tutorial-${config.chapterId}`,
         seed: config.seed,
         player: {
-          maxHp: cls.player.maxHp,
+          maxHp: config.maxHp,
           energy: cls.player.energy,
-          hp: cls.player.maxHp,
+          hp: config.hp,
           pollution: 0,
         },
         enemies: config.enemies.map((id) => ({ id })),
-        deck: cls.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] })),
-        relics: [...(cls.startRelics ?? [])],
+        deck: config.deck.map((c) => ({ cardId: c.cardId, upgraded: c.upgraded, enhancements: [] })),
+        relics: [...config.relics],
         content: game.content,
         difficulty: "normal",
+        // 教学免死（docs/42 §四）：这一场里玩家不会真的被放倒
+        safetyFloor: 1,
       });
       this.log = [];
       this.floaters = [];
@@ -199,6 +214,8 @@ export const useBattleStore = defineStore("battle", {
       if (run.deck.some((c) => game.content.cards.get(c.cardId)?.keywords?.includes("retain"))) {
         useTipsStore().trigger("retain");
       }
+      // 首遇提示（docs/42 §五）：第一次踏进精英节点
+      if (node.kind === "elite") useTipsStore().trigger("elite");
       this.log = [];
       this.floaters = [];
       this.cancelPact();
@@ -229,11 +246,39 @@ export const useBattleStore = defineStore("battle", {
         if (event.type === "CardPlayed") {
           if (this.tutorialConfig) {
             const type = loadGameContent().content.cards.get(event.cardId)?.type;
-            if (type) useTutorialStore().notePlay(type);
+            if (type) useTutorialStore().noteCardPlayed(event.cardId, type, result.state.player.energy);
           }
           if (event.bloodPaid > 0) useTipsStore().trigger("bloodpact");
         } else if (event.type === "ChargeResolved" && !event.released) {
           useTipsStore().trigger("charge");
+        } else if (event.type === "IntentRevealed" && event.intent.released) {
+          // 敌人蓄力链的释放段已揭示：它下一次行动就会落地
+          this.tutorialReleasePending = true;
+        } else if (event.type === "TurnStarted") {
+          if (this.tutorialReleasePending && this.tutorialConfig) {
+            this.tutorialReleasePending = false;
+            useTutorialStore().noteSurvivedRelease();
+          }
+        } else if (event.type === "BattleEnded" && this.tutorialConfig && event.result === "win") {
+          useTutorialStore().noteCleared();
+        } else if (event.type === "SafetyNet" && this.tutorialConfig) {
+          // 教学安全网（docs/42 §四）：第一次纠正，第二次补满并继续，保证不卡关
+          const used = useTutorialStore().noteSafetyNet();
+          if (used >= 2) {
+            this.setMessage("这一下本该放倒你——班长把你拽回来了。", "info");
+            // 延到本帧之后：避免在遍历事件流时重入 dispatch
+            setTimeout(() => {
+              if (this.battle) {
+                this.dispatch({
+                  type: "DebugCommand",
+                  actionId: `tut-heal-${++actionCounter}`,
+                  command: "set hp 9999",
+                });
+              }
+            }, 0);
+          } else {
+            this.setMessage("免死一次：格挡要在挨打前叠。", "info");
+          }
         }
       }
       // 回合结束清掉挂起的卖血合并（避免跨回合串味）
@@ -333,8 +378,15 @@ export const useBattleStore = defineStore("battle", {
       if (!this.battle || this.playing || this.over) return;
       // 首遇提示 ①（docs/41 §4.1）：第一次回合结束还留着没打出的牌
       if (this.battle.piles.hand.length > 0) useTipsStore().trigger("discard");
-      // 教学：结束回合也算一次"操作正确"
-      if (this.tutorialConfig) useTutorialStore().noteEndTurn();
+      // 教学：结束回合也算一次"操作正确"（带能量 / 格挡 / 还能不能出牌 三个维度）
+      if (this.tutorialConfig) {
+        const energy = this.battle.player.energy;
+        const block = this.battle.player.block;
+        const playable = this.battle.piles.hand.filter(
+          (_id, i) => previewEnergyCost(this.battle!, i) <= energy,
+        ).length;
+        useTutorialStore().noteEndTurn({ energy, block, playable });
+      }
       this.selectTargetNoop();
       this.dispatch({ type: "EndTurn", actionId: `end-${++actionCounter}` });
     },

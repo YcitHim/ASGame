@@ -40,6 +40,7 @@ import {
 import type { ActDefinition, CardDefinition, ClassDefinition, EventDefinition, MapNode } from "@/core/registry";
 import { useCodexStore } from "@/stores/codex";
 import { useMetaStore } from "@/stores/meta";
+import { useTipsStore } from "@/stores/tips";
 import { loadGameContent } from "@/data/load";
 import { clearSlot, readSlot, writeSlot } from "@/systems/save";
 
@@ -624,6 +625,8 @@ export const useRunStore = defineStore("run", {
       const card = this.deck[deckIndex];
       if (!card || card.upgraded) return false;
       this.deck = this.deck.map((c, i) => (i === deckIndex ? { ...c, upgraded: true } : c));
+      // 首遇提示（docs/42 §五）：第一次升级一张牌
+      useTipsStore().trigger("upgrade");
       this.persist();
       return true;
     },

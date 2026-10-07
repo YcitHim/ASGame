@@ -8,13 +8,19 @@ import { actCopy } from "@/ui/act-copy";
 import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
 import { useSettingsStore } from "@/stores/settings";
+import { useTipsStore } from "@/stores/tips";
+import { useTutorialStore } from "@/stores/tutorial";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
 const router = useRouter();
 const run = useRunStore();
 const meta = useMetaStore();
 const settings = useSettingsStore();
+const tips = useTipsStore();
+const tutorial = useTutorialStore();
 const devMode = computed(() => settings.values.developerMode);
+/** 教学里已经讲过选路与篝火，正式局首次再遇不再重复弹（docs/42 §五）。 */
+const taughtByTutorial = computed(() => tutorial.active || tutorial.finished);
 
 /** 开发者模式：跳过当前层（不结算），用于快速抵达后续内容。 */
 function devSkipLayer(): void {
@@ -34,6 +40,9 @@ useStageFit(stage);
 
 onMounted(() => {
   if (!run.active) void router.replace("/");
+  // 首遇提示（docs/42 §五）：进地图讲选路；到了 Boss 层提示"别急着敲门"
+  tips.triggerUnlessTaught("map_route", taughtByTutorial.value);
+  if (run.current?.kind === "boss") tips.trigger("boss_warning");
 });
 
 const KIND_LABEL: Record<string, string> = {

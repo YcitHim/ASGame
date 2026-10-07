@@ -5,12 +5,16 @@ import type { CardDefinition } from "@/core/registry";
 import { t } from "@/data/load";
 import { useCodexStore } from "@/stores/codex";
 import { useRunStore } from "@/stores/run";
+import { useTipsStore } from "@/stores/tips";
+import { useTutorialStore } from "@/stores/tutorial";
 import { actCopy } from "@/ui/act-copy";
 import CardView from "@/ui/components/CardView.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
 const router = useRouter();
 const run = useRunStore();
+const tips = useTipsStore();
+const tutorial = useTutorialStore();
 const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 
@@ -63,6 +67,8 @@ onMounted(() => {
     return;
   }
   const codex = useCodexStore();
+  // 首遇提示（docs/42 §五）：教学里讲过三选一，正式局首次再遇不再弹
+  tips.triggerUnlessTaught("reward_pick", tutorial.finished);
   if (mode.value === "card") {
     rewards.value = run.cardRewards();
     codex.markCards(rewards.value);
@@ -89,11 +95,13 @@ function afterRelic(): void {
 
 function takeRelic(id: string): void {
   run.addRelic(id);
+  tips.trigger("relic_pick");
   afterRelic();
 }
 
 function takeBossRelic(id: string): void {
   run.addRelic(id);
+  tips.trigger("relic_pick");
   bossTaken.value = id;
 }
 

@@ -1,17 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, onMounted, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
 import { loadGameContent } from "@/data/load";
 import { useRunStore } from "@/stores/run";
 import { useTutorialStore } from "@/stores/tutorial";
-import { useStageFit } from "@/ui/composables/useStageFit";
-import { useTemplateRef } from "vue";
-import { TUTORIAL_STAGES, tutorialStage } from "@/ui/tutorial";
 import EmberField from "@/ui/components/EmberField.vue";
+import { useStageFit } from "@/ui/composables/useStageFit";
+import { TUTORIAL_TITLE, tutorialChapter } from "@/ui/tutorial";
 
 /**
- * 教学遭遇战的入口与结算页（docs/41 §4.3）。
- * 全程可跳过；完成不给任何数值/内容奖励，只在图鉴解锁「引路人」。
+ * 「第一班岗」的章间页面（docs/42）：序章 / 幕间 A 奖励 / 幕间 B 地图与篝火 / 结业。
+ * 战斗章由 BattleView 承担，本页只在非战斗章显示。
  */
 const router = useRouter();
 const tutorial = useTutorialStore();
@@ -20,41 +19,53 @@ const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 
 const game = loadGameContent();
-const current = computed(() => tutorialStage(tutorial.stageIndex));
+const chapter = computed(() => tutorial.chapter);
+
 const enemyNames = computed(() =>
-  (current.value?.enemies ?? []).map((id) => game.content.enemies.get(id)?.name ?? id).join(" · "),
+  (chapter.value?.kind === "battle" ? chapter.value.enemies : [])
+    .map((id) => game.content.enemies.get(id)?.name ?? id)
+    .join(" · "),
 );
 
 onMounted(() => {
-  // 从首页「要人带路吗？」进来时已 begin；从设置页重看则在这里补一次
-  if (!tutorial.active) tutorial.begin();
+  // 从首页/设置页进来时已 begin；直接访问 /tutorial 时补一次
+  if (!tutorial.active && !tutorial.finished) tutorial.begin();
+  // 战斗章交给 BattleView
+  if (tutorial.active && chapter.value?.kind === "battle") void router.replace("/battle");
 });
 
-function start(): void {
+function enterBattle(): void {
   void router.push("/battle");
 }
 
-/** 教学退出：已经开了局就继续远征，否则回标题。 */
-function leave(): void {
+function cardName(id: string): string {
+  return game.i18n[`card.${id}.name`] ?? id;
+}
+
+/** 序章等纯文本章：点 CTA 进下一章（下一章是战斗就交给 BattleView）。 */
+function nextFromScreen(): void {
+  const hasNext = tutorial.nextChapter();
+  if (!hasNext) void router.push("/tutorial");
+  else if (chapter.value?.kind === "battle") enterBattle();
+}
+
+function takeReward(id: string): void {
+  tutorial.takeReward(id);
+  const hasNext = tutorial.nextChapter();
+  if (!hasNext) void router.push("/tutorial");
+  else if (chapter.value?.kind === "battle") enterBattle();
+}
+
+/** 结业 → 无缝进正式远征第一层（不回首页：教学是这一局的序章）。 */
+function finish(): void {
   tutorial.abort();
   void router.push(run.active ? "/map" : "/");
 }
 
-function abort(): void {
-  leave();
+function leave(): void {
+  tutorial.abort();
+  void router.push(run.active ? "/map" : "/");
 }
-
-/** 完成三场后的收尾：回到远征（不给奖励）。 */
-function finish(): void {
-  leave();
-}
-
-/** 用当前所选职业的起始卡组（教学里出现的牌就是他真正要用的牌）。 */
-const deckNames = computed(() => {
-  const cls = run.classDef ?? [...game.content.classes.values()][0];
-  return (cls?.startDeck ?? []).map((id) => game.i18n[`card.${id}.name`] ?? id).join(" · ");
-});
-
 </script>
 
 <template>
@@ -63,43 +74,83 @@ const deckNames = computed(() => {
       <EmberField />
 
       <div class="topbar">
-        <span>教 学 遭 遇 战</span>
-        <div class="r">
-          <span @click="abort">跳过教学</span>
-        </div>
+        <span>{{ TUTORIAL_TITLE }}</span>
+        <div class="r"><span @click="leave">跳过教学</span></div>
       </div>
 
+      <!-- 结业（docs/42 §三.8） -->
       <template v-if="tutorial.finished">
-        <h1 class="head">走 完 了</h1>
-        <p class="sub">三场演武到此为止。剩下的交给远征。</p>
-        <p class="sub dim">图鉴已解锁徽章「引路人」。教学不发放任何奖励——它只是带路。</p>
-        <button class="etch-btn main" @click="finish">{{ run.active ? "继 续 远 征" : "返 回 标 题" }}</button>
+        <h1 class="head">结 业</h1>
+        <ul class="checklist">
+          <li v-for="(line, i) in (chapter ?? tutorialChapter(6)) && (tutorialChapter(6) as { checklist?: readonly string[] })?.checklist" :key="i">
+            <span class="tick">✓</span>{{ line }}
+          </li>
+        </ul>
+        <p class="sub dim">这班你值完了。往后的岗，自己站——忘了就翻图鉴，或者从设置里再叫我。</p>
+        <button class="etch-btn main" @click="finish">开 始 远 征</button>
       </template>
 
-      <template v-else-if="current">
-        <h1 class="head">{{ current.title }}</h1>
-        <p class="sub">{{ current.theme }}</p>
-
-        <div class="plan">
-          <div class="step-row">
-            <b>第 {{ tutorial.stageIndex + 1 }} / {{ TUTORIAL_STAGES.length }} 场</b>
-            <small>{{ TUTORIAL_STAGES.map((s) => s.title).join(" → ") }}</small>
-          </div>
-          <div class="step-row">
-            <b>对手</b>
-            <small>{{ enemyNames }}</small>
-          </div>
-          <div class="step-row">
-            <b>你的卡组</b>
-            <small>{{ deckNames || "（未选职业：将使用默认职业）" }}</small>
-          </div>
-          <div class="step-row">
-            <b>这一场怎么走</b>
-            <small>跟着屏幕上的一句话提示走，做对了才会推进；随时可以点右上角跳过。</small>
-          </div>
+      <template v-else-if="chapter">
+        <!-- 序章 / 一般幕间 -->
+        <h1 class="head">{{ chapter.title }}</h1>
+        <div v-if="chapter.kind === 'screen' || chapter.kind === 'graduation'" class="lines">
+          <p v-for="(line, i) in chapter.lines" :key="i">{{ line }}</p>
         </div>
+        <button v-if="chapter.kind === 'screen'" class="etch-btn main" @click="nextFromScreen">
+          {{ chapter.cta }}
+        </button>
 
-        <button class="etch-btn main" @click="start">开 始</button>
+        <!-- 战斗章（理论上会跳到 /battle，这里兜底） -->
+        <template v-else-if="chapter.kind === 'battle'">
+          <p class="sub">{{ chapter.theme }}</p>
+          <p class="sub dim">对手：{{ enemyNames }}</p>
+          <button class="etch-btn main" @click="enterBattle">进 入</button>
+        </template>
+
+        <!-- 幕间 A：三选一（按职业固定候选） -->
+        <template v-else-if="chapter.kind === 'reward'">
+          <div class="lines">
+            <p v-for="(line, i) in chapter.lines" :key="i">{{ line }}</p>
+          </div>
+          <div class="offers">
+            <button v-for="id in tutorial.rewardOffers" :key="id" class="offer" @click="takeReward(id)">
+              <b>{{ cardName(id) }}</b>
+              <small>{{ chapter.comments[id] ?? "" }}</small>
+              <span class="pick">拿 走</span>
+            </button>
+          </div>
+        </template>
+
+        <!-- 幕间 B：地图选路 → 篝火二选一 -->
+        <template v-else-if="chapter.kind === 'map'">
+          <div class="lines">
+            <p v-for="(line, i) in chapter.lines" :key="i">{{ line }}</p>
+          </div>
+          <div v-if="!tutorial.restChoiceOpen" class="offers">
+            <button v-for="node in chapter.nodes" :key="node.id" class="offer" @click="tutorial.chooseMapNode(node.id)">
+              <b>{{ node.label }}</b>
+              <small>{{ node.note }}</small>
+              <span class="pick">走 这 条</span>
+            </button>
+          </div>
+          <div v-else class="rest">
+            <div class="lines">
+              <p v-for="(line, i) in chapter.restLines" :key="i">{{ line }}</p>
+            </div>
+            <div class="offers">
+              <button class="offer" @click="tutorial.restHeal()">
+                <b>{{ chapter.restHeal }}</b>
+                <small>把血补回来，稳妥地往上走。</small>
+                <span class="pick">选 它</span>
+              </button>
+              <button class="offer" @click="tutorial.restUpgrade()">
+                <b>{{ chapter.restUpgrade }}</b>
+                <small>永久强化一张牌——代价是这段路只能这么过。</small>
+                <span class="pick">选 它</span>
+              </button>
+            </div>
+          </div>
+        </template>
       </template>
     </div>
   </div>
@@ -108,7 +159,7 @@ const deckNames = computed(() => {
 <style scoped>
 .tutorial-stage {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 18px; padding: 60px;
+  gap: 16px; padding: 60px;
   text-align: center;
 }
 .topbar {
@@ -120,22 +171,34 @@ const deckNames = computed(() => {
 .topbar .r span { cursor: pointer; }
 .topbar .r span:hover { color: var(--gold); }
 .head {
-  font-family: var(--serif-title); font-size: 38px; letter-spacing: 0.4em;
+  font-family: var(--serif-title); font-size: 34px; letter-spacing: 0.4em;
   color: var(--gold); font-weight: 600; text-shadow: 0 0 30px rgba(176, 141, 74, 0.4);
 }
+.lines { display: flex; flex-direction: column; gap: 8px; max-width: 760px; }
+.lines p { font-size: 14px; line-height: 1.9; letter-spacing: 0.1em; color: var(--ink-bone); }
 .sub { font-size: 13px; letter-spacing: 0.16em; color: var(--ink-bone); }
 .sub.dim { color: var(--ink-dim); font-size: 12px; }
-.plan {
-  display: flex; flex-direction: column; gap: 10px;
-  width: 620px; padding: 18px 22px;
-  border: 1px solid rgba(110, 88, 54, 0.4); border-radius: var(--radius-md);
-  background: rgba(18, 16, 14, 0.72);
-}
-.step-row { display: flex; gap: 14px; align-items: baseline; text-align: left; }
-.step-row b {
-  flex: none; width: 92px;
-  font-family: var(--serif-title); font-size: 12px; letter-spacing: 0.2em; color: var(--gold-dim); font-weight: 400;
-}
-.step-row small { font-size: 12px; line-height: 1.7; color: var(--ink-dim); letter-spacing: 0.06em; }
 .main { padding: 12px 40px; font-size: 14px; }
+.offers { display: flex; gap: 16px; margin-top: 6px; }
+.offer {
+  width: 240px; padding: 16px 18px; text-align: left;
+  display: flex; flex-direction: column; gap: 8px;
+  background: rgba(18, 16, 14, 0.86);
+  border: 1px solid rgba(110, 88, 54, 0.5); border-radius: var(--radius-md);
+  transition: border-color 150ms ease-out, transform 150ms ease-out;
+}
+.offer:hover { border-color: var(--gold); transform: translateY(-2px); }
+.offer b { font-family: var(--serif-title); font-size: 15px; letter-spacing: 0.18em; color: var(--ink-bone); font-weight: 400; }
+.offer small { font-size: 11px; line-height: 1.7; color: var(--ink-dim); letter-spacing: 0.04em; }
+.offer .pick { margin-top: auto; font-size: 11px; letter-spacing: 0.2em; color: var(--gold-dim); }
+.checklist {
+  list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 10px 34px;
+  max-width: 720px; margin: 4px 0;
+}
+.checklist li {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; letter-spacing: 0.1em; color: var(--ink-bone); text-align: left;
+}
+.tick { color: var(--gold); font-family: var(--serif-num); }
+.rest { display: flex; flex-direction: column; align-items: center; gap: 12px; }
 </style>

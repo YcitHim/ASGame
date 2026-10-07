@@ -38,6 +38,42 @@ export const FIRST_TIPS: readonly FirstTipDefinition[] = [
     title: "能量",
     body: "每回合开始回复固定能量，用不完不会留到下回合。\n卡牌左上角的数字就是它的费用。",
   },
+  // ---- docs/42 §五：补循环层（原来的 5 条只管战斗） ----
+  {
+    id: "map_route",
+    title: "选路",
+    body: "在节点之间选路往上爬：剑 = 战斗，角 = 精英（难打但赏好），火 = 休息，砧 = 祭坛，匣 = 奖励，？ = 撞运气。\n顶上（颅）就是首领。",
+  },
+  {
+    id: "reward_pick",
+    title: "挑一张牌",
+    body: "打赢一场就能挑一张牌进卡组，卡组是你这一局的资产。\n不知道选什么，就选马上能用的。",
+  },
+  {
+    id: "elite",
+    title: "精英",
+    body: "骷髅头是精英：比普通敌人难一截，赢了掉更好的东西。\n量力而行——打不过就绕。",
+  },
+  {
+    id: "rest",
+    title: "篝火",
+    body: "回血或永久升级一张牌。\n活着到 Boss 面前，比什么流派都重要。",
+  },
+  {
+    id: "upgrade",
+    title: "升级",
+    body: "升级是永久强化这张牌——费用、伤害、效果都可能变。\n动手前先看升级预览。",
+  },
+  {
+    id: "relic_pick",
+    title: "遗物",
+    body: "遗物是被动生效的宝贝，拿到就一直工作，不用你操作。\n越攒越多，这是肉鸽的复利。",
+  },
+  {
+    id: "boss_warning",
+    title: "Boss 层",
+    body: "顶上就是 Boss。\n血不满、牌没整好之前，别急着敲门。",
+  },
 ];
 
 export function firstTip(id: string): FirstTipDefinition | undefined {

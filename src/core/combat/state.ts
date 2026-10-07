@@ -93,6 +93,13 @@ export interface BattleState {
   readonly eventSeq: number;
   /** 难度档（docs/36 T2）：敌人 HP / 伤害倍率一并从此读 */
   readonly difficulty: RunDifficulty;
+  /**
+   * 玩家 HP 安全下限（docs/42 §四 教学免死）：非 undefined 时，玩家受到的任何伤害都不会把
+   * HP 打到低于该值；用于教学，"教学关都能死"是口碑杀手。默认 undefined = 关闭。
+   */
+  readonly safetyFloor?: number;
+  /** 安全网已触发次数（docs/42 §四：第二次改为补满并快进该场） */
+  readonly safetySaves: number;
   /** 静态内容目录（不参与回放序列化） */
   readonly content: ContentDb;
 }
@@ -116,6 +123,8 @@ export interface BattleConfig {
   readonly relics?: readonly string[];
   /** 难度档（docs/36 T2）；缺省 normal */
   readonly difficulty?: RunDifficulty;
+  /** 教学安全下限（docs/42 §四）；缺省 undefined = 正常结算 */
+  readonly safetyFloor?: number;
 }
 
 export const DEFAULT_HAND_SIZE = 5;
@@ -152,6 +161,8 @@ export function createBattleState(config: BattleConfig): BattleState {
     battleId: config.battleId,
     rootSeed: config.seed >>> 0,
     difficulty,
+    ...(config.safetyFloor !== undefined ? { safetyFloor: config.safetyFloor } : {}),
+    safetySaves: 0,
     rng: new Rng(config.seed).snapshot(),
     turn: 0,
     phase: "battleStart",

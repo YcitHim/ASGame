@@ -3,11 +3,15 @@ import { computed, onMounted, ref, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
 import { t } from "@/data/load";
 import { useRunStore } from "@/stores/run";
+import { useTipsStore } from "@/stores/tips";
+import { useTutorialStore } from "@/stores/tutorial";
 import CardView from "@/ui/components/CardView.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
 const router = useRouter();
 const run = useRunStore();
+const tips = useTipsStore();
+const tutorial = useTutorialStore();
 const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 
@@ -17,6 +21,8 @@ const healAmount = computed(() => Math.round(run.maxHp * 0.3));
 
 onMounted(() => {
   if (!run.active) void router.replace("/");
+  // 首遇提示（docs/42 §五）：篝火能干什么
+  tips.triggerUnlessTaught("rest", tutorial.finished);
 });
 
 function heal(): void {

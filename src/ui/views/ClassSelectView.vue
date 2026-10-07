@@ -140,7 +140,8 @@ function startRunWith(classId: string): void {
 function choose(classId: string): void {
   if (!isUnlocked(classId)) return;
   meta.ensureLoaded();
-  if (!meta.tutorialOffered && !meta.tutorialDone && !devMode.value) {
+  // 邀请时机：选完职业之后、且这个职业还没被问过（docs/42 §三.0）
+  if (!meta.wasTutorialOffered(classId) && !devMode.value) {
     pendingClassId.value = classId;
     askTutorial.value = true;
     return;
@@ -149,17 +150,21 @@ function choose(classId: string): void {
   void router.push("/map");
 }
 
-/** 选「要人带路」：先开好这一局（教学要用所选职业的起始卡组），再进教学。 */
+/**
+ * 选「要人带路」：先开好这一局（第一班岗要用所选职业与起始卡组），再进教学。
+ * 已经走完过某个职业的第一班岗 → 这个新职业只补教机制课（docs/42 §三.0）。
+ */
 function acceptTutorial(): void {
   startRunWith(pendingClassId.value);
-  tutorial.begin();
+  meta.ensureLoaded();
+  tutorial.begin(meta.tutorialDone.length > 0);
   askTutorial.value = false;
   void router.push("/tutorial");
 }
 
-/** 选「不用」：直接开始远征，并记住不要再问。 */
+/** 选「不用」：直接开始远征，并记住这个职业不要再问。 */
 function declineTutorial(): void {
-  meta.markTutorialOffered();
+  meta.markTutorialOffered(pendingClassId.value);
   startRunWith(pendingClassId.value);
   askTutorial.value = false;
   void router.push("/map");

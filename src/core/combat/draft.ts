@@ -50,6 +50,10 @@ export interface Draft {
   rootSeed: number;
   /** 难度档（docs/36 T2）：敌人伤害倍率在 attackModifiers 读取 */
   readonly difficulty: RunDifficulty;
+  /** 教学安全下限（docs/42 §四）；undefined = 关闭 */
+  readonly safetyFloor: number | undefined;
+  /** 安全网已触发次数 */
+  safetySaves: number;
   readonly content: ContentDb;
   readonly handSize: number;
   rng: Rng;
@@ -78,6 +82,8 @@ export function toDraft(state: BattleState): Draft {
     battleId: state.battleId,
     rootSeed: state.rootSeed,
     difficulty: state.difficulty,
+    safetyFloor: state.safetyFloor,
+    safetySaves: state.safetySaves,
     content: state.content,
     handSize: state.handSize,
     rng: Rng.fromSnapshot(state.rootSeed, state.rng),
@@ -132,6 +138,8 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
     battleId: draft.battleId,
     rootSeed: draft.rootSeed,
     difficulty: draft.difficulty,
+    ...(draft.safetyFloor !== undefined ? { safetyFloor: draft.safetyFloor } : {}),
+    safetySaves: draft.safetySaves,
     rng: draft.rng.snapshot(),
     turn: draft.turn,
     phase: draft.phase,

@@ -33,6 +33,20 @@ export const useTipsStore = defineStore("tips", {
       if (!this.busy && this.current === null) this.current = id;
       else if (this.queue.length < 4) this.queue = [...this.queue, id];
     },
+    /** 直接标记已读（教学里已经讲过的机制，在正式局首次再遇时不再弹）。 */
+    markSeen(id: string): void {
+      useMetaStore().markTipSeen(id);
+    },
+
+    /**
+     * 教学进行中就"教过即标记"，否则正常弹（docs/42 §五）。
+     * 让教学与首遇提示互为补位，而不是同一句话说两遍。
+     */
+    triggerUnlessTaught(id: string, taught: boolean): void {
+      if (taught) this.markSeen(id);
+      else this.trigger(id);
+    },
+
     /** 玩家点掉提示（等于「不再提示」）：记入 meta，队列前移一位。 */
     dismiss(): void {
       if (this.current) useMetaStore().markTipSeen(this.current);

@@ -48,10 +48,10 @@ interface MetaState {
   stats: { interrupts: number };
   /** 首遇提示已读记录（docs/41 §4.1）：跨局不再重复弹 */
   tips: string[];
-  /** 教学：是否已问过「要人带路吗？」（docs/41 §4.3） */
-  tutorialOffered: boolean;
-  /** 教学：是否完成过三场教学 */
-  tutorialDone: boolean;
+  /** 教学：已问过「第一班岗」的职业（docs/42 §三.0，按职业记录） */
+  tutorialOffered: string[];
+  /** 教学：已走完「第一班岗」的职业 */
+  tutorialDone: string[];
 }
 
 /** 一次远征的成就输入（由 run store 汇总）。 */
@@ -90,10 +90,10 @@ export const useMetaStore = defineStore("meta", {
     stats: { interrupts: 0 },
     /** 首遇提示已读（docs/41 §4.1） */
     tips: [] as string[],
-    /** 教学：首次进远征前问一次是否要带路（docs/41 §4.3） */
-    tutorialOffered: false,
-    /** 教学：三场走完解锁「引路人」徽章 */
-    tutorialDone: false,
+    /** 教学：每个职业首次选择时问一次是否要带路（docs/42 §三.0） */
+    tutorialOffered: [] as string[],
+    /** 教学：走完「第一班岗」的职业（解锁「引路人」徽章） */
+    tutorialDone: [] as string[],
     /** 最近一次通关新解锁的内容 id（结算页弹提示用） */
     lastUnlocked: [] as string[],
     /** 最近一次通关新达成的成就 id（结算页弹提示用） */
@@ -132,8 +132,8 @@ export const useMetaStore = defineStore("meta", {
         this.records = saved.records ?? {};
         this.stats = { interrupts: saved.stats?.interrupts ?? 0 };
         this.tips = saved.tips ?? [];
-        this.tutorialOffered = saved.tutorialOffered ?? false;
-        this.tutorialDone = saved.tutorialDone ?? false;
+        this.tutorialOffered = Array.isArray(saved.tutorialOffered) ? saved.tutorialOffered : [];
+        this.tutorialDone = Array.isArray(saved.tutorialDone) ? saved.tutorialDone : [];
       }
       this.loaded = true;
     },
@@ -145,8 +145,8 @@ export const useMetaStore = defineStore("meta", {
         records: { ...this.records },
         stats: { ...this.stats },
         tips: [...this.tips],
-        tutorialOffered: this.tutorialOffered,
-        tutorialDone: this.tutorialDone,
+        tutorialOffered: [...this.tutorialOffered],
+        tutorialDone: [...this.tutorialDone],
       } satisfies MetaState);
     },
     unlock(ids: readonly string[]): string[] {
@@ -184,18 +184,28 @@ export const useMetaStore = defineStore("meta", {
       this.persist();
     },
 
-    /** 教学：记下"已经问过要不要带路"，之后不再问（docs/41 §4.3）。 */
-    markTutorialOffered(): void {
+    /** 教学：记下"这个职业已经问过要不要带路"，之后不再问（docs/42 §三.0）。 */
+    markTutorialOffered(classId: string): void {
       this.ensureLoaded();
-      if (this.tutorialOffered) return;
-      this.tutorialOffered = true;
+      if (this.tutorialOffered.includes(classId)) return;
+      this.tutorialOffered = [...this.tutorialOffered, classId];
       this.persist();
     },
 
-    /** 教学三场走完：解锁图鉴「引路人」徽章（不给任何数值/内容奖励）。 */
-    markTutorialDone(): void {
+    /** 这个职业是否已经问过是否要带路（已走完也算问过）。 */
+    wasTutorialOffered(classId: string): boolean {
+      return this.tutorialOffered.includes(classId) || this.tutorialDone.includes(classId);
+    },
+
+    /** 这个职业是否已走完「第一班岗」。 */
+    hasDoneTutorial(classId: string): boolean {
+      return this.tutorialDone.includes(classId);
+    },
+
+    /** 教学走完（按职业记）：解锁图鉴「引路人」徽章（不给任何数值/内容奖励）。 */
+    markTutorialDone(classId: string): void {
       this.ensureLoaded();
-      this.tutorialDone = true;
+      if (!this.tutorialDone.includes(classId)) this.tutorialDone = [...this.tutorialDone, classId];
       if (!this.achievements.includes("guide")) this.achievements = [...this.achievements, "guide"];
       this.persist();
     },

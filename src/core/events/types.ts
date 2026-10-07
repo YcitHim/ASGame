@@ -80,6 +80,8 @@ export interface EventPayloadMap {
   /** 敌人蓄力开始（架盾）或释放重击；供战斗日志解释「为什么打不动它」 */
   ChargeResolved: { enemyId: string; block: number; released: boolean; value?: number };
   IntentRevealed: { enemyId: string; intent: IntentPayload };
+  /** 教学安全网触发（docs/42 §四）：本该放倒玩家的伤害被截断在 safetyFloor 之上 */
+  SafetyNet: { targetId: string; wouldLose: number; saved: number; hpLeft: number };
   UnitDied: { unitId: string; clearedEffects: number };
   BattleEnded: { result: "win" | "lose"; rewardsSeed: number };
 }

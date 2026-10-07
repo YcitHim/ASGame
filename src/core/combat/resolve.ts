@@ -126,7 +126,25 @@ export function dealDamage(draft: Draft, sink: EventSink, args: DamageArgs): voi
   const evaluated = evaluateValue("attackDamage", args.base, modifiers);
   const value = evaluated.value;
   const blocked = Math.min(target.block, value);
-  const hpLost = value - blocked;
+  let hpLost = value - blocked;
+  // 教学安全网（docs/42 §四）：本该放倒玩家的这一下被截断在 safetyFloor 之上。
+  // 只在教学战斗启用（safetyFloor !== undefined），正常局与 golden 回放完全不受影响。
+  if (args.targetId === PLAYER_ID && draft.safetyFloor !== undefined) {
+    const floor = draft.safetyFloor;
+    if (target.hp - hpLost < floor) {
+      const capped = Math.max(0, target.hp - floor);
+      if (capped < hpLost) {
+        draft.safetySaves += 1;
+        sink.emit("SafetyNet", {
+          targetId: args.targetId,
+          wouldLose: hpLost,
+          saved: draft.safetySaves,
+          hpLeft: floor,
+        });
+        hpLost = capped;
+      }
+    }
+  }
   target.block -= blocked;
   if (blocked > 0 && target.block === 0) {
     sink.emit("BlockBroken", { targetId: args.targetId, value: blocked });

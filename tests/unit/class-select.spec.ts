@@ -62,7 +62,7 @@ describe("docs/16 5.3 职业选择", () => {
     const meta = useMetaStore();
     meta.markCleared("bloodwright");
     // 已完成/拒绝过教学引导，选择职业直接开局（docs/41 §4.3 首次才问）
-    meta.markTutorialOffered();
+    meta.markTutorialOffered("engineer");
     const wrapper = mount(ClassSelectView, { global: { plugins: [pinia, router] } });
     await wrapper.vm.$nextTick();
     const engineer = wrapper.findAll(".cls")[1];
