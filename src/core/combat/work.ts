@@ -18,6 +18,11 @@ export interface EffectContext {
   readonly blockModifiers?: readonly Modifier[];
   /** 该动作由触发器（遗物/卡牌能力）产生：其 gainCharge 不再派发 onGainCharge（防自触发） */
   readonly fromTrigger?: boolean;
+  /**
+   * 打出这张牌**之前**的能量（红线运转 chargeFromEnergy 读它）。
+   * 玩家看到的是能量球上那个数，所以取付掉费用前的值；触发器场景缺省，回落到当前能量。
+   */
+  readonly energyAtPlay?: number;
 }
 
 /** 栈上的单个效果动作；targetIds 已解析，供死亡清理匹配。 */

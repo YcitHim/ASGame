@@ -177,6 +177,31 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
     wrapper.unmount();
   });
 
+  it("蓄力红屏只在「下回合就挨打」时亮，蓄力途中不提前紧张（甲方手感）", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
+    await nextTick();
+    await nextTick();
+    const store = useBattleStore();
+    store.skip();
+
+    const enemy = store.battle!.enemies[0] as unknown as { intent: unknown };
+    // 还剩 2 回合：只有意图条上的「蓄力 · 2回合后释放」，不红屏
+    enemy.intent = { kind: "charge", value: 4, block: 6, thenValue: 16, thenIn: 2 };
+    await nextTick();
+    expect(wrapper.find(".telegraph").exists()).toBe(false);
+
+    // 下回合就砸下来：红屏 + 报伤害
+    enemy.intent = { kind: "charge", value: 4, block: 6, thenValue: 16, thenIn: 1 };
+    await nextTick();
+    expect(wrapper.find(".telegraph").exists()).toBe(true);
+    expect(wrapper.find(".telegraph").text()).toContain("16");
+
+    store.skip();
+    wrapper.unmount();
+  });
+
   it("Boss 台词 ×3：蓄力预警 / 二阶段横幅（docs/27 §五）", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);

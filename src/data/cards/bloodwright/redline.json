@@ -6,31 +6,17 @@
   "cost": 1,
   "effects": [
     {
-      "kind": "gainCharge",
-      "value": 4
-    },
-    {
-      "kind": "draw",
-      "value": 2,
-      "condition": {
-        "type": "chargeAtLeast",
-        "n": 8
-      }
+      "kind": "chargeFromEnergy",
+      "value": 0,
+      "overloadDraw": 2
     }
   ],
   "upgraded": {
     "effects": [
       {
-        "kind": "gainCharge",
-        "value": 5
-      },
-      {
-        "kind": "draw",
-        "value": 3,
-        "condition": {
-          "type": "chargeAtLeast",
-          "n": 8
-        }
+        "kind": "chargeFromEnergy",
+        "value": 1,
+        "overloadDraw": 2
       }
     ]
   },

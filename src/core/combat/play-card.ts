@@ -244,6 +244,8 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
   if (!validation.ok) return { ok: false, reason: validation.reason };
   const { instance, def, effective, cost, bloodPaid } = validation;
 
+  // 红线运转要读「玩家眼里那个能量值」= 付掉本牌费用**之前**的能量
+  const energyAtPlay = draft.player.energy;
   draft.player.energy -= cost;
   if (bloodPaid > 0) {
     loseHp(draft, sink, "player", bloodPaid, "bloodpact");
@@ -305,6 +307,7 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
     actorId: "player",
     chosenTargetId: targetId,
     onHit,
+    energyAtPlay,
     attackModifiers: effective.attackModifiers,
     blockModifiers: effective.blockModifiers,
   });

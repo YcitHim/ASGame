@@ -807,6 +807,18 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
       sink.emit("ChargeChanged", { targetId: PLAYER_ID, before: charge, after: 0, delta: -charge });
       break;
     }
+    case "chargeFromEnergy": {
+      // 红线运转（玩家反馈）：把「出牌前的能量」换成等量充能（+value）；
+      // 若这一步把充能推过上限（过载反噬清零），再抽 overloadDraw 张牌。
+      const base = Math.max(0, ctx.energyAtPlay ?? draft.player.energy);
+      const amount = base + Math.max(0, value);
+      const before = draft.player.charge;
+      if (amount > 0) changeCharge(draft, sink, amount);
+      const overloaded = before + amount > CHARGE_LIMIT;
+      const extra = effect.overloadDraw ?? 0;
+      if (overloaded && extra > 0) drawCards(draft, sink, extra);
+      break;
+    }
     case "clampCharge": {
       // 充能封顶（压力表）：高于 value 时平衡回 value，不触发 onGainCharge
       const before = draft.player.charge;

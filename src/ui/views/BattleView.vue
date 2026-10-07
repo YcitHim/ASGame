@@ -193,6 +193,13 @@ const chargingEnemies = computed(() =>
     })),
 );
 
+/**
+ * 红屏预警只在**马上要挨打的那一回合**亮（甲方 2026-10-07）：
+ * 蓄力途中（还剩 2 回合以上）不提前制造紧张——那一段的信息由敌人意图条自己承担
+ * （「蓄力 · N 回合后释放 X」）。到了 thenIn ≤ 1 的「下回合就砸下来」才红屏 + 报伤害。
+ */
+const imminentCharges = computed(() => chargingEnemies.value.filter((c) => (c.thenIn ?? 1) <= 1));
+
 /** 蓄力徽标（docs/19 §4）：蓄力中在敌人状态行显示「蓄力 ×N（M 回合后释放）」。 */
 function chargeBadge(enemy: {
   intent: { kind: string; value?: number; thenIn?: number; block?: number } | null;
@@ -846,9 +853,9 @@ function quitToTitleKeepRun(): void {
       </Teleport>
 
       <!-- Boss 蓄力大招：全屏预警（带上后续伤害，读招才成立） -->
-      <div v-if="chargingEnemies.length > 0" class="telegraph">
+      <div v-if="imminentCharges.length > 0" class="telegraph">
         <div class="telegraph-line" />
-        <p v-for="charge in chargingEnemies" :key="charge.name" class="telegraph-charge">
+        <p v-for="charge in imminentCharges" :key="charge.name" class="telegraph-charge">
           {{ charge.name }}<template v-if="charge.block"> 蓄力并架起 <b>{{ charge.block }}</b> 点格挡</template><template v-else> 正在蓄力</template> ——
           <template v-if="charge.thenValue !== undefined">
             {{ charge.thenIn && charge.thenIn > 1 ? charge.thenIn + " 回合后" : "下回合" }}
@@ -856,7 +863,7 @@ function quitToTitleKeepRun(): void {
           </template>
           <template v-else>准备迎接重击</template>
         </p>
-        <p v-for="charge in chargingEnemies.filter((c) => c.line)" :key="charge.name + '-line'" class="telegraph-line-quote">
+        <p v-for="charge in imminentCharges.filter((c) => c.line)" :key="charge.name + '-line'" class="telegraph-line-quote">
           「{{ charge.line }}」
         </p>
         <div class="telegraph-line" />

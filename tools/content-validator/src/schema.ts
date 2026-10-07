@@ -93,6 +93,16 @@ const effectSchema = z.discriminatedUnion("kind", [
     .strict(),
   z
     .object({
+      kind: z.literal("chargeFromEnergy"),
+      /** 在「当前能量」之上的额外加成（升级 +1） */
+      value: z.number().int().min(0),
+      /** 触发过载反噬时额外抽的牌数 */
+      overloadDraw: z.number().int().min(0).optional(),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
       kind: z.literal("spendPollution"),
       target: targetSchema.optional(),
       /** 每点污染的结算量 */

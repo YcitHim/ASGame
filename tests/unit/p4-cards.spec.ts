@@ -31,8 +31,18 @@ const CHARGE4: CardDefinition = {
   effects: [{ kind: "gainCharge", value: 4 }],
 };
 
+/** 测试辅助卡：0 费占位（只加 1 格挡），用来把牌铺进弃牌堆而不动能量/充能 */
+const PAD: CardDefinition = {
+  id: "pad",
+  class: "bloodwright",
+  type: "skill",
+  rarity: "common",
+  cost: 0,
+  effects: [{ kind: "block", target: { type: "self" }, value: 1 }],
+};
+
 const content = createContentDb({
-  cards: new Map([...game.content.cards, ["charge8", CHARGE8], ["charge4", CHARGE4]]),
+  cards: new Map([...game.content.cards, ["charge8", CHARGE8], ["charge4", CHARGE4], ["pad", PAD]]),
   enemies: new Map([
     [
       "dummy",
@@ -48,7 +58,7 @@ const content = createContentDb({
   relics: new Map(),
 });
 
-function battle(deck: string[]): BattleState {
+function battle(deck: readonly (string | { cardId: string; upgraded?: boolean })[]): BattleState {
   return reduce(
     createBattleState({
       battleId: "p4",
@@ -94,28 +104,28 @@ describe("P4.1 副线卡", () => {
     expect(r.state.player.charge).toBe(0);
   });
 
-  it("红线运转：先 +4 充能、再判「充能 ≥8」（玩家反馈实锤）", () => {
-    // 玩家报告的场景：手里 4 点充能 → 打出后正好 8 → 必须给那两张牌。
-    // 修复前条件在「入栈时」快照（那时还是 4），整条抽牌被丢掉。
-    const first = play(battle(["charge4", "strike", "redline", "defend", "defend"]), "charge4");
-    expect(first.state.player.charge).toBe(4);
-    const second = play(first.state, "strike"); // 再铺一张，保证牌堆里有牌可抽
-    const hit = play(second.state, "redline");
-    expect(hit.state.player.charge).toBe(8);
-    expect(drawn(hit.events)).toHaveLength(2);
+  it("红线运转：充能 = 出牌前的当前能量；过载才抽 2 张（甲方 2026-10-07 改版）", () => {
+    // ① 普通：能量 3（付掉本牌 1 费**之前**的读数）→ 充能 +3；不过载 → 不抽
+    const plain = play(battle(["redline"]), "redline");
+    expect(plain.state.player.charge).toBe(3);
+    expect(plain.state.player.energy).toBe(2); // 费用照付
+    expect(drawn(plain.events)).toHaveLength(0);
 
-    // 0 充能起手：只到 4，条件不成立，不抽
-    const low = play(battle(["redline"]), "redline");
-    expect(low.state.player.charge).toBe(4);
-    expect(drawn(low.events)).toHaveLength(0);
+    // ② 过载：充能 8 + 能量 3 = 11 > 10 → 反噬清零、扣 5 HP，并抽 2 张
+    const prepared = play(battle(["charge8", "pad", "redline"]), "charge8");
+    expect(prepared.state.player.charge).toBe(8);
+    const padded = play(prepared.state, "pad"); // 0 费占位：把牌铺进弃牌堆但不改能量
+    expect(padded.state.player.energy).toBe(3);
+    const boom = play(padded.state, "redline");
+    expect(boom.events.some((e) => e.type === "Overloaded")).toBe(true);
+    expect(boom.state.player.charge).toBe(0);
+    expect(boom.state.player.hp).toBe(66 - 5); // 过载反噬固定 5 点
+    expect(drawn(boom.events)).toHaveLength(2);
 
-    // 8 充能起手：+4 过 10 → 过载反噬清零 → 结算时「充能 ≥8」不成立，这一手也不抽
-    const charged = play(battle(["charge8", "redline"]), "charge8");
-    expect(charged.state.player.charge).toBe(8);
-    const over = play(charged.state, "redline");
-    expect(over.events.some((e) => e.type === "Overloaded")).toBe(true);
-    expect(over.state.player.charge).toBe(0);
-    expect(drawn(over.events)).toHaveLength(0);
+    // ③ 升级 = X+1：同样 3 能量 → 充能 +4
+    const up = play(battle([{ cardId: "redline", upgraded: true }]), "redline");
+    expect(up.state.player.charge).toBe(4);
+    expect(drawn(up.events)).toHaveLength(0);
   });
 
   it("污血献祭：污染 +12 并抽 2 张", () => {

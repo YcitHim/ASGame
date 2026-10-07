@@ -33,6 +33,11 @@ export interface CardEffect {
     | "spendCharge"
     /** 充能封顶（压力表）：超过 value 时平衡回 value */
     | "clampCharge"
+    /**
+     * 充能 = 出牌前的当前能量 + value（红线运转，玩家反馈）。
+     * 若这一步把充能推过上限（过载反噬），再抽 overloadDraw 张牌。
+     */
+    | "chargeFromEnergy"
     /** 消耗全部污染（docs/38 §二 B-2）：每点污染按 mode 结算，随后清零 */
     | "spendPollution"
     /** 污染转移（docs/38 §二 B-2）：自身 −2N，目标敌人 +N 蚀锈 */
@@ -59,6 +64,8 @@ export interface CardEffect {
   /** 仅 summon：召唤物定义 id 与数量 */
   readonly enemyId?: string;
   readonly count?: number;
+  /** 仅 chargeFromEnergy：触发过载时额外抽的牌数 */
+  readonly overloadDraw?: number;
 }
 
 /**
