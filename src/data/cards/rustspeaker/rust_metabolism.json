@@ -1,0 +1,30 @@
+{
+  "id": "rust_metabolism",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "gainPollution",
+      "value": 6
+    },
+    {
+      "kind": "draw",
+      "value": 2
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainPollution",
+        "value": 5
+      },
+      {
+        "kind": "draw",
+        "value": 2
+      }
+    ]
+  },
+  "i18n": "card.rust_metabolism"
+}

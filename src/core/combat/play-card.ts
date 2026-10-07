@@ -28,6 +28,8 @@ export interface EffectiveCard {
   readonly energyCost: number;
   /** 过 hpCost 管线的最终卖血代价 */
   readonly bloodCost: number;
+  /** 打出前需支付的固定充能代价（docs/51 §二），不吃任何增幅 */
+  readonly chargeCost: number;
   readonly effects: readonly CardEffect[];
   readonly play: CardDefinition["play"];
   readonly keywords: readonly KeywordId[];
@@ -46,6 +48,7 @@ interface EffectiveCardInput {
   readonly keywords: readonly KeywordId[];
   /** 未过管线的卖血代价 */
   readonly baseBloodCost: number;
+  readonly chargeCost: number;
   readonly modifiers: readonly Modifier[];
 }
 
@@ -62,6 +65,7 @@ function withComputed(input: EffectiveCardInput): EffectiveCard {
     modifiers: input.modifiers,
     energyCost: evaluateValue("cardCost", input.cost, costModifiers).value,
     bloodCost: Math.max(0, evaluateValue("hpCost", input.baseBloodCost, hpModifiers).value),
+    chargeCost: Math.max(0, input.chargeCost),
     attackModifiers: byKind("attackDamage"),
     blockModifiers: byKind("block"),
     costModifiers,
@@ -83,7 +87,8 @@ export function effectiveCard(def: CardDefinition, instance: CardInstance): Effe
     effects: up?.effects ?? def.effects ?? [],
     play: up?.play ?? def.play,
     keywords: up?.keywords ?? def.keywords ?? [],
-    baseBloodCost: def.bloodCost ?? 0,
+    baseBloodCost: up?.bloodCost ?? def.bloodCost ?? 0,
+    chargeCost: def.chargeCost ?? 0,
     modifiers: [],
   });
 }
@@ -148,6 +153,7 @@ export function effectiveCardWithEnhancements(
     play,
     keywords,
     baseBloodCost: base.bloodCost,
+    chargeCost: base.chargeCost,
     modifiers,
   });
 }
@@ -201,6 +207,13 @@ export function validatePlayCard(draft: Draft, handIndex: number, targetId: stri
   if (bloodPaid >= draft.player.hp) {
     return { ok: false, reason: `血契代价过高（需要 ${bloodPaid} HP，当前 ${draft.player.hp}）` };
   }
+  // 充能代价（docs/51 §二）：不足就是打不出去，和能量/血量一个待遇
+  if (effective.chargeCost > draft.player.charge) {
+    return {
+      ok: false,
+      reason: `充能不足（需要 ${effective.chargeCost}，当前 ${draft.player.charge}）`,
+    };
+  }
 
   const effects = effective.play
     ? getCardHandler(effective.play.handler)(effective.play.params, { chosenTargetId: targetId })
@@ -235,6 +248,17 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
   if (bloodPaid > 0) {
     loseHp(draft, sink, "player", bloodPaid, "bloodpact");
     resolveTriggers(draft, sink, "onSell");
+  }
+  // 充能代价：付了才继续（校验阶段已经确认付得起）
+  if (effective.chargeCost > 0) {
+    const before = draft.player.charge;
+    draft.player.charge = before - effective.chargeCost;
+    sink.emit("ChargeChanged", {
+      targetId: "player",
+      before,
+      after: draft.player.charge,
+      delta: -effective.chargeCost,
+    });
   }
 
   const [removed] = draft.hand.splice(handIndex, 1);

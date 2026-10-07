@@ -1,0 +1,23 @@
+{
+  "id": "gearbox_transfer",
+  "class": "engineer",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 0,
+  "chargeCost": 1,
+  "effects": [
+    {
+      "kind": "draw",
+      "value": 1
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "draw",
+        "value": 2
+      }
+    ]
+  },
+  "i18n": "card.gearbox_transfer"
+}

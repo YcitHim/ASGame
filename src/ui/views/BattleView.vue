@@ -776,6 +776,7 @@ function quitToTitleKeepRun(): void {
             :key="card.instanceId"
             :card-id="card.cardId"
             :cost="card.cost"
+            :charge-cost="card.def?.chargeCost ?? 0"
             :keywords="card.keywords"
             :type="card.type"
             :playable="card.playable && canPlay"
@@ -832,6 +833,7 @@ function quitToTitleKeepRun(): void {
           <CardView
             :card-id="ghostCard.cardId"
             :cost="ghostCard.cost"
+            :charge-cost="ghostCard.def?.chargeCost ?? 0"
             :keywords="ghostCard.keywords"
             :type="ghostCard.type"
             :playable="true"

@@ -77,6 +77,8 @@ export interface ClassDefinition {
 
 export interface CardUpgrade {
   readonly cost?: number;
+  /** 升级减代价（docs/51 §二 祭血狂热：血契 3 → 2）——升级口径是「减代价」而非「加量」 */
+  readonly bloodCost?: number;
   readonly effects?: readonly CardEffect[];
   readonly play?: CardPlayHandler;
   readonly keywords?: readonly KeywordId[];
@@ -106,6 +108,12 @@ export interface CardDefinition {
   readonly rarity: CardRarity;
   readonly cost: number;
   readonly bloodCost?: number;
+  /**
+   * 打出前需支付的**充能**代价（docs/51 §二 回压阀 / 齿轮过驳）。
+   * 与 `bloodCost` 同构：卡面费用之外的一笔固定资源成本，不足则打不出去。
+   * 注意：`spendCharge` 是「消耗全部充能按每点结算」，跟这个不是一回事。
+   */
+  readonly chargeCost?: number;
   readonly keywords?: readonly KeywordId[];
   readonly effects?: readonly CardEffect[];
   readonly play?: CardPlayHandler;

@@ -162,6 +162,8 @@ const cardShape = {
   rarity: z.enum(CARD_RARITIES),
   cost: z.number().int().min(0).max(9),
   bloodCost: z.number().int().min(0).max(99).optional(),
+  /** 固定充能代价（docs/51 §二）：与 bloodCost 同构的一笔资源成本 */
+  chargeCost: z.number().int().min(1).max(99).optional(),
   keywords: z.array(z.enum(KEYWORD_IDS)).optional(),
   effects: z.array(effectSchema).optional(),
   unlockCondition: z.string().optional(),
@@ -170,6 +172,8 @@ const cardShape = {
   upgraded: z
     .object({
       cost: z.number().int().min(0).max(9).optional(),
+      /** 升级减代价（docs/51 §二 祭血狂热） */
+      bloodCost: z.number().int().min(0).max(99).optional(),
       effects: z.array(effectSchema).optional(),
       play: playSchema.optional(),
       power: powerSchema.optional(),

@@ -108,6 +108,7 @@ function cardName(id: string): string {
             <CardView
               :card-id="card.cardId"
               :cost="previewCost(card)"
+              :charge-cost="run.cardDef(card.cardId)?.chargeCost ?? 0"
               :keywords="run.cardDef(card.cardId)?.keywords ?? []"
               :type="run.cardDef(card.cardId)?.type ?? 'skill'"
               :rarity="run.cardDef(card.cardId)?.rarity ?? 'common'"

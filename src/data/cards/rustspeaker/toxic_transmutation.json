@@ -1,0 +1,30 @@
+{
+  "id": "toxic_transmutation",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 0,
+  "effects": [
+    {
+      "kind": "gainPollution",
+      "value": 5
+    },
+    {
+      "kind": "gainEnergy",
+      "value": 1
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainPollution",
+        "value": 4
+      },
+      {
+        "kind": "gainEnergy",
+        "value": 1
+      }
+    ]
+  },
+  "i18n": "card.toxic_transmutation"
+}

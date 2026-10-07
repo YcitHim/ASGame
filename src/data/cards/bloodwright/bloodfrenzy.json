@@ -1,0 +1,27 @@
+{
+  "id": "bloodfrenzy",
+  "class": "bloodwright",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 2,
+  "keywords": [
+    "bloodpact"
+  ],
+  "bloodCost": 3,
+  "effects": [
+    {
+      "kind": "draw",
+      "value": 2
+    }
+  ],
+  "upgraded": {
+    "bloodCost": 2,
+    "effects": [
+      {
+        "kind": "draw",
+        "value": 2
+      }
+    ]
+  },
+  "i18n": "card.bloodfrenzy"
+}

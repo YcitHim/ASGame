@@ -16,6 +16,8 @@ const props = defineProps<{
   index: number;
   handCount: number;
   enhancements?: number;
+  /** 固定充能代价（docs/51 §二）：与「血契」角标同构的资源代价角标 */
+  chargeCost?: number;
   upgraded?: boolean;
   enhancementIds?: readonly string[];
   rarity?: string;
@@ -153,6 +155,9 @@ function onLeave(): void {
   >
     <div class="cost">{{ cost }}</div>
     <div v-if="keywordLabels.includes('血契')" class="bloodcost">血契</div>
+    <div v-if="chargeCost" class="chargecost" :class="{ lower: keywordLabels.includes('血契') }">
+      充能 {{ chargeCost }}
+    </div>
     <div class="art"><span>{{ typeLabel }}</span></div>
     <div class="cname">{{ name }}<sup v-if="upgraded" class="upmark">+</sup></div>
     <div class="ctype">
@@ -275,6 +280,27 @@ function onLeave(): void {
   border: 1px solid rgba(224, 112, 90, 0.7);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
   white-space: nowrap;
+}
+/* 充能代价角标（docs/51 §二）：与「血契」同构，冷色以区分 */
+.chargecost {
+  position: absolute;
+  top: 27px;
+  left: -14px;
+  z-index: 4;
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: #9fd0e8;
+  padding: 3px 6px;
+  border-radius: 2px;
+  background: rgba(12, 30, 42, 0.94);
+  border: 1px solid rgba(122, 178, 210, 0.7);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+}
+/* 血契与充能同时存在时，充能下移一行 */
+.chargecost.lower {
+  top: 48px;
 }
 .art {
   height: 82px;

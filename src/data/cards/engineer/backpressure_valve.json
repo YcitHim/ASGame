@@ -1,0 +1,31 @@
+{
+  "id": "backpressure_valve",
+  "class": "engineer",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 1,
+  "chargeCost": 2,
+  "effects": [
+    {
+      "kind": "gainEnergy",
+      "value": 1
+    },
+    {
+      "kind": "draw",
+      "value": 1
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainEnergy",
+        "value": 2
+      },
+      {
+        "kind": "draw",
+        "value": 1
+      }
+    ]
+  },
+  "i18n": "card.backpressure_valve"
+}

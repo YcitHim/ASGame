@@ -299,6 +299,7 @@ function rarityLabel(rarity: string | undefined): string {
             <CardView
               :card-id="card.id"
               :cost="card.def?.cost ?? 0"
+              :charge-cost="card.def?.chargeCost ?? 0"
               :keywords="card.def?.keywords ?? []"
               :type="card.def?.type ?? 'skill'"
               :rarity="card.def?.rarity ?? 'common'"

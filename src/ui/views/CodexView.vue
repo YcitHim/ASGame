@@ -96,6 +96,7 @@ function back(): void {
                 v-if="codex.cardSeen(c.id)"
                 :card-id="c.id"
                 :cost="c.cost"
+                :charge-cost="c.chargeCost ?? 0"
                 :keywords="c.keywords ?? []"
                 :type="c.type"
                 :rarity="c.rarity"
