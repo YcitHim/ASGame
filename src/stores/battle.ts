@@ -251,6 +251,14 @@ export const useBattleStore = defineStore("battle", {
           if (event.bloodPaid > 0) useTipsStore().trigger("bloodpact");
         } else if (event.type === "ChargeResolved" && !event.released) {
           useTipsStore().trigger("charge");
+        } else if (
+          event.type === "DamageDealt" &&
+          this.tutorialConfig &&
+          event.targetId === "player" &&
+          event.blocked > 0
+        ) {
+          // 教学：格挡真的替玩家吃掉了伤害（docs/42 §三.5 step 3）
+          useTutorialStore().noteBlockedHit();
         } else if (event.type === "IntentRevealed" && event.intent.released) {
           // 敌人蓄力链的释放段已揭示：它下一次行动就会落地
           this.tutorialReleasePending = true;

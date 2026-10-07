@@ -52,7 +52,16 @@ export const useTutorialStore = defineStore("tutorial", {
     classId(state): string {
       return state.run?.classId ?? "bloodwright";
     },
-    /** 当前战斗章的完整步骤（含职业追加段） */
+    /** 当前步骤要给玩家的保底牌（grant + 按职业的 classGrant） */
+  stepGrant(state): readonly string[] {
+    const step = chapterSteps(tutorialChapter(state.chapterIndex), state.run?.classId ?? "bloodwright")[
+      state.stepIndex
+    ];
+    if (!step) return [];
+    const byClass = step.classGrant?.[state.run?.classId ?? "bloodwright"] ?? [];
+    return [...(step.grant ?? []), ...byClass];
+  },
+  /** 当前战斗章的完整步骤（含职业追加段） */
     steps(state): readonly TutorialStep[] {
       return chapterSteps(tutorialChapter(state.chapterIndex), state.run?.classId ?? "bloodwright");
     },
@@ -136,6 +145,7 @@ export const useTutorialStore = defineStore("tutorial", {
       if (goal.kind === "playCardId") ok = goal.cardId === cardId;
       else if (goal.kind === "playType") ok = goal.cardType === cardType;
       else if (goal.kind === "energyEmpty") ok = energyAfter === 0;
+      else if (goal.kind === "spendAll") ok = energyAfter === 0;
       if (ok === true) this._advance();
     },
 
@@ -148,7 +158,15 @@ export const useTutorialStore = defineStore("tutorial", {
       else if (goal.kind === "blockEndTurn") ok = state.block >= goal.min;
       else if (goal.kind === "spendAll") ok = state.energy === 0 || state.playable === 0;
       if (ok === true) this._advance();
-      else if (ok === false && step.strict && step.correct) this.correction = step.correct;
+      // 严判定没做到 → 一定给一句人话，绝不让玩家对着同一行提示干瞪眼
+      else if (step.strict) this.correction = step.correct ?? `这一步还没做完——${step.how}`;
+    },
+
+    /** 挨了一下，且格挡替玩家吃掉了一部分（docs/42 §三.5 step 3）。 */
+    noteBlockedHit(): void {
+      const step = this.step;
+      if (!this.active || !step) return;
+      if (step.goal.kind === "blockedHit") this._advance();
     },
 
     /** 敌人蓄力重击落地，玩家还活着。 */

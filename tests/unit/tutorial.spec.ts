@@ -82,6 +82,34 @@ describe("docs/42 §三 脚本结构", () => {
     }
   });
 
+  it("没有死结：需要指定牌的步骤一定有保底发放（防止严判定被发牌运气卡死）", () => {
+    for (const chapter of TUTORIAL_CHAPTERS) {
+      if (chapter.kind !== "battle") continue;
+      for (const classId of ["bloodwright", "engineer", "rustspeaker"]) {
+        for (const step of chapterSteps(chapter, classId)) {
+          if (step.goal.kind === "playCardId") {
+            const granted = [
+              ...(step.grant ?? []),
+              ...(step.classGrant?.[classId] ?? []),
+            ];
+            expect(
+              granted.includes(step.goal.cardId),
+              `${chapter.id} 要求打出 ${step.goal.cardId}，但没有保底发放`,
+            ).toBe(true);
+          }
+          // 需要「手里有某类牌」的严判定步骤（格挡课）必须有保底发放
+          if (step.goal.kind === "blockEndTurn" && step.strict) {
+            const granted = [
+              ...(step.grant ?? []),
+              ...(step.classGrant?.[classId] ?? []),
+            ];
+            expect(granted.length, `${chapter.id} 的格挡课没有保底牌`).toBeGreaterThan(0);
+          }
+        }
+      }
+    }
+  });
+
   it("结业清单八条（docs/42 §三.8）", () => {
     const grad = TUTORIAL_CHAPTERS.find((c) => c.id === "graduation");
     if (grad?.kind !== "graduation") throw new Error("缺结业章");
@@ -113,6 +141,41 @@ describe("docs/42 §六-2 判定模型", () => {
     expect(tutorial.stepIndex).toBe(1);
     tutorial.noteCardPlayed("strike", "attack", 0);
     expect(tutorial.stepIndex).toBe(2);
+  });
+
+  it("「花光能量」是宽口径：剩 1 点但手里全是贵牌时，结束回合也算过关（回归 bug）", () => {
+    const { tutorial } = setup();
+    tutorial.chapterIndex = 1; // lesson1
+    tutorial.noteCardPlayed("strike", "attack", 2); // step 0 → 1
+    expect(tutorial.stepIndex).toBe(1);
+    // 打牌打到 0 → 过关
+    tutorial.noteCardPlayed("strike", "attack", 0);
+    expect(tutorial.stepIndex).toBe(2);
+  });
+
+  it("能量没用完但手里还有能打的牌 → 不推进，且必须给一句纠正（回归 bug：不能干瞪眼）", () => {
+    const { tutorial } = setup();
+    tutorial.chapterIndex = 1;
+    tutorial.stepIndex = 1;
+    tutorial.noteEndTurn({ energy: 1, block: 0, playable: 2 });
+    expect(tutorial.stepIndex).toBe(1);
+    expect(tutorial.correction.length).toBeGreaterThan(0);
+    // 剩 1 点但手里全是贵牌 → 结束回合也算花完
+    tutorial.noteEndTurn({ energy: 1, block: 0, playable: 0 });
+    expect(tutorial.stepIndex).toBe(2);
+  });
+
+  it("格挡课：格挡替玩家吃掉伤害才算过关（blockedHit），且防御牌有保底发放", () => {
+    const { tutorial } = setup();
+    tutorial.chapterIndex = 3; // lesson2
+    tutorial.stepIndex = 1;
+    // 这一课要保证手里有本职业的格挡牌，否则严判定会被发牌运气卡死
+    expect(tutorial.stepGrant.length).toBeGreaterThan(0);
+    tutorial.noteEndTurn({ energy: 1, block: 5, playable: 1 });
+    expect(tutorial.stepIndex).toBe(2);
+    expect(tutorial.step?.goal.kind).toBe("blockedHit");
+    tutorial.noteBlockedHit();
+    expect(tutorial.stepIndex).toBe(3);
   });
 
   it("playCardId 只认指定机制牌；killAll 清场；survivedRelease 扛过重击", () => {

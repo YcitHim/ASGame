@@ -26,6 +26,8 @@ export type TutorialGoal =
   | { kind: "blockEndTurn"; min: number }
   /** 敌人的蓄力重击落地后仍活着 */
   | { kind: "survivedRelease" }
+  /** 挨了这一下，且格挡真的替玩家吃掉了一部分（docs/42 §三.5 step 3） */
+  | { kind: "blockedHit" }
   /** 清场（自由行动，教完就放手） */
   | { kind: "killAll" };
 
@@ -40,6 +42,8 @@ export interface TutorialStep {
   readonly highlightCardId?: string;
   /** 这一步开始时把这几张牌塞进手牌（机制课用；走 core 的 DebugCommand，确定性） */
   readonly grant?: readonly string[];
+  /** 同上，但按职业给（防御课要用本职业的格挡牌，否则手里可能一张都没有 → 卡死） */
+  readonly classGrant?: Readonly<Record<string, readonly string[]>>;
   readonly goal: TutorialGoal;
   /** 严判定：没做到就不推进，给一句纠正 */
   readonly strict?: boolean;
@@ -154,9 +158,11 @@ export const TUTORIAL_CHAPTERS: readonly TutorialChapter[] = [
         why: "能量不隔夜：这一回合用不完，下回合也不会补给你。",
         how: "把剩下的力气花完，别省。",
         highlightType: "attack",
-        goal: { kind: "energyEmpty" },
+        // 宽口径（docs/42 §三.3 step 2 原文）：能量花光，**或者**手里已经没有打得起的牌。
+        // 只用「能量恰好 = 0」会卡死：比如剩 1 点能量、手里只剩 2 费牌时永远满足不了。
+        goal: { kind: "spendAll" },
         strict: true,
-        correct: "还有力气没用完——再打一张，或者看看手牌左上角的费用。",
+        correct: "还有力气没用完——再打一张能打得起牌，或者手牌都太贵时点「结束回合」也算过关。",
       },
       {
         why: "没打出去的牌不会留在手里。每个回合结束时，它们都会飞进弃牌堆。",
@@ -213,14 +219,20 @@ export const TUTORIAL_CHAPTERS: readonly TutorialChapter[] = [
         why: "格挡就是临时的血：它先替你挨，挨完就没了。",
         how: "它预告了攻击——打防御牌把格挡叠起来，再结束回合。",
         highlightType: "skill",
+        // 保底给一张本职业的格挡牌：起手 5 张里有没有防御是发牌运气，不能拿运气卡住严判定
+        classGrant: {
+          bloodwright: ["defend"],
+          engineer: ["brassguard"],
+          rustspeaker: ["scrapguard"],
+        },
         goal: { kind: "blockEndTurn", min: 1 },
         strict: true,
-        correct: "这一下会打在你身上——先打一张防御牌叠格挡，再结束回合。",
+        correct: "这一下会打在你身上——先打一张高亮的防御牌叠格挡，再结束回合。",
       },
       {
         why: "看，格挡替你吃掉了伤害。但格挡每回合开始会清零。",
         how: "所以要在挨打前叠，别提前浪费。",
-        goal: { kind: "survivedRelease" },
+        goal: { kind: "blockedHit" },
       },
       {
         why: "能打就打，别舍不得——这游戏不奖励收藏家。",
@@ -290,6 +302,8 @@ export const TUTORIAL_CHAPTERS: readonly TutorialChapter[] = [
         {
           why: "但别贪——充能超过 10 会过载，炸自己 5 点。",
           how: "再打「充能锤」：充能越高，它砸得越狠。",
+          // 保底再发一次：玩家可能在上一步就把锤子打了，那这一步就没牌可打（死结）
+          grant: ["chargedhammer"],
           highlightCardId: "chargedhammer",
           goal: { kind: "playCardId", cardId: "chargedhammer" },
         },
@@ -306,6 +320,7 @@ export const TUTORIAL_CHAPTERS: readonly TutorialChapter[] = [
         {
           why: "蚀锈是锈语者的看家本事：种进敌人身体里，它每回合自己掉血。",
           how: "打一张「锈唾」，把锈种上去。",
+          grant: ["rustspit"],
           highlightCardId: "rustspit",
           goal: { kind: "playCardId", cardId: "rustspit" },
         },

@@ -65,11 +65,11 @@ function advanceTutorialChapter(): void {
   else void router.push("/tutorial");
 }
 
-// 教学步骤带 grant 时，把这几个「样例牌」塞进手牌（走 core 的 DebugCommand，确定性）
+// 教学步骤带 grant / classGrant 时，把这几个「样例牌」塞进手牌（走 core 的 DebugCommand，确定性）
 watch(
   () => [tutorial.chapterIndex, tutorial.stepIndex] as const,
   () => {
-    for (const cardId of tutorial.step?.grant ?? []) {
+    for (const cardId of tutorial.stepGrant) {
       store.debug(`give card ${cardId}`);
     }
   },
