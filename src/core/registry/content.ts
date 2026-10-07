@@ -188,7 +188,7 @@ export interface StartBuff {
   readonly stacks: number;
 }
 
-/** 分裂亡语（docs/47 §三.4，M3 锁定）：死亡时原地召唤 enemyId × count，分裂物不再分裂。 */
+/** 分裂亡语（docs/47 §三.4，M3 已解锁）：死亡时原地召唤 enemyId × count，分裂物不再分裂。 */
 export interface DeathSplit {
   readonly enemyId: string;
   readonly count: number;
@@ -200,7 +200,7 @@ export interface RawEnemyDefinition {
   readonly maxHp: number;
   readonly intents: readonly EnemyIntentEntry[];
   readonly startBuffs?: readonly StartBuff[];
-  readonly deathSplit?: DeathSplit;
+  readonly onDeathSplit?: DeathSplit;
   readonly onDeath?: readonly CardEffect[];
   /** 免疫断链（docs/38 §三 C-1）：Boss 例外条款，与 releaseOverride 同一登记处 */
   readonly interruptImmune?: boolean;
@@ -216,7 +216,7 @@ export function buildEnemyDefinition(raw: RawEnemyDefinition, name: string): Ene
     maxHp: raw.maxHp,
     intents: raw.intents,
     ...(raw.startBuffs ? { startBuffs: raw.startBuffs } : {}),
-    ...(raw.deathSplit ? { deathSplit: raw.deathSplit } : {}),
+    ...(raw.onDeathSplit ? { onDeathSplit: raw.onDeathSplit } : {}),
     ...(raw.onDeath ? { onDeath: raw.onDeath } : {}),
     ...(raw.interruptImmune ? { interruptImmune: true } : {}),
     ...(raw.stunResistant ? { stunResistant: true } : {}),
@@ -230,8 +230,8 @@ export interface EnemyDefinition {
   readonly intents: readonly EnemyIntentEntry[];
   /** 开场状态（docs/47 §三.4）：战斗开始即挂在敌人自己身上 */
   readonly startBuffs?: readonly StartBuff[];
-  /** 分裂亡语（docs/47 §三.4，M3 锁定） */
-  readonly deathSplit?: DeathSplit;
+  /** 分裂亡语（docs/47 §三.4，M3 已解锁）：死亡时原地召唤 enemyId × count */
+  readonly onDeathSplit?: DeathSplit;
   /** 亡语（docs/16 P2.2）：该单位死亡并完成死亡清理后结算的效果 */
   readonly onDeath?: readonly CardEffect[];
   /** 免疫断链（docs/38 §三 C-1）：蓄力被虚弱/易伤命中时不被打断 */

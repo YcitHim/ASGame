@@ -202,6 +202,13 @@
             "corroded_swarm"
           ],
           "weight": 2
+        },
+        {
+          "enemies": [
+            "blister_belly",
+            "corroded_swarm"
+          ],
+          "weight": 3
         }
       ],
       "events": [

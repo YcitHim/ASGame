@@ -1,0 +1,28 @@
+{
+  "id": "barnacle_host",
+  "i18n": "enemy.barnacle_host",
+  "maxHp": 58,
+  "onDeathSplit": {
+    "enemyId": "tide_mite",
+    "count": 2
+  },
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 10
+      },
+      "weight": 3,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "selfBuff",
+        "buffId": "tenacity",
+        "stacks": 2
+      },
+      "weight": 2,
+      "maxConsecutive": 2
+    }
+  ]
+}

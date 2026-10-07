@@ -660,11 +660,17 @@ export function killUnit(draft: Draft, sink: EventSink, unitId: string): number 
   }
 
   const enemy = draft.enemies.find((e) => e.id === unitId);
-  const deathEffects = enemy ? draft.content.enemies.get(enemy.defId)?.onDeath : undefined;
+  const def = enemy ? draft.content.enemies.get(enemy.defId) : undefined;
+  const deathEffects = def?.onDeath;
   if (deathEffects && deathEffects.length > 0) {
     enqueueEffects(draft, deathEffects, { sourceId: unitId, actorId: unitId, chosenTargetId: null });
     drainQueue(draft, sink);
   }
+  // 分裂亡语（docs/47 §三.4，M3）：死亡原地召唤 enemyId × count。
+  // 沿用召唤规则——入场当回合不行动（spawnedTurn）、召唤物不为己方殉爆；
+  // 分裂物自身不带 onDeathSplit，所以不会再分裂（validator 也拦链式分裂）。
+  const split = def?.onDeathSplit;
+  if (split && enemy) summonUnit(draft, sink, unitId, split.enemyId, split.count);
   return cleared;
 }
 

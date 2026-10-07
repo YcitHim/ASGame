@@ -120,6 +120,59 @@ describe("content-validator（G1）", () => {
     expect(validateContent(chained).issues.some((i) => i.message.includes("眩晕"))).toBe(false);
   });
 
+  it("docs/47 §四.2：分裂亡语禁止自指与链式分裂（分裂物不再分裂）", () => {
+    const selfRef = baseInput();
+    selfRef.enemies = [
+      {
+        file: "src/data/enemies/ooze.json",
+        data: {
+          id: "ooze", i18n: "enemy.ooze", maxHp: 10,
+          onDeathSplit: { enemyId: "ooze", count: 2 },
+          intents: [{ intent: { kind: "attack", value: 3 }, weight: 1 }],
+        },
+      },
+    ];
+    selfRef.i18n = { ...selfRef.i18n, "enemy.ooze.name": "史莱姆" };
+    expect(validateContent(selfRef).issues.some((i) => i.message.includes("不能是自己"))).toBe(true);
+
+    const chain = baseInput();
+    chain.enemies = [
+      {
+        file: "src/data/enemies/big.json",
+        data: {
+          id: "big", i18n: "enemy.big", maxHp: 10,
+          onDeathSplit: { enemyId: "small", count: 2 },
+          intents: [{ intent: { kind: "attack", value: 3 }, weight: 1 }],
+        },
+      },
+      {
+        file: "src/data/enemies/small.json",
+        data: {
+          id: "small", i18n: "enemy.small", maxHp: 5,
+          onDeathSplit: { enemyId: "tiny", count: 2 },
+          intents: [{ intent: { kind: "attack", value: 1 }, weight: 1 }],
+        },
+      },
+    ];
+    chain.i18n = { ...chain.i18n, "enemy.big.name": "大", "enemy.small.name": "小" };
+    expect(validateContent(chain).issues.some((i) => i.message.includes("不再分裂"))).toBe(true);
+
+    // 引用不存在的分裂物也拦得住
+    const ghost = baseInput();
+    ghost.enemies = [
+      {
+        file: "src/data/enemies/ghost.json",
+        data: {
+          id: "ghost", i18n: "enemy.ghost", maxHp: 10,
+          onDeathSplit: { enemyId: "not_here", count: 1 },
+          intents: [{ intent: { kind: "attack", value: 3 }, weight: 1 }],
+        },
+      },
+    ];
+    ghost.i18n = { ...ghost.i18n, "enemy.ghost.name": "幽灵" };
+    expect(validateContent(ghost).issues.some((i) => i.message.includes("未定义"))).toBe(true);
+  });
+
   it("docs/45 Q11：正式内容数据里出现调试指令串会报错", () => {
     const input = baseInput();
     input.enemies = [

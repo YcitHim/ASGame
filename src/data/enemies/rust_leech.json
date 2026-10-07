@@ -1,0 +1,15 @@
+{
+  "id": "rust_leech",
+  "i18n": "enemy.rust_leech",
+  "maxHp": 15,
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 3
+      },
+      "weight": 3,
+      "maxConsecutive": 2
+    }
+  ]
+}

@@ -258,13 +258,13 @@ export function validateContent(input: ContentInput): ValidationResult {
       });
     }
   }
-  // 分裂亡语 M3 锁定（docs/47 §七）：正式数据出现 deathSplit 即报错
+  // 分裂亡语（docs/47 §三.4，M3 已解锁）：唯一的硬规则是「分裂物不再分裂」——禁止自指与链式分裂
   for (const e of enemies) {
-    if (e.deathSplit) {
+    if (e.onDeathSplit?.enemyId === e.id) {
       issues.push({
         file: `enemy ${e.id}`,
-        path: "deathSplit",
-        message: "分裂（deathSplit）仍锁定在 M3（docs/47 §七），正式数据不得挂载",
+        path: "onDeathSplit",
+        message: "分裂物不能是自己（会无限分裂，docs/47 §四.2）",
       });
     }
   }
@@ -312,6 +312,27 @@ export function validateContent(input: ContentInput): ValidationResult {
   const enemyIds = new Set(enemies.map((e) => e.id));
   const relicIds = new Set(relics.map((r) => r.id));
   const eventIds = new Set(events.map((e) => e.id));
+  // 分裂亡语的引用完整性与「不再分裂」链式锁（docs/47 §四.2）
+  const enemyById = new Map(enemies.map((e) => [e.id, e]));
+  for (const e of enemies) {
+    const split = e.onDeathSplit;
+    if (!split) continue;
+    if (!enemyIds.has(split.enemyId)) {
+      issues.push({
+        file: `enemy ${e.id}`,
+        path: "onDeathSplit.enemyId",
+        message: `分裂出未定义的敌人 "${split.enemyId}"`,
+      });
+      continue;
+    }
+    if (enemyById.get(split.enemyId)?.onDeathSplit) {
+      issues.push({
+        file: `enemy ${e.id}`,
+        path: "onDeathSplit",
+        message: "分裂物不再分裂（docs/47 §四.2：不可链式分裂）",
+      });
+    }
+  }
   // 事件 gainCard 显式池引用
   for (const ev of events) {
     for (const opt of ev.options) {

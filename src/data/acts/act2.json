@@ -126,6 +126,13 @@
             "drowned_crawler"
           ],
           "weight": 3
+        },
+        {
+          "enemies": [
+            "barnacle_host",
+            "choir_echo"
+          ],
+          "weight": 3
         }
       ]
     },
@@ -194,6 +201,13 @@
           "enemies": [
             "silent_matron",
             "deep_diver"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "barnacle_host",
+            "choir_echo"
           ],
           "weight": 3
         }

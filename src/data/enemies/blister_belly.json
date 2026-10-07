@@ -1,0 +1,27 @@
+{
+  "id": "blister_belly",
+  "i18n": "enemy.blister_belly",
+  "maxHp": 44,
+  "onDeathSplit": {
+    "enemyId": "rust_leech",
+    "count": 2
+  },
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 8
+      },
+      "weight": 3,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "defend",
+        "value": 8
+      },
+      "weight": 1,
+      "maxConsecutive": 1
+    }
+  ]
+}

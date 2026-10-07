@@ -335,7 +335,7 @@ export const enemySchema = z
       .array(z.object({ buffId: z.enum(BUFF_IDS), stacks: z.number().int().min(1) }).strict())
       .optional(),
     /** 分裂亡语（docs/47 §三.4）：**M3 锁定**，正式数据出现即报错 */
-    deathSplit: z
+    onDeathSplit: z
       .object({ enemyId: z.string().regex(ID_PATTERN), count: z.number().int().min(1) })
       .strict()
       .optional(),

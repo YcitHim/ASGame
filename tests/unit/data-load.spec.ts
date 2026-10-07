@@ -22,8 +22,8 @@ describe("真实内容装载（data/load）", () => {
   it("卡牌 / 敌人 / 关卡 / 文案全部可用，敌人名按 i18n 解析", () => {
     const game = loadGameContent();
     expect(game.content.cards.size).toBeGreaterThanOrEqual(30);
-    // docs/47 M1/M2：4 只新怪落库（忏悔者 / 链枷手 / 锈蛾 / 静默嬷嬷）
-    expect(game.content.enemies.size).toBe(22);
+    // docs/47 M1/M2 4 只 + M3 3 只（鼓腹兽 / 藤壶寄居者 / 锈蛆）
+    expect(game.content.enemies.size).toBe(25);
     expect(game.content.relics.size).toBe(25);
     expect(game.content.classes.size).toBe(3);
     // 两幕：锈蚀回廊 + 沉没圣堂（docs/40）
