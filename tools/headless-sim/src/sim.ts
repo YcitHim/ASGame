@@ -55,6 +55,8 @@ export interface SimResult {
   bloodrageBoil: boolean;
   /** 本局是否同时持有 血怒 与 低血沸腾（可不同卡）——诊断 AI 会不会凑对（docs/25 §1.6） */
   bloodrageBoilAny: boolean;
+  /** 本局污染峰值（docs/42 T1 分布报告：用于判断"加速出牌 → 加速污染"这条假设） */
+  pollutionPeak: number;
 }
 
 export interface BattleRunConfig {
@@ -228,6 +230,11 @@ export function simulateRun(
   difficulty: RunDifficulty = "normal",
   /** 多幕连打（docs/40 §九-15）：传 [act1, act2] 即双幕；缺省只打第一幕 */
   acts: readonly ActDefinition[] = [],
+  /**
+   * 指定随身遗物（docs/41 §五 T1 强度分布）：传了就固定用这一件，
+   * 不传则按职业默认偏好（老口径，保证既有基线可复现）。
+   */
+  companionId?: string,
 ): SimResult {
   const cls = content.classes.get(classId) ?? [...content.classes.values()][0];
   if (!cls) throw new Error("内容里没有任何职业定义");
@@ -242,7 +249,12 @@ export function simulateRun(
   // 炉心取压力表（充能联动，即它被下放前的原配），其余回落到池首件。
   const t1 = relicPool(content, 1, unlocked);
   const preferred = classId === "engineer" ? "pressuregauge" : classId === "rustspeaker" ? "whetstone" : "blood_pump";
-  const companion = t1.includes(preferred) ? preferred : (t1[0] ?? "");
+  const companion =
+    companionId !== undefined
+      ? companionId
+      : t1.includes(preferred)
+        ? preferred
+        : (t1[0] ?? "");
   let run = createRunState(act, cls, seed, { unlocked, difficulty, companionRelic: companion });
   const deck: SimCard[] = cls.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
   const relics = [...(cls.startRelics ?? []), ...(companion ? [companion] : [])];
@@ -276,6 +288,7 @@ export function simulateRun(
     bloodrageBoilAny:
       deck.some((c) => c.enhancements.includes("bloodrage")) &&
       deck.some((c) => c.enhancements.includes("bloodboil")),
+    pollutionPeak: run.pollutionPeak,
   });
 
   // 多幕连打：一幕走完 → applyIntermission → 继续第二幕（docs/40 §2.2）
