@@ -1,0 +1,30 @@
+{
+  "id": "thornscab",
+  "class": "neutral",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "self"
+      },
+      "buff": "bramble",
+      "stacks": 2
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "self"
+        },
+        "buff": "bramble",
+        "stacks": 3
+      }
+    ]
+  },
+  "i18n": "card.thornscab"
+}

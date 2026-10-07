@@ -1,0 +1,25 @@
+{
+  "id": "chargeup",
+  "class": "engineer",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 1,
+  "keywords": [
+    "charge"
+  ],
+  "effects": [
+    {
+      "kind": "gainCharge",
+      "value": 3
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainCharge",
+        "value": 5
+      }
+    ]
+  },
+  "i18n": "card.chargeup"
+}

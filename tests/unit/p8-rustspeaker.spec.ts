@@ -152,13 +152,22 @@ describe("1.0-B 职业与解锁", () => {
     }
   });
 
-  it("锈语者卡奖只出 rustspeaker 卡", () => {
+  it("锈语者卡奖只出「本职业 + 中立」（docs/56 §四.1 每槽 70/30）", () => {
     window.localStorage.clear();
     setActivePinia(createPinia());
     const run = useRunStore();
     run.startRun("rustspeaker", 11);
-    for (const id of run.cardRewards()) {
-      expect(run.cardDef(id)?.class).toBe("rustspeaker");
+    const seen = new Set<string>();
+    // 单局三选一抽不出 30% 侧是常态，多走几个节点才验得到两条来源都活着
+    for (let node = 0; node < 40; node += 1) {
+      run.run = { ...run.run!, layerIndex: node };
+      for (const id of run.cardRewards()) {
+        const cls = run.cardDef(id)?.class;
+        expect(["rustspeaker", "neutral"], `${id} 的归属是 ${cls}`).toContain(cls);
+        seen.add(id);
+      }
     }
+    expect([...seen].some((id) => run.cardDef(id)?.class === "neutral")).toBe(true);
+    expect([...seen].some((id) => run.cardDef(id)?.class === "rustspeaker")).toBe(true);
   });
 });

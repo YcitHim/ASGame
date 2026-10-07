@@ -1,0 +1,34 @@
+{
+  "id": "corrode",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "buff": "timid",
+      "stacks": 1
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "buff": "timid",
+        "stacks": 1
+      },
+      {
+        "kind": "gainPollution",
+        "value": 5
+      }
+    ]
+  },
+  "i18n": "card.corrode"
+}

@@ -65,6 +65,73 @@ function zodIssues(file: string, error: unknown): ValidationIssue[] {
  * `intent` 是教学脚本专用的钉意图指令（TutorialStep.intent），只能活在 src/ui/tutorial.ts；
  * 一旦有人把它写进敌人/关卡/事件 JSON（调试残留或"正式内容作弊"），构建期直接报错。
  */
+/**
+ * 身份指纹（docs/56 §二）：validator 的显式注册表。
+ *
+ * 分组的唯一标准是**机制身份**，不是风味（名字/文案带蒸汽或锈味不算）。
+ * 卡面三面（本体 / 升级 / 能力）任一命中即算——所以升级面加的身份机制也会被抓到。
+ */
+interface CardFace {
+  readonly effects: readonly { kind?: string; buff?: string; valueKind?: string; condition?: { type?: string } }[];
+  readonly keywords: readonly string[];
+  readonly bloodCost: number;
+  readonly chargeCost: number;
+  readonly powerTimings: readonly string[];
+}
+
+function cardFace(card: {
+  keywords?: readonly string[];
+  bloodCost?: number;
+  chargeCost?: number;
+  effects?: unknown;
+  power?: { timing?: string; effects?: unknown };
+  upgraded?: {
+    keywords?: readonly string[];
+    bloodCost?: number;
+    effects?: unknown;
+    power?: { timing?: string; effects?: unknown };
+  };
+}): CardFace {
+  const faces = [card, card.upgraded].filter((x): x is NonNullable<typeof x> => !!x);
+  const asEffects = (v: unknown): CardFace["effects"] =>
+    (v as CardFace["effects"] | undefined) ?? [];
+  return {
+    effects: faces.flatMap((x) => [...asEffects(x.effects), ...asEffects(x.power?.effects)]),
+    keywords: faces.flatMap((x) => x.keywords ?? []),
+    bloodCost: Math.max(card.bloodCost ?? 0, card.upgraded?.bloodCost ?? 0),
+    chargeCost: card.chargeCost ?? 0,
+    powerTimings: faces.flatMap((x) => (x.power?.timing ? [x.power.timing] : [])),
+  };
+}
+
+const hasBuff = (f: CardFace, ids: readonly string[]): boolean =>
+  f.effects.some((e) => e.kind === "applyBuff" && !!e.buff && ids.includes(e.buff));
+const hasCondition = (f: CardFace, types: readonly string[]): boolean =>
+  f.effects.some((e) => !!e.condition?.type && types.includes(e.condition.type));
+const hasKind = (f: CardFace, kinds: readonly string[]): boolean =>
+  f.effects.some((e) => !!e.kind && kinds.includes(e.kind));
+
+const IDENTITY_FINGERPRINTS: Record<string, (f: CardFace) => boolean> = {
+  bloodwright: (f) =>
+    f.keywords.includes("bloodpact") ||
+    f.bloodCost > 0 ||
+    hasCondition(f, ["hpBelow", "tookDamageThisTurn"]) ||
+    hasKind(f, ["heal", "consumeBoons"]) ||
+    hasBuff(f, ["mending"]),
+  engineer: (f) =>
+    hasKind(f, ["gainCharge", "spendCharge", "chargeFromEnergy", "clampCharge"]) ||
+    f.chargeCost > 0 ||
+    hasCondition(f, ["chargeAtLeast"]) ||
+    hasBuff(f, ["tenacity", "stun"]) ||
+    f.powerTimings.includes("onGainCharge"),
+  rustspeaker: (f) =>
+    hasKind(f, ["gainPollution", "transferPollution", "consumeCorroding", "spendPollution"]) ||
+    hasCondition(f, ["pollutionAtLeast", "targetHasBuff"]) ||
+    hasBuff(f, ["corroding", "burn", "reverse", "regeneration"]) ||
+    f.powerTimings.includes("onPollutionMax") ||
+    f.effects.some((e) => e.kind === "gainModifier" && e.valueKind === "backlashTaken"),
+};
+
 const DEBUG_COMMAND_PATTERN =
   /^(noop$|set (hp|energy) \d|add buff \S+|give card \S+|draw \d|kill \S+|seed \d|intent \S+)/;
 
@@ -424,9 +491,9 @@ export function validateContent(input: ContentInput): ValidationResult {
     requireKeyEarly(`class ${cls.id}`, cls.i18n + ".title");
     requireKeyEarly(`class ${cls.id}`, cls.i18n + ".intro");
   }
-  // 每张卡的 class 必须是已定义职业（防止卡池隔离失效）
+  // 每张卡的 class 必须是已定义职业——或中立池（docs/56 §三：neutral 不是职业，是共享池）
   for (const c of cards) {
-    if (!classIds.has(c.class)) {
+    if (c.class !== "neutral" && !classIds.has(c.class)) {
       issues.push({ file: `card ${c.id}`, path: "class", message: `未定义的职业 "${c.class}"` });
     }
   }
@@ -537,6 +604,32 @@ export function validateContent(input: ContentInput): ValidationResult {
     checkMechanics(`card ${c.id} (power)`, c.power?.effects);
     checkMechanics(`card ${c.id} (power upgraded)`, c.upgraded?.power?.effects);
   }
+  // docs/56 §五 分组铁律的双向守卫：中立禁纹 / 职业验纹
+  for (const c of cards) {
+    const face = cardFace(c as unknown as Parameters<typeof cardFace>[0]);
+    if (c.class === "neutral") {
+      const hit = (["bloodwright", "engineer", "rustspeaker"] as const).find((cls) =>
+        IDENTITY_FINGERPRINTS[cls]!(face),
+      );
+      if (hit) {
+        issues.push({
+          file: `card ${c.id}`,
+          path: "class",
+          message: `中立池不得命中身份指纹（命中 ${hit}）——docs/56 §二：中立卡只能靠 damage/block/draw 与通用状态`,
+        });
+      }
+      continue;
+    }
+    const check = IDENTITY_FINGERPRINTS[c.class];
+    if (check && !check(face)) {
+      issues.push({
+        file: `card ${c.id}`,
+        path: "class",
+        message: `职业卡未命中本职业身份指纹（${c.class}）——docs/56 §二：身份卡不能错放他池`,
+      });
+    }
+  }
+
   // 幕专属强化：actScope 必须是已定义的幕 id（docs/40 §七）
   for (const e of enhancements) {
     if (e.actScope && !acts.some((a) => a.id === e.actScope)) {

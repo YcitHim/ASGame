@@ -1,0 +1,30 @@
+{
+  "id": "weaken",
+  "class": "neutral",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "buff": "weak",
+      "stacks": 1
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "buff": "weak",
+        "stacks": 2
+      }
+    ]
+  },
+  "i18n": "card.weaken"
+}

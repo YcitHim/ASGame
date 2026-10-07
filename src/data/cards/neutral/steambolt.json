@@ -1,0 +1,24 @@
+{
+  "id": "steambolt",
+  "class": "neutral",
+  "type": "attack",
+  "rarity": "common",
+  "cost": 1,
+  "play": {
+    "handler": "multihit",
+    "params": {
+      "hits": 2,
+      "value": 6
+    }
+  },
+  "upgraded": {
+    "play": {
+      "handler": "multihit",
+      "params": {
+        "hits": 2,
+        "value": 8
+      }
+    }
+  },
+  "i18n": "card.steambolt"
+}

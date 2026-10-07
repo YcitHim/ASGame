@@ -62,9 +62,9 @@ const achievedCount = computed(() =>
 );
 
 /**
- * 卡组图鉴分组（甲方 2026-10-07）：各职业的卡分开，中立/通用卡单独一组。
- * 「通用」= class 不在职业表里的那些——现在 101 张卡全部有归属（所以按钮不出现），
- * 一旦有新职业或中立卡，分组会自动长出来，不用回来改代码。
+ * 卡组图鉴分组（甲方 2026-10-07 / docs/56 §四.5）：各职业的卡分开，**中立池单独一组**。
+ * 中立 = class 不在职业表里的那些（docs/56 重划后为 cards/neutral/，20 张）。
+ * 判据不写死 "neutral"，新职业 / 新池子一出现就自动成组。
  */
 const cardGroup = ref<string>("all");
 const visibleCards = computed(() =>
@@ -78,7 +78,12 @@ const hasOtherCards = computed(() =>
 );
 const cardCounts = computed(() => {
   const counts: Record<string, number> = { all: visibleCards.value.length, other: 0 };
-  for (const c of visibleCards.value) counts[c.class] = (counts[c.class] ?? 0) + 1;
+  for (const c of visibleCards.value) {
+    // 不在职业表里的归「中立」桶——计数口径必须与 cards 的过滤口径一致，
+    // 否则页签会显示「中立 0」却列出一堆卡（走查时真的这样）
+    if (game.content.classes.has(c.class)) counts[c.class] = (counts[c.class] ?? 0) + 1;
+    else counts.other += 1;
+  }
   return counts;
 });
 const cards = computed(() => {
@@ -89,6 +94,29 @@ const cards = computed(() => {
   return visibleCards.value.filter((c) => c.class === cardGroup.value);
 });
 const enemies = computed(() => [...game.content.enemies.values()].sort((a, b) => a.id.localeCompare(b.id)));
+
+/**
+ * 卡牌详情（甲方 2026-10-07）：点开一张卡，**原版与升级后并排看**。
+ * 之前图鉴只画原版，玩家看完不知道升级到底加了多少——升级面就藏在 descUp 里，
+ * 而卡面数值全在文案里，所以这里不需要另做一套数值表，直接把两张卡摆出来。
+ */
+const detailId = ref<string | null>(null);
+const detailCard = computed(() => (detailId.value ? game.content.cards.get(detailId.value) : undefined));
+const detailHasUpgrade = computed(() => {
+  const card = detailCard.value;
+  if (!card) return false;
+  return t(`card.${card.id}.descUp`, "") !== "";
+});
+
+function openDetail(id: string): void {
+  if (codex.cardSeen(id)) detailId.value = id;
+}
+function closeDetail(): void {
+  detailId.value = null;
+}
+function onDetailKey(event: KeyboardEvent): void {
+  if (event.key === "Escape") closeDetail();
+}
 
 function back(): void {
   void router.push("/");
@@ -134,11 +162,20 @@ function back(): void {
               :class="{ active: cardGroup === 'other' }"
               @click="cardGroup = 'other'"
             >
-              通用 {{ cardCounts.other }}
+              中立 {{ cardCounts.other }}
             </button>
           </div>
           <div class="card-grid">
-            <div v-for="c in cards" :key="c.id" class="card-slot">
+            <div
+              v-for="c in cards"
+              :key="c.id"
+              class="card-slot"
+              :class="{ clickable: codex.cardSeen(c.id) }"
+              :tabindex="codex.cardSeen(c.id) ? 0 : undefined"
+              :title="codex.cardSeen(c.id) ? '点击查看升级后的效果' : undefined"
+              @click="openDetail(c.id)"
+              @keydown.enter="openDetail(c.id)"
+            >
               <CardView
                 v-if="codex.cardSeen(c.id)"
                 :card-id="c.id"
@@ -197,6 +234,60 @@ function back(): void {
         </template>
       </div>
 
+      <!-- 卡牌详情：原版 vs 升级后（甲方：不给升级面，玩家不知道升级以后是什么数） -->
+      <div
+        v-if="detailCard"
+        class="card-detail"
+        tabindex="-1"
+        @click.self="closeDetail"
+        @keydown="onDetailKey"
+      >
+        <div class="detail-panel">
+          <header class="detail-head">
+            <h3>{{ t(`card.${detailCard.id}.name`, detailCard.id) }}</h3>
+            <button class="etch-btn detail-close" @click="closeDetail">关 闭</button>
+          </header>
+          <div class="detail-cards">
+            <div class="detail-col">
+              <b>原版</b>
+              <CardView
+                :card-id="detailCard.id"
+                :cost="detailCard.cost"
+                :charge-cost="detailCard.chargeCost ?? 0"
+                :keywords="detailCard.keywords ?? []"
+                :type="detailCard.type"
+                :rarity="detailCard.rarity"
+                :playable="true"
+                :selected="false"
+                :index="0"
+                :hand-count="1"
+                show-flavor
+                display
+              />
+            </div>
+            <div v-if="detailHasUpgrade" class="detail-col">
+              <b class="up">升级后</b>
+              <CardView
+                :card-id="detailCard.id"
+                :cost="detailCard.upgraded?.cost ?? detailCard.cost"
+                :charge-cost="detailCard.chargeCost ?? 0"
+                :keywords="detailCard.upgraded?.keywords ?? detailCard.keywords ?? []"
+                :type="detailCard.type"
+                :rarity="detailCard.rarity"
+                :playable="true"
+                :selected="false"
+                :index="0"
+                :hand-count="1"
+                :upgraded="true"
+                show-flavor
+                display
+              />
+            </div>
+            <p v-else class="detail-note">这张牌没有升级面。</p>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -242,6 +333,32 @@ function back(): void {
 .subtab:hover { color: var(--gold); }
 .subtab.active { color: var(--gold); border-color: var(--gold); background: rgba(176, 141, 74, 0.12); }
 .card-grid { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; }
+.card-slot.clickable { cursor: pointer; transition: transform var(--dur-hover); }
+.card-slot.clickable:hover { transform: translateY(-4px); }
+.card-slot.clickable:focus-visible { outline: 1px solid var(--gold); outline-offset: 4px; }
+
+/* 卡牌详情浮层 */
+.card-detail {
+  position: fixed; inset: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(6, 5, 4, 0.82);
+}
+.detail-panel {
+  max-width: 900px; max-height: 92vh; overflow-y: auto;
+  padding: 18px 28px 26px;
+  background: rgba(18, 16, 14, 0.96);
+  border: 1px solid var(--edge-gold);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--panel-shadow);
+}
+.detail-head { display: flex; align-items: center; justify-content: space-between; gap: 32px; }
+.detail-head h3 { font-family: var(--serif-title); font-size: 18px; letter-spacing: 0.3em; color: var(--ink-bone); font-weight: 400; }
+.detail-close { padding: 6px 16px; font-size: 11px; }
+.detail-cards { display: flex; align-items: flex-start; justify-content: center; gap: 26px; margin-top: 18px; }
+.detail-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.detail-col b { font-size: 11px; font-weight: 400; letter-spacing: 0.24em; color: var(--ink-dim); }
+.detail-col b.up { color: var(--gold); }
+.detail-note { align-self: center; font-size: 12px; color: var(--ink-dim); letter-spacing: 0.14em; }
 .card-slot { width: 170px; }
 .card-slot :deep(.card) { cursor: default; }
 .locked-card {

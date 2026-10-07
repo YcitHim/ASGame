@@ -709,7 +709,11 @@ function quitToTitleKeepRun(): void {
             :block="enemy.block"
             :block-hint="enemy.intent?.kind === 'charge' ? '蓄力架盾' : undefined"
           />
-          <BuffRow :buffs="enemy.buffs" compact :charge="chargeBadge(enemy)" :avoid="ENEMY_TIP_AVOID" />
+          <!-- 敌人状态：包一层滚动兜底 + 抬高 z（见 .enemy-buffs 注释）。
+               玩家反馈：Boss / 多敌同屏时状态栏会被下方玩家面板或手牌盖住，等于没有这块信息 -->
+          <div class="enemy-buffs">
+            <BuffRow :buffs="enemy.buffs" compact :charge="chargeBadge(enemy)" :avoid="ENEMY_TIP_AVOID" />
+          </div>
           <template v-if="showFloaters">
             <DamageFloat v-for="f in floatersFor[enemy.id] ?? []" :key="f.id" :floater="f" />
           </template>
@@ -1008,9 +1012,11 @@ function quitToTitleKeepRun(): void {
 .skip-btn:hover:not(:disabled) { color: var(--gold); border-color: var(--gold); }
 .skip-btn:disabled { opacity: 0.4; cursor: default; }
 
+/* z-index 12：必须高过 .field-band（10）——两者矩形重叠，
+   同层级时"后出现的赢"，敌人状态栏会被玩家面板整块盖住（玩家反馈的 Boss 状态栏看不见）。 */
 .enemy-zone {
   position: absolute; top: 56px; left: 0; right: 0; height: 290px;
-  display: flex; justify-content: center; gap: 40px; z-index: 10;
+  display: flex; justify-content: center; gap: 40px; z-index: 12;
 }
 .enemy { position: relative; width: 300px; text-align: center; transition: opacity var(--dur-hit); }
 .enemy.dead { opacity: 0.25; filter: grayscale(1); }
@@ -1022,6 +1028,20 @@ function quitToTitleKeepRun(): void {
 }
 .enemy-name { font-family: var(--serif-title); font-size: 15px; letter-spacing: 0.3em; margin: 5px 0 1px; color: var(--ink-bone); }
 .enemy-title { font-size: 10px; letter-spacing: 0.18em; color: var(--ink-dim); margin-bottom: 4px; }
+/*
+ * 敌人状态区：116px = 恰好三排芯片（38 × 3 + 2），超出在这里内部滚动。
+ *
+ * 三排是实测出来的上限：敌人内容顶在 y≈386（舞台坐标），三排到 500，
+ * 手牌区从 508 起（z 20）——再多一排就会被卡面盖住。长局 Boss 能堆到
+ * 灼烧/冰缓/眩晕/颠倒/蚀锈/污染/坚韧/荆棘 十几条，必须留兜底；
+ * 但也不该比原来更少（原来无上限时三排刚好可见），所以卡在三排而不是两排。
+ */
+.enemy-buffs {
+  position: relative;
+  max-height: 116px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 
 .field-band {
   /* height 168（原 128）：状态行满 3 排也装得下（甲方验收 2026-10-07） */

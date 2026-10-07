@@ -1,0 +1,24 @@
+{
+  "id": "twinpistons",
+  "class": "neutral",
+  "type": "attack",
+  "rarity": "uncommon",
+  "cost": 2,
+  "play": {
+    "handler": "multihit",
+    "params": {
+      "hits": 2,
+      "value": 12
+    }
+  },
+  "upgraded": {
+    "play": {
+      "handler": "multihit",
+      "params": {
+        "hits": 2,
+        "value": 14
+      }
+    }
+  },
+  "i18n": "card.twinpistons"
+}

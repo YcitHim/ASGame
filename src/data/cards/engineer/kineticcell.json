@@ -1,0 +1,20 @@
+{
+  "id": "kineticcell",
+  "class": "engineer",
+  "type": "power",
+  "rarity": "uncommon",
+  "cost": 1,
+  "power": {
+    "timing": "onBlock",
+    "effects": [
+      {
+        "kind": "gainCharge",
+        "value": 1
+      }
+    ]
+  },
+  "upgraded": {
+    "cost": 0
+  },
+  "i18n": "card.kineticcell"
+}

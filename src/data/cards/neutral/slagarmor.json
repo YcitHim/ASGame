@@ -1,0 +1,34 @@
+{
+  "id": "slagarmor",
+  "class": "neutral",
+  "type": "power",
+  "rarity": "rare",
+  "cost": 2,
+  "power": {
+    "timing": "onBlock",
+    "effects": [
+      {
+        "kind": "damage",
+        "target": {
+          "type": "allEnemies"
+        },
+        "value": 1
+      }
+    ]
+  },
+  "upgraded": {
+    "power": {
+      "timing": "onBlock",
+      "effects": [
+        {
+          "kind": "damage",
+          "target": {
+            "type": "allEnemies"
+          },
+          "value": 2
+        }
+      ]
+    }
+  },
+  "i18n": "card.slagarmor"
+}

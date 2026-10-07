@@ -1,0 +1,36 @@
+{
+  "id": "plaguesurge",
+  "class": "rustspeaker",
+  "type": "attack",
+  "rarity": "rare",
+  "cost": 2,
+  "effects": [
+    {
+      "kind": "gainPollution",
+      "value": 15
+    },
+    {
+      "kind": "damage",
+      "target": {
+        "type": "allEnemies"
+      },
+      "value": 6
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainPollution",
+        "value": 15
+      },
+      {
+        "kind": "damage",
+        "target": {
+          "type": "allEnemies"
+        },
+        "value": 9
+      }
+    ]
+  },
+  "i18n": "card.plaguesurge"
+}

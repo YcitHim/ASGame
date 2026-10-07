@@ -99,7 +99,11 @@ export const ENHANCEMENT_HANDLER_IDS = [
 
 export const CARD_TYPES = ["attack", "skill", "power", "curse", "status"] as const;
 export const CARD_RARITIES = ["starter", "common", "uncommon", "rare", "special"] as const;
-export const CARD_CLASSES = ["bloodwright", "engineer", "rustspeaker"] as const;
+/**
+ * 卡牌归属池（docs/56 §二）：三职业 + 中立。
+ * 归属只看「身份指纹」（机制），不看风味——打击/防御这种谁都能用的卡不该占着血械的池子。
+ */
+export const CARD_CLASSES = ["bloodwright", "engineer", "rustspeaker", "neutral"] as const;
 export const ENHANCEMENT_TIERS = [1, 2, 3] as const;
 
 export type KeywordId = (typeof KEYWORD_IDS)[number];

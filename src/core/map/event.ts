@@ -12,6 +12,7 @@ import type {
   EventEffect,
 } from "../registry/content";
 import { Rng, type RngStream } from "../rng";
+import { NEUTRAL_CLASS, pickPoolSide, usableForClass } from "./pool";
 
 export interface EventResolution {
   readonly optionId: string;
@@ -261,28 +262,57 @@ export function resolveEventOption(
         break;
       }
       case "gainCard": {
-        // 职业池隔离（docs/16 5.2）：显式池若含本职业卡则只在本职业内抽；
-        // 若显式池与职业完全不匹配（如充能主题事件池）则保留原池，避免事件变空。
         const unlocked = ctx.unlocked ?? [];
         const byUnlock = (id: string): boolean => {
           const cond = content.cards.get(id)?.unlockCondition;
           return !cond || cond === "none" || unlocked.includes(id);
         };
-        const byClass = (id: string): boolean => (!ctx.classId || content.cards.get(id)?.class === ctx.classId) && byUnlock(id);
-        const explicit = (effect.pool ?? []).filter((id) => content.cards.has(id));
-        const explicitFiltered = explicit.some(byClass) ? explicit.filter(byClass) : explicit;
-        const pool = effect.pool
-          ? explicitFiltered
-          : [...content.cards.values()]
-              .filter((c) => c.rarity !== "starter" && c.type !== "curse" && c.type !== "status")
-              .filter((c) => (effect.rarity ? c.rarity === effect.rarity : true))
-              .filter((c) => byClass(c.id))
-              .map((c) => c.id)
-              .sort();
-        const weightOf = effect.pool
-          ? (id: string) => RARITY_WEIGHT[content.cards.get(id)?.rarity ?? "common"] ?? 0
-          : (id: string) => (effect.rarity ? 1 : RARITY_WEIGHT[content.cards.get(id)?.rarity ?? "common"] ?? 0);
-        cardIds.push(...takeWeighted(rng, pool, weightOf, effect.count ?? 1));
+        // docs/56 §四.3 显式池语义修正：按「职业可用性」过滤（本职业 + 中立）——
+        // 拔掉 docs/16 那个"池子跟职业不匹配就保留原池"的补丁，它就是分组错误留下的补丁，
+        // 会让血械抽到充能牌（死牌）。过滤后为空则退化为中立池。
+        const weightOf = (id: string) => RARITY_WEIGHT[content.cards.get(id)?.rarity ?? "common"] ?? 0;
+        if (effect.pool) {
+          const explicit = (effect.pool ?? [])
+            .filter((id) => content.cards.has(id))
+            .filter((id) => {
+              const card = content.cards.get(id)!;
+              return (
+                usableForClass(ctx.classId, card.class) &&
+                byUnlock(id) &&
+                (effect.rarity ? card.rarity === effect.rarity : true)
+              );
+            });
+          const neutralFallback = [...content.cards.values()]
+            .filter((c) => c.class === NEUTRAL_CLASS && byUnlock(c.id))
+            .map((c) => c.id)
+            .sort();
+          const pool = explicit.length > 0 ? explicit : neutralFallback;
+          cardIds.push(...takeWeighted(rng, pool, weightOf, effect.count ?? 1));
+          break;
+        }
+        // docs/56 §四.2：无显式池 = 与战斗奖励同口径，每张独立掷 70% 职业 / 30% 中立
+        const usable = [...content.cards.values()].filter(
+          (c) =>
+            c.rarity !== "starter" &&
+            c.type !== "curse" &&
+            c.type !== "status" &&
+            (effect.rarity ? c.rarity === effect.rarity : true) &&
+            byUnlock(c.id),
+        );
+        const classIds = usable.filter((c) => c.class === ctx.classId).map((c) => c.id).sort();
+        const neutralIds = usable.filter((c) => c.class === NEUTRAL_CLASS).map((c) => c.id).sort();
+        const taken: string[] = [];
+        for (let i = 0; i < (effect.count ?? 1); i += 1) {
+          const pool = pickPoolSide(
+            rng,
+            classIds.filter((id) => !taken.includes(id)),
+            neutralIds.filter((id) => !taken.includes(id)),
+          );
+          if (pool.length === 0) break;
+          const picked = takeWeighted(rng, pool, effect.rarity ? () => 1 : weightOf, 1)[0];
+          if (picked) taken.push(picked);
+        }
+        cardIds.push(...taken);
         break;
       }
       case "gainEnhancement":

@@ -1,0 +1,28 @@
+{
+  "id": "jab",
+  "class": "neutral",
+  "type": "attack",
+  "rarity": "common",
+  "cost": 0,
+  "effects": [
+    {
+      "kind": "damage",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 3
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 5
+      }
+    ]
+  },
+  "i18n": "card.jab"
+}

@@ -1,0 +1,24 @@
+{
+  "id": "redline",
+  "class": "engineer",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "chargeFromEnergy",
+      "value": 0,
+      "overloadDraw": 2
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "chargeFromEnergy",
+        "value": 1,
+        "overloadDraw": 2
+      }
+    ]
+  },
+  "i18n": "card.redline"
+}

@@ -1,0 +1,30 @@
+{
+  "id": "blightoffering",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 0,
+  "effects": [
+    {
+      "kind": "gainPollution",
+      "value": 12
+    },
+    {
+      "kind": "draw",
+      "value": 2
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainPollution",
+        "value": 10
+      },
+      {
+        "kind": "draw",
+        "value": 3
+      }
+    ]
+  },
+  "i18n": "card.blightoffering"
+}

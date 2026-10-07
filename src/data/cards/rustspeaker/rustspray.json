@@ -1,0 +1,36 @@
+{
+  "id": "rustspray",
+  "class": "rustspeaker",
+  "type": "attack",
+  "rarity": "common",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "damage",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 5
+    },
+    {
+      "kind": "gainPollution",
+      "value": 5
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 7
+      },
+      {
+        "kind": "gainPollution",
+        "value": 5
+      }
+    ]
+  },
+  "i18n": "card.rustspray"
+}

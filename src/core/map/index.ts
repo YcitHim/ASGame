@@ -8,6 +8,7 @@ import type { RunDifficulty } from "../registry/content";
 import type { ActDefinition, ClassDefinition, EventDefinition, MapLayerSpec, MapNode, NodeKind } from "../registry/content";
 import type { ContentDb } from "../registry/content";
 import { Rng, type RngStream } from "../rng";
+import { NEUTRAL_CLASS, pickPoolSide } from "./pool";
 
 export {
   checkEventCondition,
@@ -18,6 +19,7 @@ export {
   type EventConditionContext,
   type EventResolution,
 } from "./event";
+export { CLASS_POOL_SHARE, NEUTRAL_CLASS, pickPoolSide, usableForClass } from "./pool";
 
 export { DIFFICULTY_PARAMS, type RunDifficulty } from "../registry/content";
 
@@ -822,24 +824,28 @@ export function rollCardRewards(
   nodeIndex: number,
   count = REWARD_OPTION_COUNT,
 ): string[] {
-  // 职业卡池隔离（docs/16 5.2）：只抽本局职业的卡（class === run.classId）
-  const pool = [...content.cards.values()].filter(
+  // docs/56 §四.1：每个槽位独立掷——70% 职业池 / 30% 中立池（中立池全职业共享）
+  const usable = [...content.cards.values()].filter(
     (c) =>
-      c.class === run.classId &&
       c.rarity !== "starter" &&
       c.type !== "curse" &&
       c.type !== "status" &&
       // 解锁式内容未解锁不入池（docs/36 T1）
       isContentAvailable(c.unlockCondition, c.id, run.unlocked),
   );
-  const poolIds = pool.map((c) => c.id).sort();
+  const classIds = usable.filter((c) => c.class === run.classId).map((c) => c.id).sort();
+  const neutralIds = usable.filter((c) => c.class === NEUTRAL_CLASS).map((c) => c.id).sort();
   const rng = new Rng((run.seed ^ Math.imul(nodeIndex + 1, 0x9e3779b9)) >>> 0).stream("reward");
   const picks: string[] = [];
-  const remaining = [...poolIds];
-  while (picks.length < count && remaining.length > 0) {
-    const index = rng.nextInt(0, remaining.length - 1);
-    picks.push(remaining[index]);
-    remaining.splice(index, 1);
+  while (picks.length < count) {
+    // 本槽已选中的牌不再出现，所以池子按槽现算
+    const pool = pickPoolSide(
+      rng,
+      classIds.filter((id) => !picks.includes(id)),
+      neutralIds.filter((id) => !picks.includes(id)),
+    );
+    if (pool.length === 0) break;
+    picks.push(pool[rng.nextInt(0, pool.length - 1)]!);
   }
   void act;
   return picks;

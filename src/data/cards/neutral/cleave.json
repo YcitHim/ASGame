@@ -1,0 +1,28 @@
+{
+  "id": "cleave",
+  "class": "neutral",
+  "type": "attack",
+  "rarity": "common",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "damage",
+      "target": {
+        "type": "allEnemies"
+      },
+      "value": 5
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "target": {
+          "type": "allEnemies"
+        },
+        "value": 7
+      }
+    ]
+  },
+  "i18n": "card.cleave"
+}

@@ -1,0 +1,36 @@
+{
+  "id": "quickcut",
+  "class": "neutral",
+  "type": "attack",
+  "rarity": "common",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "damage",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 4
+    },
+    {
+      "kind": "draw",
+      "value": 1
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 6
+      },
+      {
+        "kind": "draw",
+        "value": 1
+      }
+    ]
+  },
+  "i18n": "card.quickcut"
+}

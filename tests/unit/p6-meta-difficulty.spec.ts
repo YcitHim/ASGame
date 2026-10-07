@@ -46,22 +46,26 @@ describe("docs/36 T1 · 解锁式内容入池", () => {
     expect(isContentAvailable("first_boss_clear", "bloodrust", ["bloodrust"])).toBe(true);
   });
 
-  it("未解锁时血锈光环不进卡奖池，解锁后进池", () => {
+  it("未解锁的卡不进卡奖池，解锁后进池（docs/56 后：本职业 + 中立两条路各验一次）", () => {
     const locked = createRunState(act, cls, 2026, { unlocked: [] });
-    const open = createRunState(act, cls, 2026, { unlocked: ["bloodrust", "immortality", "redlineprotocol"] });
-    // 用足够多的节点抽样，锁定档不应出现血锈光环
+    const open = createRunState(act, cls, 2026, { unlocked: ["immortality", "redlineprotocol"] });
+    // 用足够多的节点抽样，锁定档不应出现这三张解锁卡
     const lockedIds = new Set<string>();
-    for (let i = 0; i < 40; i += 1) {
+    for (let i = 0; i < 60; i += 1) {
       for (const id of rollCardRewards(game.content, act, locked, i)) lockedIds.add(id);
     }
-    expect(lockedIds.has("bloodrust")).toBe(false);
-    expect(lockedIds.has("immortality")).toBe(false);
-    // 解锁档的奖池里能滚出血锈光环（同条件内容已放行）
+    for (const id of ["bloodrust", "immortality", "redlineprotocol"]) {
+      expect(lockedIds.has(id), id).toBe(false);
+    }
+    // 解锁档：本职业解锁卡（血械不朽）与中立解锁卡（红线协议）都要能滚出来。
+    // 血锈光环是锈语者身份的卡，血械局本来就不该见到它——分组后它不再属于血械池（docs/56 §一）。
     const openIds = new Set<string>();
-    for (let i = 0; i < 40; i += 1) {
+    for (let i = 0; i < 60; i += 1) {
       for (const id of rollCardRewards(game.content, act, open, i)) openIds.add(id);
     }
-    expect(openIds.has("bloodrust")).toBe(true);
+    expect(openIds.has("immortality")).toBe(true);
+    expect(openIds.has("redlineprotocol")).toBe(true);
+    expect(openIds.has("bloodrust")).toBe(false);
   });
 
   it("炉心余烬锁定时不进遗物池，解锁后进池（T3 Boss 池）", () => {

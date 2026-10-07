@@ -1,0 +1,25 @@
+{
+  "id": "purge",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 1,
+  "keywords": [
+    "exhaust"
+  ],
+  "effects": [
+    {
+      "kind": "gainPollution",
+      "value": -30
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainPollution",
+        "value": -50
+      }
+    ]
+  },
+  "i18n": "card.purge"
+}
