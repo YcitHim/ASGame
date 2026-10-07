@@ -53,6 +53,7 @@ function startTutorialBattle(): void {
     chapterId: chapter.id,
     seed: chapter.seed,
     enemies: chapter.enemies,
+    ...(chapter.enemyHp !== undefined ? { enemyHp: chapter.enemyHp } : {}),
     deck: tutorial.run.deck,
     hp,
     maxHp: tutorial.run.maxHp,
@@ -435,9 +436,9 @@ function back(): void {
           <span @click="store.toggleSpeed()">{{ store.speed }}×</span>
           <span @click="router.push('/settings')">设置</span>
         </div>
-        <!-- 教学旁白（docs/42）：why = 为什么，how = 怎么做；占顶栏第二行，敌人区同步下移，不遮意图 -->
-        <div v-if="showTutHint" class="tut-hint">
-          <span class="tut-step">{{ tutorial.chapterIndex + 1 }}/{{ tutorial.total }} · {{ tutorial.stepIndex + 1 }}/{{ tutorial.stepCount }}</span>
+        <!-- 教学旁白（docs/42 速成版）：第一行"这是什么 / 做什么"，第二行"为什么" -->
+        <div v-if="showTutHint" class="tut-hint" :class="{ step: tutorial.needsAcknowledge }">
+          <span class="tut-step">{{ tutorial.stepIndex + 1 }}/{{ tutorial.stepCount }}</span>
           <div class="tut-copy">
             <p v-if="tutorial.correction" class="tut-correct">{{ tutorial.correction }}</p>
             <p v-else>
@@ -445,6 +446,9 @@ function back(): void {
               <span class="tut-how">{{ tutorial.step?.how }}</span>
             </p>
           </div>
+          <button v-if="tutorial.needsAcknowledge" class="tut-ack" @click="tutorial.noteAcknowledge()">
+            知 道 了
+          </button>
         </div>
       </div>
 
@@ -470,7 +474,11 @@ function back(): void {
         >
           <div
             class="intent-slot"
-            :class="{ flip: store.flipUnits.includes(enemy.id), broken: store.brokenUnits.includes(enemy.id) }"
+            :class="{
+              flip: store.flipUnits.includes(enemy.id),
+              broken: store.brokenUnits.includes(enemy.id),
+              'tut-focus': tutorial.focus === 'intent',
+            }"
           >
             <IntentIcon :intent="enemy.intent" />
             <span v-if="store.brokenUnits.includes(enemy.id)" class="broken-tag">断链</span>
@@ -516,7 +524,11 @@ function back(): void {
       <div class="field-band">
         <div
           class="player-panel"
-          :class="{ hit: store.hitUnits.includes('player'), dying: store.dyingUnits.includes('player') }"
+          :class="{
+            hit: store.hitUnits.includes('player'),
+            dying: store.dyingUnits.includes('player'),
+            'tut-focus': tutorial.focus === 'status',
+          }"
         >
           <div class="pp-name">
             {{ className }}
@@ -542,7 +554,7 @@ function back(): void {
       </div>
 
       <!-- 手牌区 -->
-      <div class="hand-zone">
+      <div class="hand-zone" :class="{ 'tut-focus': tutorial.focus === 'hand' }">
         <div class="hand" :class="{ targeting: store.targeting !== null }">
           <CardView
             v-for="(card, index) in hand"
@@ -565,7 +577,7 @@ function back(): void {
           />
         </div>
 
-        <div class="left-corner">
+        <div class="left-corner" :class="{ 'tut-focus': tutorial.focus === 'energy' }">
           <EnergyOrb
             v-if="player"
             :energy="player.energy"
@@ -986,6 +998,27 @@ function back(): void {
 .tut-how { font-size: 12px; letter-spacing: 0.06em; color: var(--ink-bone); }
 /* 纠错（docs/42 §四）：做错了不推进，但也不惩罚——只说一句该怎么改 */
 .tut-correct { font-size: 12px; letter-spacing: 0.06em; color: var(--blood-hi); }
+/* 导览步的「知道了」：玩家读完自己翻页 */
+.tut-ack {
+  flex: none; padding: 4px 12px;
+  font-family: var(--serif-title); font-size: 12px; letter-spacing: 0.2em;
+  color: #1c1408;
+  background: linear-gradient(180deg, #dcb86e, #a8803d);
+  border: 1px solid #ecd8a4; border-radius: var(--radius-sm);
+}
+.tut-ack:hover { filter: brightness(1.08); }
+
+/* UI 导览：说到哪，哪一块就亮（金框 + 呼吸），其余保持原样不干扰 */
+.tut-focus {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+  animation: tut-focus-pulse 1.5s ease-in-out infinite;
+}
+@keyframes tut-focus-pulse {
+  0%, 100% { outline-color: rgba(176, 141, 74, 0.55); }
+  50% { outline-color: rgba(216, 180, 106, 1); }
+}
 /* 顶栏加高后，敌人区整体下移同样高度，意图图标重新露出来 */
 .battle-stage.tut-on .enemy-zone { top: 96px; }
 

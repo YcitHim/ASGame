@@ -49,10 +49,7 @@ function onSpeed(event: Event): void {
  * 已经走完过某个职业 → 只补机制课（和选人页的邀请口径一致）。
  */
 function replayTutorial(): void {
-  const meta = useMetaStore();
-  meta.ensureLoaded();
-  const skipLessons = meta.tutorialDone.length > 0;
-  useTutorialStore().begin(skipLessons);
+  useTutorialStore().begin();
   void router.push("/tutorial");
 }
 

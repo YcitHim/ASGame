@@ -18,9 +18,9 @@ const meta = useMetaStore();
 const tips = useTipsStore();
 const tutorial = useTutorialStore();
 const stage = useTemplateRef<HTMLElement>("stage");
-/** 结业清单（docs/42 §三.8）：图鉴里可随时回看 */
-const graduation = TUTORIAL_CHAPTERS.find((c) => c.kind === "graduation");
-const checklist = graduation?.kind === "graduation" ? graduation.checklist : [];
+/** 速成课的全部知识点（docs/42 速成版）：图鉴里可随时回看 */
+const lesson = TUTORIAL_CHAPTERS.find((c) => c.kind === "battle");
+const lessonSteps = lesson?.kind === "battle" ? lesson.steps : [];
 useStageFit(stage);
 
 const game = loadGameContent();
@@ -64,7 +64,7 @@ const enemies = computed(() => [...game.content.enemies.values()].sort((a, b) =>
 
 /** 图鉴里重进「第一班岗」（docs/42 §四「回放」）。 */
 function replayTutorial(): void {
-  tutorial.begin(meta.tutorialDone.length > 0);
+  tutorial.begin();
   void router.push("/tutorial");
 }
 
@@ -155,19 +155,14 @@ function back(): void {
                 {{
                   meta.tutorialDone.length > 0
                     ? `已完成「${TUTORIAL_TITLE}」：${meta.tutorialDone.length} 个职业`
-                    : "还没走过「第一班岗」——它只有 10 分钟，第一次玩强烈建议走一遍。"
+                    : "还没走过「第一班岗」——速成课只要 3 分钟，第一次玩建议走一遍。"
                 }}
               </span>
               <button class="etch-btn tip-reset" @click="replayTutorial">重 进 第 一 班 岗</button>
             </div>
-            <article v-for="(line, i) in checklist" :key="i" class="row">
-              <h3>✓ {{ line }}</h3>
-            </article>
-            <article class="row">
-              <h3>三课脚本</h3>
-              <p v-for="chapter in TUTORIAL_CHAPTERS" :key="chapter.id" class="tip-body">
-                · {{ chapter.kind === "battle" ? "战斗" : "幕间" }} —— {{ chapter.title }}
-              </p>
+            <article v-for="(step, i) in lessonSteps" :key="i" class="row">
+              <h3>{{ i + 1 }}. {{ step.why }}</h3>
+              <p class="tip-body">{{ step.how }}</p>
             </article>
           </div>
         </template>

@@ -5,13 +5,7 @@
  * 不写任何数值逻辑——所有数字来自 core 事件载荷。
  */
 import { defineStore } from "pinia";
-import {
-  createBattleState,
-  previewEnergyCost,
-  reduce,
-  validatePlayCardState,
-  type BattleState,
-} from "@/core/combat";
+import { createBattleState, reduce, validatePlayCardState, type BattleState } from "@/core/combat";
 import { isCombatNode, rollEncounter } from "@/core/map";
 import type { Action } from "@/core/actions";
 import type { DomainEvent } from "@/core/events";
@@ -38,7 +32,9 @@ export interface TutorialBattleConfig {
   readonly chapterId: string;
   readonly seed: number;
   readonly enemies: readonly string[];
-  /** 教学局卡组（含幕间拿到的牌与升级） */
+  /** 教学用：统一覆盖敌人 HP，保证机制讲完之前它不会先死 */
+  readonly enemyHp?: number;
+  /** 教学局卡组 */
   readonly deck: readonly { cardId: string; upgraded: boolean }[];
   readonly hp: number;
   readonly maxHp: number;
@@ -65,6 +61,12 @@ export const MESSAGE_TTL_MS = 2500;
 let messageTimer: ReturnType<typeof setTimeout> | null = null;
 let messageSerial = 0;
 
+/** 玩家侧的负面状态（教学里判断"敌人给我挂了异常"）。 */
+const PLAYER_DEBUFFS = ["vulnerable", "weak", "pollution", "corroding"];
+function isDebuff(buffId: string): boolean {
+  return PLAYER_DEBUFFS.includes(buffId);
+}
+
 /**
  * 卖血飘字合并（docs/41 §4.2）：一张牌的自伤与回血要显示成一次净值变化。
  * 事件流里自伤与回血是两条事件（间隔约 140ms），所以先把自伤挂起，
@@ -79,8 +81,6 @@ export const useBattleStore = defineStore("battle", {
     battle: null as BattleState | null,
     /** 非空 = 当前是教学战斗（docs/42）：不写 run 进度、打完交 tutorial store 接管 */
     tutorialConfig: null as TutorialBattleConfig | null,
-    /** 教学：敌人的蓄力重击已揭示，等玩家回合开始判定"活着扛过释放" */
-    tutorialReleasePending: false,
     /** 本场战斗对应的「职业:种子」标识；换职业/开新局时用来识别陈旧战斗并重开 */
     runKey: "",
     log: [] as DomainEvent[],
@@ -154,7 +154,10 @@ export const useBattleStore = defineStore("battle", {
           hp: config.hp,
           pollution: 0,
         },
-        enemies: config.enemies.map((id) => ({ id })),
+        enemies: config.enemies.map((id) => ({
+          id,
+          ...(config.enemyHp !== undefined ? { maxHp: config.enemyHp } : {}),
+        })),
         deck: config.deck.map((c) => ({ cardId: c.cardId, upgraded: c.upgraded, enhancements: [] })),
         relics: [...config.relics],
         content: game.content,
@@ -246,27 +249,18 @@ export const useBattleStore = defineStore("battle", {
         if (event.type === "CardPlayed") {
           if (this.tutorialConfig) {
             const type = loadGameContent().content.cards.get(event.cardId)?.type;
-            if (type) useTutorialStore().noteCardPlayed(event.cardId, type, result.state.player.energy);
+            if (type) useTutorialStore().noteCardPlayed(event.cardId, type);
           }
           if (event.bloodPaid > 0) useTipsStore().trigger("bloodpact");
+        } else if (
+          this.tutorialConfig &&
+          ((event.type === "BuffApplied" && event.targetId === "player" && isDebuff(event.buffId)) ||
+            (event.type === "PollutionChanged" && event.targetId === "player" && event.delta > 0))
+        ) {
+          // 教学：敌人给玩家挂了异常（污染走 PollutionChanged，不是 BuffApplied）
+          useTutorialStore().notePlayerDebuffed();
         } else if (event.type === "ChargeResolved" && !event.released) {
           useTipsStore().trigger("charge");
-        } else if (
-          event.type === "DamageDealt" &&
-          this.tutorialConfig &&
-          event.targetId === "player" &&
-          event.blocked > 0
-        ) {
-          // 教学：格挡真的替玩家吃掉了伤害（docs/42 §三.5 step 3）
-          useTutorialStore().noteBlockedHit();
-        } else if (event.type === "IntentRevealed" && event.intent.released) {
-          // 敌人蓄力链的释放段已揭示：它下一次行动就会落地
-          this.tutorialReleasePending = true;
-        } else if (event.type === "TurnStarted") {
-          if (this.tutorialReleasePending && this.tutorialConfig) {
-            this.tutorialReleasePending = false;
-            useTutorialStore().noteSurvivedRelease();
-          }
         } else if (event.type === "BattleEnded" && this.tutorialConfig && event.result === "win") {
           useTutorialStore().noteCleared();
         } else if (event.type === "SafetyNet" && this.tutorialConfig) {
@@ -386,14 +380,9 @@ export const useBattleStore = defineStore("battle", {
       if (!this.battle || this.playing || this.over) return;
       // 首遇提示 ①（docs/41 §4.1）：第一次回合结束还留着没打出的牌
       if (this.battle.piles.hand.length > 0) useTipsStore().trigger("discard");
-      // 教学：结束回合也算一次"操作正确"（带能量 / 格挡 / 还能不能出牌 三个维度）
+      // 教学：结束回合时带上当前格挡，供「叠着格挡结束回合」判定
       if (this.tutorialConfig) {
-        const energy = this.battle.player.energy;
-        const block = this.battle.player.block;
-        const playable = this.battle.piles.hand.filter(
-          (_id, i) => previewEnergyCost(this.battle!, i) <= energy,
-        ).length;
-        useTutorialStore().noteEndTurn({ energy, block, playable });
+        useTutorialStore().noteEndTurn({ block: this.battle.player.block });
       }
       this.selectTargetNoop();
       this.dispatch({ type: "EndTurn", actionId: `end-${++actionCounter}` });

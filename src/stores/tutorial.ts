@@ -1,80 +1,55 @@
 /**
- * stores/tutorial · 「第一班岗」状态机（docs/42）
+ * stores/tutorial · 「第一班岗」状态机（docs/42，速成版）
  *
- * 职责：走到第几章 / 第几步、判定玩家是否做对、免死后兜底、按职业记录。
- * 战斗本身仍走 battle store（教学战斗不写 run 进度）；旁白与判定都只读事件流。
+ * 只做四件事：走到第几步、这一步算不算做完、敌人挂异常了没有、教学局的血与牌。
+ * 幕间（奖励 / 地图）已按甲方要求砍掉——教学就是一场战斗，打完即走。
  */
 import { defineStore } from "pinia";
 import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
-import {
-  TUTORIAL_CHAPTERS,
-  chapterSteps,
-  tutorialChapter,
-  type TutorialMapChapter,
-  type TutorialRewardChapter,
-  type TutorialStep,
-} from "@/ui/tutorial";
+import { TUTORIAL_CHAPTERS, chapterSteps, tutorialChapter, type TutorialStep } from "@/ui/tutorial";
 
-/** 教学局内的微型远征状态（战斗之间要带过去） */
+/** 教学局状态（跨步骤带着走） */
 export interface TutorialRunState {
   readonly classId: string;
   hp: number;
   maxHp: number;
-  /** 卡组（含幕间 A 拿到的牌与篝火升级） */
   deck: { cardId: string; upgraded: boolean }[];
-  /** 已结章的章 id */
   cleared: string[];
 }
 
 export const useTutorialStore = defineStore("tutorial", {
   state: () => ({
-    /** 教学进行中（battle store 据此走教学战斗） */
     active: false,
     chapterIndex: 0,
     stepIndex: 0,
-    /** 全部走完（结业页据此显示） */
     finished: false,
-    /** 本局（微型远征）状态；begin() 时按职业初始化 */
     run: null as TutorialRunState | null,
     /** 严判定失败的纠正话术（显示在提示带里，不推进） */
     correction: "",
-    /** 免死已触发次数（docs/42 §四：第 2 次改为补满并继续） */
+    /** 免死已触发次数（docs/42 §四：第二次补满并继续） */
     safetySaves: 0,
-    /** 幕间 B：选了篝火，等玩家二选一 */
-    restChoiceOpen: false,
+    /** 敌人已经给玩家挂过异常（用于 playerDebuffed 判定） */
+    debuffed: false,
   }),
   getters: {
     chapter: (state) => tutorialChapter(state.chapterIndex),
     total(): number {
       return TUTORIAL_CHAPTERS.length;
     },
-    classId(state): string {
-      return state.run?.classId ?? "bloodwright";
-    },
-    /** 当前步骤要给玩家的保底牌（grant + 按职业的 classGrant） */
-  stepGrant(state): readonly string[] {
-    const step = chapterSteps(tutorialChapter(state.chapterIndex), state.run?.classId ?? "bloodwright")[
-      state.stepIndex
-    ];
-    if (!step) return [];
-    const byClass = step.classGrant?.[state.run?.classId ?? "bloodwright"] ?? [];
-    return [...(step.grant ?? []), ...byClass];
-  },
-  /** 当前战斗章的完整步骤（含职业追加段） */
     steps(state): readonly TutorialStep[] {
-      return chapterSteps(tutorialChapter(state.chapterIndex), state.run?.classId ?? "bloodwright");
+      return chapterSteps(tutorialChapter(state.chapterIndex));
     },
     step(state): TutorialStep | undefined {
-      return chapterSteps(tutorialChapter(state.chapterIndex), state.run?.classId ?? "bloodwright")[
-        state.stepIndex
-      ];
+      return chapterSteps(tutorialChapter(state.chapterIndex))[state.stepIndex];
     },
-    /** 本章步骤是否已全部走完 */
-    stepsDone(state): boolean {
-      const steps = chapterSteps(tutorialChapter(state.chapterIndex), state.run?.classId ?? "bloodwright");
-      if (steps.length === 0) return true;
-      return state.stepIndex >= steps.length - 1 && (state.run?.cleared.includes(tutorialChapter(state.chapterIndex)?.id ?? "") ?? false);
+    stepCount(state): number {
+      return chapterSteps(tutorialChapter(state.chapterIndex)).length;
+    },
+    /** 这一步要高亮屏幕上的哪一块 */
+    focus(): string | null {
+      if (!this.active) return null;
+      return this.step?.focus ?? null;
     },
     highlightType(): string | null {
       if (!this.active) return null;
@@ -84,32 +59,34 @@ export const useTutorialStore = defineStore("tutorial", {
       if (!this.active) return null;
       return this.step?.highlightCardId ?? null;
     },
+    /** 当前步骤的「知道了」按钮：只有导览步（acknowledge）才有 */
+    needsAcknowledge(): boolean {
+      return this.active && this.step?.goal.kind === "acknowledge";
+    },
     isBattleChapter(state): boolean {
       return tutorialChapter(state.chapterIndex)?.kind === "battle";
     },
-    stepCount(state): number {
-      return chapterSteps(tutorialChapter(state.chapterIndex), state.run?.classId ?? "bloodwright").length;
-    },
-    /** 奖励幕间的候选（按职业） */
-    rewardOffers(state): readonly string[] {
-      const chapter = tutorialChapter(state.chapterIndex);
-      if (chapter?.kind !== "reward") return [];
-      return chapter.offers[state.run?.classId ?? "bloodwright"] ?? [];
+    /** 当前步骤要发的保底牌（grant + 按职业的 classGrant） */
+    stepGrant(state): readonly string[] {
+      const step = chapterSteps(tutorialChapter(state.chapterIndex))[state.stepIndex];
+      if (!step) return [];
+      const byClass = step.classGrant?.[state.run?.classId ?? "bloodwright"] ?? [];
+      return [...(step.grant ?? []), ...byClass];
     },
   },
   actions: {
-    /** 进入「第一班岗」。skipLessons=true 时只补机制课（换职业再玩时用，docs/42 §三.0）。 */
-    begin(skipLessons = false): void {
+    /** 进入「第一班岗」。 */
+    begin(): void {
       const run = useRunStore();
       const classId = run.run?.classId ?? "bloodwright";
       const cls = run.classDef;
       this.active = true;
       this.finished = false;
+      this.chapterIndex = 0;
+      this.stepIndex = 0;
       this.correction = "";
       this.safetySaves = 0;
-      this.restChoiceOpen = false;
-      this.stepIndex = 0;
-      this.chapterIndex = 0;
+      this.debuffed = false;
       this.run = {
         classId,
         hp: cls?.player.maxHp ?? 66,
@@ -117,10 +94,6 @@ export const useTutorialStore = defineStore("tutorial", {
         deck: (cls?.startDeck ?? ["strike", "defend"]).map((cardId) => ({ cardId, upgraded: false })),
         cleared: [],
       };
-      if (skipLessons) {
-        const index = TUTORIAL_CHAPTERS.findIndex((c) => c.id === "lesson3");
-        if (index >= 0) this.chapterIndex = index;
-      }
       useMetaStore().markTutorialOffered(classId);
     },
 
@@ -135,55 +108,48 @@ export const useTutorialStore = defineStore("tutorial", {
       if (id && this.run && !this.run.cleared.includes(id)) this.run.cleared = [...this.run.cleared, id];
     },
 
-    /* ---------- 战斗事件信号（battle store 转发） ---------- */
+    /* ---------- 判定信号（battle store / 视图转发） ---------- */
 
-    noteCardPlayed(cardId: string, cardType: string, energyAfter: number): void {
+    /** 导览步：玩家点了「知道了」。 */
+    noteAcknowledge(): void {
+      const step = this.step;
+      if (!this.active || !step) return;
+      if (step.goal.kind === "acknowledge") this._advance();
+    },
+
+    noteCardPlayed(cardId: string, cardType: string): void {
       const step = this.step;
       if (!this.active || !step) return;
       const goal = step.goal;
       let ok: boolean | null = null;
       if (goal.kind === "playCardId") ok = goal.cardId === cardId;
       else if (goal.kind === "playType") ok = goal.cardType === cardType;
-      else if (goal.kind === "energyEmpty") ok = energyAfter === 0;
-      else if (goal.kind === "spendAll") ok = energyAfter === 0;
       if (ok === true) this._advance();
     },
 
-    noteEndTurn(state: { energy: number; block: number; playable: number }): void {
+    noteEndTurn(state: { block: number }): void {
       const step = this.step;
       if (!this.active || !step) return;
       const goal = step.goal;
-      let ok: boolean | null = null;
-      if (goal.kind === "endTurn") ok = true;
-      else if (goal.kind === "blockEndTurn") ok = state.block >= goal.min;
-      else if (goal.kind === "spendAll") ok = state.energy === 0 || state.playable === 0;
-      if (ok === true) this._advance();
-      // 严判定没做到 → 一定给一句人话，绝不让玩家对着同一行提示干瞪眼
+      if (goal.kind !== "blockEndTurn") return;
+      if (state.block >= goal.min) this._advance();
       else if (step.strict) this.correction = step.correct ?? `这一步还没做完——${step.how}`;
     },
 
-    /** 挨了一下，且格挡替玩家吃掉了一部分（docs/42 §三.5 step 3）。 */
-    noteBlockedHit(): void {
+    /** 敌人给玩家挂了异常（污染 / 虚弱 / 易伤…）。 */
+    notePlayerDebuffed(): void {
+      this.debuffed = true;
       const step = this.step;
       if (!this.active || !step) return;
-      if (step.goal.kind === "blockedHit") this._advance();
+      if (step.goal.kind === "playerDebuffed") this._advance();
     },
 
-    /** 敌人蓄力重击落地，玩家还活着。 */
-    noteSurvivedRelease(): void {
-      const step = this.step;
-      if (!this.active || !step) return;
-      if (step.goal.kind === "survivedRelease") this._advance();
-    },
-
-    /** 清场（击杀目标敌人）。 */
     noteCleared(): void {
       const step = this.step;
       if (!this.active || !step) return;
       if (step.goal.kind === "killAll") this._advance();
     },
 
-    /** 安全网触发（docs/42 §四）：返回本次是第几次。 */
     noteSafetyNet(): number {
       this.safetySaves += 1;
       return this.safetySaves;
@@ -195,8 +161,8 @@ export const useTutorialStore = defineStore("tutorial", {
     nextChapter(): boolean {
       this.correction = "";
       this.stepIndex = 0;
-      this.restChoiceOpen = false;
       this.safetySaves = 0;
+      this.debuffed = false;
       const index = this.chapterIndex + 1;
       if (index >= TUTORIAL_CHAPTERS.length) {
         this.finished = true;
@@ -208,40 +174,7 @@ export const useTutorialStore = defineStore("tutorial", {
       return true;
     },
 
-    /** 幕间 A：拿走一张牌进卡组。 */
-    takeReward(cardId: string): void {
-      if (this.run) this.run.deck = [...this.run.deck, { cardId, upgraded: false }];
-    },
-
-    /** 幕间 B：选路。篝火打开二选一，其余直接进下一章。 */
-    chooseMapNode(nodeId: string): void {
-      const chapter = this.chapter;
-      if (chapter?.kind !== "map") return;
-      if (nodeId === "rest") {
-        this.restChoiceOpen = true;
-        return;
-      }
-      this.nextChapter();
-    },
-
-    /** 幕间 B 篝火：回血。 */
-    restHeal(): void {
-      if (this.run) this.run.hp = Math.min(this.run.maxHp, this.run.hp + Math.round(this.run.maxHp * 0.3));
-      this.nextChapter();
-    },
-
-    /** 幕间 B 篝火：升级一张牌。 */
-    restUpgrade(): void {
-      if (this.run) {
-        const index = this.run.deck.findIndex((c) => !c.upgraded);
-        if (index >= 0) {
-          this.run.deck = this.run.deck.map((c, i) => (i === index ? { ...c, upgraded: true } : c));
-        }
-      }
-      this.nextChapter();
-    },
-
-    /** 跳过 / 退出（不给奖励、不算完成）。 */
+    /** 跳过 / 退出（不算完成）。 */
     abort(): void {
       this.active = false;
       this.finished = false;
@@ -249,9 +182,7 @@ export const useTutorialStore = defineStore("tutorial", {
       this.stepIndex = 0;
       this.run = null;
       this.correction = "";
-      this.restChoiceOpen = false;
+      this.debuffed = false;
     },
   },
 });
-
-export type { TutorialMapChapter, TutorialRewardChapter };

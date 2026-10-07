@@ -157,7 +157,7 @@ function choose(classId: string): void {
 function acceptTutorial(): void {
   startRunWith(pendingClassId.value);
   meta.ensureLoaded();
-  tutorial.begin(meta.tutorialDone.length > 0);
+  tutorial.begin();
   askTutorial.value = false;
   void router.push("/tutorial");
 }
@@ -187,7 +187,7 @@ function back(): void {
       <div v-if="askTutorial" class="ask-overlay">
         <div class="ask">
           <h2>要人带路吗？</h2>
-          <p>三场演武：出牌与能量 → 读意图与防御 → 蓄力与爆发。</p>
+          <p>一场速成课：认屏幕 → 会出牌 → 会防御 → 看懂敌人的异常。</p>
           <p class="dim">跟着提示走，做对才推进；随时可以跳过。教学不发奖励。</p>
           <div class="ask-actions">
             <button class="tut-cta" @click="acceptTutorial">
@@ -195,7 +195,7 @@ function back(): void {
             </button>
             <button class="tut-cta ghost" @click="declineTutorial">不用，直接开始</button>
           </div>
-          <p class="ask-foot">约 10 分钟 · 三课带旁白 · 随时可以从右上角跳过</p>
+          <p class="ask-foot">约 3 分钟 · 一场带旁白的教学战 · 随时可以从右上角跳过</p>
         </div>
       </div>
 
