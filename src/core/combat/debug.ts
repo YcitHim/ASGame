@@ -12,6 +12,7 @@ import type { IntentPayload } from "../events";
 import type { BuffId } from "../registry/ids";
 import { Rng } from "../rng";
 import type { EventSink } from "../events/event-sink";
+import { buffDefinition } from "../buffs";
 import { applyBuffToTarget, drawCards, killUnit, PLAYER_ID } from "./resolve";
 import { findUnit, type Draft } from "./draft";
 
@@ -54,6 +55,8 @@ export function executeDebugCommand(draft: Draft, sink: EventSink, command: stri
       const id = tokens[2] as BuffId | undefined;
       const stacks = int(tokens[3]);
       if (!id || stacks === null) return { ok: false, message: "用法：add buff <id> <stacks> [duration]" };
+      // 不校验的话 buffApplication 会去读 undefined.applyAs 直接抛异常，调试台看起来像"游戏崩了"
+      if (!buffDefinition(id)) return { ok: false, message: `未知状态 "${id}"` };
       const duration = tokens[4] === undefined ? undefined : int(tokens[4]);
       applyBuffToTarget(draft, sink, PLAYER_ID, id, stacks, duration);
       return { ok: true, message: `已施加 ${id} ×${stacks}` };

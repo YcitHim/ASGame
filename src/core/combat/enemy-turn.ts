@@ -14,7 +14,6 @@ import {
   dealDamage,
   gainBlock,
   PLAYER_ID,
-  resolveCorroding,
   summonUnit,
   MAX_FIELD_ENEMIES,
 } from "./resolve";
@@ -163,6 +162,4 @@ export function runEnemyTurn(draft: Draft, sink: EventSink): void {
         break;
     }
   }
-  // 敌方回合结束：结算蚀锈 DoT（docs/38 §二 B-2）
-  resolveCorroding(draft, sink);
 }

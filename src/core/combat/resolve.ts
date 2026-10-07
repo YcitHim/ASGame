@@ -122,6 +122,11 @@ export interface DamageArgs {
   extraModifiers?: readonly Modifier[];
   /** 该次伤害是反伤：不触发二次反伤 */
   reflect?: boolean;
+  /**
+   * 无视格挡（蚀锈）：直扣生命，也不消耗目标的格挡。
+   * 不是"先破盾再打血"——盾一点不动，伤害照落。
+   */
+  bypassBlock?: boolean;
 }
 
 /** 单次伤害：基础值 → 修饰管线 → 格挡吸收 → HP → 死亡检查。 */
@@ -133,7 +138,7 @@ export function dealDamage(draft: Draft, sink: EventSink, args: DamageArgs): voi
   const modifiers = args.extraModifiers?.length ? [...auto, ...args.extraModifiers] : auto;
   const evaluated = evaluateValue("attackDamage", args.base, modifiers);
   const value = evaluated.value;
-  const blocked = Math.min(target.block, value);
+  const blocked = args.bypassBlock ? 0 : Math.min(target.block, value);
   let hpLost = value - blocked;
   // 教学安全网（docs/42 §四）：本该放倒玩家的这一下被截断在 safetyFloor 之上。
   // 只在教学战斗启用（safetyFloor !== undefined），正常局与 golden 回放完全不受影响。
@@ -448,9 +453,16 @@ export function tickAllBuffs(draft: Draft, sink: EventSink, timing: "turnStart" 
   }
 }
 
+/** 蚀锈每次结算的层数衰减（甲方 2026-10-07 改版）。 */
+export const CORRODING_DECAY = 5;
+
 /**
- * 蚀锈结算（docs/38 §二 B-2）：**敌方回合结束**，每个带蚀锈的敌人受 stacks 点固定伤害
- * （不吃力量 / 充能 / 易伤），随后 duration −1，到期移除。
+ * 蚀锈结算（甲方 2026-10-07 改版）：**敌方回合开始**时，
+ * 每个带蚀锈的敌人受「当前层数」点伤害 —— **无视格挡**直扣生命
+ * （不吃力量 / 充能 / 胆怯，也不被格挡吸收），随后层数 **−5**，归零即移除。
+ *
+ * 旧版是"敌方回合结束、按 duration 扣回合"的计时 DoT；现在衰减由层数承担：
+ * 不继续叠锈，伤害就会 5 层/回合地掉下去，最后自己蒸发。
  * 不走泛用 tick，避免被玩家回合的 turnEnd / turnStart 双重扣时。
  */
 export function resolveCorroding(draft: Draft, sink: EventSink): void {
@@ -472,16 +484,15 @@ export function resolveCorroding(draft: Draft, sink: EventSink): void {
       segment: 1,
       segments: 1,
       modifiers: [],
+      bypassBlock: true,
     });
     if (enemy.hp <= 0) continue;
-    const nextDuration = buff.duration == null ? null : buff.duration - 1;
-    if (nextDuration != null && nextDuration <= 0) {
+    const next = buff.stacks - CORRODING_DECAY;
+    if (next <= 0) {
       enemy.buffs = enemy.buffs.filter((b) => b.id !== "corroding");
       sink.emit("BuffExpired", { targetId: enemy.id, buffId: "corroding" });
     } else {
-      enemy.buffs = enemy.buffs.map((b) =>
-        b.id === "corroding" ? { id: b.id, stacks: b.stacks, duration: nextDuration } : b,
-      );
+      enemy.buffs = enemy.buffs.map((b) => (b.id === "corroding" ? { id: b.id, stacks: next, duration: null } : b));
     }
   }
 }
@@ -870,9 +881,8 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
       const real = Math.floor(pay / 2);
       if (real <= 0) break;
       if (pay > 0) changePollution(draft, sink, -pay);
-      for (const t of targetIds) {
-        applyBuffToTarget(draft, sink, t, "corroding", real, effect.duration ?? undefined);
-      }
+      // 蚀锈已是纯层数状态，没有"持续几回合"这回事（甲方 2026-10-07）
+      for (const t of targetIds) applyBuffToTarget(draft, sink, t, "corroding", real);
       break;
     }
     case "consumeCorroding": {

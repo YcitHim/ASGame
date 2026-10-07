@@ -43,7 +43,7 @@
   "handler": "rustbite",
   "params": {
     "buffId": "corroding",
-    "turns": 2
+    "stacks": 1
   },
   "i18n": "enh.sanctum_quench",
   "actScope": "act2"

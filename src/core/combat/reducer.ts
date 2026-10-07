@@ -19,6 +19,7 @@ import { resetTurnRelics, resolveTriggers } from "./relics";
 import {
   applyBuffToTarget,
   drawCards,
+  resolveCorroding,
   resolveCurses,
   resolvePollutionCritical,
   resolveMending,
@@ -156,6 +157,10 @@ function endTurn(draft: Draft, sink: EventSink): void {
   // 敌人格挡在【敌人自己】的回合开始时清零（docs/03 §4）：
   // 上一回合留下的格挡必须撑过玩家的整个回合，否则防御意图形同虚设。
   for (const enemy of draft.enemies) resolveTenacity(enemy);
+  // 蚀锈在【敌方回合开始】结算（甲方 2026-10-07 改版）：先炸一轮再轮到敌人行动。
+  // 如果这一下把场上清空了就直接结束战斗——死人不再还手。
+  resolveCorroding(draft, sink);
+  if (checkBattleEnd(draft, sink)) return;
   runEnemyTurn(draft, sink);
   if (checkBattleEnd(draft, sink)) return;
 

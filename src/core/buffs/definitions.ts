@@ -22,16 +22,16 @@ export const BUFF_DEFINITIONS: Readonly<Record<BuffId, BuffDefinition>> = {
   },
   pollution: { id: "pollution", polarity: "affliction", stacking: "stack", decayAt: "none", applyAs: "stacks", maxStacks: 100 },
   block: { id: "block", polarity: "boon", stacking: "stack", decayAt: "none", applyAs: "stacks", resource: true },
-  // 蚀锈（docs/38 §二 B-2）：计时型 DoT，stacks = 每回合伤害、duration = 剩余回合。
-  // decayAt 设为 none —— 它由 resolveCorroding 在【敌方回合结束】手动结算并递减，
-  // 交给泛用 tick 会被玩家回合的 turnEnd/turnStart 双重扣时。
+  // 蚀锈（甲方 2026-10-07 改版）：**纯层数 DoT**，不再有 duration。
+  // 敌方回合开始时按当前层数造成伤害（无视格挡），结算后层数 −5，归零即移除。
+  // decayAt 设为 none —— 由 resolveCorroding 手动结算，交给泛用 tick 会被
+  // 玩家回合的 turnEnd/turnStart 双重扣时。
   corroding: {
     id: "corroding",
     polarity: "affliction",
-    stacking: "stackAndRefresh",
+    stacking: "stack",
     decayAt: "none",
-    applyAs: "stacksAndTurns",
-    defaultDuration: 2,
+    applyAs: "stacks",
   },
   // 冰缓（docs/46 §3.7）：层数 = 剩余回合。手动结算（resolveCurses），不进泛用 tick。
   chill: { id: "chill", polarity: "curse", stacking: "stack", decayAt: "none", applyAs: "stacks", maxStacks: 3 },

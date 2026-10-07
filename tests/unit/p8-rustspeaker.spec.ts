@@ -39,22 +39,47 @@ function play(state: BattleState, cardId: string, targetId?: string | null): Bat
   }).state;
 }
 
-describe("1.0-B 蚀锈 DoT", () => {
-  it("蚀锈在敌方回合结束结算固定伤害并消耗 1 回合", () => {
+describe("1.0-B 蚀锈 DoT（甲方 2026-10-07 改版）", () => {
+  it("敌方回合开始按当前层数结算，无视格挡，结算后层数 −5", () => {
     let s = start({ deck: ["rustspit", "strike", "strike"], enemies: ["rust_hound"] });
     const hp0 = s.enemies[0].hp;
     s = play(s, "rustspit", "rust_hound");
     const afterHit = s.enemies[0].hp;
     expect(afterHit).toBe(hp0 - 5);
-    expect(s.enemies[0].buffs.find((b) => b.id === "corroding")?.stacks).toBe(2);
+    const stacks = s.enemies[0].buffs.find((b) => b.id === "corroding")?.stacks;
+    expect(stacks).toBe(2);
+    expect(s.enemies[0].buffs.find((b) => b.id === "corroding")?.duration).toBeNull();
+
+    // 敌人架着 6 点维续格挡：蚀锈要穿透它直扣生命，格挡一点不动
+    const enemy = s.enemies[0] as unknown as { block: number; enduringBlock: number };
+    enemy.enduringBlock = 6;
+    enemy.block = 6;
+
     const result = reduce(s, { type: "EndTurn", actionId: "e" });
     s = result.state;
     const tick = result.events.find((e) => e.type === "BuffTicked");
-    expect(tick).toBeDefined();
-    // 5 直接伤害 + 2 蚀锈 = 7
+    expect(tick, "蚀锈要有发作事件（日志/飘字靠它）").toBeDefined();
+    // 5 直接伤害 + 2 蚀锈（穿透格挡）= 7
     expect(hp0 - s.enemies[0].hp).toBe(7);
-    // 2 回合 → 递减为 1
-    expect(s.enemies[0].buffs.find((b) => b.id === "corroding")?.duration).toBe(1);
+    expect(s.enemies[0].block, "格挡不该被蚀锈消耗").toBe(6);
+    // 2 层 < 衰减 5 → 直接蒸发（旧版是扣 duration）
+    expect(s.enemies[0].buffs.find((b) => b.id === "corroding")).toBeUndefined();
+  });
+
+  it("层数每回合 −5：10 层蚀锈打两回合就自己衰减到消失（10 → 5 → 移除）", () => {
+    let s = start({ deck: ["blacktransfusion"], pollution: 20, enemies: ["rust_hound"] });
+    s = play(s, "blacktransfusion", "rust_hound");
+    expect(s.enemies[0].buffs.find((b) => b.id === "corroding")?.stacks).toBe(10);
+
+    const hp0 = s.enemies[0].hp;
+    s = reduce(s, { type: "EndTurn", actionId: "e" }).state;
+    expect(hp0 - s.enemies[0].hp).toBe(10);
+    expect(s.enemies[0].buffs.find((b) => b.id === "corroding")?.stacks).toBe(5);
+
+    const hp1 = s.enemies[0].hp;
+    s = reduce(s, { type: "EndTurn", actionId: "e" }).state;
+    expect(hp1 - s.enemies[0].hp).toBe(5);
+    expect(s.enemies[0].buffs.find((b) => b.id === "corroding")).toBeUndefined();
   });
 });
 

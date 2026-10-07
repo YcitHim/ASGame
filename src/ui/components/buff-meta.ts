@@ -24,7 +24,8 @@ export const BUFF_META: Record<string, BuffMeta> = {
   bramble: { name: "荆棘", glyph: "荆", tint: "#6b1f34", unit: "层" },
   tenacity: { name: "坚韧", glyph: "韧", tint: "#b08d4a", unit: "层" },
   block: { name: "格挡", glyph: "盾", tint: "#54636f", unit: "点" },
-  corroding: { name: "蚀锈", glyph: "蚀", tint: "#556b2a", unit: "伤害" },
+  // 蚀锈改成纯层数后单位跟着卡面口径走（卡面写「施加 2 点蚀锈」）
+  corroding: { name: "蚀锈", glyph: "蚀", tint: "#556b2a", unit: "点" },
   mending: { name: "回血印记", glyph: "愈", tint: "#3f6b3a", unit: "点" },
   // 九相后半（docs/49 Phase 2a）：异常红 / 诅咒紫
   burn: { name: "灼烧", glyph: "灼", tint: "#8c2f22", unit: "层" },
