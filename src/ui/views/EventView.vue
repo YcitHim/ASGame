@@ -3,10 +3,12 @@ import { computed, onMounted, ref, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
 import { t } from "@/data/load";
 import { useRunStore } from "@/stores/run";
+import { useTipsStore } from "@/stores/tips";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
 const router = useRouter();
 const run = useRunStore();
+const tips = useTipsStore();
 const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 
@@ -32,6 +34,8 @@ function optionLabel(id: string): string {
 
 function resolve(optionId: string): void {
   run.resolveEvent(optionId);
+  // 事件给遗物也算"第一次拿到遗物"（docs/43 §五：别只认战斗奖励那一处）
+  if (run.eventResult?.relicIds.length) tips.trigger("relic_pick");
 }
 
 function pickOffer(id: string): void {

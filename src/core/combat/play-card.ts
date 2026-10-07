@@ -240,6 +240,11 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
     costPaid: cost,
     bloodPaid,
   });
+  // 「本回合已出牌数」在触发 onPlay 之前递增：
+  // 这样「当你打出本回合第 N 张牌时」类遗物/能力读到的是**含当前这张**的计数，
+  // 而不是差一张。计数原本在结算末尾递增，数据侧当时无人引用它，故本次前移无观测差异
+  // （golden 7 盘哈希已复核）。
+  draft.cardsPlayedThisTurn += 1;
   resolveTriggers(draft, sink, "onPlay");
 
   const effects = effective.play
@@ -274,8 +279,6 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
     attackModifiers: effective.attackModifiers,
     blockModifiers: effective.blockModifiers,
   });
-  draft.cardsPlayedThisTurn += 1;
-
   // 常驻能力（power）：本场生效，按实例记录（升级版走 def.upgraded.power）
   if ((def.power ?? def.upgraded?.power) && !draft.player.powers.includes(instance.instanceId)) {
     draft.player.powers.push(instance.instanceId);

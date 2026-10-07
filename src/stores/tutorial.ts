@@ -95,6 +95,51 @@ export const useTutorialStore = defineStore("tutorial", {
         cleared: [],
       };
       useMetaStore().markTutorialOffered(classId);
+      this._persist();
+    },
+
+    /**
+     * 断点续做（docs/43 Q2）：把存档里的进度搬回状态机。
+     * 返回 false = 没有未完成的教学。
+     */
+    resume(): boolean {
+      const meta = useMetaStore();
+      meta.ensureLoaded();
+      const saved = meta.tutorial;
+      if (!saved) return false;
+      this.active = true;
+      this.finished = false;
+      this.chapterIndex = saved.chapterIndex;
+      this.stepIndex = saved.stepIndex;
+      this.correction = "";
+      this.safetySaves = 0;
+      this.debuffed = false;
+      this.run = {
+        classId: saved.classId,
+        hp: saved.hp,
+        maxHp: saved.maxHp,
+        deck: saved.deck.map((card) => ({ ...card })),
+        cleared: [...saved.cleared],
+      };
+      return true;
+    },
+
+    /** 把当前进度写回 meta 档；教学已结束（或没开始）就清空断点。 */
+    _persist(): void {
+      const meta = useMetaStore();
+      if (!this.active || !this.run) {
+        meta.setTutorialProgress(null);
+        return;
+      }
+      meta.setTutorialProgress({
+        classId: this.run.classId,
+        chapterIndex: this.chapterIndex,
+        stepIndex: this.stepIndex,
+        hp: this.run.hp,
+        maxHp: this.run.maxHp,
+        deck: this.run.deck.map((card) => ({ ...card })),
+        cleared: [...this.run.cleared],
+      });
     },
 
     _advance(): void {
@@ -102,10 +147,12 @@ export const useTutorialStore = defineStore("tutorial", {
       const steps = this.steps;
       if (this.stepIndex + 1 < steps.length) {
         this.stepIndex += 1;
+        this._persist();
         return;
       }
       const id = this.chapter?.id;
       if (id && this.run && !this.run.cleared.includes(id)) this.run.cleared = [...this.run.cleared, id];
+      this._persist();
     },
 
     /* ---------- 判定信号（battle store / 视图转发） ---------- */
@@ -168,9 +215,11 @@ export const useTutorialStore = defineStore("tutorial", {
         this.finished = true;
         this.active = false;
         useMetaStore().markTutorialDone(this.run?.classId ?? "bloodwright");
+        this._persist();
         return false;
       }
       this.chapterIndex = index;
+      this._persist();
       return true;
     },
 
@@ -183,6 +232,7 @@ export const useTutorialStore = defineStore("tutorial", {
       this.run = null;
       this.correction = "";
       this.debuffed = false;
+      this._persist();
     },
   },
 });

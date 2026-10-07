@@ -59,6 +59,8 @@ export interface TutorialBattle {
   /** 教学用：统一覆盖敌人 HP，保证机制讲完之前它不会先死 */
   readonly enemyHp?: number;
   readonly seed: number;
+  /** 旁白落款（docs/43 §三 #11）：老班长「铆叔」。彩蛋级存在，不展开剧情。 */
+  readonly byline?: string;
   readonly steps: readonly TutorialStep[];
 }
 
@@ -67,12 +69,17 @@ export interface TutorialGraduationChapter {
   readonly id: string;
   readonly title: string;
   readonly lines: readonly string[];
+  /** 署名（docs/43 §三 #11） */
+  readonly byline?: string;
   readonly cta: string;
 }
 
 export type TutorialChapter = TutorialBattle | TutorialGraduationChapter;
 
 export const TUTORIAL_TITLE = "第一班岗";
+
+/** 教学旁白 = 老一代守夜人（docs/43 §三 #11 起名「铆叔」）。 */
+export const TUTORIAL_NARRATOR = "铆叔";
 
 /**
  * 只教一件事：**看懂屏幕 + 敢出手**。
@@ -89,6 +96,7 @@ export const TUTORIAL_CHAPTERS: readonly TutorialChapter[] = [
     // 提到 60 血：它要活到把「异常」那一课演完
     enemyHp: 60,
     seed: 9,
+    byline: "—— 铆叔 · 老一代守夜人",
     steps: [
       {
         why: "这是你的状态栏",
@@ -153,8 +161,9 @@ export const TUTORIAL_CHAPTERS: readonly TutorialChapter[] = [
     title: "上 手 了",
     lines: [
       "三分钟，够你出门了：认屏幕、出牌、防御、看异常。",
-      "剩下的（遗物、强化、路线）交给图鉴和屏幕提示——想再听一遍，设置里随时叫我。",
+      "剩下的（遗物、强化、路线）交给图鉴和屏幕提示——想再听一遍，设置里随时叫铆叔。",
     ],
+    byline: "—— 铆叔",
     cta: "开 始 远 征",
   },
 ];

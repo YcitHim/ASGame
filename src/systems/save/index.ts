@@ -8,7 +8,7 @@
 export const SAVE_NAMESPACE = "rustandblood";
 
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 export type SaveSlot = "settings" | "progress" | "replay" | "codex" | "meta";
 
@@ -172,6 +172,14 @@ const migrations: Record<number, (data: unknown) => unknown> = {
     const record = data as Record<string, unknown>;
     if (!("achievements" in record) && !("clearedClasses" in record)) return record;
     return { ...record, tutorialOffered: [], tutorialDone: [] };
+  },
+  // 11 → 12（docs/43 Q2）：meta 槽新增 tutorial（未完成的「第一班岗」断点）。
+  // 旧档没有"进行中的教学"这个概念 → null；不重问（tutorialOffered 已在 v10→11 落好）。
+  11: (data) => {
+    if (typeof data !== "object" || data === null) return data;
+    const record = data as Record<string, unknown>;
+    if (!("achievements" in record) && !("clearedClasses" in record)) return record;
+    return { ...record, tutorial: record["tutorial"] ?? null };
   },
 };
 

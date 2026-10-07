@@ -1,9 +1,12 @@
 /**
- * headless-sim · T1 随身遗物强度分布（docs/41 §五）
+ * headless-sim · T1 随身遗物强度分布（docs/41 §五 / docs/43 Q4）
  *
  * 策划要的是「8 件 T1 各自的首幕通关率分布」，用来做逐件裁决。
  * 口径：单幕（只打第一幕）+ normal 难度 + 三职业各跑 N 局，同一批种子横向对比，
  * 所以件与件之间的差就是遗物本身的差（种子噪声被同一批种子抵消）。
+ *
+ * docs/43 Q4 起加一条**绝对线**：任何一件都不得低于本职业「空随身槽」基线 -1.5pp
+ * （同一批种子，400 局）。低于绝对线的件必须改触发条件，不许改数字。
  *
  * 用法：npm run sim:companions -- [每件局数] [--class bloodwright]
  */
@@ -69,6 +72,16 @@ function main(): number {
   const totals: Record<string, { wins: number; games: number }> = {};
   for (const id of pool) totals[id] = { wins: 0, games: 0 };
 
+  // 绝对线（docs/43 Q4）：同种子、同局数下的「空随身槽」基线。
+  // 注意：simulateRun 的 companionId 缺省 = 职业默认偏好件，不是"没有遗物"；
+  // 真正的空槽要显式传空串（sim.ts 里 `companion ? [companion] : []`）。
+  const RELIC_FLOOR_PP = 1.5;
+  const baseline: Record<string, number> = {};
+  for (const cls of classes) {
+    const results = seeds.map((seed) => simulateRun(content, act, seed, cls, "normal", [], ""));
+    baseline[cls] = buildReport(results).winRate;
+  }
+
   for (const cls of classes) {
     perClass[cls] = {};
     for (const relicId of pool) {
@@ -110,11 +123,30 @@ ${header.join(" ")}`);
     `
 [companion-report] 中位数 ${pct(median)} · 最强 ${pct(best)} · 最弱 ${pct(worst)} · 极差 ${((best - worst) * 100).toFixed(1)}pp`,
   );
+
+  // —— 绝对线（docs/43 Q4）——
+  const offendersAbs: string[] = [];
+  console.log("[companion-report] 绝对线：每件 ≥ 本职业空随身槽基线 -1.5pp");
+  for (const cls of classes) {
+    const bar = baseline[cls] - RELIC_FLOOR_PP / 100;
+    const under = pool.filter((id) => perClass[cls][id] < bar);
+    console.log(
+      `  ${cls.padEnd(11)} 基线 ${pct(baseline[cls])} · 底线 ${pct(bar)} · ${
+        under.length === 0 ? "全部达标" : `不达标 ${under.join(" / ")}`
+      }`,
+    );
+    for (const id of under) offendersAbs.push(`${cls}/${id}`);
+  }
   const offenders = overall.filter((r) => median > 0 && r.rate / median < 0.7).map((r) => r.id);
   console.log(
     offenders.length === 0
-      ? "[companion-report] 全部达标：最弱件 ≥ 中位数 70%（docs/41 §五 目标区间）"
+      ? "[companion-report] 相对区间达标：最弱件 ≥ 中位数 70%（docs/41 §五）"
       : `[companion-report] 低于 70% 中位数的垫底件：${offenders.join(" / ")}`,
+  );
+  console.log(
+    offendersAbs.length === 0
+      ? "[companion-report] 绝对线达标：没有低于基线 -1.5pp 的件"
+      : `[companion-report] 低于绝对线的件（必须改触发，不许改数字）：${offendersAbs.join(" / ")}`,
   );
   return 0;
 }

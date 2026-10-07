@@ -29,8 +29,27 @@ export const ACHIEVEMENT_IDS = [
   "rust_clear",
   "codex_all",
   "guide",
+  /** 进阶教学徽章（docs/43 Q6）：三职业第一班岗全部走完 */
+  "three_watch",
 ] as const;
+
+/** 教学覆盖的三个职业（docs/43 Q6「三朝守夜」的判定口径）。 */
+export const TUTORIAL_CLASSES = ["bloodwright", "engineer", "rustspeaker"] as const;
 export type AchievementId = (typeof ACHIEVEMENT_IDS)[number];
+
+/**
+ * 进行中的「第一班岗」（docs/43 Q2）：关掉游戏也能接着上工。
+ * 只存教学局自己的簿记——它和远征进度无关，所以不写 progress 槽。
+ */
+export interface TutorialProgress {
+  readonly classId: string;
+  chapterIndex: number;
+  stepIndex: number;
+  hp: number;
+  maxHp: number;
+  deck: { cardId: string; upgraded: boolean }[];
+  cleared: string[];
+}
 
 export interface RunRecord {
   /** 最少回合通关 */
@@ -52,6 +71,8 @@ interface MetaState {
   tutorialOffered: string[];
   /** 教学：已走完「第一班岗」的职业 */
   tutorialDone: string[];
+  /** 教学：未走完的进度（断点续做；走完或跳过即清空） */
+  tutorial: TutorialProgress | null;
 }
 
 /** 一次远征的成就输入（由 run store 汇总）。 */
@@ -94,6 +115,8 @@ export const useMetaStore = defineStore("meta", {
     tutorialOffered: [] as string[],
     /** 教学：走完「第一班岗」的职业（解锁「引路人」徽章） */
     tutorialDone: [] as string[],
+    /** 教学：没走完的那一次（docs/43 Q2） */
+    tutorial: null as TutorialProgress | null,
     /** 最近一次通关新解锁的内容 id（结算页弹提示用） */
     lastUnlocked: [] as string[],
     /** 最近一次通关新达成的成就 id（结算页弹提示用） */
@@ -134,6 +157,7 @@ export const useMetaStore = defineStore("meta", {
         this.tips = saved.tips ?? [];
         this.tutorialOffered = Array.isArray(saved.tutorialOffered) ? saved.tutorialOffered : [];
         this.tutorialDone = Array.isArray(saved.tutorialDone) ? saved.tutorialDone : [];
+        this.tutorial = saved.tutorial ?? null;
       }
       this.loaded = true;
     },
@@ -147,6 +171,7 @@ export const useMetaStore = defineStore("meta", {
         tips: [...this.tips],
         tutorialOffered: [...this.tutorialOffered],
         tutorialDone: [...this.tutorialDone],
+        tutorial: this.tutorial ? { ...this.tutorial, deck: [...this.tutorial.deck], cleared: [...this.tutorial.cleared] } : null,
       } satisfies MetaState);
     },
     unlock(ids: readonly string[]): string[] {
@@ -207,6 +232,17 @@ export const useMetaStore = defineStore("meta", {
       this.ensureLoaded();
       if (!this.tutorialDone.includes(classId)) this.tutorialDone = [...this.tutorialDone, classId];
       if (!this.achievements.includes("guide")) this.achievements = [...this.achievements, "guide"];
+      // 「三朝守夜」（docs/43 Q6）：三职业第一班岗全部走完
+      if (TUTORIAL_CLASSES.every((id) => this.tutorialDone.includes(id)) && !this.achievements.includes("three_watch")) {
+        this.achievements = [...this.achievements, "three_watch"];
+      }
+      this.persist();
+    },
+
+    /** 记下/清空"进行中的第一班岗"（docs/43 Q2）。 */
+    setTutorialProgress(progress: TutorialProgress | null): void {
+      this.ensureLoaded();
+      this.tutorial = progress;
       this.persist();
     },
 
@@ -301,6 +337,7 @@ export const useMetaStore = defineStore("meta", {
       this.stats = { interrupts: 0 };
       this.lastUnlocked = [];
       this.lastAchievements = [];
+      this.tutorial = null;
       this.persist();
     },
   },

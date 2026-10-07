@@ -58,7 +58,7 @@ describe("1.0-C 成就墙", () => {
     expect(meta.lastAchievements).toHaveLength(0);
   });
 
-  it("13 条成就全部可达（含教学「引路人」），且都有 i18n 文案", async () => {
+  it("14 条成就全部可达（含教学「引路人」「三朝守夜」），且都有 i18n 文案", async () => {
     const meta = setup();
     // 每个职业通关各结算一次（真实流程同款），最后用锈语者补齐统计类成就
     for (const id of ["bloodwright", "engineer", "rustspeaker"]) {
@@ -78,9 +78,12 @@ describe("1.0-C 成就墙", () => {
       turns: 120,
       hpLeft: 30,
     });
-    // 「引路人」来自教学完成，不属于远征结算（docs/41 §4.3）
+    // 「引路人」「三朝守夜」来自教学完成，不属于远征结算（docs/41 §4.3 / docs/43 Q6）
     meta.markTutorialDone("bloodwright");
     expect(meta.isAchieved("guide")).toBe(true);
+    meta.markTutorialDone("engineer");
+    meta.markTutorialDone("rustspeaker");
+    expect(meta.isAchieved("three_watch")).toBe(true);
     expect(ACHIEVEMENT_IDS.every((id) => meta.isAchieved(id))).toBe(true);
     const { loadGameContent } = await import("@/data/load");
     const i18n = loadGameContent().i18n;

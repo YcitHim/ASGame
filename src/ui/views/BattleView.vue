@@ -57,7 +57,8 @@ function startTutorialBattle(): void {
     deck: tutorial.run.deck,
     hp,
     maxHp: tutorial.run.maxHp,
-    relics: run.classDef?.startRelics ?? [],
+    // 职业身份件按教学局记下的职业取——从标题页续做时并没有在跑的远征
+    relics: game.content.classes.get(tutorial.run.classId)?.startRelics ?? [],
   });
   // 战斗建好之后再发样例牌（否则 grant 会打空）
   applyStepGrant();

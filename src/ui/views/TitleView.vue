@@ -6,6 +6,7 @@ import EmberField from "@/ui/components/EmberField.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
 import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
+import { useTutorialStore } from "@/stores/tutorial";
 import { hasSlot, readSlot } from "@/systems/save";
 
 const stage = useTemplateRef<HTMLElement>("stage");
@@ -13,6 +14,7 @@ useStageFit(stage);
 const router = useRouter();
 const run = useRunStore();
 const meta = useMetaStore();
+const tutorial = useTutorialStore();
 /** legacy 档（一幕已通关的旧档）：docs/40 §2.1 不提供继续远征入口。 */
 function isLegacySave(): boolean {
   const saved = readSlot<{ run?: { legacy?: boolean } } | null>("progress", null);
@@ -30,14 +32,22 @@ const recordRows = computed(() =>
   })),
 );
 
-const menu = [
+type MenuKey = "tutorial" | "expedition" | "continue" | "codex" | "settings";
+
+/** 没走完的「第一班岗」（docs/43 Q2）：断点续做，直接回到那一步，不绕教学页。 */
+const canResumeTutorial = computed(() => meta.tutorial !== null);
+
+const menu = computed<{ key: MenuKey; label: string; enabled: boolean }[]>(() => [
+  ...(canResumeTutorial.value
+    ? [{ key: "tutorial" as const, label: "继续第一班岗", enabled: true }]
+    : []),
   { key: "expedition", label: "开始远征", enabled: true },
   { key: "continue", label: "继续远征", enabled: canContinue.value },
   { key: "codex", label: "图鉴", enabled: true },
   { key: "settings", label: "设置", enabled: true },
-] as const;
+]);
 
-function onMenu(key: (typeof menu)[number]["key"], enabled: boolean): void {
+function onMenu(key: MenuKey, enabled: boolean): void {
   if (!enabled) return;
   if (key === "settings") void router.push("/settings");
   else if (key === "codex") void router.push("/codex");
@@ -46,6 +56,10 @@ function onMenu(key: (typeof menu)[number]["key"], enabled: boolean): void {
     void router.push("/class-select");
   } else if (key === "continue") {
     if (run.load()) void router.push("/map");
+  } else if (key === "tutorial") {
+    if (!tutorial.resume()) return;
+    // 战斗章直接回战场；结业章没有战斗，才回教学页
+    void router.push(tutorial.isBattleChapter ? "/battle" : "/tutorial");
   }
 }
 </script>

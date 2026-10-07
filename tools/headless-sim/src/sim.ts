@@ -40,6 +40,8 @@ export interface SimResult {
   seed: number;
   outcome: "win" | "lose";
   nodeReached: number;
+  /** 结束时在第几幕（docs/43 Q5 双幕定位用） */
+  reachedAct: number;
   battles: number;
   turns: number;
   damageDealt: number;
@@ -273,6 +275,7 @@ export function simulateRun(
     seed,
     outcome,
     nodeReached: run.layerIndex,
+    reachedAct: run.actIndex,
     battles,
     turns,
     damageDealt,

@@ -71,13 +71,14 @@ describe("systems/save（ADR-008）", () => {
       run: { layerIndex: 2, unlocked: [], difficulty: "normal", usedBloodpact: false, overloadCount: 0 },
     });
     const meta = migrate({ version: 5, data: { clearedClasses: ["bloodwright"], unlocked: [] } });
-    // 一路迁到 v11：meta 槽补 tips 与按职业的教学字段（docs/41 §4.1 / docs/42 §三.0）
+    // 一路迁到 v12：meta 槽补 tips、按职业的教学字段与教学断点（docs/41/42/43）
     expect(meta?.data).toEqual({
       clearedClasses: ["bloodwright"],
       unlocked: [],
       tips: [],
       tutorialOffered: [],
       tutorialDone: [],
+      tutorial: null,
     });
   });
 
@@ -108,7 +109,7 @@ describe("systems/save（ADR-008）", () => {
 describe("存档迁移 9 → 11（docs/41 §4.1 / docs/42 §三.0）", () => {
   it("meta 槽补 tips 与按职业的教学字段；进度档不被污染", async () => {
     const { migrate, SCHEMA_VERSION } = await import("@/systems/save");
-    expect(SCHEMA_VERSION).toBe(11);
+    expect(SCHEMA_VERSION).toBe(12);
 
     const meta = migrate({ version: 9, savedAt: 0, data: { clearedClasses: ["bloodwright"], achievements: [] } });
     const metaData = meta?.data as { tips: string[]; tutorialOffered: string[]; tutorialDone: string[] };
@@ -136,6 +137,26 @@ describe("存档迁移 9 → 11（docs/41 §4.1 / docs/42 §三.0）", () => {
     expect(data.tips).toEqual(["discard"]);
     expect(data.tutorialOffered).toEqual([]);
     expect(data.tutorialDone).toEqual([]);
+  });
+
+  it("11 → 12：meta 槽补 tutorial 断点，旧档视为没有进行中的教学", async () => {
+    const { migrate } = await import("@/systems/save");
+    const meta = migrate({
+      version: 11,
+      savedAt: 0,
+      data: { clearedClasses: ["bloodwright"], tutorialOffered: ["bloodwright"], tutorialDone: [] },
+    });
+    const data = meta?.data as { tutorial: unknown; tutorialOffered: string[] };
+    expect(data.tutorial).toBeNull();
+    expect(data.tutorialOffered).toEqual(["bloodwright"]);
+
+    // 进度档不被污染（教学断点只住在 meta 槽）
+    const progress = migrate({ version: 11, savedAt: 0, data: { run: { actIndex: 0 } } });
+    expect((progress?.data as Record<string, unknown>).tutorial).toBeUndefined();
+
+    // 已经带着断点的存档不被覆盖
+    const kept = migrate({ version: 11, savedAt: 0, data: { achievements: [], tutorial: { classId: "engineer" } } });
+    expect((kept?.data as { tutorial: { classId: string } }).tutorial).toEqual({ classId: "engineer" });
   });
 });
 

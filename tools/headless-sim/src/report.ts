@@ -134,16 +134,19 @@ export function buildScenarioReport(results: ScenarioResult[]): ScenarioReport {
   };
 }
 
+/**
+ * 精英直开场景（docs/43 §五 备案）：**已退役，仅记录**。
+ * 不再按 70%~90% / 25~40 判线，也不再让 CI 因它失败——数字只用于回归对比。
+ */
 export function formatScenarioReport(report: ScenarioReport): string {
   const { minRate, maxRate, minTaken, maxTaken } = SCENARIO_TARGET;
-  const rateOk = report.winRate >= minRate && report.winRate <= maxRate;
-  const takenOk = report.avgDamageTaken >= minTaken && report.avgDamageTaken <= maxTaken;
   return [
     "[headless-sim] 场景直开 · 精英（铁锈看守 · HP 45 · 起始卡组+2 张抓牌+1 升级）",
-    `  局数 ${report.games} · 胜率 ${pct(report.winRate)}（目标 ${pct(minRate)}~${pct(maxRate)}）${rateOk ? " ✓" : " ✗"}`,
-    `  平均承伤 ${report.avgDamageTaken.toFixed(1)}（目标 ${minTaken}~${maxTaken}）${takenOk ? " ✓" : " ✗"} · 平均回合 ${report.avgTurns.toFixed(1)}`,
+    "  ⚠ 已退役 · 仅记录（docs/43 §五）：不再判线，退出码恒为 0",
+    `  局数 ${report.games} · 胜率 ${pct(report.winRate)}（历史目标 ${pct(minRate)}~${pct(maxRate)}，现在只看趋势）`,
+    `  平均承伤 ${report.avgDamageTaken.toFixed(1)}（历史目标 ${minTaken}~${maxTaken}）· 平均回合 ${report.avgTurns.toFixed(1)}`,
     `  战后剩余 HP P10 ${report.hpLeftP10} / P50 ${report.hpLeftP50}`,
-    `  结论：${rateOk && takenOk ? "达标（17/8 维持）" : "未达标 → 见 docs/19 §3.2 调整规则"}`,
+    "  结论：已退役——保留这项只为横向对比，不代表任何验收。",
   ].join("\n");
 }
 

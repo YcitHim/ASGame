@@ -216,9 +216,15 @@
         "actionId": "p23",
         "handIndex": 3,
         "targetId": "tidecaller"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p24",
+        "handIndex": 1,
+        "targetId": "tidecaller"
       }
     ],
-    "eventHash": "0cc7d1b92e5aed443773527bcaee9154c8c5a8c158f7e68b20bcf44da0e7e39d",
+    "eventHash": "39079db9a8813da28c87a1b52b6653421ad1f112ea64b1d01cea9ae6157a8be8",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",

@@ -71,6 +71,7 @@ function leave(): void {
           <div class="lesson-tag">速 成 课 · 约 3 分 钟</div>
           <h1 class="head">{{ chapter.title }}</h1>
           <p class="theme">「{{ chapter.theme }}」</p>
+          <p v-if="chapter.byline" class="byline">{{ chapter.byline }}</p>
           <div class="plan">
             <div class="step-row"><b>这一课</b><small>{{ lessonPoints.join(" · ") }}</small></div>
             <div class="step-row"><b>陪练</b><small>{{ enemyNames }}（不会打死你）</small></div>
@@ -89,6 +90,7 @@ function leave(): void {
           <div class="lines">
             <p v-for="(line, i) in chapter.lines" :key="i">{{ line }}</p>
           </div>
+          <p v-if="chapter.byline" class="byline">{{ chapter.byline }}</p>
           <button class="tut-cta main" @click="graduate">{{ chapter.cta }}</button>
         </template>
       </template>
@@ -118,6 +120,7 @@ function leave(): void {
   font-family: var(--serif-title); font-size: 12px; letter-spacing: 0.32em; color: var(--gold-dim);
 }
 .theme { font-size: 14px; letter-spacing: 0.12em; color: var(--gold); font-style: italic; }
+.byline { font-family: var(--serif-title); font-size: 12px; letter-spacing: 0.22em; color: var(--gold-dim); }
 .lines { display: flex; flex-direction: column; gap: 8px; max-width: 720px; }
 .lines p { font-size: 14px; line-height: 1.9; letter-spacing: 0.1em; color: var(--ink-bone); }
 .main { padding: 12px 40px; font-size: 14px; }

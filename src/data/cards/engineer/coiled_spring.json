@@ -1,0 +1,31 @@
+{
+  "id": "coiled_spring",
+  "class": "engineer",
+  "type": "skill",
+  "rarity": "common",
+  "cost": 1,
+  "keywords": [
+    "retain"
+  ],
+  "effects": [
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 6
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "block",
+        "target": {
+          "type": "self"
+        },
+        "value": 9
+      }
+    ]
+  },
+  "i18n": "card.coiled_spring"
+}

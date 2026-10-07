@@ -172,7 +172,7 @@
         "targetId": "riveted_heavy"
       }
     ],
-    "eventHash": "43d51a84f697acd1932823215920bce1d0358e6e42c758abfb65915fd195ceee",
+    "eventHash": "25e24fff260d98a6fcc698bd13ade2aa425c6c6da6b96f4988c07b06d4639c5b",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",

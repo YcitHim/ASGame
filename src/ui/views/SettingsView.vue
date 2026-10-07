@@ -53,14 +53,17 @@ function replayTutorial(): void {
   void router.push("/tutorial");
 }
 
+const meta = useMetaStore();
+meta.ensureLoaded();
+
+/** 已经走完教学的职业数（0 = 还没上过岗）。 */
+const tutorialDoneCount = computed(() => meta.tutorialDone.length);
+
 /** 教学进度摘要：走过几个职业 / 第一次玩是什么体验。 */
 const tutorialSummary = computed(() => {
-  const meta = useMetaStore();
-  meta.ensureLoaded();
-  const done = meta.tutorialDone.length;
-  if (done === 0) return "约 10 分钟，三课带旁白；第一次玩建议走一遍，随时可以跳过";
-  if (done >= 3) return "三个职业都走完了。重进只会补职业机制课。";
-  return `已完成 ${done} / 3 个职业；重进只补职业机制课`;
+  if (tutorialDoneCount.value === 0)
+    return "一场 3 分钟的速成课：认屏幕 → 会出牌 → 会防御 → 看懂异常。随时可跳过";
+  return `已完成 ${tutorialDoneCount.value} 个职业；再听铆叔唠叨一遍也行`;
 });
 
 function back(): void {
@@ -81,16 +84,18 @@ function back(): void {
 
       <section class="panel">
         <h3 class="group">音频</h3>
-        <div v-for="row in volumes" :key="row.key" class="row">
+        <p class="group-note">音频尚未实现，计划随 v1.1 上线——下面的滑块先禁用，免得调了没反应像是 bug。</p>
+        <div v-for="row in volumes" :key="row.key" class="row disabled">
           <div class="label">
             <b>{{ row.label }}</b>
-            <small>{{ row.hint }}</small>
+            <small>{{ row.hint }} · 暂未开放 · v1.1</small>
           </div>
           <input
             class="slider"
             type="range"
             min="0"
             max="100"
+            disabled
             :value="Math.round(values[row.key] * 100)"
             @input="onVolume(row.key, $event)"
           />
@@ -148,7 +153,7 @@ function back(): void {
             <small>{{ tutorialSummary }}</small>
           </div>
           <button class="tut-cta" @click="replayTutorial">
-            <span class="glyph">▶</span>进 入 教 学
+            <span class="glyph">▶</span>{{ tutorialDoneCount > 0 ? "再听铆叔唠叨一遍" : "进 入 教 学" }}
           </button>
         </div>
 
@@ -244,6 +249,14 @@ function back(): void {
   padding-bottom: 6px;
 }
 
+.group-note {
+  margin: -2px 0 6px;
+  font-size: 11px;
+  line-height: 1.7;
+  letter-spacing: 0.06em;
+  color: var(--gold-dim);
+}
+.row.disabled { opacity: 0.55; }
 .row {
   display: flex;
   align-items: center;

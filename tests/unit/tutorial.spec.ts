@@ -251,3 +251,66 @@ describe("docs/42 速成版 · 战斗接入", () => {
     expect(tutorial.stepIndex).toBe(7);
   });
 });
+
+describe("docs/43 Q2 · 教学断点（meta 槽）", () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    setActivePinia(createPinia());
+  });
+
+  it("每推进一步就写一份断点；跳过即清空、不重问", () => {
+    const { tutorial } = setup();
+    const meta = useMetaStore();
+    expect(meta.tutorial?.classId).toBe("bloodwright");
+    expect(meta.tutorial?.stepIndex).toBe(0);
+    tutorial.noteAcknowledge();
+    expect(meta.tutorial?.stepIndex).toBe(1);
+    tutorial.abort();
+    expect(meta.tutorial).toBeNull();
+    // 跳过不算"没问过"——重新选人不会再被拦一次
+    expect(meta.wasTutorialOffered("bloodwright")).toBe(true);
+  });
+
+  it("重开游戏后 resume() 把断点搬回状态机，且能直接进战场那一步", () => {
+    const { tutorial } = setup();
+    tutorial.noteAcknowledge();
+    tutorial.noteAcknowledge();
+    tutorial.noteAcknowledge();
+    const saved = { chapterIndex: tutorial.chapterIndex, stepIndex: tutorial.stepIndex };
+    expect(saved.stepIndex).toBe(3);
+
+    // 关掉游戏再打开：新 pinia，localStorage 里的 meta 留着
+    setActivePinia(createPinia());
+    const revived = useTutorialStore();
+    expect(revived.active).toBe(false);
+    expect(revived.resume()).toBe(true);
+    expect(revived.active).toBe(true);
+    expect(revived.chapterIndex).toBe(saved.chapterIndex);
+    expect(revived.stepIndex).toBe(saved.stepIndex);
+    expect(revived.isBattleChapter).toBe(true);
+    expect(revived.focus).toBe("intent");
+    expect(revived.run?.classId).toBe("bloodwright");
+    expect(revived.run?.deck.length).toBeGreaterThan(0);
+  });
+
+  it("docs/43 Q6：三职业第一班岗都走完才解锁「三朝守夜」", () => {
+    const meta = useMetaStore();
+    meta.ensureLoaded();
+    meta.markTutorialDone("bloodwright");
+    meta.markTutorialDone("engineer");
+    expect(meta.isAchieved("guide")).toBe(true);
+    expect(meta.isAchieved("three_watch")).toBe(false);
+    meta.markTutorialDone("rustspeaker");
+    expect(meta.isAchieved("three_watch")).toBe(true);
+  });
+
+  it("走完全部章节 → 断点清空（标题页不再显示续做入口）", () => {
+    const { tutorial } = setup();
+    tutorial.nextChapter(); // → 结业
+    tutorial.nextChapter(); // → 结束
+    expect(tutorial.finished).toBe(true);
+    const meta = useMetaStore();
+    expect(meta.tutorial).toBeNull();
+    expect(meta.isAchieved("guide")).toBe(true);
+  });
+});

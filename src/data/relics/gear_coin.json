@@ -1,11 +1,15 @@
 {
   "id": "gear_coin",
   "i18n": "relic.gear_coin",
-  "timing": "onSell",
+  "timing": "onPlay",
   "effects": [
     {
       "kind": "draw",
-      "value": 1
+      "value": 1,
+      "condition": {
+        "type": "cardsPlayedThisTurn",
+        "n": 3
+      }
     }
   ],
   "once": "turn",
