@@ -3,7 +3,7 @@
  */
 import type { Action } from "../../../src/core/actions";
 import type { DomainEvent } from "../../../src/core/events";
-import { createBattleState, reduce, type BattleState } from "../../../src/core/combat";
+import { createBattleState, eyeAvailable, reduce, type BattleState } from "../../../src/core/combat";
 import {
   advanceNode,
   chooseNode,
@@ -82,6 +82,8 @@ export interface BattleRunConfig {
   relics: readonly string[];
   /** 难度档（docs/36 T2）；缺省 normal */
   difficulty?: RunDifficulty;
+  /** 职业特性（docs/58 §二）；缺省空串 = 无特性（现版基线） */
+  traitId?: string;
 }
 
 export interface BattleRunOutcome {
@@ -222,6 +224,30 @@ export function bestReward(ids: readonly string[], content: ContentDb): string |
   return best?.id ?? null;
 }
 
+/**
+ * 神眼取牌策略（docs/58 §七.2）：仅当（a）神眼本回合可用、（b）牌库里存在比「手里最差的一张」
+ * 更值钱的牌时才出手。用 `cardValue` 同一把尺子量手牌与牌库，避免引入第二套估值口径。
+ */
+function chooseEyePick(state: BattleState, content: ContentDb): string | null {
+  if (!eyeAvailable(state)) return null;
+  const draw = state.piles.draw;
+  if (draw.length === 0) return null;
+  const valueOf = (instanceId: string): number => {
+    const inst = state.cardInstances[instanceId];
+    const def = inst ? content.cards.get(inst.cardId) : undefined;
+    return def ? cardValue(def) : 0;
+  };
+  const worstHand =
+    state.piles.hand.length === 0 ? Number.POSITIVE_INFINITY : Math.min(...state.piles.hand.map(valueOf));
+  let best: { id: string; value: number } | null = null;
+  for (const id of draw) {
+    const value = valueOf(id);
+    if (!best || value > best.value) best = { id, value };
+  }
+  if (!best || best.value <= worstHand) return null;
+  return best.id;
+}
+
 /** 跑完一整场战斗，返回终局状态与统计（主线与场景直开共用）。 */
 export function runBattle(content: ContentDb, config: BattleRunConfig): BattleRunOutcome {
   let state: BattleState = createBattleState({
@@ -233,6 +259,7 @@ export function runBattle(content: ContentDb, config: BattleRunConfig): BattleRu
     relics: [...config.relics],
     content,
     difficulty: config.difficulty ?? "normal",
+    traitId: config.traitId ?? "",
   });
   state = reduce(state, { type: "Noop", actionId: "s" }).state;
 
@@ -243,6 +270,13 @@ export function runBattle(content: ContentDb, config: BattleRunConfig): BattleRu
 
   while (state.phase !== "battleEnd" && guard < MAX_BATTLE_ACTIONS) {
     guard += 1;
+    // 神眼（docs/58 §七.2）：每回合一次从牌库取牌。sim 只在「牌库里最值钱的一张 > 手里最差的一张」
+    // 时才用——既让超级大畸变的收益在报表里可见，又不让 AI 无脑刷牌（那会高估特性）。
+    const eyeId = chooseEyePick(state, content);
+    if (eyeId !== null) {
+      state = reduce(state, { type: "PickFromDraw", actionId: `y${guard}`, instanceId: eyeId }).state;
+      continue;
+    }
     const target = chooseTarget(state) ?? null;
     const playIndex = choosePlay(state, content, target);
     const action: Action =
@@ -282,6 +316,10 @@ export function simulateRun(
    * 不传则按职业默认偏好（老口径，保证既有基线可复现）。
    */
   companionId?: string,
+  /**
+   * 职业特性（docs/58 §二）：传了就整局绑定该特性；缺省空串 = 无特性（现版玩法对照组/基线）。
+   */
+  traitId = "",
 ): SimResult {
   const cls = content.classes.get(classId) ?? [...content.classes.values()][0];
   if (!cls) throw new Error("内容里没有任何职业定义");
@@ -302,7 +340,7 @@ export function simulateRun(
       : t1.includes(preferred)
         ? preferred
         : (t1[0] ?? "");
-  let run = createRunState(act, cls, seed, { unlocked, difficulty, companionRelic: companion });
+  let run = createRunState(act, cls, seed, { unlocked, difficulty, companionRelic: companion, traitId });
   const deck: SimCard[] = cls.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
   const relics = [...(cls.startRelics ?? []), ...(companion ? [companion] : [])];
   // 身份件（docs/55 Q1）：loseRelic 与「可典当」条件都要把它排除在外
@@ -383,6 +421,7 @@ export function simulateRun(
         deck,
         relics,
         difficulty: run.difficulty,
+        traitId: run.traitId,
       });
 
       turns += battle.turns;

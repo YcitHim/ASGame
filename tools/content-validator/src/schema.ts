@@ -12,6 +12,7 @@ import {
   ENHANCEMENT_TIERS,
   KEYWORD_IDS,
   TARGET_IDS,
+  TRAIT_HANDLER_IDS,
 } from "../../../src/core/registry/ids";
 
 /** 内容 id 命名规范：snake_case（docs/04 §4）。 */
@@ -435,6 +436,19 @@ export const classSchema = z
   .strict();
 
 export type ClassJson = z.infer<typeof classSchema>;
+
+/** 职业特性（docs/58 §二）：id / 归属职业 / 文案 / handler / params，机制逻辑在 TS 侧。 */
+export const traitSchema = z
+  .object({
+    id: idSchema,
+    classId: z.string().regex(ID_PATTERN),
+    i18n: z.string(),
+    handler: z.enum(TRAIT_HANDLER_IDS),
+    params: z.record(z.string(), z.unknown()),
+  })
+  .strict();
+
+export type TraitJson = z.infer<typeof traitSchema>;
 
 export type EnemyJson = z.infer<typeof enemySchema>;
 export type ActJson = z.infer<typeof actSchema>;

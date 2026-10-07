@@ -2,7 +2,7 @@
   "id": "bloodwright",
   "i18n": "class.bloodwright",
   "player": {
-    "maxHp": 66,
+    "maxHp": 70,
     "energy": 3
   },
   "startDeck": [

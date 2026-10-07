@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from "vue";
 import { useRouter } from "vue-router";
-import { previewEnergyCost, type BattleState } from "@/core/combat";
+import { eyeAvailable, previewEnergyCost, type BattleState } from "@/core/combat";
 import type { CardDefinition } from "@/core/registry";
 import { loadGameContent, t } from "@/data/load";
 import { useBattleStore } from "@/stores/battle";
@@ -23,6 +23,7 @@ import DebugConsole from "@/ui/components/DebugConsole.vue";
 import EnergyOrb from "@/ui/components/EnergyOrb.vue";
 import HpBar from "@/ui/components/HpBar.vue";
 import IntentIcon from "@/ui/components/IntentIcon.vue";
+import LibraryPicker from "@/ui/components/LibraryPicker.vue";
 import PollutionGauge from "@/ui/components/PollutionGauge.vue";
 
 const router = useRouter();
@@ -38,6 +39,8 @@ const game = loadGameContent();
 const showLog = ref(false);
 const shaking = ref(false);
 const isDev = isDebugEnabled();
+/** 神眼取牌浮层开合（docs/58 §七.2）；只做表现，可用性由 core 判定 */
+const eyeOpen = ref(false);
 
 /** 教学每场开打前的 HP 下限：够付最高的一张血契（调血 5 血），保证机制课不会"没血可付"。 */
 const TUTORIAL_MIN_HP = 25;
@@ -104,6 +107,11 @@ function onKeydown(event: KeyboardEvent): void {
   if (event.key !== "Escape") return;
   // 拖动中 ESC = 取消这次出牌（docs/51 §三），交给拖拽自己的监听处理，不抢去开设置
   if (drag.value) return;
+  // 神眼浮层 ESC = 收起浮层，不落到设置页
+  if (eyeOpen.value) {
+    eyeOpen.value = false;
+    return;
+  }
   // 瞄准态 ESC = 取消瞄准（与拖拽口径一致）
   if (store.targeting !== null) {
     store.selectTargetNoop();
@@ -177,6 +185,29 @@ const hand = computed(() =>
 );
 
 const logEntries = computed<LogEntry[]>(() => store.log.map((e) => describeEvent(e, store.enemyNames)));
+
+/**
+ * 神眼（docs/58 §七.2）：超级大畸变·神眼档（开局污染快照 ≥400）解锁，每回合一次从**牌库**取一张。
+ * 可用性走 core 的 eyeAvailable（与结算同源），UI 只负责开合浮层与转发选择。
+ */
+const eyeReady = computed(() => (state.value ? eyeAvailable(state.value) : false));
+/** 牌库可选实例（核心抽牌堆顺序），传给选牌浮层。 */
+const drawPile = computed(() => state.value?.piles.draw ?? []);
+
+function openEye(): void {
+  if (!eyeReady.value || !canAct.value) return;
+  eyeOpen.value = true;
+}
+
+function chooseFromDraw(instanceId: string): void {
+  eyeOpen.value = false;
+  store.pickFromDraw(instanceId);
+}
+
+// 用掉本回合名额 / 回合切换后，浮层必须收起——否则会停在「已不可选」的旧状态上
+watch(eyeReady, (ready) => {
+  if (!ready) eyeOpen.value = false;
+});
 
 /**
  * 蓄力释放红屏（甲方 2026-10-07）：**释放这一下**才泛红。
@@ -825,6 +856,15 @@ function quitToTitleKeepRun(): void {
           <div class="pile" :title="'消耗堆 ' + (state?.piles.exhaust.length ?? 0) + ' 张'">
             <span>{{ state?.piles.exhaust.length ?? 0 }}</span><b>消耗堆</b>
           </div>
+          <button
+            v-if="eyeReady"
+            class="eye-btn"
+            :disabled="!canAct"
+            title="神眼：从牌库任选一张入手（每回合一次）"
+            @click="openEye"
+          >
+            神 眼
+          </button>
           <button class="endturn" :disabled="!canAct" @click="store.endTurn()">结束回合</button>
         </div>
       </div>
@@ -906,6 +946,15 @@ function quitToTitleKeepRun(): void {
         @command="store.debug($event)"
       />
       </div>
+
+      <!-- 神眼取牌（docs/58 §七.2）：从牌库任选一张入手 -->
+      <LibraryPicker
+        v-if="eyeOpen && state"
+        :instance-ids="drawPile"
+        :instances="state.cardInstances"
+        @pick="chooseFromDraw"
+        @close="eyeOpen = false"
+      />
 
       <!-- 战斗中途回主菜单的确认（避免手滑丢掉这一局的战场） -->
       <div v-if="menuOpen" class="menu-confirm" @click.self="menuOpen = false">
@@ -1125,6 +1174,15 @@ function quitToTitleKeepRun(): void {
 }
 .endturn:hover:not(:disabled) { background: linear-gradient(180deg, #3a2d1a, #1d1509); color: #fff; }
 .endturn:disabled { opacity: 0.45; cursor: not-allowed; }
+/* 神眼（docs/58 §七.2）：畸变专属出口，压在「结束回合」左侧。污染紫，区别于常规金色操作 */
+.eye-btn {
+  margin-left: 10px; padding: 12px 18px; font-family: var(--serif-title); font-size: 13px; letter-spacing: 0.24em;
+  color: #e6d4ff; background: linear-gradient(180deg, #35204a, #1c1030);
+  border: 1px solid #9e6ac2; border-radius: var(--radius-sm);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 18px rgba(158, 106, 194, 0.4);
+}
+.eye-btn:hover:not(:disabled) { background: linear-gradient(180deg, #46295f, #25143c); color: #fff; }
+.eye-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 .message {
   position: absolute; left: 50%; bottom: 220px; transform: translateX(-50%); z-index: 35;

@@ -57,6 +57,47 @@ const act2Deck: GoldenDeckEntry[] = [
   base("gearspin"),
 ];
 
+/** docs/58 特性回归：血械嗜血盘——多带血契牌，保证「自伤 + 造伤」两段都跑到 */
+const bloodthirstDeck: GoldenDeckEntry[] = [
+  ...Array.from({ length: 4 }, () => base("strike")),
+  ...Array.from({ length: 3 }, () => base("defend")),
+  ...Array.from({ length: 3 }, () => base("bloodbolt")),
+];
+
+/** docs/58 特性回归：锈语者畸变盘——开局污染 400（触手 / 大鲨臂 / 神眼三档全开） */
+const mutationDeck: GoldenDeckEntry[] = [
+  ...Array.from({ length: 2 }, () => base("rustspit")),
+  base("rustnail"),
+  ...Array.from({ length: 3 }, () => base("scrapguard")),
+  ...Array.from({ length: 2 }, () => base("toxsip")),
+  base("venthex"),
+  base("salve"),
+  base("rustspit"),
+];
+
+/**
+ * docs/58 §五 铁皮王八盘：**防御 + 少量收尾**——AI 打分里格挡只值 0.7×，
+ * 所以卡组以格挡牌为主（逼它每回合把格挡铺到 8 点以上，跑到「回合末判定格挡 → 得荆棘 → 反弹」），
+ * 另留足量攻击牌让战斗能正常收尾（纯防御盘会拖成 60+ 回合的僵局，哨兵价值低）。
+ * 甲方 2026-10-07 三次修订后荆棘改为**每回合刷新**（不再累加），输出更依赖主动攻击。
+ */
+const ironhideDeck: GoldenDeckEntry[] = [
+  ...Array.from({ length: 5 }, () => base("brassguard")),
+  ...Array.from({ length: 2 }, () => base("coiled_spring")),
+  ...Array.from({ length: 4 }, () => base("pistonjab")),
+];
+
+/**
+ * docs/58 §六 玻璃大炮盘：**蓄能向卡组**——
+ * grandwindup(+10)/chargeup(+3) 把充能推过 10 攒出超负荷，攻击牌由 AI 优先打出，
+ * 于是「身上已有超负荷时的第一张攻击牌」这条爆发链一定会被跑到（通常在第 3 回合）。
+ */
+const glassCannonDeck: GoldenDeckEntry[] = [
+  ...Array.from({ length: 3 }, () => base("grandwindup")),
+  ...Array.from({ length: 3 }, () => base("chargeup")),
+  ...Array.from({ length: 3 }, () => base("pistonjab")),
+];
+
 const battles = [
   recordBattle({
     content,
@@ -122,6 +163,52 @@ const battles = [
     deck: act2Deck,
     relics: ["dentedcoil", "pressuregauge", "rust_charm"],
     seed: 20261006,
+  }),
+  // 职业特性（docs/58）回归盘：每个特性一张，走真实回合循环把特性钩子跑全
+  recordBattle({
+    content,
+    id: "golden-trait-bloodthirst",
+    nodeId: "n1",
+    enemies: ["rust_hound", "polluting_preacher"],
+    deck: bloodthirstDeck,
+    relics: ["broken_oil", "blood_pump"],
+    seed: 20261007,
+    maxHp: 70, // docs/58 §三 血械 66 → 70
+    traitId: "bloodthirst",
+  }),
+  recordBattle({
+    content,
+    id: "golden-trait-turtle",
+    nodeId: "n2",
+    enemies: ["corroded_swarm", "riveted_heavy"],
+    deck: ironhideDeck,
+    relics: ["dentedcoil", "pressuregauge"],
+    seed: 20261008,
+    maxHp: 50, // docs/58 §三 炉心 66 → 50
+    traitId: "ironhide_turtle",
+  }),
+  recordBattle({
+    content,
+    id: "golden-trait-cannon",
+    nodeId: "n2",
+    enemies: ["corroded_swarm", "riveted_heavy"],
+    deck: glassCannonDeck,
+    relics: ["dentedcoil", "pressuregauge"],
+    seed: 20261009,
+    maxHp: 50,
+    traitId: "glass_cannon",
+  }),
+  recordBattle({
+    content,
+    id: "golden-trait-mutation",
+    nodeId: "n2",
+    enemies: ["corroded_swarm", "riveted_heavy"],
+    deck: mutationDeck,
+    relics: ["rust_rosary"],
+    seed: 20261010,
+    maxHp: 60, // docs/58 §三 锈语者 66 → 60
+    traitId: "super_mutation",
+    pollution: 400, // 开局快照：触手 + 大鲨臂 + 神眼三档全开
   }),
 ];
 

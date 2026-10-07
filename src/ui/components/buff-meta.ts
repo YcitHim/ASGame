@@ -32,6 +32,8 @@ export const BUFF_META: Record<string, BuffMeta> = {
   chill: { name: "冰缓", glyph: "缓", tint: "#3f5a7a", unit: "回合" },
   reverse: { name: "颠倒", glyph: "颠", tint: "#5b3a7a", unit: "回合" },
   stun: { name: "眩晕", glyph: "晕", tint: "#3f2f6b", unit: "回合" },
+  // 玻璃大炮专属（docs/58 §六.2）：层级型减益，战斗结束清零
+  overload: { name: "超负荷", glyph: "荷", tint: "#8c5a1f", unit: "层" },
 };
 
 export function buffMeta(id: string): BuffMeta {

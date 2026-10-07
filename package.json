@@ -21,7 +21,8 @@
     "test:replay": "vitest run tests/unit/golden-replay.spec.ts",
     "sync": "tsx tools/sync/src/cli.ts",
     "sim:2act": "tsx tools/headless-sim/src/cli.ts 400 --acts 2",
-    "sim:companions": "tsx tools/headless-sim/src/companion-report.ts"
+    "sim:companions": "tsx tools/headless-sim/src/companion-report.ts",
+    "sim:traits": "tsx tools/headless-sim/src/trait-report.ts"
   },
   "dependencies": {
     "pinia": "^4.0.3",

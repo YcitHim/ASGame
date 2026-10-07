@@ -68,7 +68,7 @@ export interface EventPayloadMap {
   HpLost: {
     targetId: string;
     value: number;
-    reason: "damage" | "bloodpact" | "pollution" | "backlash" | "burn";
+    reason: "damage" | "bloodpact" | "pollution" | "backlash" | "burn" | "overload";
   };
   HpHealed: { targetId: string; value: number; total: number; reason: "regen" | "card" | "relic" };
   BuffApplied: { targetId: string; buffId: string; stacks: number; duration: number | null };

@@ -822,5 +822,19 @@
   "event.silent_confession.opt.b.result": "一只手从口子里伸出来收下你的血，留下一小瓶东西。",
   "event.silent_confession.opt.c.label": "离开",
   "event.silent_confession.opt.c.result": "有些话，你自己也不想听第二遍。",
-  "event.cond.loseableRelicAtLeast": "需要至少 {v} 件可典当遗物 · 当前 {c}"
+  "event.cond.loseableRelicAtLeast": "需要至少 {v} 件可典当遗物 · 当前 {c}",
+  "trait.select.title": "选择你的特性",
+  "trait.select.hint": "特性开局选定、全程绑定本局，不可更换。选「无特性」即纯现版玩法。",
+  "trait.none.name": "无特性",
+  "trait.none.desc": "不带任何特性进图。纯现版玩法，也是所有平衡的对照线。",
+  "trait.bloodthirst.name": "嗜血",
+  "trait.bloodthirst.desc": "每回合若既未造伤、也未自伤：力量 −1（力量见底则改上 1 层虚弱）。本回合造伤与自伤各满 3 点：下回合获得 2 层再生——每多凑满一组 3+3，再加 2 层。",
+  "trait.ironhide_turtle.name": "铁皮王八",
+  "trait.ironhide_turtle.desc": "充能不再加伤，改为每次获得格挡时 +充能层数。回合结束时按本回合格挡判定，每 8 点折算 1 层荆棘，并覆盖上一回合的层数——这回合不打格挡，下回合荆棘就归零。荆棘上限提升到 10 层。",
+  "trait.glass_cannon.name": "玻璃大炮",
+  "trait.glass_cannon.desc": "充能不再触发过载反噬。超出 10 的每 5 点充能化为 1 层超负荷：每层让你回合开始失去 2 点生命、且受到的伤害 +1（可叠加）。每回合开始若充能不足 10，额外获得 1 点能量。每回合第一张攻击牌附加等同于当前充能的伤害、随后充能清零，并先把身上的超负荷整体甩给敌方（打全体则全敌都上）再结算这一击——所以甩出去的超负荷会当场放大伤害，自身清零。",
+  "trait.super_mutation.name": "超级大畸变",
+  "trait.super_mutation.desc": "污染不再封顶；每累计满 100 立即反噬一次（不清零，可继续突破）。战斗开局按污染快照获得畸变：≥200 每回合首张牌免能；≥300 首张牌结算两次；≥400 每回合可从牌库任选一张入手。战斗胜利，污染 −50。",
+  "trait.badge": "特性",
+  "trait.none.short": "无特性"
 }

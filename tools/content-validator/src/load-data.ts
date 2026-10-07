@@ -49,6 +49,7 @@ export function loadContent(): ContentInput {
     relics: loadJsonFiles(join(DATA_ROOT, "relics")),
     events: loadJsonFiles(join(DATA_ROOT, "events")),
     classes: loadJsonFiles(join(DATA_ROOT, "classes")),
+    traits: loadJsonFiles(join(DATA_ROOT, "traits")),
     i18n,
   };
 }

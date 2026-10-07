@@ -25,6 +25,10 @@ export interface GoldenBattle {
   relics: string[];
   seed: number;
   player: { maxHp: number; energy: number };
+  /** 职业特性（docs/58 §二）：缺省空串 = 无特性（老基线盘不受影响） */
+  traitId?: string;
+  /** 开局污染（docs/58 §七.2 畸变阈值快照用） */
+  pollution?: number;
   actions: Action[];
   /** 事件流哈希（重放必须一致） */
   eventHash: string;
@@ -56,22 +60,29 @@ export interface RecordBattleArgs {
   seed: number;
   maxHp?: number;
   energy?: number;
+  /** 职业特性（docs/58 §二）：缺省 = 无特性 */
+  traitId?: string;
+  /** 开局污染（docs/58 §七.2） */
+  pollution?: number;
 }
 
 export function recordBattle(args: RecordBattleArgs): GoldenBattle {
   const maxHp = args.maxHp ?? 66;
   const energy = args.energy ?? 3;
+  const traitId = args.traitId ?? "";
+  const pollution = args.pollution ?? 0;
 
   const start: Action = { type: "Noop", actionId: "start" };
   let state = createBattleState({
     battleId: args.id,
     seed: args.seed,
-    player: { maxHp, energy },
+    player: { maxHp, energy, pollution },
     enemies: args.enemies.map((id) => ({ id })),
     deck: args.deck.map((c) => ({ cardId: c.cardId, upgraded: c.upgraded, enhancements: c.enhancements })),
     handSize: 5,
     relics: [...args.relics],
     content: args.content,
+    traitId,
   });
 
   const actions: Action[] = [start];
@@ -106,6 +117,8 @@ export function recordBattle(args: RecordBattleArgs): GoldenBattle {
     relics: [...args.relics],
     seed: args.seed,
     player: { maxHp, energy },
+    ...(traitId ? { traitId } : {}),
+    ...(pollution > 0 ? { pollution } : {}),
     actions,
     eventHash: hashEvents(events),
     eventTypes: events.map((e) => e.type).slice(0, 40),
@@ -120,12 +133,13 @@ export function replayBattle(file: GoldenFile, content: ContentDb): { hash: stri
   let state = createBattleState({
     battleId: b.id,
     seed: b.seed,
-    player: b.player,
+    player: { ...b.player, pollution: b.pollution ?? 0 },
     enemies: b.enemies.map((id) => ({ id })),
     deck: b.deck.map((c) => ({ cardId: c.cardId, upgraded: c.upgraded, enhancements: c.enhancements })),
     handSize: 5,
     relics: b.relics,
     content,
+    traitId: b.traitId ?? "",
   });
   const events: DomainEvent[] = [];
   for (const action of b.actions) {

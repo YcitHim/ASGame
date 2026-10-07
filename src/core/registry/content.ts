@@ -5,7 +5,17 @@
  * core 只认这些类型，不读文件系统、不 import UI（G3）。
  */
 import type { ModifierOp, ValueKind } from "../pipeline";
-import type { BuffId, CardHandlerId, CardRarity, CardType, ConditionId, EnhancementHandlerId, KeywordId, TargetId } from "./ids";
+import type {
+  BuffId,
+  CardHandlerId,
+  CardRarity,
+  CardType,
+  ConditionId,
+  EnhancementHandlerId,
+  KeywordId,
+  TargetId,
+  TraitHandlerId,
+} from "./ids";
 
 export interface TargetRef {
   readonly type: TargetId;
@@ -87,6 +97,21 @@ export interface ClassDefinition {
   readonly startRelics?: readonly string[];
   /** 解锁条件：default = 初始可用；first_boss_clear 等由 meta 层判定（docs/29 §三⑨） */
   readonly unlock?: string;
+}
+
+/**
+ * 职业特性（docs/58 §二）：开局选定、全程绑定本局的一档「隐藏遗物」。
+ *
+ * 只声明 id / 归属职业 / 文案 / handler 与参数——机制逻辑住在 trait-handler.ts，
+ * 因此调数值 = 改 params，不改代码（与强化/遗物同构）。
+ */
+export interface TraitDefinition {
+  readonly id: string;
+  /** 该特性只在该职业的特性界面出现（docs/58 §一-1：工程师二选一，其余职业各一） */
+  readonly classId: string;
+  readonly i18n: string;
+  readonly handler: TraitHandlerId;
+  readonly params: Readonly<Record<string, unknown>>;
 }
 
 export interface CardUpgrade {
@@ -450,6 +475,8 @@ export interface ContentDb {
   readonly relics: ReadonlyMap<string, RelicDefinition>;
   readonly events: ReadonlyMap<string, EventDefinition>;
   readonly classes: ReadonlyMap<string, ClassDefinition>;
+  /** 职业特性（docs/58 §二） */
+  readonly traits: ReadonlyMap<string, TraitDefinition>;
 }
 
 export function createContentDb(partial: Partial<ContentDb> = {}): ContentDb {
@@ -460,7 +487,13 @@ export function createContentDb(partial: Partial<ContentDb> = {}): ContentDb {
     relics: partial.relics ?? new Map(),
     events: partial.events ?? new Map(),
     classes: partial.classes ?? new Map(),
+    traits: partial.traits ?? new Map(),
   };
+}
+
+/** 取某职业可选的特性（按 id 排序，稳定顺序；「无特性」由 UI 额外补一项）。 */
+export function traitsForClass(content: ContentDb, classId: string): readonly TraitDefinition[] {
+  return [...content.traits.values()].filter((t) => t.classId === classId).sort((a, b) => a.id.localeCompare(b.id));
 }
 
 export function emptyContent(): ContentDb {

@@ -8,6 +8,8 @@
 export type Action =
   | { readonly type: "PlayCard"; readonly actionId: string; readonly handIndex: number; readonly targetId?: string }
   | { readonly type: "EndTurn"; readonly actionId: string }
+  /** 畸变神眼（docs/58 §七.2）：从牌库中任选一张牌加入手牌（每回合一次） */
+  | { readonly type: "PickFromDraw"; readonly actionId: string; readonly instanceId: string }
   | { readonly type: "SelectReward"; readonly actionId: string; readonly optionIndex: number }
   | { readonly type: "ChooseMapNode"; readonly actionId: string; readonly nodeId: string }
   | { readonly type: "ApplyEnhancement"; readonly actionId: string; readonly deckIndex: number; readonly enhancementId: string }

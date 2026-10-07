@@ -5,7 +5,7 @@
  * 不写任何数值逻辑——所有数字来自 core 事件载荷。
  */
 import { defineStore } from "pinia";
-import { createBattleState, reduce, validatePlayCardState, type BattleState } from "@/core/combat";
+import { createBattleState, pollutionCapFor, reduce, validatePlayCardState, type BattleState } from "@/core/combat";
 import { isCombatNode, rollEncounter } from "@/core/map";
 import type { Action } from "@/core/actions";
 import type { DomainEvent } from "@/core/events";
@@ -255,6 +255,8 @@ export const useBattleStore = defineStore("battle", {
         content: game.content,
         // 难度档（docs/36 T2）：敌人 HP / 伤害倍率在 core 里生效
         difficulty: run.run?.difficulty ?? "normal",
+        // 职业特性（docs/58 §二）：开局绑定本局，战斗内走注册表能力问询
+        traitId: run.run?.traitId ?? "",
       });
       // 图鉴「见过即解锁」：本场用到的卡 / 遗物 / 敌人都点亮（docs/16 4.7）
       const codex = useCodexStore();
@@ -286,7 +288,11 @@ export const useBattleStore = defineStore("battle", {
         // 战斗结束把剩余 HP / 污染写回局外进度（跨节点保留，供事件结算）
         // 教学战斗不写：它不是这局远征的一部分
         runStore.setHp(result.state.player.hp);
-        runStore.setPollution(result.state.player.pollution);
+        // 超级大畸变（docs/58 §七.1）：污染无视 100 封顶，写回同样不截断
+        runStore.setPollution(
+          result.state.player.pollution,
+          pollutionCapFor(loadGameContent().content, runStore.run?.traitId),
+        );
         runStore.noteTurns(result.state.turn);
       }
       // 提示生命周期（docs/41 §2.1）：新回合到达 → 上一回合的提示必须消失
@@ -448,6 +454,17 @@ export const useBattleStore = defineStore("battle", {
 
     selectTargetNoop(): void {
       this.targeting = null;
+    },
+
+    /**
+     * 神眼（docs/58 §七.2）：从牌库任选一张牌加入手牌，每回合一次。
+     * 合法性由 core 兜底（traitEyeAvailable）——这里只做表现层的前置短路。
+     */
+    pickFromDraw(instanceId: string): void {
+      if (!this.battle || this.playing || this.over) return;
+      if (this.battle.phase !== "playerAction") return;
+      this.clearMessage();
+      this.dispatch({ type: "PickFromDraw", actionId: `eye-${++actionCounter}`, instanceId });
     },
 
     debug(command: string): string {

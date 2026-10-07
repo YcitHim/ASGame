@@ -14,6 +14,7 @@ const router = createRouter({
   routes: [
     { path: "/", component: { template: "<div />" } },
     { path: "/map", component: { template: "<div />" } },
+    { path: "/trait-select", name: "trait-select", component: { template: "<div />" } },
   ],
 });
 
@@ -71,7 +72,7 @@ describe("docs/16 5.3 职业选择", () => {
     const run = useRunStore();
     expect(run.active).toBe(true);
     expect(run.classId).toBe("engineer");
-    expect(run.maxHp).toBe(66);
+    expect(run.maxHp).toBe(50);
     expect(
       run.deck.every(
         (c) =>

@@ -25,8 +25,8 @@ const event = (id: string) => {
   return def;
 };
 
-/** 局外 HP 一律 66（= 血械满血），百分比才好算：8%→5、15%→9、10%→6、30%→19… */
-const MAX = 66;
+/** 局外 HP 一律 70（= 血械满血，docs/58 §三 血量调整后），百分比才好算：8%→5、15%→10、30%→21… */
+const MAX = 70;
 const ctx = (seed: number, over: Record<string, unknown> = {}) => ({
   seed,
   ownedRelics: [] as string[],
@@ -60,16 +60,16 @@ describe("docs/54 §三 E1 hpPercent：代价随上限缩放", () => {
     const a1 = resolveEventOption(content, event("gear_gamble"), "a", ctx(99));
     const a2 = resolveEventOption(content, event("gear_gamble"), "a", ctx(99));
     expect(a1).toEqual(a2);
-    // 66 × 8% = 5.28 → 向下取整 5
+    // 70 × 8% = 5.6 → 向下取整 5
     expect(a1?.hpDelta).toBe(-5);
     expect([0, 1]).toContain(a1?.outcomeIndex);
     if (a1?.outcomeIndex === 0) expect(a1.cardIds).toHaveLength(1);
     else expect(a1?.cardIds).toHaveLength(0);
 
     const b = resolveEventOption(content, event("gear_gamble"), "b", ctx(99));
-    expect(b?.hpDelta).toBeLessThanOrEqual(-9); // 66 × 15% = 9.9 → 9
+    expect(b?.hpDelta).toBeLessThanOrEqual(-10); // 70 × 15% = 10.5 → 10
     if (b?.outcomeIndex === 0) expect(b.relicIds).toHaveLength(1);
-    else expect(b?.hpDelta).toBe(-9 - 6); // 再失 10% = 6
+    else expect(b?.hpDelta).toBe(-10 - 7); // 再失 10% = 7
 
     const leave = resolveEventOption(content, event("gear_gamble"), "c", ctx(99));
     expect(leave?.hpDelta).toBe(0);
@@ -82,11 +82,11 @@ describe("docs/54 §三 E1 hpPercent：代价随上限缩放", () => {
   });
 
   it("换血人 −15% / −6%；净化圣泉浸入 −8%；垂死 −6%；净罪 −10%（旧版写死的点数已换算）", () => {
-    expect(resolveEventOption(content, event("blood_trader"), "a", ctx(1))?.hpDelta).toBe(-9);
-    expect(resolveEventOption(content, event("blood_trader"), "b", ctx(1))?.hpDelta).toBe(-3);
+    expect(resolveEventOption(content, event("blood_trader"), "a", ctx(1))?.hpDelta).toBe(-10);
+    expect(resolveEventOption(content, event("blood_trader"), "b", ctx(1))?.hpDelta).toBe(-4);
     expect(resolveEventOption(content, event("pure_spring"), "b", ctx(2))?.hpDelta).toBe(-5);
-    expect(resolveEventOption(content, event("dying_pilgrim"), "a", ctx(4))?.hpDelta).toBe(-3);
-    expect(resolveEventOption(content, event("sanctum_absolution"), "a", ctx(6))?.hpDelta).toBe(-6);
+    expect(resolveEventOption(content, event("dying_pilgrim"), "a", ctx(4))?.hpDelta).toBe(-4);
+    expect(resolveEventOption(content, event("sanctum_absolution"), "a", ctx(6))?.hpDelta).toBe(-7);
   });
 });
 
@@ -266,7 +266,7 @@ describe("事件在 runStore 的落库（docs/27 §三 / docs/54）", () => {
     run.run = { ...run.run!, hp: 20 };
     run.resolveEvent("a");
     expect(run.relics).toHaveLength(2);
-    expect(run.hp).toBe(39); // 20 + 30% × 66 = 19
+    expect(run.hp).toBe(41); // 20 + 30% × 70 = 21
   });
 
   it("E2：结果要求删牌时先选牌，选完才能继续", () => {

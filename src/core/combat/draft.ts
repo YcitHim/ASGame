@@ -13,6 +13,7 @@ import type { IntentPayload } from "../events";
 import type { Modifier } from "../pipeline";
 import type { CardInstance, EnemyState, Phase, BattleState } from "./state";
 import type { EffectWork } from "./work";
+import type { TraitSnapshot } from "../registry/trait-handler";
 
 export interface MutableUnit {
   readonly id: string;
@@ -70,6 +71,17 @@ export interface Draft {
   /** 颠倒（docs/46 §3.8）：本回合手牌费用的随机覆盖，回合开始重掷 */
   reverseCosts: Record<string, number>;
   tookDamageThisTurn: boolean;
+  /** 职业特性 id（docs/58 §二）：null = 无特性 */
+  traitId: string | null;
+  /** 战斗开局快照（畸变阈值） */
+  traitSnapshot: TraitSnapshot;
+  /** 本回合累计造伤 / 自伤（嗜血，docs/58 §四） */
+  dealtDamageThisTurn: number;
+  selfHpSpentThisTurn: number;
+  /** 本回合已打出的攻击牌数（玻璃大炮首张攻击牌） */
+  attackCardsPlayedThisTurn: number;
+  /** 本回合神眼是否已用 */
+  eyeUsedThisTurn: boolean;
   player: MutablePlayer;
   enemies: MutableEnemy[];
   draw: string[];
@@ -101,6 +113,12 @@ export function toDraft(state: BattleState): Draft {
     cardsPlayedThisTurn: state.cardsPlayedThisTurn,
     reverseCosts: { ...state.reverseCosts },
     tookDamageThisTurn: state.tookDamageThisTurn,
+    traitId: state.traitId,
+    traitSnapshot: state.traitSnapshot,
+    dealtDamageThisTurn: state.dealtDamageThisTurn,
+    selfHpSpentThisTurn: state.selfHpSpentThisTurn,
+    attackCardsPlayedThisTurn: state.attackCardsPlayedThisTurn,
+    eyeUsedThisTurn: state.eyeUsedThisTurn,
     player: {
       id: "player",
       hp: state.player.hp,
@@ -204,6 +222,12 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
     cardsPlayedThisTurn: draft.cardsPlayedThisTurn,
     reverseCosts: { ...draft.reverseCosts },
     tookDamageThisTurn: draft.tookDamageThisTurn,
+    traitId: draft.traitId,
+    traitSnapshot: draft.traitSnapshot,
+    dealtDamageThisTurn: draft.dealtDamageThisTurn,
+    selfHpSpentThisTurn: draft.selfHpSpentThisTurn,
+    attackCardsPlayedThisTurn: draft.attackCardsPlayedThisTurn,
+    eyeUsedThisTurn: draft.eyeUsedThisTurn,
     eventSeq,
     content: draft.content,
   };

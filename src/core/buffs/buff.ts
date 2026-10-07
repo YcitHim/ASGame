@@ -15,9 +15,10 @@ function refreshDuration(current: number | null, incoming: number | null | undef
   return Math.max(current ?? 0, incoming ?? 0);
 }
 
-function clampStacks(id: BuffInstance["id"], stacks: number): number {
+function clampStacks(id: BuffInstance["id"], stacks: number, override?: number): number {
   const def = buffDefinition(id);
-  const capped = def.maxStacks == null ? stacks : Math.min(stacks, def.maxStacks);
+  const cap = override ?? def.maxStacks;
+  const capped = cap == null ? stacks : Math.min(stacks, cap);
   return capped < 0 ? 0 : capped;
 }
 
@@ -60,11 +61,12 @@ export function applyBuff(buffs: readonly BuffInstance[], input: ApplyBuffInput)
   const def = buffDefinition(input.id);
   const existing = findBuff(buffs, input.id);
   const incomingDuration = resolveDuration(def, input);
+  const cap = input.maxStacks;
 
   if (!existing) {
     const fresh: BuffInstance = {
       id: input.id,
-      stacks: clampStacks(input.id, input.stacks),
+      stacks: clampStacks(input.id, input.stacks, cap),
       duration: def.applyAs === "stacks" ? null : incomingDuration,
     };
     if (fresh.stacks <= 0 && def.applyAs === "stacks") return buffs.slice();
@@ -75,15 +77,15 @@ export function applyBuff(buffs: readonly BuffInstance[], input: ApplyBuffInput)
   let duration: number | null;
   switch (def.stacking) {
     case "stack":
-      stacks = clampStacks(input.id, existing.stacks + input.stacks);
+      stacks = clampStacks(input.id, existing.stacks + input.stacks, cap);
       duration = existing.duration;
       break;
     case "refreshOnly":
-      stacks = clampStacks(input.id, Math.max(existing.stacks, input.stacks));
+      stacks = clampStacks(input.id, Math.max(existing.stacks, input.stacks), cap);
       duration = refreshDuration(existing.duration, incomingDuration);
       break;
     default:
-      stacks = clampStacks(input.id, existing.stacks + input.stacks);
+      stacks = clampStacks(input.id, existing.stacks + input.stacks, cap);
       duration = refreshDuration(existing.duration, incomingDuration);
       break;
   }

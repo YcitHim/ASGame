@@ -27,6 +27,8 @@ export function simulateEliteScenario(
   seed: number,
   classId = "bloodwright",
   difficulty: RunDifficulty = "normal",
+  /** 职业特性（docs/58 §二）；缺省空串 = 无特性 */
+  traitId = "",
 ): ScenarioResult {
   const cls = content.classes.get(classId) ?? [...content.classes.values()][0];
   if (!cls) throw new Error("内容里没有任何职业定义");
@@ -34,7 +36,7 @@ export function simulateEliteScenario(
   const t1 = relicPool(content, 1, unlocked);
   const preferred = classId === "engineer" ? "pressuregauge" : classId === "rustspeaker" ? "whetstone" : "blood_pump";
   const companion = t1.includes(preferred) ? preferred : (t1[0] ?? "");
-  const run = createRunState(act, cls, seed, { unlocked, difficulty, companionRelic: companion });
+  const run = createRunState(act, cls, seed, { unlocked, difficulty, companionRelic: companion, traitId });
   const deck: SimCard[] = cls.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
 
   // 2 张抓牌：走真实奖励流程，避免凭空造卡
@@ -58,6 +60,7 @@ export function simulateEliteScenario(
     deck,
     relics: [...(cls.startRelics ?? []), ...(companion ? [companion] : [])],
     difficulty,
+    traitId,
   });
 
   return {

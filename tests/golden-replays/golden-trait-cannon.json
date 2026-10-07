@@ -1,0 +1,297 @@
+{
+  "version": 1,
+  "recordedAt": "2026-10-05",
+  "content": "rust-and-blood",
+  "battle": {
+    "id": "golden-trait-cannon",
+    "nodeId": "n2",
+    "enemies": [
+      "corroded_swarm",
+      "riveted_heavy"
+    ],
+    "deck": [
+      {
+        "cardId": "grandwindup",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "grandwindup",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "grandwindup",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "chargeup",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "chargeup",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "chargeup",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "pistonjab",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "pistonjab",
+        "upgraded": false,
+        "enhancements": []
+      },
+      {
+        "cardId": "pistonjab",
+        "upgraded": false,
+        "enhancements": []
+      }
+    ],
+    "relics": [
+      "dentedcoil",
+      "pressuregauge"
+    ],
+    "seed": 20261009,
+    "player": {
+      "maxHp": 50,
+      "energy": 3
+    },
+    "traitId": "glass_cannon",
+    "actions": [
+      {
+        "type": "Noop",
+        "actionId": "start"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p1",
+        "handIndex": 1,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p2",
+        "handIndex": 0,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p3",
+        "handIndex": 0,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e4"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p5",
+        "handIndex": 2,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p6",
+        "handIndex": 2,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p7",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e8"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p9",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p10",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p11",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p12",
+        "handIndex": 1,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e13"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p14",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p15",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p16",
+        "handIndex": 1,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e17"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p18",
+        "handIndex": 3,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p19",
+        "handIndex": 3,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p20",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e21"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p22",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p23",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e24"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p25",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p26",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p27",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e28"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p29",
+        "handIndex": 1,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p30",
+        "handIndex": 1,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p31",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e32"
+      }
+    ],
+    "eventHash": "3c6c4883a302281e91f031b9051754282c73c2d7ed52239d346229606bf500f4",
+    "eventTypes": [
+      "BattleStarted",
+      "CardsDrawn",
+      "ChargeChanged",
+      "ChargeChanged",
+      "IntentRevealed",
+      "IntentRevealed",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "DamageDealt",
+      "HpLost",
+      "CardPlayed",
+      "ChargeChanged",
+      "CardExhausted",
+      "CardPlayed",
+      "ChargeChanged",
+      "BuffApplied",
+      "TurnEnded",
+      "PollutionChanged",
+      "BuffApplied",
+      "BuffTicked",
+      "HpLost",
+      "TurnStarted",
+      "DeckShuffled",
+      "CardsDrawn",
+      "IntentRevealed",
+      "IntentRevealed",
+      "CardPlayed",
+      "ChargeChanged",
+      "BuffExpired",
+      "BuffApplied",
+      "DamageDealt",
+      "HpLost",
+      "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "UnitDied",
+      "PollutionChanged",
+      "CardPlayed",
+      "ChargeChanged"
+    ],
+    "turns": 8,
+    "outcome": "lose"
+  }
+}

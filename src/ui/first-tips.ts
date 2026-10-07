@@ -31,7 +31,7 @@ export const FIRST_TIPS: readonly FirstTipDefinition[] = [
   {
     id: "charge",
     title: "蓄力与重击",
-    body: "敌人蓄力时会架起格挡，并在释放前一回合显示「即将造成 X 点伤害」。\n看到红框就是重击回合，先防御再输出。",
+    body: "敌人蓄力时会架起格挡，蓄力期间图标只标「蓄力」。\n它亮起红框、写着「蓄力重击 · 即将造成 X 点伤害」的那一回合，重击就要落下了——先防御再输出。",
   },
   {
     id: "energy",

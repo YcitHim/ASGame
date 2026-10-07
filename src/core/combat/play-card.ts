@@ -18,7 +18,8 @@ import {
 import type { EventSink } from "../events/event-sink";
 import { livingEnemies, toDraft, type Draft } from "./draft";
 import { resolveTriggers } from "./relics";
-import { enqueueEffects, loseHp, resolveEffects } from "./resolve";
+import { enqueueEffects, drainQueue, loseHp, resolveEffects } from "./resolve";
+import { traitFirstAttackBonus, traitFirstCardDouble, traitFirstCardFree, traitEyeAvailable, traitSpreadsOverload } from "./trait";
 import type { CardInstance, BattleState } from "./state";
 
 export interface EffectiveCard {
@@ -77,6 +78,13 @@ function withComputed(input: EffectiveCardInput): EffectiveCard {
 function modifierKind(modifier: Modifier): EnhancementModifier["kind"] {
   const parts = modifier.sourceId.split(":");
   return (parts[2] as EnhancementModifier["kind"]) ?? "attackDamage";
+}
+
+/** 卡面效果是否打全体（决定「一波打出去」把超负荷转嫁给一个还是所有敌人）。 */
+function isAoeCard(effects: readonly CardEffect[]): boolean {
+  return effects.some(
+    (e) => (e.target?.type ?? (e.kind === "damage" ? "chosenEnemy" : "self")) === "allEnemies",
+  );
 }
 
 /** 合并「升级」后的卡面（不含强化）。 */
@@ -171,7 +179,17 @@ export function previewEnergyCost(state: BattleState, handIndex: number): number
   if (!instance) return 99;
   const def = draft.content.cards.get(instance.cardId);
   if (!def) return 99;
+  // 触手（docs/58 §七.2）：本回合第一张牌不耗能——UI 与结算同源
+  if (traitFirstCardFree(draft)) return 0;
   return effectiveCardWithEnhancements(draft, instance, def).energyCost;
+}
+
+/**
+ * UI 预览：本回合神眼（docs/58 §七.2）是否可用。
+ * 每回合一次 + 开局快照污染 ≥400（神眼档）才解锁；与 core 结算同源，避免 UI 与引擎口径漂移。
+ */
+export function eyeAvailable(state: BattleState): boolean {
+  return traitEyeAvailable(toDraft(state));
 }
 
 export type PlayValidation =
@@ -198,7 +216,8 @@ export function validatePlayCard(draft: Draft, handIndex: number, targetId: stri
   if (!def) return { ok: false, reason: `卡牌定义缺失：${instance.cardId}` };
 
   const effective = effectiveCardWithEnhancements(draft, instance, def);
-  const cost = effective.energyCost;
+  // 触手（docs/58 §七.2）：本回合第一张牌不耗能
+  const cost = traitFirstCardFree(draft) ? 0 : effective.energyCost;
   if (cost > draft.player.energy) {
     return { ok: false, reason: `能量不足（需要 ${cost}，剩余 ${draft.player.energy}）` };
   }
@@ -271,16 +290,51 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
     costPaid: cost,
     bloodPaid,
   });
+
+  // —— 特性出牌期结算（docs/58 §六/§七）——
+  // 未出牌计数仍停留在本张之前，正是"第一张"的判定窗口。
+  const isAttack = def.type === "attack";
+  const isFirstAttack = isAttack && draft.attackCardsPlayedThisTurn === 0;
+  const doubleResolve = traitFirstCardDouble(draft);
+  const firstAttackBonus = isFirstAttack ? traitFirstAttackBonus(draft) : 0;
+  if (firstAttackBonus > 0) {
+    // 一波打出去（docs/58 §六.3）：附加等同当前充能的伤害，随后充能归零。
+    // 消耗不经 changeCharge → 不触发过载、不派发 onGainCharge（沿用现有「消耗不过载」口径）。
+    const before = draft.player.charge;
+    draft.player.charge = 0;
+    sink.emit("ChargeChanged", { targetId: "player", before, after: 0, delta: -before });
+  }
+
   // 「本回合已出牌数」在触发 onPlay 之前递增：
   // 这样「当你打出本回合第 N 张牌时」类遗物/能力读到的是**含当前这张**的计数，
   // 而不是差一张。计数原本在结算末尾递增，数据侧当时无人引用它，故本次前移无观测差异
   // （golden 7 盘哈希已复核）。
   draft.cardsPlayedThisTurn += 1;
+  if (isAttack) draft.attackCardsPlayedThisTurn += 1;
   resolveTriggers(draft, sink, "onPlay");
 
   const effects = effective.play
     ? getCardHandler(effective.play.handler)(effective.play.params, { chosenTargetId: targetId })
     : effective.effects;
+
+  // 玻璃大炮「一波打出去」的第二段（docs/58 §六.3，甲方 2026-10-07 三次修订）：
+  // 本回合第一张攻击牌把自身的超负荷**整体转嫁**给目标（AoE → 全体敌人），自身清零。
+  // **必须先转嫁、再结算伤害**——转嫁到手的「每层受伤 +1」要算进这一击；
+  // 顺序反了（伤害在前）这一击就凭空少一截。用「挂进现有结算管线」的方式施加，不新造平行系统。
+  const spreadEffects: CardEffect[] = [];
+  if (isFirstAttack && traitSpreadsOverload(draft)) {
+    const stacks = buffStacks(draft.player.buffs, "overload");
+    if (stacks > 0) {
+      draft.player.buffs = draft.player.buffs.filter((b) => b.id !== "overload");
+      sink.emit("BuffExpired", { targetId: "player", buffId: "overload" });
+      spreadEffects.push({
+        kind: "applyBuff",
+        target: { type: isAoeCard(effects) ? "allEnemies" : "chosenEnemy" },
+        buff: "overload",
+        stacks,
+      });
+    }
+  }
 
   /** 强化 onHit：多段攻击每段独立触发（低血沸腾三段 = 三次 onHit）。 */
   const onHit = (hitIndex: number, hitTargetId: string): void => {
@@ -305,15 +359,42 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
     resolveTriggers(draft, sink, "onHit", { inline: true, targetId: hitTargetId });
   };
 
-  resolveEffects(draft, sink, effects, {
+  // 转嫁效果排在卡面效果**之前**入队（enqueueEffects 倒序压栈 → 弹出即书写顺序）：
+  // 先给目标挂上超负荷，本牌的伤害再吃到「目标超负荷 → 受伤 +层数」。
+  resolveEffects(draft, sink, spreadEffects.length > 0 ? [...spreadEffects, ...effects] : effects, {
     sourceId: instance.instanceId,
     actorId: "player",
     chosenTargetId: targetId,
     onHit,
     energyAtPlay,
-    attackModifiers: effective.attackModifiers,
+    attackModifiers:
+      firstAttackBonus > 0
+        ? [
+            ...effective.attackModifiers,
+            {
+              sourceId: `trait:${draft.traitId ?? ""}:firstAttackCharge`,
+              layer: "buff" as const,
+              op: "add" as const,
+              value: firstAttackBonus,
+            },
+          ]
+        : effective.attackModifiers,
     blockModifiers: effective.blockModifiers,
   });
+
+  // 畸变大鲨臂（docs/58 §七.2）：每回合第一张牌结算两次——第二次入队（免能、sourceId 同卡），
+  // 复用栈式动作队列，**不加全局倍率上下文**。
+  if (doubleResolve) {
+    enqueueEffects(draft, effects, {
+      sourceId: instance.instanceId,
+      actorId: "player",
+      chosenTargetId: targetId,
+      energyAtPlay,
+      attackModifiers: effective.attackModifiers,
+      blockModifiers: effective.blockModifiers,
+    });
+    drainQueue(draft, sink);
+  }
   // 常驻能力（power）：本场生效，按实例记录（升级版走 def.upgraded.power）
   if ((def.power ?? def.upgraded?.power) && !draft.player.powers.includes(instance.instanceId)) {
     draft.player.powers.push(instance.instanceId);

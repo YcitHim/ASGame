@@ -61,6 +61,11 @@ export interface RunState {
   readonly unlocked: readonly string[];
   /** 随身遗物（docs/38 §一 A-2）：职业选择页从 T1 池自选 1 件；空串 = 无 */
   readonly pickedRelic: string;
+  /**
+   * 职业特性（docs/58 §二）：开局三选（特性 + 无特性）的选定结果；空串 = 无特性开局。
+   * 全程绑定本局、不可更换；无特性 = 纯现版玩法，作为对照组与 sim 基线永久保留。
+   */
+  readonly traitId: string;
   /** 难度档（docs/36 T2） */
   readonly difficulty: RunDifficulty;
   /** 本局是否打出过血契卡（成就：不朽） */
@@ -136,8 +141,8 @@ export function applyEventHp(run: RunState, hpDelta: number, maxHpDelta: number)
 }
 
 /** 写回局外污染（战斗结束 / 事件结算时调用）。 */
-export function setRunPollution(run: RunState, pollution: number): RunState {
-  const next = Math.max(0, Math.min(100, Math.trunc(pollution)));
+export function setRunPollution(run: RunState, pollution: number, cap = 100): RunState {
+  const next = Math.max(0, Math.min(cap, Math.trunc(pollution)));
   return { ...run, pollution: next, pollutionPeak: Math.max(run.pollutionPeak, next) };
 }
 
@@ -701,6 +706,8 @@ export interface CreateRunOptions {
   readonly difficulty?: RunDifficulty;
   /** 随身遗物（docs/38 §一 A-2）；缺省空串（调用方负责给默认） */
   readonly companionRelic?: string;
+  /** 职业特性（docs/58 §二）；缺省空串 = 无特性开局 */
+  readonly traitId?: string;
 }
 
 export function createRunState(
@@ -725,6 +732,7 @@ export function createRunState(
     legacy: false,
     unlocked: [...(opts.unlocked ?? [])],
     pickedRelic: opts.companionRelic ?? "",
+    traitId: opts.traitId ?? "",
     difficulty: opts.difficulty ?? "normal",
     usedBloodpact: false,
     overloadCount: 0,

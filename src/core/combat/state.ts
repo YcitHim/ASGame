@@ -8,6 +8,7 @@ import type { ContentDb, RunDifficulty } from "../registry/content";
 import { DIFFICULTY_PARAMS, emptyContent } from "../registry/content";
 import type { Modifier } from "../pipeline";
 import { Rng, type RngSnapshot } from "../rng";
+import { EMPTY_TRAIT_SNAPSHOT, computeTraitSnapshot, getTraitHandler, type TraitSnapshot } from "../registry/trait-handler";
 
 export type Phase =
   | "battleStart"
@@ -101,6 +102,18 @@ export interface BattleState {
   readonly reverseCosts: Readonly<Record<string, number>>;
   /** 本回合（含刚结束的敌方回合）玩家是否受过攻击伤害（docs/16 P2.3） */
   readonly tookDamageThisTurn: boolean;
+  /** 本局职业特性 id（docs/58 §二）：null = 无特性开局（纯现版玩法，也是 sim 基线对照） */
+  readonly traitId: string | null;
+  /** 战斗开局快照（docs/58 §七.2）：污染阈值只在此刻判定，局内不因跌破而失效 */
+  readonly traitSnapshot: TraitSnapshot;
+  /** 本回合累计造伤（嗜血奖励段，docs/58 §四）：玩家来源 + hpLost>0 */
+  readonly dealtDamageThisTurn: number;
+  /** 本回合累计自伤（嗜血奖励段）：血契 / 血迹自伤，不含受击与反噬 */
+  readonly selfHpSpentThisTurn: number;
+  /** 本回合已打出的攻击牌数（玻璃大炮首张攻击牌判定） */
+  readonly attackCardsPlayedThisTurn: number;
+  /** 本回合神眼是否已用（每回合一次，docs/58 §七.2） */
+  readonly eyeUsedThisTurn: boolean;
   /** 事件全局序号计数器 */
   readonly eventSeq: number;
   /** 难度档（docs/36 T2）：敌人 HP / 伤害倍率一并从此读 */
@@ -137,6 +150,8 @@ export interface BattleConfig {
   readonly difficulty?: RunDifficulty;
   /** 教学安全下限（docs/42 §四）；缺省 undefined = 正常结算 */
   readonly safetyFloor?: number;
+  /** 职业特性 id（docs/58 §二）：缺省 / 空串 = 无特性开局 */
+  readonly traitId?: string;
 }
 
 export const DEFAULT_HAND_SIZE = 5;
@@ -152,10 +167,22 @@ export function createBattleState(config: BattleConfig): BattleState {
   const draw: string[] = [];
   /** 同名敌人的实例计数：第 2 个起加 `#n` 后缀，避免 id 冲突导致只能打到第一个 */
   const idCounts = new Map<string, number>();
-  const startingPollution = Math.max(0, Math.min(100, Math.trunc(config.player.pollution ?? 0)));
   const difficulty = config.difficulty ?? "normal";
   /** 锈蚀难度：敌人 HP 上浮（伤害倍率在 attackModifiers 里生效，docs/36 T2） */
   const enemyHpMul = DIFFICULTY_PARAMS[difficulty].enemyHpMul;
+
+  // 职业特性（docs/58 §二）：开局绑定本局，战斗里只做能力问询（无 classId 特判）。
+  // 无特性 / 未注册 = null，行为与现版完全一致（sim 基线对照）。
+  const traitId = config.traitId ? config.traitId : null;
+  const traitDef = traitId ? content.traits.get(traitId) : undefined;
+  const traitHandler = traitDef ? getTraitHandler(traitDef.handler) : undefined;
+  // 超级大畸变：污染无视 100 封顶（docs/58 §七.1）——开局注入也不截断
+  const pollutionUncapped = !!traitHandler?.pollutionUncapped?.(traitDef?.params ?? {});
+  const rawPollution = Math.max(0, Math.trunc(config.player.pollution ?? 0));
+  const startingPollution = pollutionUncapped ? rawPollution : Math.min(100, rawPollution);
+  const traitSnapshot = traitDef
+    ? computeTraitSnapshot(startingPollution, traitDef.params)
+    : EMPTY_TRAIT_SNAPSHOT;
 
   config.deck.forEach((entry, index) => {
     const cardId = typeof entry === "string" ? entry : entry.cardId;
@@ -229,6 +256,12 @@ export function createBattleState(config: BattleConfig): BattleState {
     cardsPlayedThisTurn: 0,
     reverseCosts: {},
     tookDamageThisTurn: false,
+    traitId,
+    traitSnapshot,
+    dealtDamageThisTurn: 0,
+    selfHpSpentThisTurn: 0,
+    attackCardsPlayedThisTurn: 0,
+    eyeUsedThisTurn: false,
     eventSeq: 0,
     content,
   };

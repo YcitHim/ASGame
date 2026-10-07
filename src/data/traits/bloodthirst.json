@@ -1,0 +1,12 @@
+{
+  "id": "bloodthirst",
+  "classId": "bloodwright",
+  "i18n": "trait.bloodthirst",
+  "handler": "bloodthirst",
+  "params": {
+    "punishWeak": 1,
+    "rewardDamage": 3,
+    "rewardSelf": 3,
+    "rewardRegen": 2
+  }
+}

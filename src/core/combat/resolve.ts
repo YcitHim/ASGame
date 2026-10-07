@@ -14,6 +14,15 @@ import { evaluateCondition, type ConditionContext } from "../registry/condition"
 import { getTarget } from "../registry/target";
 import { findUnit, livingEnemies, type Draft, type MutableUnit } from "./draft";
 import { resolveTriggers } from "./relics";
+import {
+  activeTrait,
+  effectiveBrambleStacks,
+  overloadDamageTakenPerStack,
+  overloadTickPerStack,
+  traitChargeTarget,
+  traitCtx,
+  traitEyeAvailable,
+} from "./trait";
 import type { EffectContext, EffectWork } from "./work";
 
 export const POLLUTION_CRITICAL = 80;
@@ -67,8 +76,17 @@ export function attackModifiers(draft: Draft, actorId: string, targetId: string)
   const strength = buffStacks(actor, "strength");
   if (strength > 0) mods.push({ sourceId: "strength", layer: "buff", op: "add", value: strength });
 
-  if (actorId === PLAYER_ID && draft.player.charge > 0) {
+  // 充能加伤（docs/58 §五.1）：铁皮王八把这条注入改道到格挡管线，这里按特性问询。
+  if (actorId === PLAYER_ID && draft.player.charge > 0 && traitChargeTarget(draft) === "attack") {
     mods.push({ sourceId: "charge", layer: "buff", op: "add", value: draft.player.charge });
+  }
+
+  // 特性攻击修饰（常驻项）：走 buff 层，DamageDealt.layers 里可追溯（sourceId = trait:<id>:<kind>）
+  if (actorId === PLAYER_ID) {
+    const trait = activeTrait(draft);
+    for (const m of trait?.handler.attackModifiers?.(trait.def.params, traitCtx(draft)) ?? []) {
+      mods.push({ sourceId: `trait:${trait!.def.id}:${m.kind}`, layer: "buff", op: m.op, value: m.value });
+    }
   }
 
   // docs/46 §2.1：虚弱层级化——每层造伤 −10%，上限 5 层（不再 ×0.75 计时）
@@ -80,6 +98,13 @@ export function attackModifiers(draft: Draft, actorId: string, targetId: string)
   const timid = Math.min(5, buffStacks(target, "timid"));
   if (timid > 0) {
     mods.push({ sourceId: "timid", layer: "buff", op: "mul", value: 1 + 0.1 * timid });
+  }
+  // 超负荷（docs/58 §六.2，甲方 2026-10-07 修订）：承载者受到的伤害**每层 +N**（加区）。
+  // 与「承载者是谁」无关——玩家扛超负荷时挨打更疼，敌人被转嫁后同样如此。
+  const overloadTaken = buffStacks(target, "overload");
+  if (overloadTaken > 0) {
+    const per = overloadDamageTakenPerStack(draft);
+    if (per > 0) mods.push({ sourceId: "overload", layer: "buff", op: "add", value: overloadTaken * per });
   }
   // 锈蚀难度：敌人打出的伤害上浮（docs/36 T2）。只作用于敌方攻击者，
   // 反伤 / 环境伤害的 actorId 不是敌人实例，自然不吃倍率。
@@ -179,6 +204,8 @@ export function dealDamage(draft: Draft, sink: EventSink, args: DamageArgs): voi
     sink.emit("HpLost", { targetId: args.targetId, value: hpLost, reason: "damage" });
     // 「本回合事件回看」：只记玩家被攻击掉血（血迹自伤 / 污染反噬不算，docs/16 P2.3）
     if (args.targetId === PLAYER_ID) draft.tookDamageThisTurn = true;
+    // 嗜血「造伤」口径（docs/58 §四）：玩家来源且真的掉血（未击穿格挡的攻击不算）
+    if (args.actorId === PLAYER_ID) draft.dealtDamageThisTurn += hpLost;
   }
 
   // 反伤（荆棘血痂）：受攻击即对攻击者造成固定伤害，逐段触发、走队列中途插入
@@ -239,8 +266,11 @@ function enqueueDamageWork(
 function triggerThorns(draft: Draft, sink: EventSink, args: DamageArgs): void {
   if (args.reflect) return;
   if (args.actorId === args.targetId) return;
-  // docs/46 §2.3：荆棘层级化——每层反弹 3 点固定伤害，上限 5 层
-  const stacks = Math.min(5, buffStacks(unitBuffs(draft, args.targetId), "bramble"));
+  const target = findUnit(draft, args.targetId);
+  if (!target) return;
+  // docs/46 §2.3：荆棘层级化——每层反弹 3 点固定伤害，上限 5 层。
+  // docs/58 §五.2：铁皮王八用「格挡派生光环 + 上限 10」覆盖（加算在卡牌荆棘之上）。
+  const stacks = effectiveBrambleStacks(draft, target);
   if (stacks <= 0) return;
   const attacker = findUnit(draft, args.actorId);
   if (!attacker || attacker.hp <= 0) return;
@@ -267,7 +297,19 @@ export function gainBlock(
 ): void {
   const unit = findUnit(draft, targetId);
   if (!unit || unit.hp <= 0) return;
-  const evaluated = evaluateValue("block", base, extraModifiers ?? []);
+  const modifiers: Modifier[] = [...(extraModifiers ?? [])];
+  if (targetId === PLAYER_ID) {
+    const trait = activeTrait(draft);
+    // 铁皮王八（docs/58 §五.1）：充能不再加伤，改为「每次获得格挡 +充能层数」
+    if (traitChargeTarget(draft) === "block" && draft.player.charge > 0) {
+      modifiers.push({ sourceId: "charge", layer: "buff", op: "add", value: draft.player.charge });
+    }
+    // 特性格挡修饰（玻璃大炮超负荷：每张卡格挡 −N）
+    for (const m of trait?.handler.blockModifiers?.(trait.def.params, traitCtx(draft)) ?? []) {
+      modifiers.push({ sourceId: `trait:${trait!.def.id}:${m.kind}`, layer: "buff", op: m.op, value: m.value });
+    }
+  }
+  const evaluated = evaluateValue("block", base, modifiers);
   unit.block += evaluated.value;
   sink.emit("BlockGained", { targetId, value: evaluated.value, total: unit.block });
 }
@@ -293,7 +335,7 @@ export function loseHp(
   sink: EventSink,
   targetId: string,
   value: number,
-  reason: "bloodpact" | "pollution" | "backlash",
+  reason: "bloodpact" | "pollution" | "backlash" | "overload",
 ): void {
   const unit = findUnit(draft, targetId);
   if (!unit || value <= 0) return;
@@ -308,6 +350,8 @@ export function loseHp(
       : value;
   const lost = Math.min(unit.hp, backlashMul);
   unit.hp -= lost;
+  // 嗜血「自伤」口径（docs/58 §四）：只认血契 / 血迹自伤。受击掉血与反噬掉血都不算。
+  if (targetId === PLAYER_ID && reason === "bloodpact") draft.selfHpSpentThisTurn += lost;
   sink.emit("HpLost", { targetId, value: lost, reason });
   if (unit.hp === 0) killUnit(draft, sink, targetId);
 }
@@ -320,6 +364,8 @@ export function applyBuffToTarget(
   buffId: BuffId,
   amount: number,
   explicitDuration?: number | null,
+  /** 层数上限覆盖（缺省用状态定义；铁皮王八把荆棘上限抬到 10，docs/58 §五） */
+  maxStacks?: number,
 ): void {
   if (buffId === "pollution" && targetId === PLAYER_ID) {
     changePollution(draft, sink, amount);
@@ -339,7 +385,11 @@ export function applyBuffToTarget(
     }
   }
   const application = buffApplication(buffId, amount, explicitDuration);
-  unit.buffs = applyBuff(unit.buffs, { id: buffId, ...application });
+  unit.buffs = applyBuff(unit.buffs, {
+    id: buffId,
+    ...application,
+    ...(maxStacks !== undefined ? { maxStacks } : {}),
+  });
   const applied = unit.buffs.find((b) => b.id === buffId);
   sink.emit("BuffApplied", {
     targetId,
@@ -384,8 +434,11 @@ function setPollutionMirror(buffs: readonly BuffInstance[], value: number): Buff
 
 /** 污染变化：满值立即反噬（docs/03 §4 决策），不延迟到回合开始。 */
 export function changePollution(draft: Draft, sink: EventSink, delta: number): void {
+  const trait = activeTrait(draft);
+  const uncapped = trait?.handler.pollutionUncapped?.(trait.def.params) ?? false;
+  const cap = uncapped ? Number.POSITIVE_INFINITY : POLLUTION_MAX;
   const before = draft.player.pollution;
-  const after = Math.max(0, Math.min(POLLUTION_MAX, before + delta));
+  const after = Math.max(0, Math.min(cap, before + delta));
   draft.player.pollution = after;
   draft.player.buffs = setPollutionMirror(draft.player.buffs, after);
   sink.emit("PollutionChanged", {
@@ -395,6 +448,21 @@ export function changePollution(draft: Draft, sink: EventSink, delta: number): v
     delta: after - before,
     critical: after >= POLLUTION_CRITICAL,
   });
+
+  // 超级大畸变（docs/58 §七.1）：污染无上限；每累计满 step（100 / 200 / 300…）立即反噬一次，
+  // 反噬**不清零**，可继续突破。反噬前仍派发 onPollutionMax（「九十九」等遗物互动不变）。
+  if (uncapped) {
+    const milestone = trait?.handler.pollutionMilestone?.(trait.def.params) ?? null;
+    if (milestone) {
+      const crossed =
+        Math.floor(after / milestone.step) - Math.floor(before / milestone.step);
+      if (crossed > 0 && milestone.backlash > 0) {
+        resolveTriggers(draft, sink, "onPollutionMax", { inline: true });
+        loseHp(draft, sink, PLAYER_ID, milestone.backlash * crossed, "pollution");
+      }
+    }
+    return;
+  }
 
   if (after >= POLLUTION_MAX && before < POLLUTION_MAX) {
     // 触顶触发（docs/38 §二 B-3「九十九」）：在反噬判定前派发，
@@ -430,6 +498,20 @@ export function changeCharge(
   if (after > before && !suppressTriggers) resolveTriggers(draft, sink, "onGainCharge");
 
   if (after > CHARGE_LIMIT) {
+    const trait = activeTrait(draft);
+    // 玻璃大炮（docs/58 §六.1）：本特性下充能不触发超限反噬清零，改为转「超负荷」层。
+    if (trait && !(trait.handler.chargeOverload?.(trait.def.params) ?? true)) {
+      // 超负荷（docs/58 §六.2）：超出 10 的部分每 step 点施加 1 层，只结算**新跨过的**层数。
+      // 惩罚不再在获得时结算，而是落在承载者自己的回合开始（tickOverload）。
+      const step = trait.handler.overloadPerStep?.(trait.def.params) ?? null;
+      if (step) {
+        const gained =
+          Math.floor(Math.max(0, after - CHARGE_LIMIT) / step) -
+          Math.floor(Math.max(0, before - CHARGE_LIMIT) / step);
+        if (gained > 0) applyBuffToTarget(draft, sink, PLAYER_ID, "overload", gained);
+      }
+      return false;
+    }
     sink.emit("Overloaded", { targetId: PLAYER_ID, charge: after, backlash: CHARGE_BACKLASH });
     loseHp(draft, sink, PLAYER_ID, CHARGE_BACKLASH, "backlash");
     draft.player.charge = 0;
@@ -437,6 +519,27 @@ export function changeCharge(
     return true;
   }
   return false;
+}
+
+/**
+ * 超负荷的持续惩罚（docs/58 §六.2，甲方 2026-10-07 修订）：
+ * 承载者**在自己回合开始**时，每层扣 `overloadTickPerStack` 点生命（走 loseHp，可致死）。
+ *
+ * 玩家在 turnStart 调用、敌人在敌方回合开始调用——一张状态表，两侧同构。
+ */
+export function tickOverload(draft: Draft, sink: EventSink, ids?: readonly string[]): void {
+  const per = overloadTickPerStack(draft);
+  if (per <= 0) return;
+  const targets = ids ?? [PLAYER_ID, ...draft.enemies.map((e) => e.id)];
+  for (const id of targets) {
+    const unit = findUnit(draft, id);
+    if (!unit || unit.hp <= 0) continue;
+    const stacks = buffStacks(unit.buffs, "overload");
+    if (stacks <= 0) continue;
+    const damage = stacks * per;
+    sink.emit("BuffTicked", { targetId: id, buffId: "overload", stacks, damage });
+    loseHp(draft, sink, id, damage, "overload");
+  }
 }
 
 /** 相位 tick：计时型衰减 + 汇总到期事件。 */
@@ -495,6 +598,22 @@ export function resolveCorroding(draft: Draft, sink: EventSink): void {
       enemy.buffs = enemy.buffs.map((b) => (b.id === "corroding" ? { id: b.id, stacks: next, duration: null } : b));
     }
   }
+}
+
+/**
+ * 神眼选牌（docs/58 §七.2）：从**牌库**任选一张加入手牌，每回合一次。
+ * 只做「搬运」，不消耗能量；颠倒诅咒下新入手的牌同样吃到随机费用。
+ */
+export function pickFromDraw(draft: Draft, sink: EventSink, instanceId: string): boolean {
+  if (!traitEyeAvailable(draft)) return false;
+  const index = draft.draw.indexOf(instanceId);
+  if (index < 0) return false;
+  draft.draw.splice(index, 1);
+  draft.hand.push(instanceId);
+  draft.eyeUsedThisTurn = true;
+  rollReverseCostsForNewCards(draft);
+  sink.emit("CardsDrawn", { cardIds: [instanceId] });
+  return true;
 }
 
 /**

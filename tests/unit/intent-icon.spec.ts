@@ -3,27 +3,31 @@ import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import IntentIcon from "@/ui/components/IntentIcon.vue";
 
-/** docs/38 §三 C-2 · 意图区可读性（C2-P-1）。 */
+/** docs/41 §3.3 · 意图区可读性（C2-P-1）；甲方 2026-10-07 手感修订后为「蓄力两段式」。 */
 describe("1.0-C 意图图标可读性", () => {
-  it("蓄力中（thenIn ≥ 2）：显示剩余回合与释放值；格挡量在悬停提示里", () => {
+  it("蓄力期只标「蓄力」：不预告剩余回合、也不报释放值；格挡量留给悬停提示", () => {
     const wrapper = mount(IntentIcon, {
       props: { intent: { kind: "charge", value: 2, thenValue: 19, thenIn: 3, block: 4 } },
     });
     const text = wrapper.text();
     expect(text).toContain("蓄");
-    expect(text).toContain("3回合后释放 19");
+    expect(text).toContain("蓄力");
+    expect(text).not.toContain("19"); // 释放值不剧透
+    expect(text).not.toContain("回合后释放");
     expect(wrapper.find(".intent").classes()).toContain("charging");
+    expect(wrapper.find(".intent").classes()).not.toContain("imminent"); // 蓄力期不提前泛红
     expect(wrapper.find(".intent").attributes("title")).toContain("4 点格挡");
     wrapper.unmount();
   });
 
-  it("临近（thenIn = 1）：改口「准备防御」并进入 imminent 高亮", () => {
+  it("临近回合（thenIn = 1）也不破例：文案与高亮和平时完全一样", () => {
     const wrapper = mount(IntentIcon, {
       props: { intent: { kind: "charge", value: 2, thenValue: 19, thenIn: 1 } },
     });
-    expect(wrapper.find(".intent").classes()).toContain("imminent");
-    expect(wrapper.text()).toContain("下回合释放 19");
-    expect(wrapper.text()).toContain("准备防御");
+    expect(wrapper.find(".intent").classes()).not.toContain("imminent");
+    expect(wrapper.text()).not.toContain("19");
+    expect(wrapper.text()).not.toContain("下回合释放");
+    expect(wrapper.text()).toContain("蓄力");
     wrapper.unmount();
   });
 
@@ -34,17 +38,19 @@ describe("1.0-C 意图图标可读性", () => {
   });
 });
 
-/** docs/41 §3.3（反馈 11）：蓄力预警三段式，最关键的是释放段不再让预警凭空消失。
- *  文案用施动者视角「即将造成」——甲方验收：「承受」会把敌人的行动读成玩家的行动。 */
-describe("docs/41 §3.3 蓄力三段式", () => {
-  it("释放段显示「即将造成 X 点伤害」并加脉冲类", () => {
+/** docs/41 §3.3（反馈 11）：预警不消失，只是压到「出手那一帧」。
+ *  文案用施动者视角「即将造成」——甲方验收：「承受」会把敌人的行动读成玩家的行动。
+ *  甲方 2026-10-07 追加：这一帧要显式标明「蓄力重击」，让玩家认出这是大威力。 */
+describe("docs/41 §3.3 蓄力重击预警", () => {
+  it("释放段标明「蓄力重击」并写清伤害，带脉冲类", () => {
     const wrapper = mount(IntentIcon, {
       props: { intent: { kind: "attack", value: 24, released: true } },
     });
+    expect(wrapper.text()).toContain("蓄力重击");
     expect(wrapper.text()).toContain("即将造成 24 点伤害");
     expect(wrapper.find(".intent").classes()).toContain("incoming");
     // 非释放段的普通攻击不触发
-    expect(wrapper.find(".intent").classes()).not.toContain("imminent");
+    expect(wrapper.find(".intent").classes()).not.toContain("charging");
     wrapper.unmount();
   });
 
@@ -52,6 +58,7 @@ describe("docs/41 §3.3 蓄力三段式", () => {
     const wrapper = mount(IntentIcon, {
       props: { intent: { kind: "attack", value: 12, hits: 2, released: true } },
     });
+    expect(wrapper.text()).toContain("蓄力重击");
     expect(wrapper.text()).toContain("即将造成 12×2 点伤害");
     wrapper.unmount();
   });

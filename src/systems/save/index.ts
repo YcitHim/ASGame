@@ -8,7 +8,7 @@
 export const SAVE_NAMESPACE = "rustandblood";
 
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;
 
 export type SaveSlot = "settings" | "progress" | "replay" | "codex" | "meta";
 
@@ -199,6 +199,16 @@ const migrations: Record<number, (data: unknown) => unknown> = {
     if (typeof run !== "object" || run === null) return record;
     const runRecord = run as Record<string, unknown>;
     return { ...record, run: { ...runRecord, seenEvents: runRecord["seenEvents"] ?? [] } };
+  },
+  // 14 → 15（docs/58 §八.1）：RunState 新增 traitId（职业特性，开局三选）。
+  // 旧档没有这次选择 → 空串 = 无特性开局（纯现版玩法，强度不突变）。
+  14: (data) => {
+    if (typeof data !== "object" || data === null) return data;
+    const record = data as Record<string, unknown>;
+    const run = record["run"];
+    if (typeof run !== "object" || run === null) return record;
+    const runRecord = run as Record<string, unknown>;
+    return { ...record, run: { ...runRecord, traitId: runRecord["traitId"] ?? "" } };
   },
 };
 

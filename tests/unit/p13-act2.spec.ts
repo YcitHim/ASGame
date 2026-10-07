@@ -72,8 +72,8 @@ describe("docs/40 幕间馈赠", () => {
     run.applyBoon("heal");
     expect(run.run?.actIndex).toBe(1);
     expect(run.run?.pollution).toBe(0);
-    // 25% (floor 16) + 50% (floor 33) = 69 → clamp 66
-    expect(run.run?.hp).toBe(66);
+    // 25% (floor 17) + 50% (floor 35) = 72 → clamp 70（docs/58 §三：血械血量 66→70）
+    expect(run.run?.hp).toBe(70);
   });
 
   it("applyBoon upgrade：免费升级一张牌并切幕", () => {

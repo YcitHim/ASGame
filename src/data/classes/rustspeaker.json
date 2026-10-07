@@ -2,7 +2,7 @@
   "id": "rustspeaker",
   "i18n": "class.rustspeaker",
   "player": {
-    "maxHp": 66,
+    "maxHp": 60,
     "energy": 3
   },
   "startDeck": [

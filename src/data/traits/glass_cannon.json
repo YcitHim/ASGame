@@ -1,0 +1,16 @@
+{
+  "id": "glass_cannon",
+  "classId": "engineer",
+  "i18n": "trait.glass_cannon",
+  "handler": "glass_cannon",
+  "params": {
+    "overloadDisabled": true,
+    "overloadPerStep": 5,
+    "overloadTickPerStack": 2,
+    "overloadDamageTakenPerStack": 1,
+    "firstAttackCharge": true,
+    "spreadOverloadOnBurst": true,
+    "lowChargeBelow": 10,
+    "lowChargeEnergy": 1
+  }
+}

@@ -2,7 +2,7 @@
   "id": "engineer",
   "i18n": "class.engineer",
   "player": {
-    "maxHp": 66,
+    "maxHp": 50,
     "energy": 3
   },
   "startDeck": [

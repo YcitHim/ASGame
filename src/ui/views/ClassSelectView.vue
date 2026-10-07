@@ -6,14 +6,12 @@ import type { RunDifficulty } from "@/core/map";
 import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
 import { useSettingsStore } from "@/stores/settings";
-import { useTutorialStore } from "@/stores/tutorial";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
 const router = useRouter();
 const run = useRunStore();
 const meta = useMetaStore();
 const settings = useSettingsStore();
-const tutorial = useTutorialStore();
 /** 开发者模式（测试跳关）：解锁全部 + 指定起始幕/层 */
 const devMode = computed(() => settings.values.developerMode);
 const devAct = ref(0);
@@ -109,9 +107,10 @@ const askTutorial = ref(false);
 const pendingClassId = ref("");
 
 /**
- * 开局不带随身遗物（甲方 2026-10-07）：第一场战斗胜利后由 /reward 给一次 T1 三选一。
+ * docs/58 §二.1：开局流程改为 职业 → **特性（三选含无特性）** → 地图。
+ * 这里先把局开好（教学 / 难度 / 开发者跳关都要读这局），再由特性页写入 RunState.traitId。
  */
-function startRunWith(classId: string): void {
+function startRunWith(classId: string, withTutorial: boolean): void {
   run.startRun(
     classId,
     undefined,
@@ -119,6 +118,14 @@ function startRunWith(classId: string): void {
     "",
     devMode.value ? { actIndex: devAct.value, layerIndex: devLayer.value } : {},
   );
+  void router.push({
+    name: "trait-select",
+    query: {
+      class: classId,
+      difficulty: difficulty.value,
+      ...(withTutorial ? { tutorial: "1" } : {}),
+    },
+  });
 }
 
 function choose(classId: string): void {
@@ -130,28 +137,23 @@ function choose(classId: string): void {
     askTutorial.value = true;
     return;
   }
-  startRunWith(classId);
-  void router.push("/map");
+  startRunWith(classId, false);
 }
 
 /**
- * 选「要人带路」：先开好这一局（第一班岗要用所选职业与起始卡组），再进教学。
+ * 选「要人带路」：先去特性页选特性，再开好这一局（第一班岗要用所选职业与起始卡组）→ 进教学。
  * 已经走完过某个职业的第一班岗 → 这个新职业只补教机制课（docs/42 §三.0）。
  */
 function acceptTutorial(): void {
-  startRunWith(pendingClassId.value);
-  meta.ensureLoaded();
-  tutorial.begin();
   askTutorial.value = false;
-  void router.push("/tutorial");
+  startRunWith(pendingClassId.value, true);
 }
 
-/** 选「不用」：直接开始远征，并记住这个职业不要再问。 */
+/** 选「不用」：记住这个职业不要再问，继续去特性页。 */
 function declineTutorial(): void {
   meta.markTutorialOffered(pendingClassId.value);
-  startRunWith(pendingClassId.value);
   askTutorial.value = false;
-  void router.push("/map");
+  startRunWith(pendingClassId.value, false);
 }
 
 function back(): void {

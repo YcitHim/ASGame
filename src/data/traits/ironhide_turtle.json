@@ -1,0 +1,10 @@
+{
+  "id": "ironhide_turtle",
+  "classId": "engineer",
+  "i18n": "trait.ironhide_turtle",
+  "handler": "ironhide_turtle",
+  "params": {
+    "bramblePerBlock": 8,
+    "brambleMaxStacks": 10
+  }
+}

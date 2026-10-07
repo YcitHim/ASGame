@@ -1,0 +1,18 @@
+{
+  "id": "super_mutation",
+  "classId": "rustspeaker",
+  "i18n": "trait.super_mutation",
+  "handler": "super_mutation",
+  "params": {
+    "pollutionUncapped": true,
+    "milestoneStep": 100,
+    "milestoneBacklash": 10,
+    "tentacleThreshold": 200,
+    "scytheThreshold": 300,
+    "eyeThreshold": 400,
+    "winPollutionRelief": 50,
+    "firstCardFree": true,
+    "firstCardDouble": true,
+    "drawFromLibrary": true
+  }
+}

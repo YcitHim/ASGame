@@ -4,3 +4,4 @@ export * from "./condition";
 export * from "./target";
 export * from "./handler";
 export * from "./enhancement-handler";
+export * from "./trait-handler";

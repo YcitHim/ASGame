@@ -16,6 +16,7 @@ import { definitionOf, fromDraft, livingEnemies, toDraft, type Draft } from "./d
 import { generateIntents, runEnemyTurn } from "./enemy-turn";
 import { effectiveCard, playCard } from "./play-card";
 import { resetTurnRelics, resolveTriggers } from "./relics";
+import { activeTrait, brambleMaxStacks, traitBrambleFromBlock, traitBrambleFromBlockStep, traitCtx, traitLowChargeEnergy } from "./trait";
 import {
   applyBuffToTarget,
   decayTimedCurses,
@@ -24,10 +25,13 @@ import {
   resolveCurses,
   resolvePollutionCritical,
   resolveMending,
+  resolveEffects,
+  pickFromDraw,
   resolveRegeneration,
   resolveTenacity,
   restoreMaxHp,
   tickAllBuffs,
+  tickOverload,
 } from "./resolve";
 import type { BattleState } from "./state";
 
@@ -51,9 +55,21 @@ function rollReverseCosts(draft: Draft): void {
   draft.reverseCosts = costs;
 }
 
+/**
+ * 玻璃大炮「蓄势」（docs/58 §六.4，甲方 2026-10-07 三次修订）：
+ * **每个回合开始**（含战斗第 1 回合）判定一次——充能 <10 时额外 +1 能量，充能攒到 10 即断供。
+ * 只加 `energy`（本回合可用），不动 `maxEnergy`；下回合开始再由本函数重判一次。
+ */
+function grantLowChargeEnergy(draft: Draft): void {
+  const bonus = traitLowChargeEnergy(draft);
+  if (bonus > 0) draft.player.energy += bonus;
+}
+
 /** 战斗开始：洗牌、固有词条优先入手、发初始手牌、揭示意图。 */
 function startBattle(draft: Draft, sink: EventSink): void {
   draft.turn = 1;
+  // 第 1 回合也是一个回合（同 docs/52 §四）：蓄势在开局同样判定，开局充能恒为 0 → 必得 +1。
+  grantLowChargeEnergy(draft);
   const shuffled = draft.rng.stream("combat").shuffle(draft.draw);
   const innate: string[] = [];
   const rest: string[] = [];
@@ -130,6 +146,19 @@ function checkBattleEnd(draft: Draft, sink: EventSink): boolean {
     draft.phase = "battleEnd";
     // 灼烧的减上限只在本场生效（docs/46 §3.9）：结算前恢复，已损失的 HP 不补
     restoreMaxHp(draft);
+    // 特性胜利结算（docs/58 §七.3 超级大畸变：污染 −50）——放在 BattleEnded 之前，
+    // 玩家侧写回的是「已经减过 50」的值。
+    const trait = activeTrait(draft);
+    if (trait) {
+      const effects = trait.handler.onBattleWin?.(trait.def.params, traitCtx(draft)) ?? [];
+      if (effects.length > 0) {
+        resolveEffects(draft, sink, effects, {
+          sourceId: `trait:${trait.def.id}`,
+          actorId: "player",
+          chosenTargetId: null,
+        });
+      }
+    }
     const rewardsSeed = draft.rng.stream("reward").nextInt(0, 0xffffffff);
     sink.emit("BattleEnded", { result: "win", rewardsSeed });
     return true;
@@ -148,6 +177,34 @@ function endTurn(draft: Draft, sink: EventSink): void {
   }
   resolveHandAtTurnEnd(draft, sink);
   resolveTriggers(draft, sink, "onTurnEnd");
+  // 特性回合末结算（docs/58 §四 嗜血惩罚 + 奖励）：读的是**本回合**累计造伤 / 自伤
+  const trait = activeTrait(draft);
+  if (trait) {
+    const effects = trait.handler.onTurnEnd?.(trait.def.params, traitCtx(draft)) ?? [];
+    if (effects.length > 0) {
+      resolveEffects(draft, sink, effects, {
+        sourceId: `trait:${trait.def.id}`,
+        actorId: "player",
+        chosenTargetId: null,
+      });
+    }
+  }
+  // 铁皮王八（docs/58 §五，甲方 2026-10-07 三次修订）：回合末把**本回合的格挡**折算成荆棘，
+  // 且**每回合刷新**——`next = ⌊本回合格挡 / 8⌋`（上限 10）直接**覆盖**上一回合的层数，不是累加。
+  // 「第一回合 10 点格挡 → 得 2 层；第二回合不打格挡 → 第三回合荆棘归零」。
+  // 荆棘写成真状态（player.buffs），UI 才有图标；上限通过 maxStacks 覆盖本次施加，不动全局 5 层。
+  const brambleStep = traitBrambleFromBlockStep(draft);
+  if (brambleStep !== null) {
+    const next = Math.min(brambleMaxStacks(draft), traitBrambleFromBlock(draft));
+    const current = buffStacks(draft.player.buffs, "bramble");
+    if (next !== current) {
+      draft.player.buffs = draft.player.buffs.filter((b) => b.id !== "bramble");
+      if (current > 0) sink.emit("BuffExpired", { targetId: "player", buffId: "bramble" });
+      if (next > 0) {
+        applyBuffToTarget(draft, sink, "player", "bramble", next, null, brambleMaxStacks(draft));
+      }
+    }
+  }
   tickAllBuffs(draft, sink, "turnEnd");
   // 冰缓 / 颠倒（层数 = 剩余回合）：在自己回合结束时 −1（docs/46 §3.7/§3.8）
   decayTimedCurses(sink, [draft.player]);
@@ -163,6 +220,12 @@ function endTurn(draft: Draft, sink: EventSink): void {
   // 蚀锈在【敌方回合开始】结算（甲方 2026-10-07 改版）：先炸一轮再轮到敌人行动。
   // 如果这一下把场上清空了就直接结束战斗——死人不再还手。
   resolveCorroding(draft, sink);
+  // 超负荷（docs/58 §六.2）：承载者在**自己回合开始**扣血——敌方侧即此处
+  tickOverload(
+    draft,
+    sink,
+    draft.enemies.map((e) => e.id),
+  );
   if (checkBattleEnd(draft, sink)) return;
   runEnemyTurn(draft, sink);
   if (checkBattleEnd(draft, sink)) return;
@@ -175,12 +238,21 @@ function endTurn(draft: Draft, sink: EventSink): void {
   resolveRegeneration(draft, sink);
   resolveMending(draft, sink);
   resolvePollutionCritical(draft, sink);
+  // 超负荷（docs/58 §六.2）：承载者在**自己回合开始**扣血——玩家侧即此处
+  tickOverload(draft, sink, ["player"]);
   // 诅咒结算（docs/46 §3.7/3.8/3.9）：灼烧扣上限 + 冰缓/颠倒按回合递减
   resolveCurses(draft, sink);
   draft.player.energy = draft.player.maxEnergy;
+  // 玻璃大炮「蓄势」（docs/58 §六.4）：新回合开始时再判一次（充能 <10 → +1 能量）
+  grantLowChargeEnergy(draft);
   // 只清玩家自己的格挡（坚韧持有时改为置回维续池）；敌人格挡不在此处清（见上方 enemyAction）
   resolveTenacity(draft.player);
   draft.cardsPlayedThisTurn = 0;
+  // 特性本回合计数（docs/58 §四/§七）：新回合全量归零
+  draft.attackCardsPlayedThisTurn = 0;
+  draft.dealtDamageThisTurn = 0;
+  draft.selfHpSpentThisTurn = 0;
+  draft.eyeUsedThisTurn = false;
   resetTurnRelics(draft);
   resolveTriggers(draft, sink, "onTurnStart");
   sink.emit("TurnStarted", { turn: draft.turn });
@@ -208,6 +280,10 @@ export function reduce(state: BattleState, action: Action): ReduceResult {
       break;
     case "EndTurn":
       if (draft.phase === "playerAction") endTurn(draft, sink);
+      break;
+    case "PickFromDraw":
+      // 神眼（docs/58 §七.2）：每回合一次，从牌库任选一张入手
+      if (draft.phase === "playerAction") pickFromDraw(draft, sink, action.instanceId);
       break;
     case "DebugCommand":
       executeDebugCommand(draft, sink, action.command);

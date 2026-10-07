@@ -8,7 +8,7 @@ import { simulateRun } from "./sim";
 const HEALTHY_MIN = 0.45;
 const HEALTHY_MAX = 0.65;
 
-/** 用法：npm run sim -- [局数] [--scenario elite_warden] [--class engineer] [--difficulty rust] [--acts 2] */
+/** 用法：npm run sim -- [局数] [--scenario elite_warden] [--class engineer] [--difficulty rust] [--acts 2] [--trait glass_cannon] */
 function parseArgs(argv: string[]): {
   games: number;
   scenario: string | null;
@@ -20,6 +20,8 @@ function parseArgs(argv: string[]): {
   actCount: number;
   /** 哨兵模式（docs/49 §二）：只记录数字、不判健康区间，不卡批次 */
   sentinel: boolean;
+  /** 职业特性（docs/58 §二）：空串 = 无特性（现版基线） */
+  traitId: string;
 } {
   let games = 100;
   let scenario: string | null = null;
@@ -28,6 +30,7 @@ function parseArgs(argv: string[]): {
   let aiFloor = false;
   let actCount = 1;
   let sentinel = false;
+  let traitId = "";
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
     if (token === "--sentinel") {
@@ -36,6 +39,19 @@ function parseArgs(argv: string[]): {
     }
     if (token === "--ai-floor") {
       aiFloor = true;
+      continue;
+    }
+    if (token === "--trait") {
+      traitId = argv[i + 1] ?? "";
+      i += 1;
+      continue;
+    }
+    if (token.startsWith("--trait=")) {
+      traitId = token.slice("--trait=".length);
+      continue;
+    }
+    if (token === "--no-trait") {
+      traitId = "";
       continue;
     }
     if (token === "--acts") {
@@ -77,11 +93,13 @@ function parseArgs(argv: string[]): {
     const n = Number(token);
     if (Number.isFinite(n) && n > 0) games = Math.trunc(n);
   }
-  return { games, scenario, classId, difficulty, aiFloor, actCount, sentinel };
+  return { games, scenario, classId, difficulty, aiFloor, actCount, sentinel, traitId };
 }
 
 function main(): number {
-  const { games, scenario, classId, difficulty, aiFloor, actCount, sentinel } = parseArgs(process.argv.slice(2));
+  const { games, scenario, classId, difficulty, aiFloor, actCount, sentinel, traitId } = parseArgs(
+    process.argv.slice(2),
+  );
   const { content, acts } = loadNodeContent();
   const act = acts[0];
   if (!act) {
@@ -95,7 +113,7 @@ function main(): number {
       return 1;
     }
     const results = Array.from({ length: games }, (_, i) =>
-      simulateEliteScenario(content, act, i + 1, classId, difficulty),
+      simulateEliteScenario(content, act, i + 1, classId, difficulty, traitId),
     );
     const report = buildScenarioReport(results);
     console.log(formatScenarioReport(report));
@@ -104,10 +122,12 @@ function main(): number {
 
   const actList = actCount > 1 ? acts.slice(0, actCount) : [];
   const results = Array.from({ length: games }, (_, i) =>
-    simulateRun(content, act, i + 1, classId, difficulty, actList),
+    simulateRun(content, act, i + 1, classId, difficulty, actList, undefined, traitId),
   );
   console.log(
-    `[headless-sim] 职业 ${classId} · 难度 ${difficulty}${actList.length > 0 ? ` · 连打 ${actList.length} 幕` : ""}`,
+    `[headless-sim] 职业 ${classId} · 难度 ${difficulty}${traitId ? ` · 特性 ${traitId}` : " · 无特性"}${
+      actList.length > 0 ? ` · 连打 ${actList.length} 幕` : ""
+    }`,
   );
   const report = buildReport(results);
   console.log(formatReport(report));

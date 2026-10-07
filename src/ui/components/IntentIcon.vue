@@ -19,15 +19,16 @@ const label = computed(() => {
 });
 
 /**
- * 蓄力三段式（docs/41 §3.3）：蓄力中 → 临近 → 即将造成。
- * 关键点是第三段：预警不再「消失」，而是变成结算预告，因果闭合
- * （红屏预警 → 即将造成 24 → 前扑 → 飘字 −24）。
+ * 蓄力两段式（docs/41 §3.3，甲方 2026-10-07 手感修订）：
+ * **蓄力期只标「蓄力」**——不预告还有几回合、也不报释放数值，玩家自己读节奏；
+ * **出手那一回合才做强预警**——「蓄力重击 · 即将造成 X」，红框脉冲 + 红屏（BattleView）。
+ * 因果仍然闭合：蓄力 → 重击预警 → 前扑 → 飘字 −24。
  */
-const stage = computed<"none" | "charging" | "imminent" | "incoming">(() => {
+const stage = computed<"none" | "charging" | "incoming">(() => {
   const i = props.intent;
   if (!i) return "none";
   if (i.kind === "attack" && i.released) return "incoming";
-  if (i.kind === "charge") return (i.thenIn ?? 9) <= 1 ? "imminent" : "charging";
+  if (i.kind === "charge") return "charging";
   return "none";
 });
 
@@ -35,16 +36,12 @@ const sub = computed(() => {
   const i = props.intent;
   if (!i) return "未知";
   if (i.fuzzed) return "颠倒 · 数值未知";
-  if (i.kind === "charge") {
-    const value = i.thenValue ?? 0;
-    if (stage.value === "imminent") return `下回合释放 ${value} · 准备防御`;
-    const turns = i.thenIn ?? 0;
-    return turns > 0 ? `蓄力 · ${turns}回合后释放 ${value}` : `蓄力 · 释放 ${value}`;
-  }
+  // 蓄力期只是一个状态：格挡量与释放值都不在这里剧透（格挡挂悬停提示）。
+  if (i.kind === "charge") return "蓄力";
   if (stage.value === "incoming") {
     const hits = (i.hits ?? 1) > 1 ? `×${i.hits}` : "";
     // 「承受」是玩家视角，会把玩家的行动读成敌人的行动——甲方验收：改成施动者视角的「造成」
-    return `即将造成 ${i.value ?? 0}${hits} 点伤害`;
+    return `蓄力重击 · 即将造成 ${i.value ?? 0}${hits} 点伤害`;
   }
   if (i.kind === "selfBuff") {
     if (!i.buffId) return "自身增益";
@@ -63,10 +60,10 @@ const sub = computed(() => {
 
 const color = computed(() => (props.intent?.kind === "attack" ? "#C0392B" : "#B08D4A"));
 
-/** 悬停补全被压缩掉的信息（蓄力期间的格挡量）。 */
+/** 悬停补全蓄力期唯一还给玩家的数字：蓄力会架起多少格挡。 */
 const tip = computed(() => {
   const i = props.intent;
-  if (i?.kind === "charge" && i.block) return `${sub.value}（蓄力期间架起 ${i.block} 点格挡）`;
+  if (i?.kind === "charge") return i.block ? `蓄力 · 架起 ${i.block} 点格挡` : "蓄力";
   return sub.value;
 });
 </script>
@@ -120,11 +117,7 @@ const tip = computed(() => {
   letter-spacing: 0.1em;
   white-space: nowrap;
 }
-/* 蓄力即将释放：整颗意图转红提示（C2-P-1） */
-.intent.imminent { border-color: rgba(192, 57, 43, 0.75); }
-.intent.imminent .sub { color: var(--blood-hi); }
-.intent.imminent .num { color: var(--blood-hi); }
-/* 即将造成（docs/41 §3.3）：红框 + 边框脉冲，把"预警消失的那一回合"补回来 */
+/* 蓄力重击落地（甲方 2026-10-07）：预警只压在这一帧，蓄力期不提前泛红 */
 .intent.incoming { border-color: rgba(192, 57, 43, 0.9); animation: intent-pulse 1s ease-in-out infinite; }
 .intent.incoming .sub { color: var(--blood-hi); }
 .intent.incoming .num { color: var(--blood-hi); }

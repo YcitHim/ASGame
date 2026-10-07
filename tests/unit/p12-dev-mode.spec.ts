@@ -16,6 +16,7 @@ const router = createRouter({
   routes: [
     { path: "/", component: { template: "<div />" } },
     { path: "/map", component: { template: "<div />" } },
+    { path: "/trait-select", name: "trait-select", component: { template: "<div />" } },
   ],
 });
 

@@ -52,6 +52,12 @@ export interface ApplyBuffInput {
   readonly id: BuffId;
   readonly stacks: number;
   readonly duration?: number | null;
+  /**
+   * 层数上限覆盖（缺省用 BuffDefinition.maxStacks）。
+   * 用途：职业特性对某个状态开上限口子（docs/58 §五 铁皮王八把荆棘上限抬到 10），
+   * 覆盖只作用于**这一次施加**，不改变该状态对其他单位的全局上限。
+   */
+  readonly maxStacks?: number;
 }
 
 export interface BuffTickResult {

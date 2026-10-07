@@ -50,7 +50,9 @@ import type {
   EventCondition,
   EventDefinition,
   MapNode,
+  TraitDefinition,
 } from "@/core/registry";
+import { traitsForClass } from "@/core/registry";
 import { useCodexStore } from "@/stores/codex";
 import { useMetaStore } from "@/stores/meta";
 import { useTipsStore } from "@/stores/tips";
@@ -157,6 +159,17 @@ export const useRunStore = defineStore("run", {
       if (!this.run) return undefined;
       return loadGameContent().content.classes.get(this.run.classId);
     },
+    /** 本局选定的职业特性（docs/58 §二）；无特性 / 空串 = undefined。 */
+    traitDef(): TraitDefinition | undefined {
+      const id = this.run?.traitId;
+      if (!id) return undefined;
+      return loadGameContent().content.traits.get(id);
+    },
+    /** 该职业可选的全部特性（特性界面用；「无特性」由 UI 额外补一项）。 */
+    traitChoices(): readonly TraitDefinition[] {
+      if (!this.run) return [];
+      return traitsForClass(loadGameContent().content, this.run.classId);
+    },
     classId(): string {
       return this.run?.classId ?? "";
     },
@@ -250,6 +263,8 @@ export const useRunStore = defineStore("run", {
       companionRelic = "",
       /** 开发者模式跳关（docs/program 开发模式）：直接落在指定幕 / 层 */
       opts: { actIndex?: number; layerIndex?: number } = {},
+      /** 职业特性（docs/58 §二）：空串 / 非法值 = 无特性开局 */
+      traitId = "",
     ): void {
       const acts = this.acts;
       const startActIndex = Math.max(0, Math.min(opts.actIndex ?? 0, Math.max(0, acts.length - 1)));
@@ -257,6 +272,9 @@ export const useRunStore = defineStore("run", {
       if (!act) return;
       const cls = loadGameContent().content.classes.get(classId) ?? loadGameContent().content.classes.get("bloodwright");
       if (!cls) return;
+      // 特性校验：必须存在且归属该职业（UI 只列本职业特性，这里是防呆）
+      const traitDef = traitId ? loadGameContent().content.traits.get(traitId) : undefined;
+      const chosenTrait = traitDef && traitDef.classId === cls.id ? traitDef.id : "";
       // 解锁内容随局快照（docs/36 T1）：core 只认这份 id 列表，不反向依赖 meta
       const meta = useMetaStore();
       meta.ensureLoaded();
@@ -269,6 +287,7 @@ export const useRunStore = defineStore("run", {
         unlocked: meta.unlocked,
         difficulty,
         companionRelic: companion,
+        traitId: chosenTrait,
       });
       const startLayer = Math.max(0, opts.layerIndex ?? 0);
       if (startActIndex > 0 || startLayer > 0) {
@@ -293,9 +312,20 @@ export const useRunStore = defineStore("run", {
       this.persist();
     },
 
+    /**
+     * 选定职业特性（docs/58 §二）：开局流程 = 职业页开好局 → 特性页写 traitId。
+     * 必须在尚未进图（layerIndex 0 且未打第一场）时调用；非法值一律落回「无特性」。
+     */
+    setTrait(traitId: string): void {
+      if (!this.run) return;
+      const def = traitId ? loadGameContent().content.traits.get(traitId) : undefined;
+      const chosen = def && def.classId === this.run.classId ? def.id : "";
+      this.run = { ...this.run, traitId: chosen };
+      this.persist();
+    },
+
     /** 分支地图：在当前层选定候选（进入节点前调用）。 */
-    pickNode(index: number): void {
-      if (!this.run || !this.act) return;
+    pickNode(index: number): void {      if (!this.run || !this.act) return;
       this.run = chooseNode(this.run, this.act, index);
       this.persist();
     },
@@ -529,9 +559,9 @@ export const useRunStore = defineStore("run", {
       return rollRelicChoices(loadGameContent().content, this.relics, count, this.run.unlocked, tiers, seed);
     },
 
-    setPollution(value: number): void {
+    setPollution(value: number, cap = 100): void {
       if (!this.run) return;
-      this.run = setRunPollution(this.run, value);
+      this.run = setRunPollution(this.run, value, cap);
       this.persist();
     },
 
@@ -765,6 +795,8 @@ export const useRunStore = defineStore("run", {
         unlocked: saved.run.unlocked ?? [],
         // 随身遗物改为首胜后发放：默认空，拿到才有（SCHEMA 13 已作废旧线性档）
         pickedRelic: saved.run.pickedRelic ?? "",
+        // 职业特性（SCHEMA 15）：旧档空串 = 无特性
+        traitId: saved.run.traitId ?? "",
         difficulty: saved.run.difficulty ?? "normal",
         usedBloodpact: saved.run.usedBloodpact ?? false,
         overloadCount: saved.run.overloadCount ?? 0,

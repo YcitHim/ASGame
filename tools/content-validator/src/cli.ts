@@ -72,7 +72,7 @@ function main(): number {
   const input = loadContent();
   const result = validateContent(input);
   const issues = [...result.issues, ...checkMapConnectivity(result.acts), ...checkMapVariance(result.acts)];
-  const { cards, enhancements, enemies, acts, relics, events, classes } = result;
+  const { cards, enhancements, enemies, acts, relics, events, classes, traits } = result;
 
   if (issues.length > 0) {
     console.error(`\n[content-validator] 校验失败：${issues.length} 个问题\n`);
@@ -82,7 +82,7 @@ function main(): number {
   }
 
   console.log(
-    `[content-validator] 通过 · 卡牌 ${cards.length} · 强化 ${enhancements.length} · 敌人 ${enemies.length} · 遗物 ${relics.length} · 事件 ${events.length} · 职业 ${classes.length} · 关卡 ${acts.length} · i18n ${Object.keys(input.i18n).length} 条`,
+    `[content-validator] 通过 · 卡牌 ${cards.length} · 强化 ${enhancements.length} · 敌人 ${enemies.length} · 遗物 ${relics.length} · 事件 ${events.length} · 职业 ${classes.length} · 特性 ${traits.length} · 关卡 ${acts.length} · i18n ${Object.keys(input.i18n).length} 条`,
   );
   console.log(`  地图连通性：${acts.length} 幕 × ${MAP_SEED_SWEEP} 种子全过（docs/48 §3.3）`);
   console.log(`  地图方差：${acts.length} 幕 × ${MAP_VARIANCE_SEEDS} 种子——分支点 / 精英层位 / 路径数 / 节点数不聚类（§3.3 修订 4）`);

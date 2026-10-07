@@ -75,6 +75,12 @@ export const BUFF_IDS = [
   "stun",
   /** 灼烧（docs/46 §3.9 异常）：回合开始每层 −1 生命上限（战斗内），上限 5 层 */
   "burn",
+  /**
+   * 超负荷（docs/58 §六 玻璃大炮）：层级型**减益**——战斗结束清零、不衰减。
+   * 每层：获得时立即受 2 点伤害 + 每张卡获得的格挡 −1。
+   * ⚠️ docs/46 原裁定「层级型为九相专用」，本项为甲方拍板的开口子（docs/58 §六-2 回写事项）。
+   */
+  "overload",
 ] as const;
 
 /** 卡牌复杂逻辑 handler（ADR-005） */
@@ -100,6 +106,15 @@ export const ENHANCEMENT_HANDLER_IDS = [
 export const CARD_TYPES = ["attack", "skill", "power", "curse", "status"] as const;
 export const CARD_RARITIES = ["starter", "common", "uncommon", "rare", "special"] as const;
 /**
+ * 职业特性 id（docs/58 §二）：开局除「无特性」外的一档，全程绑定本局。
+ *
+ * 实现纪律（docs/58 §二-3 / 铁律 6）：特性走 **classTrait 注册表**（id / handler / params），
+ * 禁止任何 classId 字符串特判——挂载方式等同「开局自带的隐藏遗物」，复用触发器与修饰符管线。
+ */
+export const TRAIT_IDS = ["bloodthirst", "ironhide_turtle", "glass_cannon", "super_mutation"] as const;
+/** 特性逻辑 handler（ADR-005）：JSON 只传参，机制逻辑在 trait-handler.ts（纯 TS、可单测）。 */
+export const TRAIT_HANDLER_IDS = ["bloodthirst", "ironhide_turtle", "glass_cannon", "super_mutation"] as const;
+/**
  * 卡牌归属池（docs/56 §二）：三职业 + 中立。
  * 归属只看「身份指纹」（机制），不看风味——打击/防御这种谁都能用的卡不该占着血械的池子。
  */
@@ -114,8 +129,18 @@ export type CardHandlerId = (typeof CARD_HANDLER_IDS)[number];
 export type EnhancementHandlerId = (typeof ENHANCEMENT_HANDLER_IDS)[number];
 export type CardType = (typeof CARD_TYPES)[number];
 export type CardRarity = (typeof CARD_RARITIES)[number];
+export type TraitId = (typeof TRAIT_IDS)[number];
+export type TraitHandlerId = (typeof TRAIT_HANDLER_IDS)[number];
 
-export type RegistryKind = "keyword" | "condition" | "target" | "buff" | "cardHandler" | "enhancementHandler";
+export type RegistryKind =
+  | "keyword"
+  | "condition"
+  | "target"
+  | "buff"
+  | "cardHandler"
+  | "enhancementHandler"
+  | "trait"
+  | "traitHandler";
 
 const REGISTRY: Record<RegistryKind, readonly string[]> = {
   keyword: KEYWORD_IDS,
@@ -124,6 +149,8 @@ const REGISTRY: Record<RegistryKind, readonly string[]> = {
   buff: BUFF_IDS,
   cardHandler: CARD_HANDLER_IDS,
   enhancementHandler: ENHANCEMENT_HANDLER_IDS,
+  trait: TRAIT_IDS,
+  traitHandler: TRAIT_HANDLER_IDS,
 };
 
 export function isRegistered(kind: RegistryKind, id: string): boolean {

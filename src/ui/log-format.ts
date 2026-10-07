@@ -16,6 +16,16 @@ function unitLabel(id: string, names: Record<string, string>): string {
   return id === "player" ? "你" : (names[id] ?? id);
 }
 
+/** HpLost.reason → 面板中文标签（docs/58 §六 新增 overload）。 */
+const HP_LOST_REASON: Record<string, string> = {
+  damage: "受击",
+  bloodpact: "血契",
+  pollution: "污染",
+  backlash: "反噬",
+  burn: "灼烧",
+  overload: "超负荷",
+};
+
 export function describeEvent(event: DomainEvent, names: Record<string, string> = {}): LogEntry {
   switch (event.type) {
     case "BattleStarted":
@@ -50,7 +60,7 @@ export function describeEvent(event: DomainEvent, names: Record<string, string> 
     case "BlockBroken":
       return { seq: event.seq, type: event.type, text: `${unitLabel(event.targetId, names)} 格挡被击破` };
     case "HpLost":
-      return { seq: event.seq, type: event.type, text: `${unitLabel(event.targetId, names)} 失去 ${event.value} HP（${event.reason}）` };
+      return { seq: event.seq, type: event.type, text: `${unitLabel(event.targetId, names)} 失去 ${event.value} HP（${HP_LOST_REASON[event.reason] ?? event.reason}）` };
     case "HpHealed":
       return { seq: event.seq, type: event.type, text: `${unitLabel(event.targetId, names)} 回复 ${event.value} HP（${event.reason}）` };
     case "BuffApplied":

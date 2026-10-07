@@ -7,6 +7,7 @@ import {
   enhancementSchema,
   eventSchema,
   relicSchema,
+  traitSchema,
   type ActJson,
   type CardJson,
   type ClassJson,
@@ -14,6 +15,7 @@ import {
   type EnhancementJson,
   type EventJson,
   type RelicJson,
+  type TraitJson,
 } from "./schema";
 
 export interface SourceFile {
@@ -36,6 +38,8 @@ export interface ContentInput {
   relics?: SourceFile[];
   events?: SourceFile[];
   classes?: SourceFile[];
+  /** 职业特性（docs/58 §二） */
+  traits?: SourceFile[];
   i18n: Record<string, string>;
 }
 
@@ -48,6 +52,7 @@ export interface ValidationResult {
   relics: RelicJson[];
   events: EventJson[];
   classes: ClassJson[];
+  traits: TraitJson[];
 }
 
 function zodIssues(file: string, error: unknown): ValidationIssue[] {
@@ -182,6 +187,7 @@ export function validateContent(input: ContentInput): ValidationResult {
   const relics: RelicJson[] = [];
   const events: EventJson[] = [];
   const classes: ClassJson[] = [];
+  const traits: TraitJson[] = [];
 
   // docs/45 Q11：先扫一遍调试指令（正式内容数据不许引用）
   for (const file of [
@@ -192,6 +198,7 @@ export function validateContent(input: ContentInput): ValidationResult {
     ...(input.relics ?? []),
     ...(input.events ?? []),
     ...(input.classes ?? []),
+    ...(input.traits ?? []),
   ]) {
     scanDebugCommands(file.file, file.data, issues);
   }
@@ -203,6 +210,7 @@ export function validateContent(input: ContentInput): ValidationResult {
   parseAll(relicSchema, input.relics ?? [], relics, issues);
   parseAll(eventSchema, input.events ?? [], events, issues);
   parseAll(classSchema, input.classes ?? [], classes, issues);
+  parseAll(traitSchema, input.traits ?? [], traits, issues);
 
   // 全局 id 唯一（docs/04 §4）
   const seen = new Map<string, string>();
@@ -292,6 +300,7 @@ export function validateContent(input: ContentInput): ValidationResult {
   for (const r of relics) checkId("relic", r.id);
   for (const e of events) checkId("event", e.id);
   for (const c of classes) checkId("class", c.id);
+  for (const t of traits) checkId("trait", t.id);
 
   // 九相后半（docs/46 §3.5 / §六.8）：眩晕的两条硬约束
   for (const e of enemies) {
@@ -479,6 +488,23 @@ export function validateContent(input: ContentInput): ValidationResult {
     requireKeyEarly(`class ${cls.id}`, cls.i18n + ".name");
     requireKeyEarly(`class ${cls.id}`, cls.i18n + ".title");
     requireKeyEarly(`class ${cls.id}`, cls.i18n + ".intro");
+  }
+  // 职业特性（docs/58 §二）：归属职业存在 + 文案齐全 + 每职业至少一档（防静默丢特性）
+  for (const t of traits) {
+    if (!classIds.has(t.classId)) {
+      issues.push({ file: `trait ${t.id}`, path: "classId", message: `引用了不存在的职业 "${t.classId}"` });
+    }
+    requireKeyEarly(`trait ${t.id}`, t.i18n + ".name");
+    requireKeyEarly(`trait ${t.id}`, t.i18n + ".desc");
+  }
+  for (const cls of classes) {
+    if (!traits.some((t) => t.classId === cls.id)) {
+      issues.push({
+        file: `class ${cls.id}`,
+        path: "traits",
+        message: "每个职业至少要有一档特性（docs/58 §一/§二：开局三选含无特性）",
+      });
+    }
   }
   // 每张卡的 class 必须是已定义职业——或中立池（docs/56 §三：neutral 不是职业，是共享池）
   for (const c of cards) {
@@ -683,7 +709,7 @@ export function validateContent(input: ContentInput): ValidationResult {
     }
   }
 
-  return { issues, cards, enhancements, enemies, acts, relics, events, classes };
+  return { issues, cards, enhancements, enemies, acts, relics, events, classes, traits };
 }
 
 /** 报错文本：带文件与字段定位（docs/05 G1 验收要求）。 */

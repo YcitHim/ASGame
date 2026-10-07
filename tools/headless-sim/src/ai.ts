@@ -6,7 +6,7 @@
 import type { CardDefinition, ContentDb } from "../../../src/core/registry";
 import type { BattleState } from "../../../src/core/combat";
 import { isBoonBuff } from "../../../src/core/buffs";
-import { cardEnergyCost, validatePlayCardState } from "../../../src/core/combat";
+import { previewEnergyCost, validatePlayCardState } from "../../../src/core/combat";
 import { pactHpCost } from "../../../src/core/keywords";
 
 export interface CardScore {
@@ -78,7 +78,9 @@ export function scoreHand(state: BattleState, content: ContentDb): CardScore[] {
     const instance = state.cardInstances[instanceId];
     const def = content.cards.get(instance.cardId);
     if (!def) return { index, score: -1 };
-    if (cardEnergyCost(def, instance) > state.player.energy) return { index, score: -1 };
+    // 用真实费用预览（含强化 + 特性免能，docs/58 §七.2 触手）——
+    // 原先只看卡面价，AI 会在"这张其实免能"时误判成打不起，系统性低估触手。
+    if (previewEnergyCost(state, index) > state.player.energy) return { index, score: -1 };
 
     const blood = pactHpCost({ keywords: def.keywords, bloodCost: def.bloodCost });
     if (blood > 0 && state.player.hp <= blood + 4) return { index, score: -1 };
