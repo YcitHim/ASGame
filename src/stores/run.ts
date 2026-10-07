@@ -134,6 +134,15 @@ export const useRunStore = defineStore("run", {
       const unlocked = this.run?.unlocked ?? [];
       return relicPool(loadGameContent().content, 1, unlocked);
     },
+    /**
+     * 首胜随身遗物是否待发（甲方 2026-10-07）：开局不再自选，
+     * 第一场战斗胜利后从 T1 池里给一次三选一。一局只发一次。
+     */
+    companionDue(): boolean {
+      return (
+        !!this.run && !this.run.pickedRelic && this.run.actIndex === 0 && this.run.layerIndex === 0
+      );
+    },
     /** 本局职业定义（data/classes）。 */
     classDef(): ClassDefinition | undefined {
       if (!this.run) return undefined;
@@ -228,11 +237,11 @@ export const useRunStore = defineStore("run", {
       // 解锁内容随局快照（docs/36 T1）：core 只认这份 id 列表，不反向依赖 meta
       const meta = useMetaStore();
       meta.ensureLoaded();
-      // 随身遗物（docs/38 §一 A-2）：显式选择优先；程序化调用（测试 / sim）回落到 T1 池首件
+      // 随身遗物改为**首胜后三选一**（甲方 2026-10-07）：开局不再自选、不带件；
+      // 第一场战斗胜利后由 RewardView 从 T1 池给一次三选一（见 companionDue / takeCompanionRelic）。
+      // 显式传入（测试 / sim / 开发者定点验证）仍然直接带上。
       const pool = relicPool(loadGameContent().content, 1, meta.unlocked);
-      // 默认件 = 血泵（docs/38 §一 A-2「默认选中第一件（血泵）」）；池内没有才回落首件
-      const fallback = pool.includes("blood_pump") ? "blood_pump" : (pool[0] ?? "");
-      const companion = pool.includes(companionRelic) ? companionRelic : fallback;
+      const companion = pool.includes(companionRelic) ? companionRelic : "";
       this.run = createRunState(act, cls, seed, {
         unlocked: meta.unlocked,
         difficulty,
@@ -303,6 +312,20 @@ export const useRunStore = defineStore("run", {
           hpLeft: this.run.hp,
         });
       }
+      this.persist();
+    },
+
+    /** 首胜随身遗物三选一（甲方 2026-10-07）：取自 T1 起始池。 */
+    companionRelicChoices(): string[] {
+      if (!this.companionDue) return [];
+      return this.relicChoices([1]);
+    },
+
+    /** 取走首胜随身遗物：记进 relics 与 run.pickedRelic（一局只发一次）。 */
+    takeCompanionRelic(relicId: string): void {
+      if (!this.run || !this.companionDue) return;
+      if (!this.relics.includes(relicId)) this.addRelic(relicId);
+      this.run = { ...this.run, pickedRelic: relicId };
       this.persist();
     },
 
@@ -664,14 +687,8 @@ export const useRunStore = defineStore("run", {
         layerIndex: saved.run.layerIndex ?? 0,
         picked: saved.run.picked ?? [],
         unlocked: saved.run.unlocked ?? [],
-        // v6 旧档没有随身遗物：按身份件原配的第二件补回（与 save 迁移同口径）
-        pickedRelic:
-          saved.run.pickedRelic ??
-          (saved.run.classId === "engineer"
-            ? "pressuregauge"
-            : saved.run.classId === "bloodwright"
-              ? "blood_pump"
-              : ""),
+        // 随身遗物改为首胜后发放：默认空，拿到才有（SCHEMA 13 已作废旧线性档）
+        pickedRelic: saved.run.pickedRelic ?? "",
         difficulty: saved.run.difficulty ?? "normal",
         usedBloodpact: saved.run.usedBloodpact ?? false,
         overloadCount: saved.run.overloadCount ?? 0,

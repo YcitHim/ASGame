@@ -58,8 +58,12 @@ describe("S5 UI 流程视图挂载", () => {
     wrapper.unmount();
   });
 
-  it("RewardView：普通节点给出三选一", async () => {
+  it("RewardView：第一场胜利先给随身遗物三选一，再给卡牌三选一", async () => {
     const { wrapper } = mountView(RewardView, (run) => run.startRun("bloodwright", 1));
+    await nextTick();
+    // 甲方 2026-10-07：随身遗物改成首胜后发放
+    expect(wrapper.findAll(".relic")).toHaveLength(3);
+    await wrapper.findAll(".relic")[0]!.trigger("click");
     await nextTick();
     expect(wrapper.findAll(".option")).toHaveLength(3);
     expect(wrapper.find(".skip").exists()).toBe(true);

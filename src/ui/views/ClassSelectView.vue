@@ -2,13 +2,12 @@
 import { computed, onMounted, ref, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
 import { loadGameContent, t } from "@/data/load";
-import { relicPool, type RunDifficulty } from "@/core/map";
+import type { RunDifficulty } from "@/core/map";
 import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
 import { useSettingsStore } from "@/stores/settings";
 import { useTutorialStore } from "@/stores/tutorial";
 import { useStageFit } from "@/ui/composables/useStageFit";
-import { relicResourceFit } from "@/ui/relic-fit";
 
 const router = useRouter();
 const run = useRunStore();
@@ -39,47 +38,7 @@ const classes = computed(() => [...loadGameContent().content.classes.values()]);
 
 onMounted(() => {
   meta.ensureLoaded();
-  // 随身遗物必选：默认选中 T1 池首件（docs/38 §一 A-2）
-  const pool = companionPool.value;
-  if (!companion.value && pool.length > 0) companion.value = pool.includes("blood_pump") ? "blood_pump" : pool[0];
-  // 相性判定的"当前职业"：默认第一个已解锁职业，鼠标划过职业卡时跟着换（docs/43 §2.4）
-  if (!focusClassId.value) {
-    focusClassId.value = classes.value.find((c) => isUnlocked(c.id))?.id ?? classes.value[0]?.id ?? "";
-  }
 });
-
-/** 随身遗物（docs/38 §一 A-2）：T1 起始池横排自选，不允许跳过。 */
-const companion = ref("");
-const companionPool = computed(() => relicPool(loadGameContent().content, 1, meta.unlocked));
-const companionDef = computed(() =>
-  companionPool.value.includes(companion.value) ? companion.value : (companionPool.value[0] ?? ""),
-);
-function companionName(id: string): string {
-  return t(`relic.${id}.name`, id);
-}
-function companionDesc(id: string): string {
-  return t(`relic.${id}.desc`, "");
-}
-function companionFlavor(id: string): string {
-  return t(`relic.${id}.flavor`, "");
-}
-
-/**
- * 相性（docs/43 §2.4）：与当前职业机制不合的件置灰 + 标注。
- * "当前职业"跟着鼠标划过的职业卡走——选择页没有"已选中职业"这个状态。
- */
-const focusClassId = ref("");
-function companionFit(id: string) {
-  return relicResourceFit(id, focusClassId.value, loadGameContent().content);
-}
-function className(id: string): string {
-  return t(`class.${id}.name`, id);
-}
-function fitNote(id: string): string {
-  const fit = companionFit(id);
-  if (fit.ok) return "";
-  return `需要${fit.resource}机制 · ${className(fit.ownerClassId ?? "")}专属相性`;
-}
 
 function isUnlocked(classId: string): boolean {
   const def = loadGameContent().content.classes.get(classId);
@@ -149,12 +108,15 @@ const deckTipInfo = computed(() => {
 const askTutorial = ref(false);
 const pendingClassId = ref("");
 
+/**
+ * 开局不带随身遗物（甲方 2026-10-07）：第一场战斗胜利后由 /reward 给一次 T1 三选一。
+ */
 function startRunWith(classId: string): void {
   run.startRun(
     classId,
     undefined,
     difficulty.value,
-    companionDef.value,
+    "",
     devMode.value ? { actIndex: devAct.value, layerIndex: devLayer.value } : {},
   );
 }
@@ -245,37 +207,6 @@ function back(): void {
         <span v-else-if="difficultyDesc()" class="depth-desc">{{ difficultyDesc() }}</span>
       </div>
 
-      <!-- 随身遗物（docs/38 §一 A-2）：T1 起始池必选一件 -->
-      <div class="companion">
-        <div class="companion-head">
-          <span class="depth-label">{{ t("class.companion.title", "随身遗物") }}</span>
-          <span class="companion-hint">{{ t("class.companion.hint", "") }}</span>
-        </div>
-        <div class="companion-row">
-          <button
-            v-for="id in companionPool"
-            :key="id"
-            class="companion-item"
-            :class="{ on: companionDef === id, unfit: !companionFit(id).ok }"
-            :title="
-              companionName(id) + '：' + companionDesc(id) + (companionFit(id).ok ? '' : '（' + fitNote(id) + '）')
-            "
-            @click="companion = id"
-          >
-            {{ companionName(id) }}
-            <em v-if="!companionFit(id).ok" class="fit-note">{{ fitNote(id) }}</em>
-          </button>
-        </div>
-        <div v-if="companionDef" class="companion-detail">
-          <b>{{ companionName(companionDef) }}</b>
-          <span>{{ companionDesc(companionDef) }}</span>
-          <em>{{ companionFlavor(companionDef) }}</em>
-          <span v-if="!companionFit(companionDef).ok" class="companion-warn">
-            ⚠ {{ fitNote(companionDef) }}——这件对当前职业基本是白板，能选，但别指望它干活。
-          </span>
-        </div>
-      </div>
-
       <!-- 开发者模式：指定起始幕 / 层（测试跳关） -->
       <div v-if="devMode" class="dev-panel">
         <span class="dev-tag">DEV</span>
@@ -300,7 +231,6 @@ function back(): void {
           :key="cls.id"
           class="cls"
           :class="{ locked: !isUnlocked(cls.id) }"
-          @mouseenter="focusClassId = cls.id"
         >
           <header>
             <h2>{{ isUnlocked(cls.id) ? t(cls.i18n + '.name', cls.id) : "？？？" }}</h2>
@@ -438,34 +368,6 @@ function back(): void {
 .dev-btn.on { color: var(--gold); border-color: var(--gold); }
 .dev-num { width: 56px; padding: 3px 6px; font-size: 12px; color: var(--ink-bone); background: rgba(10,8,6,.9); border: 1px solid rgba(176,141,74,.5); border-radius: var(--radius-sm); }
 .dev-hint { font-size: 10px; color: var(--ink-dim); }
-.companion { display: flex; flex-direction: column; align-items: center; gap: 7px; }
-.companion-head { display: flex; align-items: center; gap: 12px; }
-.companion-hint { font-size: 11px; color: var(--ink-dim); letter-spacing: 0.08em; }
-.companion-row { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; max-width: 900px; }
-.companion-item {
-  padding: 5px 12px; font-size: 11px; letter-spacing: 0.1em;
-  color: var(--ink-dim); background: rgba(18, 16, 14, 0.7);
-  border: 1px solid rgba(110, 88, 54, 0.4); border-radius: var(--radius-sm);
-  cursor: pointer; transition: border-color var(--dur-hover), color var(--dur-hover);
-}
-.companion-item:hover { border-color: var(--gold); color: var(--gold); }
-.companion-item.on {
-  border-color: var(--gold); color: var(--gold);
-  box-shadow: 0 0 12px rgba(176, 141, 74, 0.24);
-}
-/* 机制不合（docs/43 §2.4）：置灰 + 标注，但不隐藏、不禁止 */
-.companion-item.unfit { opacity: 0.46; border-style: dashed; }
-.companion-item.unfit:hover { opacity: 0.72; }
-.companion-item.unfit.on { opacity: 1; }
-.companion-item .fit-note {
-  display: block; margin-top: 2px; font-size: 9px; font-style: normal;
-  letter-spacing: 0.04em; color: var(--gold-dim);
-}
-.companion-warn { color: var(--blood-hi) !important; }
-.companion-detail { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 46px; }
-.companion-detail b { font-family: var(--serif-title); font-size: 12px; letter-spacing: 0.16em; color: var(--ink-bone); font-weight: 400; }
-.companion-detail span { font-size: 11px; color: var(--ink-dim); }
-.companion-detail em { font-style: normal; font-size: 10px; color: var(--gold-dim); letter-spacing: 0.08em; }
 .classes { display: flex; gap: 34px; }
 .cls {
   width: 380px;

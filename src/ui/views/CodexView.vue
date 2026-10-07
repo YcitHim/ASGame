@@ -7,28 +7,21 @@ import { loadGameContent, t } from "@/data/load";
 import { useCodexStore } from "@/stores/codex";
 import { ACHIEVEMENT_IDS, useMetaStore } from "@/stores/meta";
 import { useSettingsStore } from "@/stores/settings";
-import { useTipsStore } from "@/stores/tips";
-import { useTutorialStore } from "@/stores/tutorial";
-import { TUTORIAL_CHAPTERS, TUTORIAL_TITLE } from "@/ui/tutorial";
 import CardView from "@/ui/components/CardView.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
 const router = useRouter();
 const codex = useCodexStore();
 const meta = useMetaStore();
-const tips = useTipsStore();
 const settings = useSettingsStore();
-/** 开发者模式：图鉴全解锁（含遗物解锁条件与首遇提示） */
+/** 开发者模式：图鉴全解锁（含遗物解锁条件） */
 const devMode = computed(() => settings.values.developerMode);
-const tutorial = useTutorialStore();
 const stage = useTemplateRef<HTMLElement>("stage");
-/** 速成课的全部知识点（docs/42 速成版）：图鉴里可随时回看 */
-const lesson = TUTORIAL_CHAPTERS.find((c) => c.kind === "battle");
-const lessonSteps = lesson?.kind === "battle" ? lesson.steps : [];
 useStageFit(stage);
 
 const game = loadGameContent();
-type Tab = "card" | "relic" | "enemy" | "tip" | "tutorial" | "achievement";
+// 提示 / 第一班岗 已迁到设置页的「教学」页（甲方 2026-10-07）
+type Tab = "card" | "relic" | "enemy" | "achievement";
 const tab = ref<Tab>("card");
 
 onMounted(() => {
@@ -57,10 +50,6 @@ function relicKnown(r: RelicDefinition): boolean {
   if (devMode.value) return true;
   return codex.relicSeen(r.id) && isContentAvailable(r.unlockCondition, r.id, meta.unlocked);
 }
-/** 首遇提示是否算"已读"（开发者模式下全部展开）。 */
-function tipRead(id: string): boolean {
-  return devMode.value || meta.hasSeenTip(id);
-}
 function relicFlavor(id: string): string {
   return t(`relic.${id}.flavor`, "");
 }
@@ -76,12 +65,6 @@ const cards = computed(() =>
   [...game.content.cards.values()].filter((c) => c.rarity !== "starter" || codex.cardSeen(c.id)).sort((a, b) => a.id.localeCompare(b.id)),
 );
 const enemies = computed(() => [...game.content.enemies.values()].sort((a, b) => a.id.localeCompare(b.id)));
-
-/** 图鉴里重进「第一班岗」（docs/42 §四「回放」）。 */
-function replayTutorial(): void {
-  tutorial.begin();
-  void router.push("/tutorial");
-}
 
 function back(): void {
   void router.push("/");
@@ -100,12 +83,6 @@ function back(): void {
         <button class="tab" :class="{ active: tab === 'card' }" @click="tab = 'card'">卡牌 {{ cards.length }}</button>
         <button class="tab" :class="{ active: tab === 'relic' }" @click="tab = 'relic'">遗物 {{ game.content.relics.size }}</button>
         <button class="tab" :class="{ active: tab === 'enemy' }" @click="tab = 'enemy'">敌人 {{ enemies.length }}</button>
-        <button class="tab" :class="{ active: tab === 'tip' }" @click="tab = 'tip'">
-          {{ t("codex.tab.tip", "提示") }} {{ meta.tips.length }}/{{ tips.all.length }}
-        </button>
-        <button class="tab" :class="{ active: tab === 'tutorial' }" @click="tab = 'tutorial'">
-          {{ TUTORIAL_TITLE }}
-        </button>
         <button class="tab" :class="{ active: tab === 'achievement' }" @click="tab = 'achievement'">
           {{ t("codex.tab.achievement", "成就") }} {{ achievedCount }}/{{ ACHIEVEMENT_IDS.length }}
         </button>
@@ -147,38 +124,6 @@ function back(): void {
                 <p v-if="relicKnown(r) && relicFlavor(r.id)" class="flavor">{{ relicFlavor(r.id) }}</p>
               </article>
             </template>
-          </div>
-        </template>
-
-        <template v-else-if="tab === 'tip'">
-          <div class="rows">
-            <div class="tip-actions">
-              <span>首遇提示：第一次遇到机制时弹一次，点掉后不再出现（会记在这份存档里）。</span>
-              <button class="etch-btn tip-reset" @click="tips.resetAll()">重新显示一遍</button>
-            </div>
-            <article v-for="tip in tips.all" :key="tip.id" class="row" :class="{ locked: !tipRead(tip.id) }">
-              <h3>{{ tip.title }}<small>{{ tipRead(tip.id) ? "已读" : "未读" }}</small></h3>
-              <p class="tip-body">{{ tip.body }}</p>
-            </article>
-          </div>
-        </template>
-
-        <template v-else-if="tab === 'tutorial'">
-          <div class="rows">
-            <div class="tip-actions">
-              <span>
-                {{
-                  meta.tutorialDone.length > 0
-                    ? `已完成「${TUTORIAL_TITLE}」：${meta.tutorialDone.length} 个职业`
-                    : "还没走过「第一班岗」——速成课只要 3 分钟，第一次玩建议走一遍。"
-                }}
-              </span>
-              <button class="etch-btn tip-reset" @click="replayTutorial">重 进 第 一 班 岗</button>
-            </div>
-            <article v-for="(step, i) in lessonSteps" :key="i" class="row">
-              <h3>{{ i + 1 }}. {{ step.why }}</h3>
-              <p class="tip-body">{{ step.how }}</p>
-            </article>
           </div>
         </template>
 
@@ -258,11 +203,4 @@ function back(): void {
   letter-spacing: 0.24em; color: var(--gold-dim); font-weight: 400;
 }
 .row p.flavor { color: var(--gold-dim); font-style: italic; }
-/* 首遇提示回看（docs/41 §4.1） */
-.tip-actions {
-  display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  font-size: 11px; letter-spacing: 0.08em; color: var(--ink-dim);
-}
-.tip-reset { padding: 6px 14px; font-size: 11px; }
-.row p.tip-body { white-space: pre-line; }
 </style>

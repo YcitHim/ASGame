@@ -27,6 +27,12 @@ const mode = computed<"boss" | "elite" | "card">(() =>
 
 /** 精英战两段式（docs/25 §1）：先遗物三选一，再「残骸锻核」强化三选一，都可放弃。 */
 const step = ref<"relic" | "enhance">("relic");
+/**
+ * 普通战斗胜利的两段式（甲方 2026-10-07）：**第一场**胜利先从 T1 池给一次随身遗物三选一，
+ * 再走原来的卡牌三选一。开局不再自选随身遗物。
+ */
+const cardStep = ref<"companion" | "card">("card");
+const companionOffers = ref<string[]>([]);
 /** Boss 遗物槽（docs/38 §一 A-1）：T3 稀有池，可取走 1 件 */
 const bossTaken = ref<string | null>(null);
 const enhanceChoices = ref<string[]>([]);
@@ -72,6 +78,12 @@ onMounted(() => {
   if (mode.value === "card") {
     rewards.value = run.cardRewards();
     codex.markCards(rewards.value);
+    // 首胜随身遗物：先从 T1 池三选一，再选卡
+    if (run.companionDue) {
+      companionOffers.value = run.companionRelicChoices();
+      codex.markRelics(companionOffers.value);
+      if (companionOffers.value.length > 0) cardStep.value = "companion";
+    }
   } else if (mode.value === "elite") {
     // 精英 / 残骸锻核 = T2 常规池（docs/38 §一 A-1）
     relicOffers.value = run.relicChoices([2]);
@@ -103,6 +115,13 @@ function takeBossRelic(id: string): void {
   run.addRelic(id);
   tips.trigger("relic_pick");
   bossTaken.value = id;
+}
+
+/** 取走首胜随身遗物 → 回到卡牌三选一。 */
+function takeCompanion(id: string): void {
+  run.takeCompanionRelic(id);
+  tips.trigger("relic_pick");
+  cardStep.value = "card";
 }
 
 function pickEnhanceOffer(id: string): void {
@@ -214,6 +233,21 @@ function rarityLabel(rarity: string | undefined): string {
           </div>
           <button class="skip" @click="finishRun">放 弃</button>
         </template>
+      </template>
+
+      <template v-else-if="cardStep === 'companion'">
+        <header class="hd">
+          <h1 class="head">随 身 遗 物</h1>
+          <p class="sub">第一场胜利 · 从三件里挑一件带走</p>
+        </header>
+        <div class="relics">
+          <button v-for="id in companionOffers" :key="id" class="relic" @click="takeCompanion(id)">
+            <b>{{ t(`relic.${id}.name`, id) }}</b>
+            <p>{{ t(`relic.${id}.desc`, "") }}</p>
+            <span class="pick">取 走</span>
+          </button>
+        </div>
+        <button class="skip" @click="cardStep = 'card'">放 弃</button>
       </template>
 
       <template v-else>

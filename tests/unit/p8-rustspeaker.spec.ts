@@ -145,9 +145,9 @@ describe("1.0-B 职业与解锁", () => {
     for (const id of ["bloodwright", "engineer", "rustspeaker"]) {
       run.startRun(id, 3);
       expect(run.deck).toHaveLength(10);
+      // 随身遗物改为首胜后三选一：开局只有身份件
       expect(run.relics).toEqual([
         id === "bloodwright" ? "broken_oil" : id === "engineer" ? "dentedcoil" : "rust_rosary",
-        "blood_pump",
       ]);
     }
   });

@@ -10,8 +10,14 @@ body,
   height: 100%;
 }
 
+/* 背景与舞台同源：舞台按 16:9 等比缩放，宽屏 / 高屏时四周会留边。
+   以前留的是纯黑，看着像"游戏两旁的黑边"；现在用同一套幕主题渐变铺满，
+   黑边变成舞台光晕的延续（无需改变缩放比例，画面不会被拉伸）。 */
 body {
-  background: #000;
+  background:
+    radial-gradient(ellipse 90% 65% at 50% 30%, var(--act-wash), transparent 72%),
+    radial-gradient(ellipse 130% 95% at 50% 112%, var(--act-deep), transparent 62%),
+    var(--bg-abyss);
   color: var(--ink-bone);
   font-family: var(--serif-body);
   overflow: hidden;
@@ -51,6 +57,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* 舞台外圈的柔和暗角：让 16:9 舞台与留边的过渡没有硬边 */
+  background: radial-gradient(ellipse 62% 72% at 50% 46%, transparent 62%, rgba(0, 0, 0, 0.55) 100%);
 }
 
 /* 余烬粒子（docs/08 §1 克制原则：上限极低） */

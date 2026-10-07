@@ -66,17 +66,26 @@ describe("1.0-A 遗物分级与掉落池", () => {
   });
 });
 
-describe("1.0-A 随身遗物", () => {
-  it("默认带血泵；身份件 + 随身遗物一起进战斗", () => {
+describe("1.0-A 随身遗物（首胜后发放，甲方 2026-10-07）", () => {
+  it("开局不再预带；第一场胜利前 companionDue 为真，可出 T1 三选一", () => {
     window.localStorage.clear();
     setActivePinia(createPinia());
     const run = useRunStore();
     run.startRun("bloodwright", 7);
-    expect(run.run?.pickedRelic).toBe("blood_pump");
-    expect(run.relics).toEqual(["broken_oil", "blood_pump"]);
+    expect(run.run?.pickedRelic).toBe("");
+    expect(run.relics).toEqual(["broken_oil"]);
+    expect(run.companionDue).toBe(true);
+    expect(run.companionRelicChoices()).toHaveLength(3);
+    const first = run.companionRelicChoices()[0]!;
+    run.takeCompanionRelic(first);
+    expect(run.run?.pickedRelic).toBe(first);
+    expect(run.relics).toContain(first);
+    // 一局只发一次
+    expect(run.companionDue).toBe(false);
+    expect(run.companionRelicChoices()).toEqual([]);
   });
 
-  it("显式选择随身遗物生效；不在 T1 池的选择回落默认", () => {
+  it("显式传入仍直接带上（测试 / 开发定点验证）；不在 T1 池的传参不带", () => {
     window.localStorage.clear();
     setActivePinia(createPinia());
     const run = useRunStore();
@@ -84,7 +93,8 @@ describe("1.0-A 随身遗物", () => {
     expect(run.run?.pickedRelic).toBe("rust_dowsing");
     expect(run.relics).toEqual(["dentedcoil", "rust_dowsing"]);
     run.startRun("engineer", 7, "normal", "broken_oil");
-    expect(run.run?.pickedRelic).toBe("blood_pump");
+    expect(run.run?.pickedRelic).toBe("");
+    expect(run.relics).toEqual(["dentedcoil"]);
   });
 });
 
