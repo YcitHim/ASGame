@@ -53,16 +53,6 @@ const KIND_LABEL: Record<string, string> = {
   boss: "首领",
   event: "事件",
 };
-const KIND_GLYPH: Record<string, string> = {
-  battle: "剑",
-  elite: "角",
-  rest: "火",
-  altar: "砧",
-  reward: "匣",
-  boss: "颅",
-  event: "？",
-};
-
 const view = computed(() => run.view);
 const layers = computed(() => view.value?.layers ?? []);
 const edges = computed(() => view.value?.edges ?? []);
@@ -86,12 +76,14 @@ const CENTER_X = MAP_W / 2;
 
 const positions = computed(() => {
   const map = new Map<string, { x: number; y: number }>();
+  // 自下而上（爬塔）：l0 在最底、Boss 在最顶
+  const lastLayer = Math.max(0, layers.value.length - 1);
   layers.value.forEach((layer, li) => {
     for (const node of layer.nodes) {
       const col = node.col ?? 0;
       map.set(node.id, {
         x: CENTER_X + (col - CENTER_COL) * COL_W,
-        y: MAP_TOP + li * ROW_H + ROW_H / 2,
+        y: MAP_TOP + (lastLayer - li) * ROW_H + ROW_H / 2,
       });
     }
   });
@@ -238,7 +230,53 @@ function toTitle(): void {
             :title="nodeTitle(node)"
             @click="enter(node)"
           >
-            <span class="glyph">{{ KIND_GLYPH[node.kind] ?? "?" }}</span>
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <g v-if="node.kind === 'battle'">
+                <path d="M12 2.2l1.5 2.4v6.2h-3V4.6z" />
+                <path d="M8.2 10.8h7.6" />
+                <path d="M12 10.8v3.4" />
+                <circle cx="12" cy="16.3" r="1.5" />
+              </g>
+              <g v-else-if="node.kind === 'elite'">
+                <path d="M12 3l2.4 6.1 6.4 1.1-4.9 4.4 1.4 6.3L12 17.8 6.7 20.9l1.4-6.3L3.2 10.2l6.4-1.1z" />
+              </g>
+              <g v-else-if="node.kind === 'boss'">
+                <path d="M12 3.4c-4.4 0-7.5 2.9-7.5 6.9 0 2.2.9 3.6 2 4.7v2.7c0 .8.7 1.4 1.5 1.4h8c.8 0 1.5-.6 1.5-1.4V15c1.1-1.1 2-2.5 2-4.7 0-4-3.1-6.9-7.5-6.9z" />
+                <circle cx="9.4" cy="10.1" r="1.5" />
+                <circle cx="14.6" cy="10.1" r="1.5" />
+                <path d="M12 13l1 1.7h-2z" />
+              </g>
+              <g v-else-if="node.kind === 'rest'">
+                <path d="M12 3.4c2.6 3.2 4.5 5.5 4.5 8.5a4.5 4.5 0 0 1-9 0c0-1.9.8-3.3 2.1-5 .5.9.9 1.5 1.4 2.1.3-1.8.6-3.6 1-5.6z" />
+                <path d="M6.4 20.6l11.2-3.4" />
+                <path d="M17.6 20.6L6.4 17.2" />
+              </g>
+              <g v-else-if="node.kind === 'altar'">
+                <g transform="rotate(45 12 12)">
+                  <rect x="11" y="4.4" width="2" height="12.6" rx="0.9" />
+                  <rect x="7.6" y="2.6" width="8.8" height="4.2" rx="1" />
+                </g>
+              </g>
+              <g v-else-if="node.kind === 'reward'">
+                <path d="M3.6 10.8a8.4 4.2 0 0 1 16.8 0" />
+                <rect x="3.6" y="10.8" width="16.8" height="8.4" rx="1.2" />
+                <path d="M3.6 14.4h16.8" />
+                <rect x="10.6" y="12.7" width="2.8" height="3.4" rx="1" />
+              </g>
+              <g v-else>
+                <path d="M8.8 9.3a3.2 3.2 0 1 1 4.5 2.9c-1 .5-1.3 1.1-1.3 2.1" />
+                <circle cx="12" cy="17.8" r="1.1" />
+              </g>
+            </svg>
             <span class="tag">{{ KIND_LABEL[node.kind] ?? node.kind }}</span>
           </button>
         </template>
@@ -321,12 +359,12 @@ function toTitle(): void {
 @keyframes node-pulse { 0%,100% { box-shadow: 0 0 12px rgba(176,141,74,0.3); } 50% { box-shadow: 0 0 22px rgba(216,180,106,0.6); } }
 .node.boss { border-color: rgba(192, 57, 43, 0.65); }
 .node.boss.current { box-shadow: 0 0 22px rgba(192, 57, 43, 0.5); }
-/* 类型只靠字形 + 标签区分（docs/48 §四 美术口径） */
+/* 类型只靠图标 + 标签区分（docs/48 §四 美术口径；图标为内联 SVG，不依赖字体） */
 .node.k-elite { border-color: rgba(158, 106, 194, 0.6); }
-.node.k-elite .glyph { color: #b98ad6; }
-.node.k-boss .glyph { color: var(--blood-hi); }
-.node.k-rest .glyph { color: #d9a566; }
-.glyph { font-family: var(--serif-title); font-size: 17px; line-height: 1; color: var(--gold); }
+.node.k-elite .icon { color: #b98ad6; }
+.node.k-boss .icon { color: var(--blood-hi); }
+.node.k-rest .icon { color: #d9a566; }
+.icon { width: 22px; height: 22px; color: var(--gold); }
 .tag {
   position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%);
   padding: 1px 5px; border-radius: 3px; background: rgba(12, 10, 8, 0.92);
