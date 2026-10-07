@@ -7,6 +7,7 @@ import { useStageFit } from "@/ui/composables/useStageFit";
 import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
 import { useTutorialStore } from "@/stores/tutorial";
+import { APP_RELEASE, SEAL_DATE } from "@/ui/build-info";
 import { hasSlot, readSlot } from "@/systems/save";
 
 const stage = useTemplateRef<HTMLElement>("stage");
@@ -105,8 +106,8 @@ function onMenu(key: MenuKey, enabled: boolean): void {
       </section>
 
       <footer class="foot">
-        <span>0.5 封版 · 2026-10-06</span>
-        <span class="dim">docs/program/0.5封版总结.md · 效果图 docs/mockups/battle-screen.html</span>
+        <span>{{ APP_RELEASE }} 封版 · {{ SEAL_DATE }}</span>
+        <span class="dim">docs/program/{{ APP_RELEASE }}版本总结.md · 效果图 docs/mockups/battle-screen.html</span>
       </footer>
     </div>
   </div>
