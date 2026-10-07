@@ -74,9 +74,11 @@ const enhancementNames = computed(() =>
 );
 const enhancementRows = computed(() =>
   (props.enhancementIds ?? []).map((id) => ({
-    term: `◆ ${t(`enh.${id}.name`, id)}`,
+    term: t(`enh.${id}.name`, id),
     tip: t(`enh.${id}.desc`, ""),
     kind: "enh" as const,
+    // 与卡面附魔槽（红色菱形）统一：注解窗里也用红色标记
+    mark: "◆",
   })),
 );
 
@@ -97,7 +99,8 @@ const annotations = computed(() => {
     if (!merged.includes(term)) merged.push(term);
   }
   return [
-    ...merged.map((term) => ({ term, tip: keywordTip(term), kind: "kw" as const })),
+    // mark 空串 = 关键词不画标记；附魔画红色 ◆（与卡面附魔槽同色）
+    ...merged.map((term) => ({ term, tip: keywordTip(term), kind: "kw" as const, mark: "" })),
     ...enhancementRows.value,
   ];
 });
@@ -187,7 +190,7 @@ function onLeave(): void {
       :style="{ left: tipPos.left + 'px', top: tipPos.top + 'px' }"
     >
       <div v-for="item in annotations" :key="item.term" class="kw-row" :class="item.kind">
-        <b>{{ item.term }}</b>
+        <b><span v-if="item.mark" class="kw-mark">{{ item.mark }}</span>{{ item.term }}</b>
         <span>{{ item.tip }}</span>
       </div>
     </div>
@@ -475,9 +478,17 @@ function onLeave(): void {
   color: #7fa6c8;
   font-weight: 400;
 }
-/* 附魔条目走金色，与关键词的蓝色区分开（docs/52 §二.2） */
+/* 附魔条目走金色，与关键词的蓝色区分开（docs/52 §二.2）；
+   但前面的标记与卡面附魔槽同色（红色菱形），保持"这是附魔"的视觉一致 */
 .kw-row.enh b {
   color: var(--gold);
+}
+/* 选择器要压过 .kw-row span（同样命中 span，但那条是 (0,1,1) 更高）——
+   否则标记会被正文色盖掉，红不出来。 */
+.kw-row b .kw-mark {
+  margin-right: 5px;
+  color: var(--blood-hi);
+  text-shadow: 0 0 6px rgba(192, 57, 43, 0.6);
 }
 .kw-row span {
   font-size: 10px;

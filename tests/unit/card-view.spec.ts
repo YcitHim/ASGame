@@ -76,6 +76,8 @@ describe("CardView 附魔可视", () => {
     const rows = document.body.querySelectorAll(".kw-row.enh");
     expect(rows.length).toBe(1);
     expect(rows[0]!.textContent).toContain("◆");
+    // 标记与卡面附魔槽同色（红），名字仍是金色
+    expect(rows[0]!.querySelector(".kw-mark")).not.toBeNull();
     wrapper.unmount();
   });
 });

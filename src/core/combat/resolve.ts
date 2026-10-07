@@ -415,7 +415,7 @@ export function changeCharge(
   delta: number,
   /** 触发器自身造成的充能变化（docs/29 §二⑥ 飞升齿轮）：不再派发 onGainCharge，防自触发死循环 */
   suppressTriggers = false,
-): void {
+): boolean {
   const before = draft.player.charge;
   const after = Math.max(0, before + delta);
   draft.player.charge = after;
@@ -429,7 +429,9 @@ export function changeCharge(
     loseHp(draft, sink, PLAYER_ID, CHARGE_BACKLASH, "backlash");
     draft.player.charge = 0;
     sink.emit("ChargeChanged", { targetId: PLAYER_ID, before: after, after: 0, delta: -after });
+    return true;
   }
+  return false;
 }
 
 /** 相位 tick：计时型衰减 + 汇总到期事件。 */
@@ -812,9 +814,8 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
       // 若这一步把充能推过上限（过载反噬清零），再抽 overloadDraw 张牌。
       const base = Math.max(0, ctx.energyAtPlay ?? draft.player.energy);
       const amount = base + Math.max(0, value);
-      const before = draft.player.charge;
-      if (amount > 0) changeCharge(draft, sink, amount);
-      const overloaded = before + amount > CHARGE_LIMIT;
+      // 过载与否**由 changeCharge 自己判**（不再在卡里复刻一遍上限规则）
+      const overloaded = amount > 0 ? changeCharge(draft, sink, amount) : false;
       const extra = effect.overloadDraw ?? 0;
       if (overloaded && extra > 0) drawCards(draft, sink, extra);
       break;
