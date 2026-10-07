@@ -63,10 +63,19 @@ const netHp = computed(() => netHpText(props.cardId, props.upgraded === true));
 const flavor = computed(() => I18N[`card.${props.cardId}.flavor`] ?? "");
 const typeLabel = computed(() => TYPE_LABEL[props.type] ?? props.type);
 const keywordLabels = computed(() => props.keywords.map((k) => KEYWORD_LABEL[k] ?? k));
-const enhancementTip = computed(() =>
-  (props.enhancementIds ?? [])
-    .map((id) => `${t(`enh.${id}.name`, id)}：${t(`enh.${id}.desc`, "")}`)
-    .join("\n"),
+/**
+ * 附魔（docs/52 §二）：祭坛付过代价，收益必须在卡面上可见。
+ * 数据本来就从 enhancementIds 传着，缺的只是渲染——卡面一行名字 + 注解窗条目。
+ */
+const enhancementNames = computed(() =>
+  (props.enhancementIds ?? []).slice(0, 3).map((id) => t(`enh.${id}.name`, id)),
+);
+const enhancementRows = computed(() =>
+  (props.enhancementIds ?? []).map((id) => ({
+    term: `◆ ${t(`enh.${id}.name`, id)}`,
+    tip: t(`enh.${id}.desc`, ""),
+    kind: "enh" as const,
+  })),
 );
 
 /** 扇形展开：以中心为 0 度摊开；展示模式不旋转。 */
@@ -85,7 +94,10 @@ const annotations = computed(() => {
   for (const term of [...fromKeywords, ...fromDesc]) {
     if (!merged.includes(term)) merged.push(term);
   }
-  return merged.map((term) => ({ term, tip: keywordTip(term) }));
+  return [
+    ...merged.map((term) => ({ term, tip: keywordTip(term), kind: "kw" as const })),
+    ...enhancementRows.value,
+  ];
 });
 
 /** 定位注解窗：由布局位置 + 悬停缩放推算真实视觉框，保证所有卡牌间距一致。 */
@@ -153,9 +165,10 @@ function onLeave(): void {
       </template>
     </div>
     <div class="ctext" v-html="descHtml" />
+    <div v-if="enhancementNames.length" class="cenh">附魔 · {{ enhancementNames.join("、") }}</div>
     <div v-if="netHp" class="cnet">{{ netHp }}</div>
     <div v-if="flavor" class="cflavor" :class="{ force: showFlavor }">{{ flavor }}</div>
-    <div class="enhslots" :title="enhancementTip">
+    <div class="enhslots">
       <i v-for="n in 3" :key="n" :class="{ on: n <= (enhancements ?? 0) }" />
     </div>
   </div>
@@ -168,7 +181,7 @@ function onLeave(): void {
       :class="tipSide"
       :style="{ left: tipPos.left + 'px', top: tipPos.top + 'px' }"
     >
-      <div v-for="item in annotations" :key="item.term" class="kw-row">
+      <div v-for="item in annotations" :key="item.term" class="kw-row" :class="item.kind">
         <b>{{ item.term }}</b>
         <span>{{ item.tip }}</span>
       </div>
@@ -325,6 +338,16 @@ function onLeave(): void {
   letter-spacing: 0.08em;
   color: #9a9081;
 }
+/* 附魔行（docs/52 §二）：比效果文本低一档，但始终可见——玩家为它付过代价 */
+.cenh {
+  margin: 4px 10px 0;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  color: var(--gold-dim);
+  overflow: hidden;
+}
 .cflavor {
   /* 放在描述之后的正向流里：以前绝对定位会被长描述顶穿（玩家报「黄字和介绍重叠」） */
   margin: 5px 10px 0;
@@ -425,6 +448,10 @@ function onLeave(): void {
   letter-spacing: 0.16em;
   color: #7fa6c8;
   font-weight: 400;
+}
+/* 附魔条目走金色，与关键词的蓝色区分开（docs/52 §二.2） */
+.kw-row.enh b {
+  color: var(--gold);
 }
 .kw-row span {
   font-size: 10px;

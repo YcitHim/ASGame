@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import type { BuffInstance } from "@/core/buffs";
 import { buffAmount, buffMeta, buffTip, buffValueText, type BuffMeta } from "./buff-meta";
-import { BUFF_TIP_WIDTH, computeBuffTipPlacement } from "@/ui/tip-position";
+import { BUFF_TIP_WIDTH, computeBuffTipPlacement, type TipRect } from "@/ui/tip-position";
 import { keywordTip } from "@/ui/glossary";
 
 interface ChargeBadge {
@@ -18,8 +18,13 @@ const props = withDefaults(
     compact?: boolean;
     /** 蓄力中时额外显示的「蓄力 ×N（M 回合后释放）」徽标（docs/19 §4） */
     charge?: ChargeBadge | null;
+    /**
+     * 需要避让的选择器（docs/52 §3.2）：提示框朝上会盖住这些元素时改朝下。
+     * 只在**同一个单位容器**（.player-panel / .enemy）内查找，避免拿别的敌人的计量条当障碍。
+     */
+    avoid?: readonly string[];
   }>(),
-  { align: "center", compact: false, charge: null },
+  { align: "center", compact: false, charge: null, avoid: () => [] },
 );
 
 interface TipState {
@@ -37,6 +42,20 @@ function meta(id: string): BuffMeta {
   return buffMeta(id);
 }
 
+/** 收集同单位容器内的障碍物矩形（实测，不写死像素）。 */
+function obstacleRects(anchor: HTMLElement): TipRect[] {
+  if (props.avoid.length === 0) return [];
+  const scope: ParentNode = anchor.closest(".player-panel, .enemy") ?? document;
+  const out: TipRect[] = [];
+  for (const selector of props.avoid) {
+    for (const node of scope.querySelectorAll(selector)) {
+      const r = node.getBoundingClientRect();
+      out.push({ left: r.left, top: r.top, right: r.right, bottom: r.bottom });
+    }
+  }
+  return out;
+}
+
 function place(event: MouseEvent | FocusEvent, name: string, value: string, desc: string): void {
   const el = event.currentTarget as HTMLElement | null;
   if (!el) return;
@@ -46,6 +65,7 @@ function place(event: MouseEvent | FocusEvent, name: string, value: string, desc
     { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
     window.innerWidth,
     window.innerHeight,
+    obstacleRects(el),
   );
   tip.value = { ...placement, name, value, desc };
 }
@@ -138,7 +158,8 @@ function close(): void {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 30px;
+  /* docs/52 §3.1：条目高度 30 → 34（字形块同步 22 → 24），状态名与层数放大后可读 */
+  height: 34px;
   padding: 0 7px 0 4px;
   cursor: help;
   font: inherit;
@@ -161,14 +182,14 @@ function close(): void {
   border-color: #d9822b;
 }
 .tile {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   flex: none;
   display: grid;
   place-items: center;
   border-radius: 3px;
   font-family: var(--serif-title);
-  font-size: 12px;
+  font-size: 13px;
   color: #f6ecd8;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
   background:
@@ -184,20 +205,21 @@ function close(): void {
   display: none;
 }
 .name {
-  font-size: 10px;
+  /* docs/52 §3.1：状态名 10px/ink-dim → 12px/ink-bone，深底上不再糊成一团 */
+  font-size: 12px;
   letter-spacing: 0.08em;
-  color: var(--ink-dim);
+  color: var(--ink-bone);
   white-space: nowrap;
 }
 .val {
-  min-width: 17px;
-  height: 17px;
+  min-width: 19px;
+  height: 19px;
   padding: 0 4px;
   display: grid;
   place-items: center;
-  border-radius: 9px;
+  border-radius: 10px;
   font-family: var(--serif-num);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   line-height: 1;
   color: #16100a;

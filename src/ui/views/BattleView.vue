@@ -102,6 +102,13 @@ watch(
 /** ESC 打开设置（玩家习惯：ESC = 菜单）。设置页自 v1.0.3 起可滚动，能看全。 */
 function onKeydown(event: KeyboardEvent): void {
   if (event.key !== "Escape") return;
+  // 拖动中 ESC = 取消这次出牌（docs/51 §三），交给拖拽自己的监听处理，不抢去开设置
+  if (drag.value) return;
+  // 瞄准态 ESC = 取消瞄准（与拖拽口径一致）
+  if (store.targeting !== null) {
+    store.selectTargetNoop();
+    return;
+  }
   if (store.over) return; // 结算界面上 ESC 不抢焦点，免得手滑关掉结果页
   void router.push("/settings");
 }
@@ -244,6 +251,8 @@ const floatersFor = computed(() => {
 const showTutHint = computed(() => tutorial.active && tutorial.step !== undefined);
 const battleAnim = computed(() => settings.values.battleAnim);
 const showFloaters = computed(() => battleAnim.value !== "off");
+/** 重读数（docs/51 §一）跟着动画档位走：off 档关闭，simple 档保留文字（震屏本来就只在 full 档） */
+const showBigFloater = computed(() => battleAnim.value !== "off");
 const showMotion = computed(() => battleAnim.value === "full");
 
 // 首遇提示压后（docs/41 §4.1）：战斗高潮（动画播放中）不弹，等行动结束再出现
@@ -276,6 +285,12 @@ interface DragState {
   x: number;
   y: number;
   hoverEnemy: string | null;
+  /** 当前位置是否是合法落点（docs/51 §三）：幽灵卡据此在 50% 透明 / 实色之间切换 */
+  legal: boolean;
+  /** 指针悬在手牌区（= 松手即取消）：手牌区描边高亮 */
+  overHand: boolean;
+  /** 正在回弹归位（0.2s），此帧不接收输入 */
+  returning: boolean;
 }
 
 const drag = ref<DragState | null>(null);
@@ -327,6 +342,43 @@ watch(
   },
 );
 
+/** 手牌区（拖动落点判定：落回这里 = 取消）。 */
+const handZoneRef = useTemplateRef<HTMLElement>("handZone");
+
+/** 落在这些 UI 面板上不算"出牌区"（docs/51 §三：日志/顶栏/结算/弹窗都要排除）。 */
+const UI_BLOCKERS = ".hand-zone, .topbar, .log-drawer, .result, .menu-confirm";
+
+function overUi(x: number, y: number): boolean {
+  const el = typeof document.elementFromPoint === "function" ? document.elementFromPoint(x, y) : null;
+  return Boolean(el?.closest?.(UI_BLOCKERS));
+}
+
+function overHandZone(x: number, y: number): boolean {
+  const el = handZoneRef.value;
+  if (!el) return false;
+  const r = el.getBoundingClientRect();
+  return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+}
+
+/**
+ * 落点是否合法（docs/51 §三）：
+ * - 目标卡：松手时命中存活敌人才结算；
+ * - 无目标卡：落回手牌区 / 落在 UI 面板上 -> 取消；落在战场（舞台内）才结算。
+ */
+function dropIsLegal(index: number, x: number, y: number): boolean {
+  if (overHandZone(x, y)) return false;
+  const needsTarget = store.needsTarget(index);
+  const enemyId = enemyAt(x, y);
+  if (needsTarget) return enemyId !== null;
+  if (overUi(x, y)) return false;
+  const el = stage.value;
+  if (!el) return false;
+  const r = el.getBoundingClientRect();
+  // 布局未就绪（jsdom / 首帧）时矩形为零：退回「不在 UI 面板上」的判定，别把正常落点判死
+  if (r.width <= 0 || r.height <= 0) return true;
+  return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+}
+
 /** 命中光标下的存活敌人（拖拽松开时判定）。 */
 function enemyAt(x: number, y: number): string | null {
   const el = typeof document.elementFromPoint === "function" ? document.elementFromPoint(x, y) : null;
@@ -342,6 +394,31 @@ function endDrag(): void {
   dragCleanup = null;
 }
 
+/**
+ * 取消这次拖拽（docs/51 §三）：0.2s 回弹到手牌原位，无消耗、无日志——
+ * 取消不是事件，不该留痕。
+ */
+function cancelDrag(d: DragState): void {
+  endDrag();
+  const rect = lastCardRect.value;
+  if (!rect) {
+    drag.value = null;
+    return;
+  }
+  drag.value = {
+    ...d,
+    x: rect.left + rect.width / 2,
+    y: rect.top + rect.height / 2,
+    hoverEnemy: null,
+    overHand: false,
+    legal: true,
+    returning: true,
+  };
+  window.setTimeout(() => {
+    if (drag.value?.returning) drag.value = null;
+  }, 200);
+}
+
 function onGrab(index: number, event: PointerEvent): void {
   if (!canAct.value) return;
   event.preventDefault();
@@ -355,39 +432,90 @@ function onGrab(index: number, event: PointerEvent): void {
     x: event.clientX,
     y: event.clientY,
     hoverEnemy: null,
+    legal: false,
+    overHand: false,
+    returning: false,
   };
 
   const move = (e: PointerEvent) => {
     const d = drag.value;
-    if (!d) return;
+    if (!d || d.returning) return;
     if (!d.moved && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > 6) d.moved = true;
     d.x = e.clientX;
     d.y = e.clientY;
     d.hoverEnemy = d.moved ? enemyAt(e.clientX, e.clientY) : null;
+    d.overHand = d.moved && overHandZone(e.clientX, e.clientY);
+    d.legal = d.moved && dropIsLegal(d.index, e.clientX, e.clientY);
   };
 
   const up = (e: PointerEvent) => {
     const d = drag.value;
-    endDrag();
-    drag.value = null;
-    if (!d) return;
+    if (!d || d.returning) return;
     if (!d.moved) {
       // 轻点 = 选中手牌（需目标的卡进入瞄准模式）
+      endDrag();
+      drag.value = null;
       store.selectCard(d.index);
       return;
     }
-    const enemyId = enemyAt(e.clientX, e.clientY);
-    // 拖到敌人身上 = 直接对该目标出牌；否则按无目标尝试（非目标卡可直接打出）
-    store.playCard(d.index, enemyId);
+    // 没拖到合法落点 = 取消（绝不替玩家做决定）
+    if (!dropIsLegal(d.index, e.clientX, e.clientY)) {
+      cancelDrag(d);
+      return;
+    }
+    endDrag();
+    drag.value = null;
+    store.playCard(d.index, enemyAt(e.clientX, e.clientY));
+  };
+
+  // 拖动中按 ESC 或右键 = 立即取消
+  const key = (e: KeyboardEvent) => {
+    const d = drag.value;
+    if (e.key !== "Escape" || !d || d.returning) return;
+    e.preventDefault();
+    cancelDrag(d);
+  };
+  const ctx = (e: MouseEvent) => {
+    const d = drag.value;
+    if (!d || d.returning) return;
+    e.preventDefault();
+    cancelDrag(d);
   };
 
   window.addEventListener("pointermove", move);
   window.addEventListener("pointerup", up);
+  window.addEventListener("keydown", key);
+  window.addEventListener("contextmenu", ctx);
   dragCleanup = () => {
     window.removeEventListener("pointermove", move);
     window.removeEventListener("pointerup", up);
+    window.removeEventListener("keydown", key);
+    window.removeEventListener("contextmenu", ctx);
   };
 }
+
+/** 瞄准态（轻点选中的目标卡）的取消路径：ESC / 右键 / 点空白（docs/51 §三）。 */
+watch(
+  () => store.targeting,
+  (targeting, _prev, onCleanup) => {
+    if (targeting === null) return;
+    const onDown = (e: PointerEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (el?.closest?.("[data-enemy-id], .card")) return;
+      store.selectTargetNoop();
+    };
+    const onCtx = (e: MouseEvent) => {
+      e.preventDefault();
+      store.selectTargetNoop();
+    };
+    window.addEventListener("pointerdown", onDown);
+    window.addEventListener("contextmenu", onCtx);
+    onCleanup(() => {
+      window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("contextmenu", onCtx);
+    });
+  },
+);
 
 onBeforeUnmount(endDrag);
 onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
@@ -400,6 +528,13 @@ const DRAG_GHOST_SCALE = 0.55;
 function intentLabel(id: string): string {
   return game.content.enemies.get(id)?.name ?? id;
 }
+
+/**
+ * 状态提示框要避让的「计量条区域」（docs/52 §3.2）。
+ * 我方 = 失控线/HP 条 + 污染条；敌方 = 它自己的 HP 条。只在同一面板内查找。
+ */
+const PLAYER_TIP_AVOID = [".hpbar", ".gauge-wrap", ".limit-line"] as const;
+const ENEMY_TIP_AVOID = [".hpbar"] as const;
 
 /** 效果图基准里敌人名下方的一行称号（docs/15 §2）。 */
 function enemyTitle(id: string): string {
@@ -567,7 +702,7 @@ function quitToTitleKeepRun(): void {
             :block="enemy.block"
             :block-hint="enemy.intent?.kind === 'charge' ? '蓄力架盾' : undefined"
           />
-          <BuffRow :buffs="enemy.buffs" compact :charge="chargeBadge(enemy)" />
+          <BuffRow :buffs="enemy.buffs" compact :charge="chargeBadge(enemy)" :avoid="ENEMY_TIP_AVOID" />
           <template v-if="showFloaters">
             <DamageFloat v-for="f in floatersFor[enemy.id] ?? []" :key="f.id" :floater="f" />
           </template>
@@ -612,6 +747,7 @@ function quitToTitleKeepRun(): void {
                 :buffs="player.buffs"
                 align="start"
                 :compact="player.buffs.length > 4"
+                :avoid="PLAYER_TIP_AVOID"
               />
               <span v-else class="pp-empty">暂无异常</span>
             </div>
@@ -624,7 +760,15 @@ function quitToTitleKeepRun(): void {
       </div>
 
       <!-- 手牌区 -->
-      <div class="hand-zone" :class="{ 'tut-focus': tutorial.focus === 'hand' }" data-tut-label="手牌区">
+      <div
+        ref="handZone"
+        class="hand-zone"
+        :class="{
+          'tut-focus': tutorial.focus === 'hand',
+          'drop-cancel': drag?.moved && drag?.overHand,
+        }"
+        data-tut-label="手牌区"
+      >
         <div v-if="stunned" class="stun-banner">眩 晕 · 本回合不可出牌，可以直接结束回合</div>
         <div class="hand" :class="{ targeting: store.targeting !== null }">
           <CardView
@@ -678,6 +822,7 @@ function quitToTitleKeepRun(): void {
         <div
           v-if="drag && drag.moved && ghostCard"
           class="drag-ghost"
+          :class="{ returning: drag.returning, illegal: !drag.returning && !drag.legal }"
           :style="{
             left: drag.x + 'px',
             top: drag.y + 'px',
@@ -713,6 +858,16 @@ function quitToTitleKeepRun(): void {
           「{{ charge.line }}」
         </p>
         <div class="telegraph-line" />
+      </div>
+
+      <!-- 重读数（docs/51 §一）：事件级大字，舞台中轴偏上（敌人区与手牌区之间） -->
+      <div
+        v-if="showBigFloater && store.bigFloater"
+        :key="store.bigFloater.id"
+        class="bigfloat"
+        :class="store.bigFloater.tier"
+      >
+        {{ store.bigFloater.text }}
       </div>
 
       <!-- 二阶段横幅 -->
@@ -797,6 +952,36 @@ function quitToTitleKeepRun(): void {
   opacity: 0.92;
   filter: drop-shadow(0 14px 22px rgba(0, 0, 0, 0.85));
 }
+/* 不可结算的位置：幽灵卡降到 50% 透明（取消权是看得见的，docs/51 §三） */
+.drag-ghost.illegal {
+  opacity: 0.5;
+  filter: none;
+}
+/* 回弹归位：0.2s 回到手牌原位，无消耗、无日志 */
+.drag-ghost.returning {
+  opacity: 0.5;
+  transition: left 0.2s ease-out, top 0.2s ease-out, opacity 0.2s ease-out;
+}
+/* 悬在手牌区 = 松手即取消：给手牌区描边提示 */
+.hand-zone.drop-cancel::before {
+  content: "松手取消";
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  padding: 3px 14px;
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  color: var(--gold);
+  background: rgba(12, 10, 8, 0.9);
+  border: 1px solid var(--edge-gold);
+  border-radius: var(--radius-sm);
+}
+.hand-zone.drop-cancel {
+  outline: 1px dashed rgba(176, 141, 74, 0.6);
+  outline-offset: -4px;
+}
 
 .topbar {
   position: absolute; top: 0; left: 0; right: 0; height: 34px; z-index: 30;
@@ -864,9 +1049,9 @@ function quitToTitleKeepRun(): void {
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  /* 66px = 恰好两排芯片（30 + 6 + 30），不露半排。
+  /* 74px = 恰好两排芯片（34 + 6 + 34，docs/52 §3.1 放大了条目高度），不露半排。
      超出就在这里内部滚动——绝不允许外溢到面板外面被手牌盖住。 */
-  max-height: 66px;
+  max-height: 74px;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -925,6 +1110,58 @@ function quitToTitleKeepRun(): void {
 /* 报错（打牌失败）血色；操作引导（选择目标）金色，不抢眼也不吓人（docs/41 §2.1） */
 .message.error { color: var(--blood-hi); }
 .message.info { color: var(--gold); }
+
+/* 重读数（docs/51 §一）：中央偏上、64~96px 按档分级的弹性缩放入场 + 1.2s 停留。
+   常规飘字是信息层，这一级是情绪层——位置离开单位头顶，余光必达。 */
+.bigfloat {
+  position: absolute;
+  left: 50%;
+  top: 356px;
+  transform: translateX(-50%);
+  z-index: 46;
+  pointer-events: none;
+  white-space: nowrap;
+  font-family: var(--serif-num);
+  font-size: 80px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+  color: var(--blood-hi);
+  text-shadow: 0 0 26px rgba(192, 57, 43, 0.85), 0 4px 6px rgba(0, 0, 0, 0.9);
+  animation: bigfloat-pop 1.2s ease-out forwards;
+}
+/* ① 重创：血红，最大档 */
+.bigfloat.wound {
+  font-size: 88px;
+  color: #f0b4a8;
+  text-shadow: 0 0 30px rgba(192, 57, 43, 0.95), 0 4px 6px rgba(0, 0, 0, 0.9);
+}
+/* ② 完全格挡：冰蓝 */
+.bigfloat.guard {
+  font-size: 72px;
+  letter-spacing: 0.16em;
+  color: #bfe0f5;
+  text-shadow: 0 0 26px rgba(143, 182, 216, 0.95), 0 4px 6px rgba(0, 0, 0, 0.9);
+}
+/* ③ 重击：锈金 */
+.bigfloat.heavy {
+  font-size: 80px;
+  color: #dcb86e;
+  text-shadow: 0 0 30px rgba(176, 141, 74, 0.95), 0 4px 6px rgba(0, 0, 0, 0.9);
+}
+/* ④ 致命：描金「击溃」 */
+.bigfloat.finish {
+  font-size: 96px;
+  letter-spacing: 0.3em;
+  color: var(--gold);
+  text-shadow: 0 0 34px rgba(176, 141, 74, 1), 0 0 8px rgba(0, 0, 0, 0.95);
+}
+@keyframes bigfloat-pop {
+  0% { opacity: 0; transform: translateX(-50%) scale(0.5); }
+  14% { opacity: 1; transform: translateX(-50%) scale(1.18); }
+  26% { transform: translateX(-50%) scale(1); }
+  78% { opacity: 1; transform: translateX(-50%) translateY(-6px) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-18px) scale(1); }
+}
 
 /* Boss 蓄力全屏预警 */
 .telegraph {

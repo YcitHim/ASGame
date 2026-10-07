@@ -51,6 +51,39 @@ export interface Floater {
   readonly text?: string;
 }
 
+/**
+ * 重读数（docs/51 §一）：战斗高光时刻的**事件级大字**飘字。
+ *
+ * 常规飘字（34px 贴头顶）是信息层，一字不动；这一级是情绪层——
+ * 中央偏上出现 = 余光必达。四档触发器见 onAnimEvent。
+ */
+export type BigFloaterTier = "wound" | "guard" | "heavy" | "finish";
+
+export interface BigFloater {
+  readonly id: number;
+  readonly text: string;
+  readonly tier: BigFloaterTier;
+}
+
+/**
+ * 阈值**一律按相对口径**（docs/51 §一）：act1 的 20 和 act2 的 20 不是一回事。
+ * 下面的绝对值只是「取严不取宽」的下限护栏，不是主口径。
+ */
+export const BIG_FLOATER = {
+  /** 重创：玩家单次受伤 ≥ 最大 HP 的 15% */
+  woundRatio: 0.15,
+  /** 完全格挡：单发被全挡 ≥ 最大 HP 的 15%（且不低于 10 点） */
+  guardRatio: 0.15,
+  guardMin: 10,
+  /** 重击：玩家单次造成 ≥ 目标最大 HP 的 30%（且不低于 12 点） */
+  heavyRatio: 0.3,
+  heavyMin: 12,
+  /** 同屏只留一个；连续重读数至少间隔 0.4s */
+  gapMs: 400,
+  /** 停留 1.2s（常规飘字 0.9s） */
+  holdMs: 1200,
+} as const;
+
 let actionCounter = 0;
 let floaterCounter = 0;
 let cardPlayedSeq = 0;
@@ -85,6 +118,11 @@ export const useBattleStore = defineStore("battle", {
     runKey: "",
     log: [] as DomainEvent[],
     floaters: [] as Floater[],
+    /** 当前展示的重读数（同屏至多一条，docs/51 §一） */
+    bigFloater: null as BigFloater | null,
+    /** 上一条重读数的时间戳（防刷屏 0.4s）；放在 state 里 = 换局/换 store 自动归零 */
+    lastBigAt: 0,
+    bigFloaterSeq: 0,
     playing: false,
     message: "",
     /** 提示所属回合（docs/41 §2.1）：TurnStarted 到达时按回合号清理上一回合的提示 */
@@ -352,6 +390,16 @@ export const useBattleStore = defineStore("battle", {
       this.setMessage(check.reason);
     },
 
+    /**
+     * 这张手牌是否**必须先指定目标**才能打出（docs/51 §三 拖动落点判定用）。
+     * 直接复用 core 的校验口径，不另立一套规则。
+     */
+    needsTarget(handIndex: number): boolean {
+      if (!this.battle) return false;
+      const check = validatePlayCardState(this.battle, handIndex, null);
+      return !check.ok && check.reason === "需要指定目标";
+    },
+
     selectTarget(enemyId: string): void {
       if (this.targeting === null) return;
       const handIndex = this.targeting;
@@ -421,6 +469,7 @@ export const useBattleStore = defineStore("battle", {
       this.brokenUnits = [];
       this.lungeUnits = [];
       this.guardUnits = [];
+      this.bigFloater = null;
     },
 
     toggleSpeed(): void {
@@ -432,6 +481,22 @@ export const useBattleStore = defineStore("battle", {
       this.floaters = this.floaters.filter((f) => f.id !== id);
     },
 
+    /**
+     * 弹一条重读数。返回是否真的弹了——没弹（间隔不够）时调用方要把
+     * 这一击回落成常规飘字，绝不能什么都不显示。
+     */
+    pushBigFloater(text: string, tier: BigFloaterTier): boolean {
+      const now = Date.now();
+      if (now - this.lastBigAt < BIG_FLOATER.gapMs) return false;
+      this.lastBigAt = now;
+      const id = ++this.bigFloaterSeq;
+      this.bigFloater = { id, text, tier };
+      setTimeout(() => {
+        if (this.bigFloater?.id === id) this.bigFloater = null;
+      }, BIG_FLOATER.holdMs);
+      return true;
+    },
+
     onAnimEvent(event: DomainEvent): void {
       switch (event.type) {
         case "DamageDealt": {
@@ -441,6 +506,31 @@ export const useBattleStore = defineStore("battle", {
           }
           this.shake += 1;
           this.markUnit("hitUnits", event.targetId, 80);
+          // —— 重读数（docs/51 §一）：先试大字，抢不到（0.4s 间隔）就回落成常规飘字 ——
+          const playerMax = this.battle?.player.maxHp ?? 0;
+          let big = false;
+          if (event.targetId === "player" && event.sourceId !== "player" && playerMax > 0) {
+            if (event.hpLost >= playerMax * BIG_FLOATER.woundRatio) {
+              // ① 重创：血红大字 + 短震屏（震屏走既有的 shake 链）
+              big = this.pushBigFloater(`−${event.hpLost}`, "wound");
+            } else if (
+              event.hpLost === 0 &&
+              event.blocked >= Math.max(BIG_FLOATER.guardMin, playerMax * BIG_FLOATER.guardRatio)
+            ) {
+              // ② 完全格挡：冰蓝大字（原来的「格挡！」小字升级成事件）
+              big = this.pushBigFloater("完全格挡！", "guard");
+            }
+          } else if (event.sourceId === "player") {
+            const target = this.battle?.enemies.find((e) => e.id === event.targetId);
+            if (
+              target &&
+              event.value >= Math.max(BIG_FLOATER.heavyMin, target.maxHp * BIG_FLOATER.heavyRatio)
+            ) {
+              // ③ 重击：锈金大字（爆发的爽感回授）
+              big = this.pushBigFloater(`−${event.value}`, "heavy");
+            }
+          }
+          if (big) break;
           if (event.hpLost > 0) this.pushFloater(event.targetId, event.hpLost, "damage", event.hpLost >= 12);
           // 被格挡的部分单独显示蓝色「挡N」；完全格挡显示「格挡！」（docs/41 §3.2）
           if (event.blocked > 0) {
@@ -477,9 +567,15 @@ export const useBattleStore = defineStore("battle", {
             }
           }
           break;
-        case "UnitDied":
+        case "UnitDied": {
           this.markUnit("dyingUnits", event.unitId, 500);
+          // ④ 致命：击杀精英 / Boss 的一击 → 描金「击溃」（docs/51 §一）
+          const nodeKind = useRunStore().current?.kind;
+          if (nodeKind === "elite" || nodeKind === "boss") {
+            this.pushBigFloater("击溃", "finish");
+          }
           break;
+        }
         case "BuffTicked":
           if (event.damage > 0) this.pushFloater(event.targetId, event.damage, "damage", false);
           break;

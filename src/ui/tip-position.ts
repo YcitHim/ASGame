@@ -44,25 +44,59 @@ export const BUFF_TIP_WIDTH = 208;
 export const BUFF_TIP_MAX_HEIGHT = 76;
 
 export interface BuffTipPlacement {
+  /** 提示框的**水平中心**：样式里是 translate(-50%)，所以左右夹取都要按半宽算 */
   left: number;
   top: number;
   /** true = 在角标上方（translate(-50%,-100%)），false = 下方 */
   above: boolean;
 }
 
+/** 视口坐标下的矩形（getBoundingClientRect 的四个边）。 */
+export interface TipRect {
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+}
+
+function overlaps(a: TipRect, b: TipRect): boolean {
+  return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+}
+
+/**
+ * 状态角标提示框定位（docs/52 §3.2）。
+ *
+ * 默认朝上浮出，但**若朝上会盖住障碍物（我方失控线/污染条 + HP 条）就改朝下**——
+ * 障碍物由调用方实测传入（矩形相交判定，不写死像素，缩放/双幕自适应）。
+ * 下方也放不下时夹进视口，绝不让提示框跑出屏幕。
+ */
 export function computeBuffTipPlacement(
   anchor: { left: number; top: number; width: number; height: number },
   viewportWidth: number,
   viewportHeight: number,
+  obstacles: readonly TipRect[] = [],
 ): BuffTipPlacement {
+  const half = BUFF_TIP_WIDTH / 2;
   const cx = anchor.left + anchor.width / 2;
-  const maxLeft = Math.max(8, viewportWidth - BUFF_TIP_WIDTH - 8);
-  const left = Math.min(Math.max(8, cx - BUFF_TIP_WIDTH / 2), maxLeft);
-  // 上方需要容纳提示框全高 + 间距；放不下就翻到下方，且下方也要夹进视口
-  const above = anchor.top - BUFF_TIP_MAX_HEIGHT - 10 >= 8;
+  // 贴边时按半宽夹取——否则贴近屏幕左侧的角标会把提示框推出视口（实机：文字被切掉一半）
+  const minCenter = 8 + half;
+  const maxCenter = Math.max(minCenter, viewportWidth - 8 - half);
+  const left = Math.min(Math.max(minCenter, cx), maxCenter);
+  // 上方需要容纳提示框全高 + 间距；放不下就翻到下方
+  const fitsAbove = anchor.top - BUFF_TIP_MAX_HEIGHT - 10 >= 8;
+  const aboveRect: TipRect = {
+    left: left - half,
+    right: left + half,
+    top: anchor.top - 10 - BUFF_TIP_MAX_HEIGHT,
+    bottom: anchor.top - 10,
+  };
+  const coversObstacle = obstacles.some((o) => overlaps(aboveRect, o));
+  const above = fitsAbove && !coversObstacle;
+  const desiredTop = anchor.top + anchor.height + 10;
+  // 下方：先夹进视口下沿，再保证整框不越界
   const top = above
     ? anchor.top - 10
-    : Math.min(anchor.top + anchor.height + 10, Math.max(8, viewportHeight - 8));
+    : Math.max(8, Math.min(desiredTop, viewportHeight - 8 - BUFF_TIP_MAX_HEIGHT));
   return { left, top, above };
 }
 

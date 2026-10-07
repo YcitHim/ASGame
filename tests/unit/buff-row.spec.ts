@@ -30,10 +30,10 @@ describe("BuffRow 状态角标", () => {
 });
 
 describe("computeBuffTipPlacement", () => {
-  it("默认显示在角标上方并水平居中", () => {
+  it("默认显示在角标上方并水平居中（left 是中心，样式里 translate(-50%)）", () => {
     const p = computeBuffTipPlacement({ left: 500, top: 400, width: 80, height: 30 }, 1280, 720);
     expect(p.above).toBe(true);
-    expect(p.left).toBe(500 + 40 - BUFF_TIP_WIDTH / 2);
+    expect(p.left).toBe(500 + 40);
   });
 
   it("顶部放不下时翻到角标下方", () => {
@@ -42,8 +42,13 @@ describe("computeBuffTipPlacement", () => {
     expect(p.top).toBeGreaterThan(20);
   });
 
-  it("贴近右边缘时夹进视口", () => {
+  it("贴近右边缘时按半宽夹进视口", () => {
     const p = computeBuffTipPlacement({ left: 1270, top: 400, width: 20, height: 30 }, 1280, 720);
-    expect(p.left + BUFF_TIP_WIDTH).toBeLessThanOrEqual(1272);
+    expect(p.left + BUFF_TIP_WIDTH / 2).toBeLessThanOrEqual(1272);
+  });
+
+  it("贴近左边缘时不会把提示框推出屏幕（实机：文字被切掉一半）", () => {
+    const p = computeBuffTipPlacement({ left: 60, top: 400, width: 90, height: 34 }, 1280, 720);
+    expect(p.left - BUFF_TIP_WIDTH / 2).toBeGreaterThanOrEqual(8);
   });
 });

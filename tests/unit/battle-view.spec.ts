@@ -16,6 +16,13 @@ const router = createRouter({
   ],
 });
 
+/** jsdom 没有布局：给舞台一个真实矩形，落点判定（docs/51 §三）才有意义。 */
+function stageRect(wrapper: ReturnType<typeof mount>, width = 1280, height = 720): void {
+  const el = wrapper.find(".stage").element as HTMLElement;
+  el.getBoundingClientRect = () =>
+    ({ left: 0, top: 0, right: width, bottom: height, width, height, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+}
+
 describe("BattleView 挂载冒烟（S3.7）", () => {
   beforeEach(() => {
     setActivePinia(createPinia());
@@ -56,6 +63,8 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
     const cardEl = cards[0].element as HTMLElement;
     const enemyEl = wrapper.findAll(".enemy")[0].element as HTMLElement;
     const enemyId = enemyEl.dataset.enemyId;
+    // 落点判定要靠舞台矩形（docs/51 §三）：jsdom 里给它一个真实矩形
+    stageRect(wrapper);
 
     const original = document.elementFromPoint;
     (document as unknown as { elementFromPoint: () => Element | null }).elementFromPoint = () => enemyEl;
@@ -78,6 +87,93 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
     expect(enemyId).toBeTruthy();
     store.skip();
     expect(store.log.some((e) => e.type === "CardPlayed")).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("拖到非合法落点松手 = 取消，绝不替玩家出牌（docs/51 §三）", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
+    await nextTick();
+    await nextTick();
+    const store = useBattleStore();
+    store.skip();
+
+    stageRect(wrapper);
+    const cardEl = wrapper.findAll(".card")[0]!.element as HTMLElement;
+    const original = document.elementFromPoint;
+    (document as unknown as { elementFromPoint: () => Element | null }).elementFromPoint = () => null;
+    try {
+      cardEl.dispatchEvent(new MouseEvent("pointerdown", { clientX: 100, clientY: 100, bubbles: true }));
+      // 舞台外（x > 1280）= 非合法落点
+      window.dispatchEvent(new MouseEvent("pointermove", { clientX: 1500, clientY: 300, bubbles: true }));
+      await nextTick();
+      // 幽灵卡在非法落点上降为半透明
+      const ghost = document.body.querySelector(".drag-ghost");
+      expect(ghost?.classList.contains("illegal")).toBe(true);
+      window.dispatchEvent(new MouseEvent("pointerup", { clientX: 1500, clientY: 300, bubbles: true }));
+    } finally {
+      (document as unknown as { elementFromPoint: unknown }).elementFromPoint = original;
+    }
+    await nextTick();
+    expect(store.log.some((e) => e.type === "CardPlayed")).toBe(false);
+    store.skip();
+    wrapper.unmount();
+  });
+
+  it("拖回手牌区松手 = 取消（手牌区高亮「松手取消」）", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
+    await nextTick();
+    await nextTick();
+    const store = useBattleStore();
+    store.skip();
+
+    stageRect(wrapper);
+    const zone = wrapper.find(".hand-zone").element as HTMLElement;
+    zone.getBoundingClientRect = () =>
+      ({ left: 0, top: 400, right: 800, bottom: 720, width: 800, height: 320, x: 0, y: 400, toJSON: () => ({}) }) as DOMRect;
+
+    const cardEl = wrapper.findAll(".card")[0]!.element as HTMLElement;
+    const original = document.elementFromPoint;
+    (document as unknown as { elementFromPoint: () => Element | null }).elementFromPoint = () => null;
+    try {
+      cardEl.dispatchEvent(new MouseEvent("pointerdown", { clientX: 100, clientY: 100, bubbles: true }));
+      window.dispatchEvent(new MouseEvent("pointermove", { clientX: 400, clientY: 500, bubbles: true }));
+      await nextTick();
+      expect(wrapper.find(".hand-zone").classes()).toContain("drop-cancel");
+      window.dispatchEvent(new MouseEvent("pointerup", { clientX: 400, clientY: 500, bubbles: true }));
+    } finally {
+      (document as unknown as { elementFromPoint: unknown }).elementFromPoint = original;
+    }
+    await nextTick();
+    expect(store.log.some((e) => e.type === "CardPlayed")).toBe(false);
+    store.skip();
+    wrapper.unmount();
+  });
+
+  it("拖动中按 ESC = 取消出牌（不是打开设置）", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    await router.push("/battle");
+    const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
+    await nextTick();
+    await nextTick();
+    const store = useBattleStore();
+    store.skip();
+
+    const cardEl = wrapper.findAll(".card")[0]!.element as HTMLElement;
+    cardEl.dispatchEvent(new MouseEvent("pointerdown", { clientX: 100, clientY: 100, bubbles: true }));
+    window.dispatchEvent(new MouseEvent("pointermove", { clientX: 500, clientY: 300, bubbles: true }));
+    await nextTick();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await nextTick();
+    window.dispatchEvent(new MouseEvent("pointerup", { clientX: 500, clientY: 300, bubbles: true }));
+    await nextTick();
+    expect(store.log.some((e) => e.type === "CardPlayed")).toBe(false);
+    expect(router.currentRoute.value.path).toBe("/battle");
+    store.skip();
     wrapper.unmount();
   });
 
