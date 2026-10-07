@@ -7,6 +7,7 @@
 import { defineStore } from "pinia";
 import { FIRST_TIPS } from "@/ui/first-tips";
 import { useMetaStore } from "@/stores/meta";
+import { useSettingsStore } from "@/stores/settings";
 
 export const useTipsStore = defineStore("tips", {
   state: () => ({
@@ -25,9 +26,11 @@ export const useTipsStore = defineStore("tips", {
     ensureLoaded(): void {
       useMetaStore().ensureLoaded();
     },
-    /** 触发一条首遇提示；已读 / 已在屏 / 已排队都会忽略。 */
+    /** 触发一条首遇提示；已读 / 已在屏 / 已排队 / 设置里关了都会忽略。 */
     trigger(id: string): void {
       this.ensureLoaded();
+      // 设置「弹窗教学」关掉 = 彻底不弹，也不写入已读（重新打开还能看到）
+      if (!useSettingsStore().values.tipPopups) return;
       if (useMetaStore().hasSeenTip(id)) return;
       if (this.current === id || this.queue.includes(id)) return;
       if (!this.busy && this.current === null) this.current = id;
@@ -43,6 +46,7 @@ export const useTipsStore = defineStore("tips", {
      * 让教学与首遇提示互为补位，而不是同一句话说两遍。
      */
     triggerUnlessTaught(id: string, taught: boolean): void {
+      if (!useSettingsStore().values.tipPopups) return;
       if (taught) this.markSeen(id);
       else this.trigger(id);
     },

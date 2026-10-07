@@ -6,6 +6,7 @@ import type { RelicDefinition } from "@/core/registry";
 import { loadGameContent, t } from "@/data/load";
 import { useCodexStore } from "@/stores/codex";
 import { ACHIEVEMENT_IDS, useMetaStore } from "@/stores/meta";
+import { useSettingsStore } from "@/stores/settings";
 import { useTipsStore } from "@/stores/tips";
 import { useTutorialStore } from "@/stores/tutorial";
 import { TUTORIAL_CHAPTERS, TUTORIAL_TITLE } from "@/ui/tutorial";
@@ -16,6 +17,9 @@ const router = useRouter();
 const codex = useCodexStore();
 const meta = useMetaStore();
 const tips = useTipsStore();
+const settings = useSettingsStore();
+/** 开发者模式：图鉴全解锁（含遗物解锁条件与首遇提示） */
+const devMode = computed(() => settings.values.developerMode);
 const tutorial = useTutorialStore();
 const stage = useTemplateRef<HTMLElement>("stage");
 /** 速成课的全部知识点（docs/42 速成版）：图鉴里可随时回看 */
@@ -50,12 +54,23 @@ const relicGroups = computed<{ tier: number; label: string; items: RelicDefiniti
 });
 
 function relicKnown(r: RelicDefinition): boolean {
+  if (devMode.value) return true;
   return codex.relicSeen(r.id) && isContentAvailable(r.unlockCondition, r.id, meta.unlocked);
+}
+/** 首遇提示是否算"已读"（开发者模式下全部展开）。 */
+function tipRead(id: string): boolean {
+  return devMode.value || meta.hasSeenTip(id);
 }
 function relicFlavor(id: string): string {
   return t(`relic.${id}.flavor`, "");
 }
-const achievedCount = computed(() => ACHIEVEMENT_IDS.filter((id) => meta.isAchieved(id)).length);
+/** 成就是否算"已达成"（开发者模式下全部展开，方便查文案）。 */
+function achShown(id: string): boolean {
+  return devMode.value || meta.isAchieved(id);
+}
+const achievedCount = computed(() =>
+  devMode.value ? ACHIEVEMENT_IDS.length : ACHIEVEMENT_IDS.filter((id) => meta.isAchieved(id)).length,
+);
 
 const cards = computed(() =>
   [...game.content.cards.values()].filter((c) => c.rarity !== "starter" || codex.cardSeen(c.id)).sort((a, b) => a.id.localeCompare(b.id)),
@@ -141,8 +156,8 @@ function back(): void {
               <span>首遇提示：第一次遇到机制时弹一次，点掉后不再出现（会记在这份存档里）。</span>
               <button class="etch-btn tip-reset" @click="tips.resetAll()">重新显示一遍</button>
             </div>
-            <article v-for="tip in tips.all" :key="tip.id" class="row" :class="{ locked: !meta.hasSeenTip(tip.id) }">
-              <h3>{{ tip.title }}<small>{{ meta.hasSeenTip(tip.id) ? "已读" : "未读" }}</small></h3>
+            <article v-for="tip in tips.all" :key="tip.id" class="row" :class="{ locked: !tipRead(tip.id) }">
+              <h3>{{ tip.title }}<small>{{ tipRead(tip.id) ? "已读" : "未读" }}</small></h3>
               <p class="tip-body">{{ tip.body }}</p>
             </article>
           </div>
@@ -169,9 +184,9 @@ function back(): void {
 
         <template v-else-if="tab === 'achievement'">
           <div class="rows">
-            <article v-for="id in ACHIEVEMENT_IDS" :key="id" class="row" :class="{ locked: !meta.isAchieved(id) }">
-              <h3>{{ meta.isAchieved(id) ? t(`ach.${id}.name`, id) : "？？？" }}</h3>
-              <p>{{ meta.isAchieved(id) ? t(`ach.${id}.desc`, "") : "尚未达成。" }}</p>
+            <article v-for="id in ACHIEVEMENT_IDS" :key="id" class="row" :class="{ locked: !achShown(id) }">
+              <h3>{{ achShown(id) ? t(`ach.${id}.name`, id) : "？？？" }}</h3>
+              <p>{{ achShown(id) ? t(`ach.${id}.desc`, "") : "尚未达成。" }}</p>
             </article>
           </div>
         </template>

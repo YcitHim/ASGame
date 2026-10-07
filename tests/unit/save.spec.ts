@@ -169,6 +169,9 @@ describe("settings 归一化", () => {
     expect(s.battleAnim).toBe(DEFAULT_SETTINGS.battleAnim);
     expect(s.animationSpeed).toBe(1);
     expect(s.language).toBe("zh-CN");
+    // 甲方反馈：弹窗教学要能在设置里关
+    expect(s.tipPopups).toBe(true);
+    expect(normalizeSettings({ tipPopups: false }).tipPopups).toBe(false);
   });
 
   it("战斗动画三档合法值保留；旧档 screenShake=false 迁移为关闭（docs/41 §3.1）", async () => {

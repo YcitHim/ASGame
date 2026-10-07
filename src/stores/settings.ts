@@ -23,6 +23,8 @@ export interface Settings {
   language: "zh-CN";
   /** 开发者模式（测试用）：解锁全部内容，并在选人/地图页露出跳关入口 */
   developerMode: boolean;
+  /** 首遇提示弹窗（docs/41 §4.1）：关掉后除图鉴回看外不再弹任何机制说明 */
+  tipPopups: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -33,6 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   animationSpeed: 1,
   language: "zh-CN",
   developerMode: false,
+  tipPopups: true,
 };
 
 function clamp01(n: unknown, fallback: number): number {
@@ -50,6 +53,7 @@ export function normalizeSettings(raw: Partial<Settings> | null | undefined): Se
     animationSpeed: r.animationSpeed === 2 ? 2 : 1,
     language: "zh-CN",
     developerMode: typeof r.developerMode === "boolean" ? r.developerMode : DEFAULT_SETTINGS.developerMode,
+    tipPopups: typeof r.tipPopups === "boolean" ? r.tipPopups : DEFAULT_SETTINGS.tipPopups,
   };
 }
 

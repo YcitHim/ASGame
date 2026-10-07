@@ -31,7 +31,7 @@ function onVolume(key: VolumeRow["key"], event: Event): void {
   store.update({ [key]: value });
 }
 
-function onToggle(key: "developerMode", event: Event): void {
+function onToggle(key: "developerMode" | "tipPopups", event: Event): void {
   store.update({ [key]: (event.target as HTMLInputElement).checked });
 }
 
@@ -155,6 +155,16 @@ function back(): void {
           <button class="tut-cta" @click="replayTutorial">
             <span class="glyph">▶</span>{{ tutorialDoneCount > 0 ? "再听铆叔唠叨一遍" : "进 入 教 学" }}
           </button>
+        </div>
+        <div class="row">
+          <div class="label">
+            <b>弹窗教学</b>
+            <small>机制第一次出现时弹一条说明；关掉后不再打扰，图鉴里仍可随时回看</small>
+          </div>
+          <label class="switch">
+            <input type="checkbox" :checked="values.tipPopups" @change="onToggle('tipPopups', $event)" />
+            <span>{{ values.tipPopups ? "开" : "关" }}</span>
+          </label>
         </div>
 
         <h3 class="group">开发者</h3>

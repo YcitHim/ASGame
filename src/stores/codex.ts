@@ -5,7 +5,13 @@
  * 不参与任何数值逻辑。战斗开始、奖励展示、锻造界面都会点亮对应条目。
  */
 import { defineStore } from "pinia";
+import { useSettingsStore } from "@/stores/settings";
 import { readSlot, writeSlot } from "@/systems/save";
+
+/** 开发者模式：图鉴全解锁（甲方反馈"开了开发者模式还是 ？？？"）。 */
+function devMode(): boolean {
+  return useSettingsStore().values.developerMode;
+}
 
 interface SeenState {
   cards: string[];
@@ -21,9 +27,9 @@ export const useCodexStore = defineStore("codex", {
     loaded: false,
   }),
   getters: {
-    cardSeen: (state) => (id: string) => state.seenCards.includes(id),
-    relicSeen: (state) => (id: string) => state.seenRelics.includes(id),
-    enemySeen: (state) => (id: string) => state.seenEnemies.includes(id),
+    cardSeen: (state) => (id: string) => devMode() || state.seenCards.includes(id),
+    relicSeen: (state) => (id: string) => devMode() || state.seenRelics.includes(id),
+    enemySeen: (state) => (id: string) => devMode() || state.seenEnemies.includes(id),
   },
   actions: {
     ensureLoaded(): void {

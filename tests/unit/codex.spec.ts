@@ -43,6 +43,16 @@ describe("图鉴 codex store", () => {
     expect(reloaded.enemySeen("rust_hound")).toBe(true);
   });
 
+  it("开发者模式：未见过也全部解锁（甲方反馈）", async () => {
+    const { useSettingsStore } = await import("@/stores/settings");
+    const codex = useCodexStore();
+    expect(codex.cardSeen("strike")).toBe(false);
+    useSettingsStore().update({ developerMode: true });
+    expect(codex.cardSeen("strike")).toBe(true);
+    expect(codex.relicSeen("broken_oil")).toBe(true);
+    expect(codex.enemySeen("rust_hound")).toBe(true);
+  });
+
   it("重复点亮不产生重复项", () => {
     const codex = useCodexStore();
     codex.markCards(["strike", "strike"]);

@@ -19,7 +19,6 @@ import BattleLog from "@/ui/components/BattleLog.vue";
 import BuffRow from "@/ui/components/BuffRow.vue";
 import CardView from "@/ui/components/CardView.vue";
 import DamageFloat from "@/ui/components/DamageFloat.vue";
-import FirstTip from "@/ui/components/FirstTip.vue";
 import DebugConsole from "@/ui/components/DebugConsole.vue";
 import EnergyOrb from "@/ui/components/EnergyOrb.vue";
 import HpBar from "@/ui/components/HpBar.vue";
@@ -412,12 +411,14 @@ const className = computed(() => {
 /** 失控线是血械侍僧的低血阈值标识：炉心机士不卖血，不显示（docs/29 §二⑥）。 */
 const isBloodwright = computed(() => (run.run?.classId ?? "bloodwright") === "bloodwright");
 
-function restartRun(): void {
-  if (tutorial.active) {
-    startTutorialBattle();
-    return;
-  }
-  store.restart();
+/**
+ * 阵亡后直接回主菜单（甲方反馈：不要"重新远征"，死了就回标题）。
+ * 顺手清掉进度档，否则标题页会拿一具尸体去喂"继续远征"。
+ */
+function quitToTitle(): void {
+  run.clearSave();
+  store.skip();
+  void router.push("/");
 }
 
 function goReward(): void {
@@ -703,9 +704,6 @@ function back(): void {
 
       <div v-if="store.message" class="message" :class="store.messageKind">{{ store.message }}</div>
 
-      <!-- 首遇提示（docs/41 §4.1）：同屏至多 1 条 -->
-      <FirstTip />
-
 
 
       <!-- 日志抽屉 -->
@@ -725,8 +723,8 @@ function back(): void {
         <p>{{ resultCopy }}</p>
         <div class="result-actions">
           <button v-if="store.result === 'win'" class="etch-btn" @click="goReward">继续</button>
-          <button v-else class="etch-btn" @click="restartRun">重新远征</button>
-          <button class="etch-btn" @click="back">返回标题</button>
+          <button v-else class="etch-btn" @click="quitToTitle">返回主菜单</button>
+          <button v-if="store.result === 'win'" class="etch-btn" @click="back">返回标题</button>
         </div>
       </div>
     </div>

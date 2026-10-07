@@ -3,13 +3,17 @@ import { computed } from "vue";
 import { useTipsStore } from "@/stores/tips";
 import { firstTip } from "@/ui/first-tips";
 
-/** docs/41 §4.1：首次遇到机制时在屏幕下方浮一条说明，含「不再提示」。 */
+/**
+ * docs/41 §4.1：首次遇到机制时在屏幕下方浮一条说明，含「不再提示」。
+ * offset：距底边像素。战斗页要避让手牌（226），其余页面贴底即可。
+ */
+defineProps<{ offset?: number }>();
 const tips = useTipsStore();
 const tip = computed(() => (tips.current ? firstTip(tips.current) : undefined));
 </script>
 
 <template>
-  <div v-if="tip" class="first-tip">
+  <div v-if="tip" class="first-tip" :style="{ bottom: (offset ?? 24) + 'px' }">
     <div class="ft-main">
       <b class="ft-title">{{ tip.title }}</b>
       <p class="ft-body">{{ tip.body }}</p>
@@ -20,9 +24,8 @@ const tip = computed(() => (tips.current ? firstTip(tips.current) : undefined));
 
 <style scoped>
 .first-tip {
-  position: absolute;
+  position: fixed;
   left: 50%;
-  bottom: 226px;
   transform: translateX(-50%);
   z-index: 41;
   width: 640px;
