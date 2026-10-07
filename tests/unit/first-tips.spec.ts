@@ -102,7 +102,7 @@ describe("docs/41 §4.1 首遇提示", () => {
     tips.trigger("bloodpact");
     const wrapper = mount(FirstTip);
     expect(wrapper.text()).toContain("血契（卖血）");
-    expect(wrapper.text()).toContain("净 +N HP");
+    expect(wrapper.text()).toContain("先付款，后交货");
     await wrapper.find("button").trigger("click");
     expect(tips.current).toBeNull();
     expect(useMetaStore().hasSeenTip("bloodpact")).toBe(true);

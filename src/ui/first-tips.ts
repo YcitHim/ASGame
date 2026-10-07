@@ -21,7 +21,7 @@ export const FIRST_TIPS: readonly FirstTipDefinition[] = [
   {
     id: "bloodpact",
     title: "血契（卖血）",
-    body: "血械侍僧以自身生命催动卡牌：先付血，再收效果。\n牌面下方的「净 +N HP」已经把这两笔算在一起了。",
+    body: "血械侍僧以自身生命催动卡牌：先付血，再收效果。\n失去的生命是成本，换来的伤害或回复才是收益——先付款，后交货。",
   },
   {
     id: "retain",
