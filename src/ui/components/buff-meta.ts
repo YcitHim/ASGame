@@ -17,11 +17,12 @@ export interface BuffMeta {
 
 export const BUFF_META: Record<string, BuffMeta> = {
   strength: { name: "力量", glyph: "力", tint: "#8c2f22", unit: "层" },
-  vulnerable: { name: "易伤", glyph: "伤", tint: "#8a5a1f", unit: "回合" },
-  weak: { name: "虚弱", glyph: "弱", tint: "#4a5866", unit: "回合" },
+  timid: { name: "胆怯", glyph: "怯", tint: "#8a5a1f", unit: "层" },
+  weak: { name: "虚弱", glyph: "弱", tint: "#4a5866", unit: "层" },
   regeneration: { name: "再生", glyph: "生", tint: "#3f6b3a", unit: "层" },
   pollution: { name: "污染", glyph: "污", tint: "#5b3a7a", unit: "点" },
-  thorns: { name: "反伤", glyph: "反", tint: "#6b1f34", unit: "点" },
+  bramble: { name: "荆棘", glyph: "荆", tint: "#6b1f34", unit: "层" },
+  tenacity: { name: "坚韧", glyph: "韧", tint: "#b08d4a", unit: "层" },
   block: { name: "格挡", glyph: "盾", tint: "#54636f", unit: "点" },
   corroding: { name: "蚀锈", glyph: "蚀", tint: "#556b2a", unit: "伤害" },
   mending: { name: "回血印记", glyph: "愈", tint: "#3f6b3a", unit: "点" },

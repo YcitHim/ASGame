@@ -32,8 +32,8 @@
   ],
   "handler": "rustbite",
   "params": {
-    "buffId": "vulnerable",
-    "turns": 1
+    "buffId": "timid",
+    "stacks": 1
   },
   "i18n": "enh.rustbite"
 }

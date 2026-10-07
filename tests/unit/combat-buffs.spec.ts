@@ -20,25 +20,26 @@ describe("S3.3 六个基础 Buff 接入战斗结算", () => {
     expect(play(buffed, "strike").state.enemies[0].hp).toBe(42);
   });
 
-  it("易伤：目标受伤 ×1.5", () => {
-    const started = withHand(["expose", "strike"]);
-    const exposed = play(started, "expose").state;
-    expect(play(exposed, "strike").state.enemies[0].hp).toBe(41);
+  it("胆怯：每层承伤 +10%，5 层 = +50%（docs/46 §2.2，对齐旧易伤上限）", () => {
+    let s = withHand(["expose", "expose", "expose", "expose", "expose", "strike"]);
+    for (let i = 0; i < 5; i += 1) s = play(s, "expose").state;
+    expect(s.enemies[0].buffs.find((b) => b.id === "timid")?.stacks).toBe(5);
+    // 6 × 1.5 = 9
+    expect(play(s, "strike").state.enemies[0].hp).toBe(41);
   });
 
-  it("虚弱：造成伤害 ×0.75（单次取整）", () => {
+  it("虚弱：每层造伤 −10%（docs/46 §2.1；1 层：6 × 0.9 = 5.4 → 5）", () => {
     const started = withHand(["curse_weak", "strike"]);
     const weakened = play(started, "curse_weak").state;
-    // 6 × 0.75 = 4.5 → 5
     expect(play(weakened, "strike").state.enemies[0].hp).toBe(45);
   });
 
-  it("加区先于乘区：力量与易伤组合", () => {
-    const started = withHand(["expose", "strike", "strike"]);
-    const exposed = play(started, "expose").state;
-    const buffed = debug(exposed, "add buff strength 2").state;
+  it("加区先于乘区：力量与胆怯组合", () => {
+    let s = withHand(["expose", "expose", "expose", "expose", "expose", "strike", "strike"]);
+    s = debug(s, "add buff strength 2").state;
+    for (let i = 0; i < 5; i += 1) s = play(s, "expose").state;
     // (6 + 2) × 1.5 = 12
-    expect(play(buffed, "strike").state.enemies[0].hp).toBe(38);
+    expect(play(s, "strike").state.enemies[0].hp).toBe(38);
   });
 
   it("再生：回合开始按层数回血", () => {
@@ -79,12 +80,37 @@ describe("S3.3 六个基础 Buff 接入战斗结算", () => {
     expect(after.state.player.hp).toBe(59);
   });
 
-  it("计时型减益层数=回合数：1 层在下次回合开始即到期（策划 Q1）", () => {
+  it("坚韧：回合开始 +3×层 维续格挡，不清零且累积（docs/46 §3.4）", () => {
+    let s = withHand(["strike"]);
+    s = debug(s, "add buff tenacity 2").state;
+    s = reduce(s, { type: "EndTurn", actionId: "e1" }).state;
+    // 敌军回合玩家没挡 → 掉 5 血；下回合开始 +3×2 维续格挡
+    expect(s.player.hp).toBe(61);
+    expect(s.player.block).toBe(6);
+    s = reduce(s, { type: "EndTurn", actionId: "e2" }).state;
+    // 6 格挡吃掉 5 伤，剩 1；下回合开始再 +6 → 12（证明不清零、会累积）
+    expect(s.player.block).toBe(12);
+  });
+
+  it("坚韧：维续格挡总量封顶 25（防死锁保险丝）", () => {
+    let s = withHand(["strike"]);
+    s = debug(s, "add buff tenacity 3").state;
+    for (let i = 0; i < 4; i += 1) s = reduce(s, { type: "EndTurn", actionId: `e${i}` }).state;
+    expect(s.player.block).toBe(25);
+  });
+
+  it("荆棘：每层反弹 3 点，5 层封顶 15 点", () => {
+    let s = withHand(["strike"]);
+    s = debug(s, "add buff bramble 5").state;
+    s = debug(s, "add buff bramble 5").state; // 试图叠到 10，应被 maxStacks 截到 5
+    expect(s.player.buffs.find((b) => b.id === "bramble")?.stacks).toBe(5);
+  });
+
+  it("层级型减益不按回合衰减：虚弱会留到战斗结束（docs/46 §2.1）", () => {
     const started = withHand(["curse_weak", "strike", "strike"]);
     const weakened = play(started, "curse_weak").state;
-    expect(weakened.player.buffs.find((b) => b.id === "weak")?.duration).toBe(1);
+    expect(weakened.player.buffs.find((b) => b.id === "weak")?.duration).toBeNull();
     const after = reduce(weakened, { type: "EndTurn", actionId: "e" });
-    expect(after.events.some((e) => e.type === "BuffExpired")).toBe(true);
-    expect(after.state.player.buffs.find((b) => b.id === "weak")).toBeUndefined();
+    expect(after.state.player.buffs.find((b) => b.id === "weak")?.stacks).toBe(1);
   });
 });

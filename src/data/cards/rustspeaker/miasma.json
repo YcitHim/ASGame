@@ -11,8 +11,7 @@
         "type": "allEnemies"
       },
       "buff": "weak",
-      "stacks": 1,
-      "duration": 1
+      "stacks": 1
     },
     {
       "kind": "applyBuff",
@@ -31,8 +30,7 @@
           "type": "allEnemies"
         },
         "buff": "weak",
-        "stacks": 1,
-        "duration": 2
+        "stacks": 1
       },
       {
         "kind": "applyBuff",

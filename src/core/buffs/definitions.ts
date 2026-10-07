@@ -4,9 +4,14 @@ import type { BuffDefinition } from "./types";
 /** 0.1 六个基础 Buff（docs/03 §2 / buffs README）。 */
 export const BUFF_DEFINITIONS: Readonly<Record<BuffId, BuffDefinition>> = {
   strength: { id: "strength", stacking: "stack", decayAt: "none", applyAs: "stacks" },
-  // Q1：易伤 / 虚弱的层数 = 剩余回合数
-  vulnerable: { id: "vulnerable", stacking: "refreshOnly", decayAt: "turnStart", applyAs: "turns" },
-  weak: { id: "weak", stacking: "refreshOnly", decayAt: "turnStart", applyAs: "turns" },
+  // docs/46 §2.1：虚弱的层数 = 强度（每层造伤 −10%），不再按回合衰减；上限 5 层。
+  weak: { id: "weak", stacking: "stack", decayAt: "none", applyAs: "stacks", maxStacks: 5 },
+  // docs/46 §2.2：胆怯（旧「易伤」合并案）：每层承伤 +10%，上限 5 层。
+  timid: { id: "timid", stacking: "stack", decayAt: "none", applyAs: "stacks", maxStacks: 5 },
+  // docs/46 §2.3：荆棘（旧「反伤」合并案）：每层反弹 3 点固定伤害，上限 5 层。
+  bramble: { id: "bramble", stacking: "stack", decayAt: "none", applyAs: "stacks", maxStacks: 5 },
+  // docs/46 §3.4：坚韧：每层回合开始 +3 维续格挡（总上限 25，见 resolveTenacity）。
+  tenacity: { id: "tenacity", stacking: "stack", decayAt: "none", applyAs: "stacks", maxStacks: 3 },
   regeneration: {
     id: "regeneration",
     stacking: "stackAndRefresh",
@@ -15,8 +20,6 @@ export const BUFF_DEFINITIONS: Readonly<Record<BuffId, BuffDefinition>> = {
     defaultDuration: 3,
   },
   pollution: { id: "pollution", stacking: "stack", decayAt: "none", applyAs: "stacks", maxStacks: 100 },
-  // 反伤：strength 型不便表达"伤害 + 剩余回合"，用 stacksAndTurns（参数=反伤值，默认 2 回合）
-  thorns: { id: "thorns", stacking: "refreshOnly", decayAt: "turnStart", applyAs: "stacksAndTurns", defaultDuration: 2 },
   block: { id: "block", stacking: "stack", decayAt: "none", applyAs: "stacks", resource: true },
   // 蚀锈（docs/38 §二 B-2）：计时型 DoT，stacks = 每回合伤害、duration = 剩余回合。
   // decayAt 设为 none —— 它由 resolveCorroding 在【敌方回合结束】手动结算并递减，

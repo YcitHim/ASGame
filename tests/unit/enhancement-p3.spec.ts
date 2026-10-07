@@ -101,10 +101,10 @@ describe("P3.3 强化铺量（docs/23 §1）", () => {
     expect(result.state.player.energy).toBe(2);
   });
 
-  it("淬锈：命中给目标 1 回合易伤", () => {
+  it("淬锈：命中给目标 1 层胆怯（docs/46 §2.2，层级型）", () => {
     const result = play(battle([{ cardId: "bloodbolt", enhancements: ["rustbite"] }]), "bloodbolt");
-    const vul = result.state.enemies[0].buffs.find((b) => b.id === "vulnerable");
-    expect(vul?.duration).toBe(1);
+    const timid = result.state.enemies[0].buffs.find((b) => b.id === "timid");
+    expect(timid?.stacks).toBe(1);
   });
 
   it("血偿：此牌击杀敌人时回复 4 点 HP", () => {

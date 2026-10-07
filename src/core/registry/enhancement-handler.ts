@@ -175,21 +175,16 @@ registerEnhancementHandler({
   },
 });
 
-/** T1「淬锈」（docs/23 §1）：命中时给目标 N 回合易伤（onHit；多段重复触发只刷新回合数）。 */
+/**
+ * T1「淬锈」（docs/23 §1 / docs/46 §2.2）：命中时给目标 N 层胆怯。
+ * 层数模型下，多段攻击从"只刷新回合"变成**真能叠层**——这是有意的加强（docs/46 列入 sim 观察项）。
+ */
 registerEnhancementHandler({
   id: "rustbite",
   onHit(params) {
-    const buffId = typeof params["buffId"] === "string" ? (params["buffId"] as BuffId) : "vulnerable";
-    const turns = Math.max(1, Math.trunc(asNumber(params["turns"], 1)));
-    return [
-      {
-        kind: "applyBuff",
-        target: { type: "chosenEnemy" },
-        buff: buffId,
-        stacks: 1,
-        duration: turns,
-      },
-    ];
+    const buffId = typeof params["buffId"] === "string" ? (params["buffId"] as BuffId) : "timid";
+    const stacks = Math.max(1, Math.trunc(asNumber(params["stacks"], 1)));
+    return [{ kind: "applyBuff", target: { type: "chosenEnemy" }, buff: buffId, stacks }];
   },
 });
 

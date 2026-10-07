@@ -1,17 +1,17 @@
 {
-  "id": "thornscab",
-  "class": "bloodwright",
+  "id": "riveted_plate",
+  "class": "engineer",
   "type": "skill",
-  "rarity": "common",
-  "cost": 1,
+  "rarity": "uncommon",
+  "cost": 2,
   "effects": [
     {
       "kind": "applyBuff",
       "target": {
         "type": "self"
       },
-      "buff": "bramble",
-      "stacks": 1
+      "buff": "tenacity",
+      "stacks": 2
     }
   ],
   "upgraded": {
@@ -21,10 +21,10 @@
         "target": {
           "type": "self"
         },
-        "buff": "bramble",
-        "stacks": 2
+        "buff": "tenacity",
+        "stacks": 3
       }
     ]
   },
-  "i18n": "card.thornscab"
+  "i18n": "card.riveted_plate"
 }

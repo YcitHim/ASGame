@@ -17,7 +17,7 @@ const CARDS: CardDefinition[] = [
     rarity: "common",
     cost: 1,
     effects: [
-      { kind: "applyBuff", target: { type: "self" }, buff: "thorns", stacks: 3, duration: 2 },
+      { kind: "applyBuff", target: { type: "self" }, buff: "bramble", stacks: 1 },
     ],
   },
   {
@@ -90,10 +90,10 @@ const damageTrail = (events: readonly { type: string }[]): string[] =>
     .filter((e): e is { type: string; sourceId: string; targetId: string } => e.type === "DamageDealt")
     .map((e) => `${e.sourceId}->${e.targetId}`);
 
-describe("P2.1 荆棘血痂（反伤）", () => {
+describe("P2.1 荆棘血痂（荆棘）", () => {
   it("多段受击逐段触发，且每段之后立即结算（队列中途插入）", () => {
     const armed = play(battle(["thorncard"]), "thorncard");
-    expect(armed.state.player.buffs.some((b) => b.id === "thorns")).toBe(true);
+    expect(armed.state.player.buffs.some((b) => b.id === "bramble")).toBe(true);
 
     const hit = reduce(armed.state, { type: "EndTurn", actionId: "e" });
     // 敌三段 → 玩家三段反伤，严格交替：证明反伤不是攒到最后一起算
@@ -109,9 +109,9 @@ describe("P2.1 荆棘血痂（反伤）", () => {
     expect(hit.state.player.hp).toBe(66 - 15);
   });
 
-  it("反伤是固定伤害：不吃力量加成", () => {
+  it("荆棘是固定伤害：不吃力量加成", () => {
     let state = battle(["thorncard"]);
-    state = debug(state, "add buff thorns 3 2").state;
+    state = debug(state, "add buff bramble 1").state;
     state = debug(state, "add buff strength 5").state;
     const hit = reduce(state, { type: "EndTurn", actionId: "e" });
     // 若反伤走了攻击修饰，每段会是 3+5=8；固定值应为 3×3 = 9

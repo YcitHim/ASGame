@@ -10,7 +10,7 @@
       "target": {
         "type": "chosenEnemy"
       },
-      "buff": "vulnerable",
+      "buff": "timid",
       "stacks": 1
     }
   ],
@@ -21,7 +21,7 @@
         "target": {
           "type": "chosenEnemy"
         },
-        "buff": "vulnerable",
+        "buff": "timid",
         "stacks": 1
       },
       {

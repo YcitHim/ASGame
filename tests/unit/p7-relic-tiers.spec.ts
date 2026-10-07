@@ -89,11 +89,12 @@ describe("1.0-A 随身遗物", () => {
 });
 
 describe("1.0-A 新遗物效果（真实数据）", () => {
-  it("回声号角：开战全体敌人 1 回合易伤", () => {
+  it("回声号角：开战全体敌人 1 层胆怯（docs/46 §2.2，层级型）", () => {
     const state = battle(["echo_horn"], { enemies: ["rust_hound", "corroded_swarm"] });
     for (const e of state.enemies) {
-      const vuln = e.buffs.find((b) => b.id === "vulnerable");
-      expect(vuln?.duration).toBe(1);
+      const timid = e.buffs.find((b) => b.id === "timid");
+      expect(timid?.stacks).toBe(1);
+      expect(timid?.duration).toBeNull();
     }
   });
 

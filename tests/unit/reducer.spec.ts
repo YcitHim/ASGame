@@ -68,7 +68,7 @@ describe("reduce 主循环空转（2.2 / 门禁 2）", () => {
     const r0 = reduce(createBattleState(config()), noop);
     const poisoned = {
       ...r0.state,
-      player: { ...r0.state.player, buffs: [{ id: "vulnerable" as const, stacks: 1, duration: 1 }] },
+      player: { ...r0.state.player, buffs: [{ id: "regeneration" as const, stacks: 1, duration: 1 }] },
     };
     const r1 = reduce(poisoned, endTurn(1));
     expect(r1.events.find((e) => e.type === "BuffExpired")).toBeDefined();

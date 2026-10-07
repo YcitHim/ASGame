@@ -70,7 +70,7 @@ export interface EventPayloadMap {
   BuffExpired: { targetId: string; buffId: string };
   /** 计时 Buffer 结算（docs/38 §二 B-2 蚀锈）：目标回合结束受到 damage 点伤害 */
   BuffTicked: { targetId: string; buffId: string; stacks: number; damage: number };
-  /** 断链（docs/38 §三 C-1）：蓄力中的敌人被虚弱/易伤命中，链条取消、本回合空转 */
+  /** 断链（docs/38 §三 C-1）：蓄力中的敌人被虚弱/胆怯命中，链条取消、本回合空转 */
   ChargeInterrupted: { enemyId: string; buffId: string; times: number };
   /** 召唤（docs/40 §五）：敌人召唤出新单位，入场当回合不行动 */
   UnitSummoned: { summonerId: string; enemyId: string; defId: string };

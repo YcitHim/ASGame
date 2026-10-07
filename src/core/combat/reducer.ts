@@ -20,6 +20,7 @@ import {
   resolvePollutionCritical,
   resolveMending,
   resolveRegeneration,
+  resolveTenacity,
   tickAllBuffs,
 } from "./resolve";
 import type { BattleState } from "./state";
@@ -114,7 +115,7 @@ function endTurn(draft: Draft, sink: EventSink): void {
   draft.tookDamageThisTurn = false;
   // 敌人格挡在【敌人自己】的回合开始时清零（docs/03 §4）：
   // 上一回合留下的格挡必须撑过玩家的整个回合，否则防御意图形同虚设。
-  for (const enemy of draft.enemies) enemy.block = 0;
+  for (const enemy of draft.enemies) resolveTenacity(enemy);
   runEnemyTurn(draft, sink);
   if (checkBattleEnd(draft, sink)) return;
 
@@ -125,8 +126,8 @@ function endTurn(draft: Draft, sink: EventSink): void {
   resolveMending(draft, sink);
   resolvePollutionCritical(draft, sink);
   draft.player.energy = draft.player.maxEnergy;
-  // 只清玩家自己的格挡；敌人格挡不在此处清（见上方 enemyAction）
-  draft.player.block = 0;
+  // 只清玩家自己的格挡（坚韧持有时改为置回维续池）；敌人格挡不在此处清（见上方 enemyAction）
+  resolveTenacity(draft.player);
   draft.cardsPlayedThisTurn = 0;
   resetTurnRelics(draft);
   resolveTriggers(draft, sink, "onTurnStart");

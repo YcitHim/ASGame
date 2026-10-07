@@ -13,8 +13,9 @@ export type BuffDecayTiming = "turnStart" | "turnEnd" | "none";
 /**
  * 施加语义：
  *  - stacks：强度型，参数即层数（力量 / 污染 / 格挡）
- *  - turns：计时型，参数即回合数（易伤 / 虚弱）
+ *  - turns：计时型，参数即回合数（再生 / 蚀锈 / 眩晕）
  *  - stacksAndTurns：参数即层数，另给默认持续回合（再生）
+ *  - 层级型（docs/46）：stacks 即强度、decayAt=none，战斗结束清零（虚弱 / 胆怯 / 荆棘 / 坚韧）
  */
 export type ApplySemantics = "stacks" | "turns" | "stacksAndTurns";
 

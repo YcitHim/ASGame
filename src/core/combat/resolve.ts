@@ -71,11 +71,15 @@ export function attackModifiers(draft: Draft, actorId: string, targetId: string)
     mods.push({ sourceId: "charge", layer: "buff", op: "add", value: draft.player.charge });
   }
 
-  if (buffStacks(actor, "weak") > 0) {
-    mods.push({ sourceId: "weak", layer: "buff", op: "mul", value: 0.75 });
+  // docs/46 §2.1：虚弱层级化——每层造伤 −10%，上限 5 层（不再 ×0.75 计时）
+  const weak = Math.min(5, buffStacks(actor, "weak"));
+  if (weak > 0) {
+    mods.push({ sourceId: "weak", layer: "buff", op: "mul", value: 1 - 0.1 * weak });
   }
-  if (buffStacks(target, "vulnerable") > 0) {
-    mods.push({ sourceId: "vulnerable", layer: "buff", op: "mul", value: 1.5 });
+  // docs/46 §2.2：胆怯（旧易伤合并案）——每层承伤 +10%，上限 5 层（不再 ×1.5 计时）
+  const timid = Math.min(5, buffStacks(target, "timid"));
+  if (timid > 0) {
+    mods.push({ sourceId: "timid", layer: "buff", op: "mul", value: 1 + 0.1 * timid });
   }
   // 锈蚀难度：敌人打出的伤害上浮（docs/36 T2）。只作用于敌方攻击者，
   // 反伤 / 环境伤害的 actorId 不是敌人实例，自然不吃倍率。
@@ -226,15 +230,16 @@ function enqueueDamageWork(
 function triggerThorns(draft: Draft, sink: EventSink, args: DamageArgs): void {
   if (args.reflect) return;
   if (args.actorId === args.targetId) return;
-  const stacks = buffStacks(unitBuffs(draft, args.targetId), "thorns");
+  // docs/46 §2.3：荆棘层级化——每层反弹 3 点固定伤害，上限 5 层
+  const stacks = Math.min(5, buffStacks(unitBuffs(draft, args.targetId), "bramble"));
   if (stacks <= 0) return;
   const attacker = findUnit(draft, args.actorId);
   if (!attacker || attacker.hp <= 0) return;
 
-  sink.emit("BuffTriggered", { targetId: args.targetId, buffId: "thorns", stacks });
+  sink.emit("BuffTriggered", { targetId: args.targetId, buffId: "bramble", stacks });
   enqueueDamageWork(
     draft,
-    { kind: "damage", value: stacks },
+    { kind: "damage", value: 3 * stacks },
     { sourceId: args.targetId, actorId: args.targetId, chosenTargetId: null },
     [args.actorId],
     true,
@@ -329,7 +334,7 @@ export function applyBuffToTarget(
 export const MAX_CHARGE_INTERRUPTS = 2;
 
 /**
- * 断链（docs/38 §三 C-1）：蓄力链中的敌人被施加虚弱 / 易伤即断链——
+ * 断链（docs/38 §三 C-1 / docs/46 §2.1）：蓄力链中的敌人被施加虚弱 / 胆怯即断链——
  * 剩余链取消（蓄力层清零）、本回合空转。Boss 由数据 interruptImmune 免疫。
  */
 function maybeInterruptCharge(
@@ -339,7 +344,7 @@ function maybeInterruptCharge(
   buffId: BuffId,
 ): void {
   if (targetId === PLAYER_ID) return;
-  if (buffId !== "weak" && buffId !== "vulnerable") return;
+  if (buffId !== "weak" && buffId !== "timid") return;
   const enemy = draft.enemies.find((e) => e.id === targetId);
   if (!enemy || enemy.hp <= 0) return;
   if (enemy.intent?.kind !== "charge") return;
@@ -464,6 +469,17 @@ export function resolveCorroding(draft: Draft, sink: EventSink): void {
 }
 
 /**
+ * 坚韧（docs/46 §3.4）：回合开始时把「维续格挡」池抬高 3×层（总量上限 25），
+ * 并把当前格挡置回池子——即"上一回合剩的格挡不清零"。
+ * 没有坚韧的单位池恒为 0，行为与旧的"回合开始格挡清零"完全一致。
+ */
+export function resolveTenacity(unit: MutableUnit): void {
+  const stacks = Math.min(3, buffStacks(unit.buffs, "tenacity"));
+  if (stacks > 0) unit.enduringBlock = Math.min(25, unit.enduringBlock + 3 * stacks);
+  unit.block = unit.enduringBlock;
+}
+
+/**
  * 回血印记（调血）：玩家回合开始时，按印记层数回一次血，然后印记消失。
  * 与蚀锈同构——特殊 buff 走专门结算，不进泛用 tick（否则 duration 会先被扣掉）。
  */
@@ -554,6 +570,7 @@ export function summonUnit(
       hp: def.maxHp,
       maxHp: def.maxHp,
       block: 0,
+      enduringBlock: 0,
       buffs: [],
       intent: null,
       intentHistory: [],

@@ -226,43 +226,9 @@
       {
         "type": "EndTurn",
         "actionId": "e28"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p29",
-        "handIndex": 0,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p30",
-        "handIndex": 0,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p31",
-        "handIndex": 0,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "EndTurn",
-        "actionId": "e32"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p33",
-        "handIndex": 0,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p34",
-        "handIndex": 0,
-        "targetId": "riveted_heavy"
       }
     ],
-    "eventHash": "ef39997bb7a90557b84921ddffbcb53b128f2cb14d6fb1f7981b4597af852e30",
+    "eventHash": "988e30c776b0500a10e94e55078d0bd974f1611ba2c1c9262fef959bfe56fe66",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -305,7 +271,7 @@
       "DeckShuffled",
       "CardsDrawn"
     ],
-    "turns": 10,
+    "turns": 8,
     "outcome": "win"
   }
 }

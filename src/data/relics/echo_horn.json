@@ -8,9 +8,8 @@
       "target": {
         "type": "allEnemies"
       },
-      "buff": "vulnerable",
-      "stacks": 1,
-      "duration": 1
+      "buff": "timid",
+      "stacks": 1
     }
   ],
   "once": "battle",

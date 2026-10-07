@@ -80,7 +80,7 @@ export const TEST_CARDS: CardDefinition[] = [
     type: "skill",
     rarity: "common",
     cost: 0,
-    effects: [{ kind: "applyBuff", target: { type: "chosenEnemy" }, buff: "vulnerable", stacks: 1 }],
+    effects: [{ kind: "applyBuff", target: { type: "chosenEnemy" }, buff: "timid", stacks: 1 }],
   },
   {
     id: "curse_weak",

@@ -53,17 +53,20 @@ export const TARGET_IDS = [
 /** Buff（S3.3 六个基础 Buff + 后续扩展） */
 export const BUFF_IDS = [
   "strength",
-  "vulnerable",
   "weak",
   "block",
   "regeneration",
   "pollution",
-  /** 反伤（荆棘血痂，docs/16 P2.1）：受攻击时对攻击者造成 stacks 点伤害 */
-  "thorns",
   /** 蚀锈（docs/38 §二 B-2）：敌人侧 DoT，stacks = 每回合伤害，duration = 剩余回合 */
   "corroding",
   /** 回血印记（调血）：玩家回合开始时按 stacks 回血一次，随后消失 */
   "mending",
+  /** 胆怯（docs/46 §2.2）：每层承伤 +10%，上限 5 层，战斗结束清零 */
+  "timid",
+  /** 荆棘（docs/46 §2.3）：每层受击反弹 3 点固定伤害，上限 5 层 */
+  "bramble",
+  /** 坚韧（docs/46 §3.4）：每层回合开始 +3 维续格挡，上限 3 层 */
+  "tenacity",
 ] as const;
 
 /** 卡牌复杂逻辑 handler（ADR-005） */

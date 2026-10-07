@@ -19,6 +19,8 @@ export interface MutableUnit {
   readonly maxHp: number;
   hp: number;
   block: number;
+  /** 维续格挡池（docs/46 §3.4 坚韧）：回合开始不清零、上限 25 */
+  enduringBlock: number;
   buffs: BuffInstance[];
 }
 
@@ -97,6 +99,7 @@ export function toDraft(state: BattleState): Draft {
       hp: state.player.hp,
       maxHp: state.player.maxHp,
       block: state.player.block,
+      enduringBlock: state.player.enduringBlock,
       buffs: state.player.buffs.map((b) => ({ ...b })),
       energy: state.player.energy,
       maxEnergy: state.player.maxEnergy,
@@ -114,6 +117,7 @@ export function toDraft(state: BattleState): Draft {
       hp: e.hp,
       maxHp: e.maxHp,
       block: e.block,
+      enduringBlock: e.enduringBlock,
       buffs: e.buffs.map((b) => ({ ...b })),
       intent: e.intent,
       intentHistory: [...e.intentHistory],
@@ -148,6 +152,7 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
       hp: draft.player.hp,
       maxHp: draft.player.maxHp,
       block: draft.player.block,
+      enduringBlock: draft.player.enduringBlock,
       energy: draft.player.energy,
       maxEnergy: draft.player.maxEnergy,
       pollution: draft.player.pollution,
@@ -165,6 +170,7 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
       hp: e.hp,
       maxHp: e.maxHp,
       block: e.block,
+      enduringBlock: e.enduringBlock,
       buffs: e.buffs.map((b) => ({ ...b })),
       intent: e.intent,
       intentHistory: [...e.intentHistory],

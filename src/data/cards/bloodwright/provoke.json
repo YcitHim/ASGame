@@ -1,38 +1,34 @@
 {
-  "id": "magnetize",
-  "class": "engineer",
-  "type": "skill",
+  "id": "provoke",
+  "class": "bloodwright",
+  "type": "attack",
   "rarity": "uncommon",
   "cost": 1,
+  "keywords": [
+    "bloodpact"
+  ],
+  "bloodCost": 2,
   "effects": [
     {
       "kind": "applyBuff",
-      "buff": "timid",
       "target": {
         "type": "chosenEnemy"
       },
-      "stacks": 2
-    },
-    {
-      "kind": "draw",
-      "value": 1
+      "buff": "timid",
+      "stacks": 3
     }
   ],
   "upgraded": {
     "effects": [
       {
         "kind": "applyBuff",
-        "buff": "timid",
         "target": {
           "type": "chosenEnemy"
         },
-        "stacks": 3
-      },
-      {
-        "kind": "draw",
-        "value": 1
+        "buff": "timid",
+        "stacks": 4
       }
     ]
   },
-  "i18n": "card.magnetize"
+  "i18n": "card.provoke"
 }

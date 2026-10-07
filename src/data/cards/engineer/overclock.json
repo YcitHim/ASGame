@@ -11,7 +11,7 @@
     },
     {
       "kind": "applyBuff",
-      "buff": "vulnerable",
+      "buff": "timid",
       "target": {
         "type": "self"
       },
@@ -26,7 +26,7 @@
       },
       {
         "kind": "applyBuff",
-        "buff": "vulnerable",
+        "buff": "timid",
         "target": {
           "type": "self"
         },

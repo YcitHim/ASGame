@@ -1,5 +1,5 @@
 {
-  "id": "thornscab",
+  "id": "blood_scab",
   "class": "bloodwright",
   "type": "skill",
   "rarity": "common",
@@ -11,7 +11,7 @@
         "type": "self"
       },
       "buff": "bramble",
-      "stacks": 1
+      "stacks": 2
     }
   ],
   "upgraded": {
@@ -22,9 +22,9 @@
           "type": "self"
         },
         "buff": "bramble",
-        "stacks": 2
+        "stacks": 3
       }
     ]
   },
-  "i18n": "card.thornscab"
+  "i18n": "card.blood_scab"
 }

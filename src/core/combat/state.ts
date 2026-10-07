@@ -30,6 +30,8 @@ export interface PlayerState {
   readonly hp: number;
   readonly maxHp: number;
   readonly block: number;
+  /** 维续格挡池（docs/46 §3.4 坚韧）：回合开始不清零的格挡底座，上限 25 */
+  readonly enduringBlock: number;
   readonly energy: number;
   readonly maxEnergy: number;
   readonly pollution: number;
@@ -54,6 +56,8 @@ export interface EnemyState {
   readonly hp: number;
   readonly maxHp: number;
   readonly block: number;
+  /** 维续格挡池（docs/46 §3.4 坚韧），敌人侧同构 */
+  readonly enduringBlock: number;
   readonly buffs: readonly BuffInstance[];
   readonly intent: IntentPayload | null;
   readonly intentHistory: readonly string[];
@@ -171,6 +175,7 @@ export function createBattleState(config: BattleConfig): BattleState {
       hp: config.player.hp ?? config.player.maxHp,
       maxHp: config.player.maxHp,
       block: 0,
+      enduringBlock: 0,
       energy: config.player.energy,
       maxEnergy: config.player.energy,
       pollution: startingPollution,
@@ -198,6 +203,7 @@ export function createBattleState(config: BattleConfig): BattleState {
         hp: maxHp,
         maxHp,
         block: 0,
+        enduringBlock: 0,
         buffs: [],
         intent: null,
         intentHistory: [],
