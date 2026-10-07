@@ -34,13 +34,14 @@ describe("1.0-C 意图图标可读性", () => {
   });
 });
 
-/** docs/41 §3.3（反馈 11）：蓄力预警三段式，最关键的是「即将承受」不再让预警凭空消失。 */
+/** docs/41 §3.3（反馈 11）：蓄力预警三段式，最关键的是释放段不再让预警凭空消失。
+ *  文案用施动者视角「即将造成」——甲方验收：「承受」会把敌人的行动读成玩家的行动。 */
 describe("docs/41 §3.3 蓄力三段式", () => {
-  it("释放段显示「即将承受 X 伤害」并加脉冲类", () => {
+  it("释放段显示「即将造成 X 点伤害」并加脉冲类", () => {
     const wrapper = mount(IntentIcon, {
       props: { intent: { kind: "attack", value: 24, released: true } },
     });
-    expect(wrapper.text()).toContain("即将承受 24 伤害");
+    expect(wrapper.text()).toContain("即将造成 24 点伤害");
     expect(wrapper.find(".intent").classes()).toContain("incoming");
     // 非释放段的普通攻击不触发
     expect(wrapper.find(".intent").classes()).not.toContain("imminent");
@@ -51,13 +52,13 @@ describe("docs/41 §3.3 蓄力三段式", () => {
     const wrapper = mount(IntentIcon, {
       props: { intent: { kind: "attack", value: 12, hits: 2, released: true } },
     });
-    expect(wrapper.text()).toContain("即将承受 12×2 伤害");
+    expect(wrapper.text()).toContain("即将造成 12×2 点伤害");
     wrapper.unmount();
   });
 
-  it("普通攻击不带 released 标记，不误报「即将承受」", () => {
+  it("普通攻击不带 released 标记，不误报「即将造成」", () => {
     const wrapper = mount(IntentIcon, { props: { intent: { kind: "attack", value: 10 } } });
-    expect(wrapper.text()).not.toContain("即将承受");
+    expect(wrapper.text()).not.toContain("即将造成");
     expect(wrapper.find(".intent").classes()).not.toContain("incoming");
     wrapper.unmount();
   });

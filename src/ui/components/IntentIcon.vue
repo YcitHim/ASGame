@@ -19,9 +19,9 @@ const label = computed(() => {
 });
 
 /**
- * 蓄力三段式（docs/41 §3.3）：蓄力中 → 临近 → 即将承受。
+ * 蓄力三段式（docs/41 §3.3）：蓄力中 → 临近 → 即将造成。
  * 关键点是第三段：预警不再「消失」，而是变成结算预告，因果闭合
- * （红屏预警 → 即将承受 24 → 前扑 → 飘字 −24）。
+ * （红屏预警 → 即将造成 24 → 前扑 → 飘字 −24）。
  */
 const stage = computed<"none" | "charging" | "imminent" | "incoming">(() => {
   const i = props.intent;
@@ -43,7 +43,8 @@ const sub = computed(() => {
   }
   if (stage.value === "incoming") {
     const hits = (i.hits ?? 1) > 1 ? `×${i.hits}` : "";
-    return `即将承受 ${i.value ?? 0}${hits} 伤害`;
+    // 「承受」是玩家视角，会把玩家的行动读成敌人的行动——甲方验收：改成施动者视角的「造成」
+    return `即将造成 ${i.value ?? 0}${hits} 点伤害`;
   }
   if (i.kind === "selfBuff") {
     if (!i.buffId) return "自身增益";
@@ -123,7 +124,7 @@ const tip = computed(() => {
 .intent.imminent { border-color: rgba(192, 57, 43, 0.75); }
 .intent.imminent .sub { color: var(--blood-hi); }
 .intent.imminent .num { color: var(--blood-hi); }
-/* 即将承受（docs/41 §3.3）：红框 + 边框脉冲，把"预警消失的那一回合"补回来 */
+/* 即将造成（docs/41 §3.3）：红框 + 边框脉冲，把"预警消失的那一回合"补回来 */
 .intent.incoming { border-color: rgba(192, 57, 43, 0.9); animation: intent-pulse 1s ease-in-out infinite; }
 .intent.incoming .sub { color: var(--blood-hi); }
 .intent.incoming .num { color: var(--blood-hi); }
