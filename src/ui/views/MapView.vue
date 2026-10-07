@@ -74,9 +74,9 @@ const reachable = computed(() => new Set(view.value?.reachable ?? []));
 const currentId = computed(() => view.value?.current?.id ?? "");
 
 /* ---------- 布局：10 层为行、层内按 col(0~3) 分列；边用 SVG 细线 ---------- */
-const COL_W = 176;
-const ROW_H = 62;
-const MAP_TOP = 12;
+const COL_W = 152;
+const ROW_H = 68;
+const MAP_TOP = 14;
 const COLS = 4;
 /** 列心中点（col 0~3 → −1.5 ~ +1.5）：全图在舞台里左右居中 */
 const CENTER_COL = (COLS - 1) / 2;
@@ -95,6 +95,17 @@ const positions = computed(() => {
       });
     }
   });
+  // 按实际包围盒水平居中：脊椎列掷在 1 或 2，不居中的话整张图会偏半格
+  let min = Infinity;
+  let max = -Infinity;
+  for (const p of map.values()) {
+    min = Math.min(min, p.x);
+    max = Math.max(max, p.x);
+  }
+  if (min <= max) {
+    const shift = CENTER_X - (min + max) / 2;
+    for (const [id, p] of map) map.set(id, { x: p.x + shift, y: p.y });
+  }
   return map;
 });
 
@@ -134,6 +145,7 @@ function nodeClass(node: MapNode): Record<string, boolean> {
     done: run.run?.cleared.includes(node.id) === true,
     onpath: isOnPath(node.id),
     boss: node.kind === "boss",
+    [`k-${node.kind}`]: true,
   };
 }
 
@@ -208,10 +220,10 @@ function toTitle(): void {
             v-for="(e, i) in edgeLines"
             :key="i"
             :x1="e.from.x"
-            :y1="e.from.y + 18"
+            :y1="e.from.y"
             :x2="e.to.x"
-            :y2="e.to.y - 18"
-            stroke="rgba(176,141,74,0.35)"
+            :y2="e.to.y"
+            stroke="rgba(176,141,74,0.32)"
             stroke-width="1.2"
           />
         </svg>
@@ -226,11 +238,8 @@ function toTitle(): void {
             :title="nodeTitle(node)"
             @click="enter(node)"
           >
-            <span class="glyph"><i>{{ KIND_GLYPH[node.kind] ?? "?" }}</i></span>
-            <span class="info">
-              <b>{{ nodeTitle(node) }}</b>
-              <small>{{ KIND_LABEL[node.kind] ?? node.kind }}</small>
-            </span>
+            <span class="glyph">{{ KIND_GLYPH[node.kind] ?? "?" }}</span>
+            <span class="tag">{{ KIND_LABEL[node.kind] ?? node.kind }}</span>
           </button>
         </template>
         </div>
@@ -290,34 +299,40 @@ function toTitle(): void {
 .edges { position: absolute; inset: 0; pointer-events: none; }
 .node {
   position: absolute; transform: translate(-50%, -50%);
-  width: 156px; display: flex; align-items: center; gap: 8px; padding: 7px 10px;
-  border: 1px solid rgba(110, 88, 54, 0.4); border-radius: var(--radius-sm);
-  background: rgba(18, 16, 14, 0.86); box-shadow: var(--edge-inner);
-  color: inherit; text-align: left;
+  width: 46px; height: 46px; padding: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(110, 88, 54, 0.55);
+  background: radial-gradient(circle at 34% 28%, rgba(48, 42, 33, 0.96), rgba(13, 11, 9, 0.96));
+  box-shadow: var(--edge-inner);
+  color: inherit;
   transition: border-color var(--dur-hover), box-shadow var(--dur-hover), opacity var(--dur-hover);
 }
 /* 全图可见（docs/48 §4）：未达区域正常显示，不置灰 */
 .node:disabled { cursor: default; }
-.node.onpath { border-color: rgba(176, 141, 74, 0.6); }
-.node.done { opacity: 0.55; }
+.node.onpath { border-color: rgba(176, 141, 74, 0.7); }
+.node.done { opacity: 0.5; }
 .node.reachable { border-color: var(--gold); box-shadow: 0 0 14px rgba(176, 141, 74, 0.3); cursor: pointer; }
-.node.reachable:hover { box-shadow: 0 0 20px rgba(216, 180, 106, 0.5); }
+.node.reachable:hover { border-color: var(--gold-hi); box-shadow: 0 0 20px rgba(216, 180, 106, 0.5); }
 .node.current {
-  border-color: var(--gold); border-left: 3px solid var(--gold);
-  box-shadow: 0 0 18px rgba(176, 141, 74, 0.45);
+  border-color: var(--gold-hi); border-width: 2px;
+  box-shadow: 0 0 18px rgba(216, 180, 106, 0.55);
   animation: node-pulse 1.6s ease-in-out infinite;
 }
-@keyframes node-pulse { 0%,100% { box-shadow: 0 0 14px rgba(176,141,74,0.3); } 50% { box-shadow: 0 0 22px rgba(216,180,106,0.55); } }
-.node.boss.current { border-color: var(--blood-hi); box-shadow: 0 0 22px rgba(192, 57, 43, 0.45); }
-.glyph {
-  width: 24px; height: 24px; flex: none; display: flex; align-items: center; justify-content: center;
-  border: 1px solid var(--gold-dim); transform: rotate(45deg); color: var(--gold);
-  font-family: var(--serif-title); font-size: 11px;
+@keyframes node-pulse { 0%,100% { box-shadow: 0 0 12px rgba(176,141,74,0.3); } 50% { box-shadow: 0 0 22px rgba(216,180,106,0.6); } }
+.node.boss { border-color: rgba(192, 57, 43, 0.65); }
+.node.boss.current { box-shadow: 0 0 22px rgba(192, 57, 43, 0.5); }
+/* 类型只靠字形 + 标签区分（docs/48 §四 美术口径） */
+.node.k-elite { border-color: rgba(158, 106, 194, 0.6); }
+.node.k-elite .glyph { color: #b98ad6; }
+.node.k-boss .glyph { color: var(--blood-hi); }
+.node.k-rest .glyph { color: #d9a566; }
+.glyph { font-family: var(--serif-title); font-size: 17px; line-height: 1; color: var(--gold); }
+.tag {
+  position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%);
+  padding: 1px 5px; border-radius: 3px; background: rgba(12, 10, 8, 0.92);
+  font-size: 9px; letter-spacing: 0.12em; color: var(--ink-dim); white-space: nowrap;
+  pointer-events: none;
 }
-.glyph i { transform: rotate(-45deg); font-style: normal; }
-.info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.info b { font-family: var(--serif-title); font-size: 11px; letter-spacing: 0.12em; color: var(--ink-bone); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.info small { font-size: 9px; letter-spacing: 0.18em; color: var(--ink-dim); }
 .victory-overlay {
   position: absolute; inset: 0; z-index: 50;
   display: flex; align-items: center; justify-content: center;
