@@ -86,8 +86,8 @@ function leave(): void {
             <span class="tick">✓</span>{{ line }}
           </li>
         </ul>
-        <p class="sub dim">这班你值完了。往后的岗，自己站——忘了就翻图鉴，或者从设置里再叫我。</p>
-        <button class="etch-btn main" @click="finish">开 始 远 征</button>
+        <p class="sub dim">这班你值完了。往后的岗，自己站——忘了就回标题页翻「图鉴」，或者从设置里再叫我。</p>
+        <button class="tut-cta main" @click="finish">开 始 远 征</button>
       </template>
 
       <template v-else-if="chapter">
@@ -96,7 +96,7 @@ function leave(): void {
         <div v-if="chapter.kind === 'screen' || chapter.kind === 'graduation'" class="lines">
           <p v-for="(line, i) in chapter.lines" :key="i">{{ line }}</p>
         </div>
-        <button v-if="chapter.kind === 'screen'" class="etch-btn main" @click="nextFromScreen">
+        <button v-if="chapter.kind === 'screen'" class="tut-cta main" @click="nextFromScreen">
           {{ chapter.cta }}
         </button>
 
@@ -104,7 +104,7 @@ function leave(): void {
         <template v-else-if="chapter.kind === 'battle'">
           <p class="sub">{{ chapter.theme }}</p>
           <p class="sub dim">对手：{{ enemyNames }}</p>
-          <button class="etch-btn main" @click="enterBattle">进 入</button>
+          <button class="tut-cta main" @click="enterBattle">进 入</button>
         </template>
 
         <!-- 幕间 A：三选一（按职业固定候选） -->

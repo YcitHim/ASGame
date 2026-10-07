@@ -18,6 +18,7 @@ import { resetTurnRelics, resolveTriggers } from "./relics";
 import {
   drawCards,
   resolvePollutionCritical,
+  resolveMending,
   resolveRegeneration,
   tickAllBuffs,
 } from "./resolve";
@@ -121,6 +122,7 @@ function endTurn(draft: Draft, sink: EventSink): void {
   draft.turn += 1;
   tickAllBuffs(draft, sink, "turnStart");
   resolveRegeneration(draft, sink);
+  resolveMending(draft, sink);
   resolvePollutionCritical(draft, sink);
   draft.player.energy = draft.player.maxEnergy;
   // 只清玩家自己的格挡；敌人格挡不在此处清（见上方 enemyAction）

@@ -39,19 +39,27 @@ const showLog = ref(false);
 const shaking = ref(false);
 const isDev = isDebugEnabled();
 
+/** 教学每场开打前的 HP 下限：够付最高的一张血契（调血 5 血），保证机制课不会"没血可付"。 */
+const TUTORIAL_MIN_HP = 25;
+
 /** 教学进行中时，战斗来自脚本（docs/42）而不是 run 进度；卡组与 HP 由教学局带着走。 */
 function startTutorialBattle(): void {
   const chapter = tutorial.chapter;
   if (!chapter || chapter.kind !== "battle" || !tutorial.run) return;
+  // 教学不是真远征：上场前把 HP 垫到能付得起血契（调血 5 血），避免"机制课没血可付"卡死
+  const hp = Math.max(TUTORIAL_MIN_HP, Math.min(tutorial.run.maxHp, tutorial.run.hp));
+  tutorial.run.hp = hp;
   store.startTutorial({
     chapterId: chapter.id,
     seed: chapter.seed,
     enemies: chapter.enemies,
     deck: tutorial.run.deck,
-    hp: tutorial.run.hp,
+    hp,
     maxHp: tutorial.run.maxHp,
     relics: run.classDef?.startRelics ?? [],
   });
+  // 战斗建好之后再发样例牌（否则 grant 会打空）
+  applyStepGrant();
 }
 
 /** 教学章走完 → 下一章。战斗章就地重开，其余回教学页。 */
@@ -65,16 +73,16 @@ function advanceTutorialChapter(): void {
   else void router.push("/tutorial");
 }
 
-// 教学步骤带 grant / classGrant 时，把这几个「样例牌」塞进手牌（走 core 的 DebugCommand，确定性）
-watch(
-  () => [tutorial.chapterIndex, tutorial.stepIndex] as const,
-  () => {
-    for (const cardId of tutorial.stepGrant) {
-      store.debug(`give card ${cardId}`);
-    }
-  },
-  { immediate: true },
-);
+/**
+ * 教学步骤带 grant / classGrant 时，把这几个「样例牌」塞进手牌（走 core 的 DebugCommand，确定性）。
+ * 必须在战斗已经建好之后调用——immediate 的 watcher 跑在 onMounted 之前，那时还没有战斗。
+ */
+function applyStepGrant(): void {
+  if (!tutorial.active || !store.battle) return;
+  for (const cardId of tutorial.stepGrant) store.debug(`give card ${cardId}`);
+}
+
+watch(() => [tutorial.chapterIndex, tutorial.stepIndex] as const, () => applyStepGrant());
 
 /** ESC 打开设置（玩家习惯：ESC = 菜单）。设置页自 v1.0.3 起可滚动，能看全。 */
 function onKeydown(event: KeyboardEvent): void {

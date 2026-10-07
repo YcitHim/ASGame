@@ -190,9 +190,12 @@ function back(): void {
           <p>三场演武：出牌与能量 → 读意图与防御 → 蓄力与爆发。</p>
           <p class="dim">跟着提示走，做对才推进；随时可以跳过。教学不发奖励。</p>
           <div class="ask-actions">
-            <button class="etch-btn" @click="acceptTutorial">要，带我看一遍</button>
-            <button class="etch-btn ghost" @click="declineTutorial">不用，直接开始</button>
+            <button class="tut-cta" @click="acceptTutorial">
+              <span class="glyph">▶</span>要，带我看一遍
+            </button>
+            <button class="tut-cta ghost" @click="declineTutorial">不用，直接开始</button>
           </div>
+          <p class="ask-foot">约 10 分钟 · 三课带旁白 · 随时可以从右上角跳过</p>
         </div>
       </div>
 
@@ -355,9 +358,10 @@ function back(): void {
 }
 .ask p { font-size: 13px; line-height: 1.9; letter-spacing: 0.08em; color: var(--ink-bone); }
 .ask p.dim { color: var(--ink-dim); font-size: 12px; }
-.ask-actions { display: flex; gap: 12px; justify-content: center; margin-top: 20px; }
-.ask-actions .etch-btn { padding: 10px 20px; font-size: 13px; }
-.etch-btn.ghost { opacity: 0.75; }
+.ask-actions { display: flex; gap: 12px; justify-content: center; margin-top: 22px; }
+.ask-foot {
+  margin-top: 14px; font-size: 11px; letter-spacing: 0.1em; color: var(--gold-dim);
+}
 
 .class-stage {
   display: flex;

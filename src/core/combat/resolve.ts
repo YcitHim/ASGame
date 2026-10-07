@@ -463,6 +463,18 @@ export function resolveCorroding(draft: Draft, sink: EventSink): void {
   }
 }
 
+/**
+ * 回血印记（调血）：玩家回合开始时，按印记层数回一次血，然后印记消失。
+ * 与蚀锈同构——特殊 buff 走专门结算，不进泛用 tick（否则 duration 会先被扣掉）。
+ */
+export function resolveMending(draft: Draft, sink: EventSink): void {
+  const buff = draft.player.buffs.find((b) => b.id === "mending");
+  if (!buff || buff.stacks <= 0) return;
+  healUnit(draft, sink, PLAYER_ID, buff.stacks, "card");
+  draft.player.buffs = draft.player.buffs.filter((b) => b.id !== "mending");
+  sink.emit("BuffExpired", { targetId: PLAYER_ID, buffId: "mending" });
+}
+
 /** 再生：回合开始按层数回血。 */
 export function resolveRegeneration(draft: Draft, sink: EventSink): void {
   for (const enemy of [draft.player, ...draft.enemies]) {

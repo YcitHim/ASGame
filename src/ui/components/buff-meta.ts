@@ -24,6 +24,7 @@ export const BUFF_META: Record<string, BuffMeta> = {
   thorns: { name: "反伤", glyph: "反", tint: "#6b1f34", unit: "点" },
   block: { name: "格挡", glyph: "盾", tint: "#54636f", unit: "点" },
   corroding: { name: "蚀锈", glyph: "蚀", tint: "#556b2a", unit: "伤害" },
+  mending: { name: "回血印记", glyph: "愈", tint: "#3f6b3a", unit: "点" },
 };
 
 export function buffMeta(id: string): BuffMeta {

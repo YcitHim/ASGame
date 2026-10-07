@@ -62,6 +62,8 @@ export const BUFF_IDS = [
   "thorns",
   /** 蚀锈（docs/38 §二 B-2）：敌人侧 DoT，stacks = 每回合伤害，duration = 剩余回合 */
   "corroding",
+  /** 回血印记（调血）：玩家回合开始时按 stacks 回血一次，随后消失 */
+  "mending",
 ] as const;
 
 /** 卡牌复杂逻辑 handler（ADR-005） */

@@ -284,7 +284,7 @@ export const TUTORIAL_CHAPTERS: readonly TutorialChapter[] = [
       bloodwright: [
         {
           why: "你的职业是血械侍僧：先付血，再收货。卖血是你的战斗方式，不是自残。",
-          how: "打这张「输血」——牌面下方的「净 +4 HP」是算完账的结果。",
+          how: "打这张「调血」——先付 5 血，下回合开始回 7 血；牌面下方已经把账算给你看了。",
           grant: ["transfusion"],
           highlightCardId: "transfusion",
           goal: { kind: "playCardId", cardId: "transfusion" },

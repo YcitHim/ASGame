@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { useTemplateRef } from "vue";
+import { computed, useTemplateRef } from "vue";
 import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
 import EmberField from "@/ui/components/EmberField.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
+import { useMetaStore } from "@/stores/meta";
 import { type Settings, useSettingsStore } from "@/stores/settings";
 import { useTutorialStore } from "@/stores/tutorial";
 
@@ -43,11 +44,27 @@ function onSpeed(event: Event): void {
   store.update({ animationSpeed: speed as Settings["animationSpeed"] });
 }
 
-/** 重看教学（docs/41 §4.3）：从设置页随时重进。 */
+/**
+ * 重看教学（docs/42）：从设置页随时重进。
+ * 已经走完过某个职业 → 只补机制课（和选人页的邀请口径一致）。
+ */
 function replayTutorial(): void {
-  useTutorialStore().begin();
+  const meta = useMetaStore();
+  meta.ensureLoaded();
+  const skipLessons = meta.tutorialDone.length > 0;
+  useTutorialStore().begin(skipLessons);
   void router.push("/tutorial");
 }
+
+/** 教学进度摘要：走过几个职业 / 第一次玩是什么体验。 */
+const tutorialSummary = computed(() => {
+  const meta = useMetaStore();
+  meta.ensureLoaded();
+  const done = meta.tutorialDone.length;
+  if (done === 0) return "约 10 分钟，三课带旁白；第一次玩建议走一遍，随时可以跳过";
+  if (done >= 3) return "三个职业都走完了。重进只会补职业机制课。";
+  return `已完成 ${done} / 3 个职业；重进只补职业机制课`;
+});
 
 function back(): void {
   void router.push("/");
@@ -130,10 +147,12 @@ function back(): void {
         <h3 class="group">教学</h3>
         <div class="row">
           <div class="label">
-            <b>重看教学</b>
-            <small>随时重进三场演武；教学不发奖励，只是带路</small>
+            <b>第一班岗</b>
+            <small>{{ tutorialSummary }}</small>
           </div>
-          <button class="etch-btn" @click="replayTutorial">进 入 教 学</button>
+          <button class="tut-cta" @click="replayTutorial">
+            <span class="glyph">▶</span>进 入 教 学
+          </button>
         </div>
 
         <h3 class="group">开发者</h3>

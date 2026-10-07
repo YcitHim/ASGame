@@ -93,6 +93,50 @@ button {
   cursor: not-allowed;
 }
 
+/* 「第一班岗」入口按钮（docs/42）：全站唯一的"推荐动作"，金底以区别于暗色 UI 的其它按钮 */
+.tut-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 20px;
+  font-family: var(--serif-title);
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  color: #1c1408;
+  background: linear-gradient(180deg, #dcb86e, #a8803d);
+  border: 1px solid #ecd8a4;
+  border-radius: var(--radius-sm);
+  box-shadow:
+    0 0 18px rgba(176, 141, 74, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform var(--dur-hover) ease-out, box-shadow var(--dur-hover) ease-out,
+    filter var(--dur-hover) ease-out;
+}
+.tut-cta:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+  box-shadow:
+    0 0 26px rgba(176, 141, 74, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+.tut-cta:active:not(:disabled) { transform: translateY(0); }
+.tut-cta .glyph { font-family: var(--serif-num); font-size: 12px; opacity: 0.75; }
+/* 次要项：不抢主按钮的注意力 */
+.tut-cta.ghost {
+  color: var(--ink-dim);
+  background: rgba(18, 16, 14, 0.7);
+  border: 1px solid rgba(110, 88, 54, 0.5);
+  box-shadow: none;
+  text-shadow: none;
+}
+.tut-cta.ghost:hover:not(:disabled) {
+  color: var(--gold);
+  border-color: var(--gold);
+  filter: none;
+  box-shadow: none;
+}
+
 /* 细滚动条（锻造卡组等列表用） */
 ::-webkit-scrollbar {
   width: 8px;

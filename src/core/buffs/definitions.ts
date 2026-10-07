@@ -28,6 +28,16 @@ export const BUFF_DEFINITIONS: Readonly<Record<BuffId, BuffDefinition>> = {
     applyAs: "stacksAndTurns",
     defaultDuration: 2,
   },
+  // 回血印记（调血）：一次性延迟回血。stacks = 回血量。
+  // decayAt 设为 none —— 由 resolveMending 在【玩家回合开始】结算并立即移除，
+  // 交给泛用 tick 会在结算前就把 duration 扣到 0 而白掉。
+  mending: {
+    id: "mending",
+    stacking: "refreshOnly",
+    decayAt: "none",
+    applyAs: "stacksAndTurns",
+    defaultDuration: 1,
+  },
 };
 
 export function buffDefinition(id: BuffId): BuffDefinition {

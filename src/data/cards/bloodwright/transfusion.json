@@ -4,27 +4,31 @@
   "type": "skill",
   "rarity": "common",
   "cost": 1,
-  "bloodCost": 2,
+  "bloodCost": 5,
   "keywords": [
     "bloodpact"
   ],
   "effects": [
     {
-      "kind": "heal",
+      "kind": "applyBuff",
+      "buff": "mending",
+      "stacks": 7,
+      "duration": 1,
       "target": {
         "type": "self"
-      },
-      "value": 6
+      }
     }
   ],
   "upgraded": {
     "effects": [
       {
-        "kind": "heal",
+        "kind": "applyBuff",
+        "buff": "mending",
+        "stacks": 10,
+        "duration": 1,
         "target": {
           "type": "self"
-        },
-        "value": 9
+        }
       }
     ]
   },
