@@ -30,7 +30,7 @@ export function resolveTriggers(
   draft: Draft,
   sink: EventSink,
   timing: TriggerTiming,
-  opts: { inline?: boolean } = {},
+  opts: { inline?: boolean; targetId?: string | null } = {},
 ): void {
   const run = opts.inline ? resolveEffectsInline : resolveEffects;
   for (const id of draft.player.relics) {
@@ -42,7 +42,7 @@ export function resolveTriggers(
     run(draft, sink, def.effects, {
       sourceId: `relic:${id}`,
       actorId: "player",
-      chosenTargetId: null,
+      chosenTargetId: opts.targetId ?? null,
       fromTrigger: true,
     });
 
@@ -60,7 +60,7 @@ export function resolveTriggers(
     run(draft, sink, power.effects, {
       sourceId: instanceId,
       actorId: "player",
-      chosenTargetId: null,
+      chosenTargetId: opts.targetId ?? null,
       fromTrigger: true,
     });
 

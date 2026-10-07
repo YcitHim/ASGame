@@ -283,7 +283,7 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
     : effective.effects;
 
   /** 强化 onHit：多段攻击每段独立触发（低血沸腾三段 = 三次 onHit）。 */
-  const onHit = (hitIndex: number): void => {
+  const onHit = (hitIndex: number, hitTargetId: string): void => {
     for (const enhancementId of instance.enhancements) {
       const enhancement = draft.content.enhancements.get(enhancementId);
       if (!enhancement) continue;
@@ -300,6 +300,9 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
         });
       }
     }
+    // 卡牌能力 onHit：与强化 onHit 同构，多段攻击每段独立触发。
+    // 修复「飞锈」等 onHit 能力永不派发的问题（resolveTriggers 原本无 onHit 派发点）。
+    resolveTriggers(draft, sink, "onHit", { inline: true, targetId: hitTargetId });
   };
 
   resolveEffects(draft, sink, effects, {

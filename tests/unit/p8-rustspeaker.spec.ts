@@ -195,4 +195,17 @@ describe("1.0-B 职业与解锁", () => {
     expect([...seen].some((id) => run.cardDef(id)?.class === "neutral")).toBe(true);
     expect([...seen].some((id) => run.cardDef(id)?.class === "rustspeaker")).toBe(true);
   });
+
+  it("飞锈的能力（onHit）在每次玩家命中后给该目标叠 1 层蚀锈", () => {
+    let s = start({ deck: ["rustapotheosis", "strike", "strike"], enemies: ["rust_hound"] });
+    expect(s.enemies[0].buffs.some((b) => b.id === "corroding")).toBe(false);
+    s = play(s, "rustapotheosis", "rust_hound");
+    // 飞锈自身不造成伤害：能力先记入常驻，等后续命中才触发
+    expect(s.enemies[0].buffs.some((b) => b.id === "corroding")).toBe(false);
+    s = play(s, "strike", "rust_hound");
+    expect(s.enemies[0].buffs.find((b) => b.id === "corroding")?.stacks).toBe(1);
+    s = play(s, "strike", "rust_hound");
+    expect(s.enemies[0].buffs.find((b) => b.id === "corroding")?.stacks).toBe(2);
+  });
 });
+
