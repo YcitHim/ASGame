@@ -46,7 +46,15 @@ function startTutorialStage(): void {
   store.startTutorial({ stageId: stage.id, seed: stage.seed, enemies: stage.enemies });
 }
 
+/** ESC 打开设置（玩家习惯：ESC = 菜单）。设置页自 v1.0.3 起可滚动，能看全。 */
+function onKeydown(event: KeyboardEvent): void {
+  if (event.key !== "Escape") return;
+  if (store.over) return; // 结算界面上 ESC 不抢焦点，免得手滑关掉结果页
+  void router.push("/settings");
+}
+
 onMounted(() => {
+  window.addEventListener("keydown", onKeydown);
   if (tutorial.active) {
     const stage = tutorialStage(tutorial.stageIndex);
     const expected = stage ? `tutorial:${stage.id}` : "";
@@ -160,6 +168,7 @@ const floatersFor = computed(() => {
  * 战斗动画三档（docs/41 §3.1）：full 全开 / simple 仅飘字 / off 全关。
  * 飘字是信息层（"挨打看得见"），simple 必须保留；位移与光效是装饰层，simple 关掉。
  */
+const showTutHint = computed(() => tutorial.active && tutorial.step !== undefined);
 const battleAnim = computed(() => settings.values.battleAnim);
 const showFloaters = computed(() => battleAnim.value !== "off");
 const showMotion = computed(() => battleAnim.value === "full");
@@ -308,6 +317,7 @@ function onGrab(index: number, event: PointerEvent): void {
 }
 
 onBeforeUnmount(endDrag);
+onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
 
 const ghostCard = computed(() => (drag.value ? hand.value[drag.value.index] : undefined));
 
@@ -366,17 +376,29 @@ function back(): void {
 
 <template>
   <div class="viewport">
-    <div ref="stage" class="stage battle-stage" :class="{ shaking }">
+    <div ref="stage" class="stage battle-stage" :class="{ shaking, 'tut-on': showTutHint }">
       <!-- 顶栏 -->
-      <div class="topbar">
+      <div class="topbar" :class="{ 'with-tut-hint': showTutHint }">
         <span v-if="tutorial.active">教 学 · {{ tutorial.stage?.title ?? "" }}</span>
         <span v-else>{{ actName }} — 遭遇 {{ store.battle?.battleId ?? "" }}</span>
         <div class="r">
           <span v-if="tutorial.active" @click="skipTutorial">跳过教学</span>
           <span @click="showLog = !showLog">{{ showLog ? "收起日志" : "日志" }}</span>
-          <span @click="store.skip()">跳过</span>
+          <button
+            class="skip-btn"
+            :disabled="!store.playing"
+            :title="store.playing ? '跳过本段动画' : '当前没有动画'"
+            @click="store.skip()"
+          >
+            跳过
+          </button>
           <span @click="store.toggleSpeed()">{{ store.speed }}×</span>
           <span @click="router.push('/settings')">设置</span>
+        </div>
+        <!-- 教学步骤提示（docs/41 §4.3）：占顶栏第二行，敌人区同步下移，不遮意图 -->
+        <div v-if="showTutHint && tutorial.step" class="tut-hint">
+          <span class="tut-step">{{ tutorial.stageIndex + 1 }}/{{ tutorial.total }} · {{ tutorial.stepIndex + 1 }}/{{ tutorial.stage?.steps.length }}</span>
+          <span class="tut-text">{{ tutorial.step.hint }}</span>
         </div>
       </div>
 
@@ -585,11 +607,7 @@ function back(): void {
       <!-- 首遇提示（docs/41 §4.1）：同屏至多 1 条 -->
       <FirstTip />
 
-      <!-- 教学步骤提示（docs/41 §4.3）：一句话 + 手牌高亮，做对才推进 -->
-      <div v-if="tutorial.active && tutorial.step" class="tut-hint">
-        <span class="tut-step">{{ tutorial.stageIndex + 1 }}/{{ tutorial.total }} · {{ tutorial.stepIndex + 1 }}/{{ tutorial.stage?.steps.length }}</span>
-        <span class="tut-text">{{ tutorial.step.hint }}</span>
-      </div>
+
 
       <!-- 日志抽屉 -->
       <div v-if="showLog" class="log-drawer">
@@ -652,6 +670,15 @@ function back(): void {
 .topbar .r { display: flex; gap: 16px; }
 .topbar .r span { cursor: pointer; }
 .topbar .r span:hover { color: var(--gold); }
+/* 跳过：原来只有一个 17×10px 的文字，点不中就像"按了没用"（玩家反馈） */
+.skip-btn {
+  padding: 4px 10px; margin: -4px 0;
+  font-size: 12px; letter-spacing: 0.24em; color: var(--ink-dim);
+  border: 1px solid rgba(110, 88, 54, 0.45); border-radius: var(--radius-sm);
+  background: rgba(18, 16, 14, 0.7);
+}
+.skip-btn:hover:not(:disabled) { color: var(--gold); border-color: var(--gold); }
+.skip-btn:disabled { opacity: 0.4; cursor: default; }
 
 .enemy-zone {
   position: absolute; top: 56px; left: 0; right: 0; height: 290px;
@@ -887,19 +914,29 @@ function back(): void {
 
 /* 玩家飘字位置（docs/41 §3.2）：伤害 / 格挡浮在面板上沿（血条上方），
    减益浮名落在状态栏那一行——都不遮血条数字 */
-/* 教学步骤提示带（docs/41 §4.3） */
+/* 教学步骤提示带（docs/41 §4.3）：占顶栏第二行。
+   原先浮在 top:42px，正好压住敌人意图（intent-slot 在 56~87px）——玩家看不清它要干什么。 */
+.topbar.with-tut-hint {
+  height: auto;
+  min-height: 78px;
+  padding: 8px 18px 10px;
+  flex-wrap: wrap;
+  align-content: center;
+  row-gap: 8px;
+}
 .tut-hint {
-  position: absolute; top: 42px; left: 50%; transform: translateX(-50%);
-  z-index: 42; display: flex; align-items: center; gap: 14px;
-  padding: 9px 18px; max-width: 900px;
+  flex: none; width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  padding: 7px 18px;
   background: rgba(12, 10, 8, 0.9);
   border: 1px solid var(--edge-gold); border-radius: var(--radius-sm);
-  box-shadow: var(--panel-shadow);
 }
 .tut-step {
   flex: none; font-family: var(--serif-title); font-size: 11px; letter-spacing: 0.14em; color: var(--gold-dim);
 }
 .tut-text { font-size: 13px; letter-spacing: 0.1em; color: var(--ink-bone); }
+/* 顶栏加高后，敌人区整体下移同样高度，意图图标重新露出来 */
+.battle-stage.tut-on .enemy-zone { top: 96px; }
 
 .player-panel .dmgfloat { top: -26px; }
 .player-panel .dmgfloat.debuff { top: 74px; }

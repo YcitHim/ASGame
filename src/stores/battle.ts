@@ -358,9 +358,20 @@ export const useBattleStore = defineStore("battle", {
       this.start();
     },
 
+    /**
+     * 跳过剩余动画（docs/08 §6）。
+     * 除了停队列，还要把限时表现状态一并清干净——否则敌人会停在"前扑/闪白"的姿势上，
+     * 玩家会以为跳过没生效（玩家反馈）。
+     */
     skip(): void {
       queue.skip();
       this.playing = false;
+      this.hitUnits = [];
+      this.dyingUnits = [];
+      this.flipUnits = [];
+      this.brokenUnits = [];
+      this.lungeUnits = [];
+      this.guardUnits = [];
     },
 
     toggleSpeed(): void {

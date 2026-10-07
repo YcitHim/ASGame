@@ -211,6 +211,11 @@ function back(): void {
   border: 1px solid var(--edge-gold);
   border-radius: var(--radius-sm);
   box-shadow: var(--panel-shadow);
+  /* 设置项已经长到超出 720 画布：面板内部滚动，标题栏固定，
+     否则最底下的「恢复默认」永远看不见（玩家反馈） */
+  max-height: 588px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .group {
