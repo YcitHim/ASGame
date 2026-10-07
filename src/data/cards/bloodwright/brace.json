@@ -14,6 +14,17 @@
         "type": "self"
       },
       "value": 6
+    },
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 3,
+      "condition": {
+        "type": "hpBelow",
+        "percent": 50
+      }
     }
   ],
   "upgraded": {
@@ -24,6 +35,17 @@
           "type": "self"
         },
         "value": 9
+      },
+      {
+        "kind": "block",
+        "target": {
+          "type": "self"
+        },
+        "value": 3,
+        "condition": {
+          "type": "hpBelow",
+          "percent": 50
+        }
       }
     ]
   },

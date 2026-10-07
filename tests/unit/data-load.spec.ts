@@ -63,6 +63,42 @@ describe("真实内容装载（data/load）", () => {
     expect(act.layers[1].events?.length).toBe(5);
   });
 
+  // 甲方 2026-10-07：牌库里「压簧」与「支撑」一字不差 —— 加一条护栏，防止再出现同构牌
+  it("付费牌库没有两张一模一样的牌（忽略 id / 职业 / 文案）", () => {
+    const cards = [...loadGameContent().content.cards.values()];
+    const body = (c: (typeof cards)[number]) => {
+      const raw = { ...(c as unknown as Record<string, unknown>) };
+      delete raw.id;
+      delete raw.class;
+      delete raw.i18n;
+      return JSON.stringify(raw);
+    };
+    const byBody = new Map<string, string[]>();
+    for (const c of cards) byBody.set(body(c), [...(byBody.get(body(c)) ?? []), c.id]);
+    const dupes = [...byBody.values()].filter((ids) => ids.length > 1);
+    expect(dupes, "出现完全同构的卡牌：" + dupes.map((ids) => ids.join(" / ")).join(" · ")).toEqual([]);
+  });
+
+  it("三职业各有一张「1 费 · 普通 · 保留」格挡牌，且各自挂本职业资源条件", () => {
+    const cards = loadGameContent().content.cards;
+    const retain = [...cards.values()].filter((c) => (c.keywords ?? []).includes("retain"));
+    expect(retain.map((c) => c.id).sort()).toEqual(["brace", "coiled_spring", "rust_moss"]);
+    for (const c of retain) {
+      expect(c.cost, c.id).toBe(1);
+      expect(c.rarity, c.id).toBe("common");
+      expect(c.type, c.id).toBe("skill");
+    }
+    // 血械=失控线 / 炉心=充能 / 锈语者=再生（不带条件，rider 是增益本体）
+    const conditions = (id: string) =>
+      (cards.get(id)!.effects ?? []).map((e) => (e as { condition?: { type: string } }).condition?.type ?? null);
+    expect(conditions("brace")).toEqual([null, "hpBelow"]);
+    expect(conditions("coiled_spring")).toEqual([null, "chargeAtLeast"]);
+    expect(conditions("rust_moss")).toEqual([null, null]);
+    // 三张的核心效果两两不同（护栏：它们不能又变成同一张牌）
+    const sigs = new Set(retain.map((c) => JSON.stringify([c.effects, c.upgraded?.effects ?? null])));
+    expect(sigs.size).toBe(3);
+  });
+
   it("同种子生成同一张分支地图；不同种子不同（map 流独立可复现）", async () => {
     const { generateActMap } = await import("@/core/map");
     const act = loadGameContent().acts[0];
