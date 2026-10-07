@@ -64,11 +64,11 @@ const reachable = computed(() => new Set(view.value?.reachable ?? []));
 const currentId = computed(() => view.value?.current?.id ?? "");
 
 /* ---------- 布局：10 层为行、层内居中排布；边用 SVG 细线 ---------- */
-const COL_W = 140;
-const ROW_H = 54;
-const MAP_TOP = 12;
+const COL_W = 168;
+const ROW_H = 74;
+const MAP_TOP = 18;
 /** 最宽一层 4 个节点 = 3 列间距 + 两侧留白 */
-const MAP_W = COL_W * 3 + 120;
+const MAP_W = COL_W * 3 + 110;
 const MAP_H = computed(() => MAP_TOP * 2 + Math.max(1, layers.value.length) * ROW_H);
 const CENTER_X = MAP_W / 2;
 
@@ -300,7 +300,7 @@ function toTitle(): void {
 </template>
 
 <style scoped>
-.map-stage { display: flex; flex-direction: column; align-items: center; padding: 40px 20px 34px; }
+.map-stage { display: flex; flex-direction: column; align-items: center; padding: 34px 20px 30px; }
 .topbar {
   position: absolute; top: 0; left: 0; right: 0; height: 34px; z-index: 30;
   display: flex; align-items: center; justify-content: space-between; padding: 0 18px;
@@ -310,7 +310,7 @@ function toTitle(): void {
 .topbar .r { display: flex; gap: 18px; }
 .topbar .r span { cursor: pointer; }
 .topbar .hp { color: var(--blood-hi); font-family: var(--serif-num); }
-.head { font-family: var(--serif-title); font-size: 22px; letter-spacing: 0.5em; color: var(--ink-bone); }
+.head { margin: 4px 0 2px; font-family: var(--serif-title); font-size: 20px; letter-spacing: 0.5em; color: var(--ink-bone); }
 .dev-panel { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 5px 12px; border: 1px dashed rgba(192,57,43,.5); border-radius: var(--radius-sm); background: rgba(30,12,10,.35); }
 .dev-tag { font-size: 10px; letter-spacing: .2em; color: var(--blood-hi); border: 1px solid rgba(192,57,43,.6); padding: 1px 6px; border-radius: 999px; }
 .dev-btn { padding: 4px 10px; font-size: 11px; color: var(--ink-dim); background: rgba(18,16,14,.7); border: 1px solid rgba(110,88,54,.4); border-radius: var(--radius-sm); cursor: pointer; }
