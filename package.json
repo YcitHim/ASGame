@@ -1,7 +1,7 @@
 {
   "name": "rust-and-blood",
   "private": true,
-  "version": "0.5.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "锈与血（暂名）· H5 肉鸽卡牌",
   "scripts": {
