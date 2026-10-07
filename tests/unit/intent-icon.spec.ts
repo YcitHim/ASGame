@@ -5,29 +5,60 @@ import IntentIcon from "@/ui/components/IntentIcon.vue";
 
 /** docs/38 §三 C-2 · 意图区可读性（C2-P-1）。 */
 describe("1.0-C 意图图标可读性", () => {
-  it("蓄力意图显示释放值、格挡与剩余回合", () => {
+  it("蓄力中（thenIn ≥ 2）：显示剩余回合与释放值；格挡量在悬停提示里", () => {
     const wrapper = mount(IntentIcon, {
       props: { intent: { kind: "charge", value: 2, thenValue: 19, thenIn: 3, block: 4 } },
     });
     const text = wrapper.text();
     expect(text).toContain("蓄");
-    expect(text).toContain("释放 19");
-    expect(text).toContain("+4挡");
-    expect(text).toContain("3回合");
+    expect(text).toContain("3回合后释放 19");
+    expect(wrapper.find(".intent").classes()).toContain("charging");
+    expect(wrapper.find(".intent").attributes("title")).toContain("4 点格挡");
     wrapper.unmount();
   });
 
-  it("下回合释放时进入 imminent 高亮", () => {
+  it("临近（thenIn = 1）：改口「准备防御」并进入 imminent 高亮", () => {
     const wrapper = mount(IntentIcon, {
       props: { intent: { kind: "charge", value: 2, thenValue: 19, thenIn: 1 } },
     });
     expect(wrapper.find(".intent").classes()).toContain("imminent");
+    expect(wrapper.text()).toContain("下回合释放 19");
+    expect(wrapper.text()).toContain("准备防御");
     wrapper.unmount();
   });
 
   it("多段攻击显示段数", () => {
     const wrapper = mount(IntentIcon, { props: { intent: { kind: "attack", value: 10, hits: 2 } } });
     expect(wrapper.text()).toContain("10×2");
+    wrapper.unmount();
+  });
+});
+
+/** docs/41 §3.3（反馈 11）：蓄力预警三段式，最关键的是「即将承受」不再让预警凭空消失。 */
+describe("docs/41 §3.3 蓄力三段式", () => {
+  it("释放段显示「即将承受 X 伤害」并加脉冲类", () => {
+    const wrapper = mount(IntentIcon, {
+      props: { intent: { kind: "attack", value: 24, released: true } },
+    });
+    expect(wrapper.text()).toContain("即将承受 24 伤害");
+    expect(wrapper.find(".intent").classes()).toContain("incoming");
+    // 非释放段的普通攻击不触发
+    expect(wrapper.find(".intent").classes()).not.toContain("imminent");
+    wrapper.unmount();
+  });
+
+  it("多段释放写明段数", () => {
+    const wrapper = mount(IntentIcon, {
+      props: { intent: { kind: "attack", value: 12, hits: 2, released: true } },
+    });
+    expect(wrapper.text()).toContain("即将承受 12×2 伤害");
+    wrapper.unmount();
+  });
+
+  it("普通攻击不带 released 标记，不误报「即将承受」", () => {
+    const wrapper = mount(IntentIcon, { props: { intent: { kind: "attack", value: 10 } } });
+    expect(wrapper.text()).not.toContain("即将承受");
+    expect(wrapper.find(".intent").classes()).not.toContain("incoming");
     wrapper.unmount();
   });
 });

@@ -29,8 +29,12 @@ function onVolume(key: VolumeRow["key"], event: Event): void {
   store.update({ [key]: value });
 }
 
-function onToggle(key: "screenShake" | "developerMode", event: Event): void {
+function onToggle(key: "developerMode", event: Event): void {
   store.update({ [key]: (event.target as HTMLInputElement).checked });
+}
+
+function onBattleAnim(value: Settings["battleAnim"]): void {
+  store.update({ battleAnim: value });
 }
 
 function onSpeed(event: Event): void {
@@ -74,11 +78,39 @@ function back(): void {
 
         <h3 class="group">反馈</h3>
         <div class="row">
-          <div class="label"><b>屏幕震动</b><small>命中时 ±6px 屏震</small></div>
-          <label class="switch">
-            <input type="checkbox" :checked="values.screenShake" @change="onToggle('screenShake', $event)" />
-            <span>{{ values.screenShake ? "开" : "关" }}</span>
-          </label>
+          <div class="label">
+            <b>战斗动画</b>
+            <small>完整＝前扑/屏震/飘字；简化＝仅飘字；关闭＝全关</small>
+          </div>
+          <div class="speeds">
+            <label
+              ><input
+                type="radio"
+                name="battle-anim"
+                :checked="values.battleAnim === 'full'"
+                @change="onBattleAnim('full')"
+              />
+              完整</label
+            >
+            <label
+              ><input
+                type="radio"
+                name="battle-anim"
+                :checked="values.battleAnim === 'simple'"
+                @change="onBattleAnim('simple')"
+              />
+              简化</label
+            >
+            <label
+              ><input
+                type="radio"
+                name="battle-anim"
+                :checked="values.battleAnim === 'off'"
+                @change="onBattleAnim('off')"
+              />
+              关闭</label
+            >
+          </div>
         </div>
         <div class="row">
           <div class="label"><b>动画倍速</b><small>跳过 / 2× 消费事件流</small></div>

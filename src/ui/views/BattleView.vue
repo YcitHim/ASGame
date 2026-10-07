@@ -137,10 +137,18 @@ const floatersFor = computed(() => {
   return map;
 });
 
+/**
+ * 战斗动画三档（docs/41 §3.1）：full 全开 / simple 仅飘字 / off 全关。
+ * 飘字是信息层（"挨打看得见"），simple 必须保留；位移与光效是装饰层，simple 关掉。
+ */
+const battleAnim = computed(() => settings.values.battleAnim);
+const showFloaters = computed(() => battleAnim.value !== "off");
+const showMotion = computed(() => battleAnim.value === "full");
+
 watch(
   () => store.shake,
   () => {
-    if (!settings.values.screenShake) return;
+    if (!showMotion.value) return;
     shaking.value = true;
     setTimeout(() => (shaking.value = false), 200);
   },
@@ -341,6 +349,9 @@ function back(): void {
             enraged: bossEnraged && enemy.hp > 0 && enemy.hp * 2 < enemy.maxHp,
             hit: store.hitUnits.includes(enemy.id),
             dying: store.dyingUnits.includes(enemy.id),
+            charging: enemy.intent?.kind === 'charge' && enemy.hp > 0,
+            lunge: showMotion && store.lungeUnits.includes(enemy.id),
+            guard: showMotion && store.guardUnits.includes(enemy.id),
           }"
           :data-enemy-id="enemy.id"
           @click="pickEnemy(enemy.id)"
@@ -383,7 +394,9 @@ function back(): void {
             :block-hint="enemy.intent?.kind === 'charge' ? '蓄力架盾' : undefined"
           />
           <BuffRow :buffs="enemy.buffs" compact :charge="chargeBadge(enemy)" />
-          <DamageFloat v-for="f in floatersFor[enemy.id] ?? []" :key="f.id" :floater="f" />
+          <template v-if="showFloaters">
+            <DamageFloat v-for="f in floatersFor[enemy.id] ?? []" :key="f.id" :floater="f" />
+          </template>
         </div>
       </div>
 
@@ -409,7 +422,9 @@ function back(): void {
             <span class="pp-status-label">状态</span>
             <BuffRow :buffs="player.buffs" align="start" />
           </div>
-          <DamageFloat v-for="f in floatersFor['player'] ?? []" :key="f.id" :floater="f" />
+          <template v-if="showFloaters">
+            <DamageFloat v-for="f in floatersFor['player'] ?? []" :key="f.id" :floater="f" />
+          </template>
         </div>
         <PollutionGauge :value="player?.pollution ?? 0" />
       </div>
@@ -778,6 +793,49 @@ function back(): void {
   0% { filter: brightness(2.4) saturate(0.3); }
   100% { filter: brightness(1); }
 }
+/* 敌人攻击前扑（docs/41 §3.1）：向玩家方向位移 14px 后归位，0.25s ease-out；
+   多段攻击由 store 逐段重播（pulseUnit），段间隔 0.12s。 */
+.enemy.lunge .enemy-fig {
+  animation: enemy-lunge 250ms ease-out;
+}
+@keyframes enemy-lunge {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(14px); }
+  100% { transform: translateY(0); }
+}
+/* 敌人架盾：护盾微光 */
+.enemy.guard .enemy-fig {
+  animation: enemy-guard 420ms ease-out;
+}
+@keyframes enemy-guard {
+  0% { filter: drop-shadow(0 18px 14px rgba(0, 0, 0, 0.75)); }
+  35% { filter: drop-shadow(0 0 18px rgba(143, 182, 216, 0.95)) brightness(1.15); }
+  100% { filter: drop-shadow(0 18px 14px rgba(0, 0, 0, 0.75)); }
+}
+/* 蓄力：本体呼吸缩放，与预警文案形成视听双通道 */
+.enemy.charging .enemy-fig {
+  animation: enemy-breathe 1.6s ease-in-out infinite;
+}
+@keyframes enemy-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+/* 同一元素上的复合动画（后定义者生效，必须显式列出组合） */
+.enemy.hit.lunge .enemy-fig {
+  animation: enemy-lunge 250ms ease-out, hit-flash 80ms linear;
+}
+.enemy.charging.hit .enemy-fig {
+  animation: enemy-breathe 1.6s ease-in-out infinite, hit-flash 80ms linear;
+}
+.enemy.charging.lunge .enemy-fig {
+  animation: enemy-lunge 250ms ease-out, enemy-breathe 1.6s ease-in-out infinite;
+}
+
+/* 玩家飘字位置（docs/41 §3.2）：伤害 / 格挡浮在面板上沿（血条上方），
+   减益浮名落在状态栏那一行——都不遮血条数字 */
+.player-panel .dmgfloat { top: -26px; }
+.player-panel .dmgfloat.debuff { top: 74px; }
+
 .enemy.dying {
   animation: unit-die 500ms ease-in forwards;
 }

@@ -11,15 +11,28 @@ import type { Action } from "@/core/actions";
 import type { DomainEvent } from "@/core/events";
 import { loadGameContent } from "@/data/load";
 import { AnimQueue } from "@/ui/anim-queue";
+import { buffMeta } from "@/ui/components/buff-meta";
 import { useCodexStore } from "@/stores/codex";
 import { useRunStore } from "@/stores/run";
+
+/**
+ * 飘字（docs/41 §3.2）：结算结果的可视化，只读事件流、不回写状态。
+ *  - damage：红色 −N（敌人 / 玩家受击）
+ *  - heal：绿色 +N
+ *  - block：蓝色 挡N（被格挡的部分）
+ *  - guard：「格挡！」（完全格挡，一点血没掉）
+ *  - debuff：减益浮名（图标字 + 名称 + 层数）
+ */
+export type FloaterKind = "damage" | "heal" | "block" | "guard" | "debuff";
 
 export interface Floater {
   readonly id: number;
   readonly targetId: string;
   readonly value: number;
-  readonly kind: "damage" | "heal";
+  readonly kind: FloaterKind;
   readonly big: boolean;
+  /** 直接显示的文案（guard / debuff 用）；缺省由 kind + value 组合 */
+  readonly text?: string;
 }
 
 let actionCounter = 0;
@@ -54,6 +67,10 @@ export const useBattleStore = defineStore("battle", {
     flipUnits: [] as string[],
     /** 被断链的敌人（docs/38 §三 C-1）：短暂显示打叉 + 「断链」 */
     brokenUnits: [] as string[],
+    /** 正在前扑的敌人（docs/41 §3.1）：多段攻击逐段重播 */
+    lungeUnits: [] as string[],
+    /** 刚架上护盾的敌人（docs/41 §3.1）：护盾微光 */
+    guardUnits: [] as string[],
     cardPlayed: null as { cardId: string; targetId: string | null; seq: number } | null,
   }),
   getters: {
@@ -273,10 +290,24 @@ export const useBattleStore = defineStore("battle", {
 
     onAnimEvent(event: DomainEvent): void {
       switch (event.type) {
-        case "DamageDealt":
+        case "DamageDealt": {
+          // 敌人 → 玩家的攻击：敌人向玩家方向前扑（docs/41 §3.1）
+          if (event.targetId === "player" && event.sourceId !== "player") {
+            this.pulseUnit("lungeUnits", event.sourceId, 260);
+          }
           this.shake += 1;
           this.markUnit("hitUnits", event.targetId, 80);
           if (event.hpLost > 0) this.pushFloater(event.targetId, event.hpLost, "damage", event.hpLost >= 12);
+          // 被格挡的部分单独显示蓝色「挡N」；完全格挡显示「格挡！」（docs/41 §3.2）
+          if (event.blocked > 0) {
+            if (event.hpLost === 0) this.pushFloater(event.targetId, 0, "guard", false, "格挡！");
+            else this.pushFloater(event.targetId, event.blocked, "block", false);
+          }
+          break;
+        }
+        case "BlockGained":
+          // 敌人架盾：护盾微光（玩家侧由 HpBar 显示，不需要额外光效）
+          if (event.targetId !== "player") this.markUnit("guardUnits", event.targetId, 420);
           break;
         case "HpHealed":
           this.pushFloater(event.targetId, event.value, "heal", false);
@@ -286,6 +317,21 @@ export const useBattleStore = defineStore("battle", {
           break;
         case "BuffTicked":
           if (event.damage > 0) this.pushFloater(event.targetId, event.damage, "damage", false);
+          break;
+        case "BuffApplied": {
+          // 玩家吃减益：图标字 + 名称短暂浮在状态栏位置（docs/41 §3.2）
+          if (event.targetId === "player") {
+            const meta = buffMeta(event.buffId);
+            const amount = event.duration != null ? event.duration : event.stacks;
+            this.pushFloater("player", amount, "debuff", false, `${meta.glyph} ${meta.name}`);
+          }
+          break;
+        }
+        case "PollutionChanged":
+          // 污染不走 BuffApplied（core 特判），单独补一条浮名
+          if (event.targetId === "player" && event.delta > 0) {
+            this.pushFloater("player", event.delta, "debuff", false, `污 污染 +${event.delta}`);
+          }
           break;
         case "ChargeInterrupted":
           this.markUnit("brokenUnits", event.enemyId, 1100);
@@ -302,16 +348,40 @@ export const useBattleStore = defineStore("battle", {
     },
 
     /** 给某个单位打一段限时状态（命中闪白 / 死亡 / 意图翻入）。 */
-    markUnit(key: "hitUnits" | "dyingUnits" | "flipUnits" | "brokenUnits", unitId: string, ms: number): void {
+    markUnit(
+      key: "hitUnits" | "dyingUnits" | "flipUnits" | "brokenUnits" | "guardUnits",
+      unitId: string,
+      ms: number,
+    ): void {
       if (!this[key].includes(unitId)) this[key] = [...this[key], unitId];
       setTimeout(() => {
         this[key] = this[key].filter((id) => id !== unitId);
       }, ms);
     },
 
-    pushFloater(targetId: string, value: number, kind: Floater["kind"], big: boolean): void {
+    /**
+     * 可重播的限时状态（docs/41 §3.1 多段攻击逐段前扑）：
+     * 先摘掉再于下一帧挂上，强制 CSS 动画从头播——单纯重复赋值不会重播。
+     */
+    pulseUnit(key: "lungeUnits", unitId: string, ms: number): void {
+      if (this[key].includes(unitId)) this[key] = this[key].filter((id) => id !== unitId);
+      setTimeout(() => {
+        this[key] = [...this[key], unitId];
+        setTimeout(() => {
+          this[key] = this[key].filter((id) => id !== unitId);
+        }, ms);
+      }, 0);
+    },
+
+    pushFloater(
+      targetId: string,
+      value: number,
+      kind: FloaterKind,
+      big: boolean,
+      text?: string,
+    ): void {
       const id = ++floaterCounter;
-      this.floaters = [...this.floaters, { id, targetId, value, kind, big }];
+      this.floaters = [...this.floaters, { id, targetId, value, kind, big, ...(text ? { text } : {}) }];
       setTimeout(() => this.removeFloater(id), 900);
     },
   },

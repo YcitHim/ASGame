@@ -101,11 +101,21 @@ describe("systems/save（ADR-008）", () => {
 describe("settings 归一化", () => {
   it("越界音量被夹紧、非法字段回落默认", async () => {
     const { normalizeSettings, DEFAULT_SETTINGS } = await import("@/stores/settings");
-    const s = normalizeSettings({ masterVolume: 5, bgmVolume: -3, screenShake: "yes" as never });
+    const s = normalizeSettings({ masterVolume: 5, bgmVolume: -3, battleAnim: "yes" as never });
     expect(s.masterVolume).toBe(1);
     expect(s.bgmVolume).toBe(0);
-    expect(s.screenShake).toBe(DEFAULT_SETTINGS.screenShake);
+    expect(s.battleAnim).toBe(DEFAULT_SETTINGS.battleAnim);
     expect(s.animationSpeed).toBe(1);
     expect(s.language).toBe("zh-CN");
+  });
+
+  it("战斗动画三档合法值保留；旧档 screenShake=false 迁移为关闭（docs/41 §3.1）", async () => {
+    const { normalizeSettings } = await import("@/stores/settings");
+    expect(normalizeSettings({ battleAnim: "simple" }).battleAnim).toBe("simple");
+    expect(normalizeSettings({ battleAnim: "off" }).battleAnim).toBe("off");
+    // 旧存档：没有 battleAnim，只有 screenShake=false
+    const legacy = normalizeSettings({ screenShake: false } as never);
+    expect(legacy.battleAnim).toBe("off");
+    expect(normalizeSettings({ screenShake: true } as never).battleAnim).toBe("full");
   });
 });

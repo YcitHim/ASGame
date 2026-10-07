@@ -5,11 +5,19 @@
 import { defineStore } from "pinia";
 import { readSlot, writeSlot } from "@/systems/save";
 
+/**
+ * 战斗动画档位（docs/41 §3.1 降级）：
+ *  - full：完整（前扑 / 飘字 / 屏震 / 微光 / 呼吸）
+ *  - simple：简化（仅飘字，保住"挨打看得见"的信息层）
+ *  - off：关闭
+ */
+export type BattleAnim = "full" | "simple" | "off";
+
 export interface Settings {
   masterVolume: number;
   bgmVolume: number;
   sfxVolume: number;
-  screenShake: boolean;
+  battleAnim: BattleAnim;
   /** 跳过单场动画（docs/08 §6：支持跳过与 2× 倍速） */
   animationSpeed: 1 | 2;
   language: "zh-CN";
@@ -21,7 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
   masterVolume: 0.8,
   bgmVolume: 0.6,
   sfxVolume: 0.8,
-  screenShake: true,
+  battleAnim: "full",
   animationSpeed: 1,
   language: "zh-CN",
   developerMode: false,
@@ -38,11 +46,24 @@ export function normalizeSettings(raw: Partial<Settings> | null | undefined): Se
     masterVolume: clamp01(r.masterVolume, DEFAULT_SETTINGS.masterVolume),
     bgmVolume: clamp01(r.bgmVolume, DEFAULT_SETTINGS.bgmVolume),
     sfxVolume: clamp01(r.sfxVolume, DEFAULT_SETTINGS.sfxVolume),
-    screenShake: typeof r.screenShake === "boolean" ? r.screenShake : DEFAULT_SETTINGS.screenShake,
+    battleAnim: normalizeBattleAnim(r),
     animationSpeed: r.animationSpeed === 2 ? 2 : 1,
     language: "zh-CN",
     developerMode: typeof r.developerMode === "boolean" ? r.developerMode : DEFAULT_SETTINGS.developerMode,
   };
+}
+
+const BATTLE_ANIMS: readonly BattleAnim[] = ["full", "simple", "off"];
+
+/** 战斗动画档位归一化：兼容旧版 screenShake 布尔开关（关 = 动画关闭）。 */
+function normalizeBattleAnim(raw: Partial<Settings> & { screenShake?: unknown }): BattleAnim {
+  const value = (raw as { battleAnim?: unknown }).battleAnim;
+  if (typeof value === "string" && (BATTLE_ANIMS as readonly string[]).includes(value)) {
+    return value as BattleAnim;
+  }
+  // 旧档迁移：screenShake=false 视为玩家明确不要战斗动画
+  if (raw.screenShake === false) return "off";
+  return DEFAULT_SETTINGS.battleAnim;
 }
 
 export const useSettingsStore = defineStore("settings", {

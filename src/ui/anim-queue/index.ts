@@ -39,6 +39,8 @@ const DURATION: Partial<Record<DomainEvent["type"], number>> = {
 };
 
 export function eventDelay(event: DomainEvent): number {
+  // 多段攻击：段间隔 0.12s（docs/41 §3.1），逐段前扑与飘字才对得上拍
+  if (event.type === "DamageDealt" && event.segments > 1) return 120;
   return DURATION[event.type] ?? 70;
 }
 

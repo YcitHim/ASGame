@@ -14,17 +14,31 @@ const label = computed(() => {
   return "?";
 });
 
+/**
+ * 蓄力三段式（docs/41 §3.3）：蓄力中 → 临近 → 即将承受。
+ * 关键点是第三段：预警不再「消失」，而是变成结算预告，因果闭合
+ * （红屏预警 → 即将承受 24 → 前扑 → 飘字 −24）。
+ */
+const stage = computed<"none" | "charging" | "imminent" | "incoming">(() => {
+  const i = props.intent;
+  if (!i) return "none";
+  if (i.kind === "attack" && i.released) return "incoming";
+  if (i.kind === "charge") return (i.thenIn ?? 9) <= 1 ? "imminent" : "charging";
+  return "none";
+});
+
 const sub = computed(() => {
   const i = props.intent;
   if (!i) return "未知";
   if (i.kind === "charge") {
-    // 先给「这一下有多疼」，再给回合/格挡——多敌人时一眼能看到威胁量级（C2-P-1）
-    const parts: string[] = [];
-    if (i.thenValue !== undefined) parts.push("释放 " + i.thenValue);
-    if (i.block) parts.push("+" + i.block + "挡");
-    if (i.thenIn) parts.push(i.thenIn === 1 ? "下回合" : i.thenIn + "回合");
-    if (parts.length === 0) parts.push("蓄力");
-    return parts.join(" · ");
+    const value = i.thenValue ?? 0;
+    if (stage.value === "imminent") return `下回合释放 ${value} · 准备防御`;
+    const turns = i.thenIn ?? 0;
+    return turns > 0 ? `蓄力 · ${turns}回合后释放 ${value}` : `蓄力 · 释放 ${value}`;
+  }
+  if (stage.value === "incoming") {
+    const hits = (i.hits ?? 1) > 1 ? `×${i.hits}` : "";
+    return `即将承受 ${i.value ?? 0}${hits} 伤害`;
   }
   if (i.kind === "debuff") {
     // docs/41 §2.2：不再把一切 debuff 硬编码成「诅咒」——读 payload 的实际减益名；
@@ -37,14 +51,17 @@ const sub = computed(() => {
 });
 
 const color = computed(() => (props.intent?.kind === "attack" ? "#C0392B" : "#B08D4A"));
+
+/** 悬停补全被压缩掉的信息（蓄力期间的格挡量）。 */
+const tip = computed(() => {
+  const i = props.intent;
+  if (i?.kind === "charge" && i.block) return `${sub.value}（蓄力期间架起 ${i.block} 点格挡）`;
+  return sub.value;
+});
 </script>
 
 <template>
-  <div
-    class="intent"
-    :class="{ imminent: intent?.kind === 'charge' && (intent?.thenIn ?? 9) <= 1 }"
-    :title="sub"
-  >
+  <div class="intent" :class="stage" :title="tip">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" :stroke="color" stroke-width="1.6" stroke-linecap="round">
       <template v-if="intent?.kind === 'attack'">
         <path d="M4 20 L16 8 M14 4 L20 4 L20 10 M7 13 L11 17" />
@@ -92,4 +109,12 @@ const color = computed(() => (props.intent?.kind === "attack" ? "#C0392B" : "#B0
 .intent.imminent { border-color: rgba(192, 57, 43, 0.75); }
 .intent.imminent .sub { color: var(--blood-hi); }
 .intent.imminent .num { color: var(--blood-hi); }
+/* 即将承受（docs/41 §3.3）：红框 + 边框脉冲，把"预警消失的那一回合"补回来 */
+.intent.incoming { border-color: rgba(192, 57, 43, 0.9); animation: intent-pulse 1s ease-in-out infinite; }
+.intent.incoming .sub { color: var(--blood-hi); }
+.intent.incoming .num { color: var(--blood-hi); }
+@keyframes intent-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 0 0 rgba(192, 57, 43, 0); }
+  50% { box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6), 0 0 14px 2px rgba(192, 57, 43, 0.75); }
+}
 </style>
