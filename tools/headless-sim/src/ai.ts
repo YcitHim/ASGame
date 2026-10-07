@@ -5,6 +5,7 @@
  */
 import type { CardDefinition, ContentDb } from "../../../src/core/registry";
 import type { BattleState } from "../../../src/core/combat";
+import { isBoonBuff } from "../../../src/core/buffs";
 import { cardEnergyCost, validatePlayCardState } from "../../../src/core/combat";
 import { pactHpCost } from "../../../src/core/keywords";
 
@@ -48,9 +49,26 @@ function drawOf(def: CardDefinition): number {
   return (def.effects ?? []).filter((e) => e.kind === "draw").reduce((a, e) => a + (e.value ?? 0), 0);
 }
 
+/**
+ * 血链的筹码量（consumeBoons）：手牌打分用真实层数，
+ * 奖励评估没有场上状态，按「通常 2 层」估。
+ */
+function boonStacks(state: BattleState): number {
+  const fromBuffs = state.player.buffs
+    .filter((b) => isBoonBuff(b.id))
+    .reduce((sum, b) => sum + Math.max(0, b.stacks), 0);
+  return fromBuffs + Math.max(0, state.player.charge);
+}
+
+function consumeBoonsDamage(def: CardDefinition, stacks: number): number {
+  return (def.effects ?? [])
+    .filter((e) => e.kind === "consumeBoons")
+    .reduce((sum, e) => sum + stacks * (e.value ?? 0), 0);
+}
+
 /** 卡面价值（奖励三选一用）。 */
 export function cardValue(def: CardDefinition): number {
-  return damageOf(def) * 1.2 + blockOf(def) * 0.7 + drawOf(def) * 1.5;
+  return damageOf(def) * 1.2 + blockOf(def) * 0.7 + drawOf(def) * 1.5 + consumeBoonsDamage(def, 2) * 1.2;
 }
 
 /** 给手牌打分：低血偏防御，常规偏输出。 */
@@ -65,7 +83,8 @@ export function scoreHand(state: BattleState, content: ContentDb): CardScore[] {
     const blood = pactHpCost({ keywords: def.keywords, bloodCost: def.bloodCost });
     if (blood > 0 && state.player.hp <= blood + 4) return { index, score: -1 };
 
-    const attack = damageOf(def, state.tookDamageThisTurn);
+    // 血链按「此刻身上到底有多少筹码」计价，不然 AI 会把它当 0 伤牌垫底
+    const attack = damageOf(def, state.tookDamageThisTurn) + consumeBoonsDamage(def, boonStacks(state));
     const block = blockOf(def);
     const draw = drawOf(def);
     let score = attack * 1.2 + block * (lowHp ? 1.4 : 0.7) + draw * 1.5;

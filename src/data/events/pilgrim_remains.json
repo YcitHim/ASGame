@@ -21,8 +21,8 @@
       "i18n": "event.pilgrim_remains.opt.b.result",
       "effects": [
         {
-          "kind": "hp",
-          "value": 8
+          "kind": "hpPercent",
+          "value": 10
         }
       ]
     }

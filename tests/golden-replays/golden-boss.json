@@ -128,7 +128,7 @@
       {
         "type": "PlayCard",
         "actionId": "p6",
-        "handIndex": 1,
+        "handIndex": 3,
         "targetId": "rust_throat"
       },
       {
@@ -140,7 +140,7 @@
       {
         "type": "PlayCard",
         "actionId": "p8",
-        "handIndex": 1,
+        "handIndex": 0,
         "targetId": "rust_throat"
       },
       {
@@ -152,9 +152,21 @@
         "actionId": "p10",
         "handIndex": 2,
         "targetId": "rust_throat"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p11",
+        "handIndex": 1,
+        "targetId": "rust_throat"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p12",
+        "handIndex": 1,
+        "targetId": "rust_throat"
       }
     ],
-    "eventHash": "ae50f774c2367ccb41edaaa84047cb7cd7d2ff074ac52b089b35986ae2f16734",
+    "eventHash": "84059f2b67ef4c2f431aeaa57a264420aa56f3c4d66a6ea8a3dd7a3222b86bfc",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -195,7 +207,7 @@
       "TurnStarted",
       "CardsDrawn",
       "IntentRevealed",
-      "CardPlayed"
+      "HpLost"
     ],
     "turns": 4,
     "outcome": "win"

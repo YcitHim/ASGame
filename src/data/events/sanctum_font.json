@@ -7,8 +7,8 @@
       "i18n": "event.sanctum_font.opt.a.result",
       "effects": [
         {
-          "kind": "hp",
-          "value": 10
+          "kind": "hpPercent",
+          "value": 15
         }
       ]
     },
@@ -27,8 +27,8 @@
       "i18n": "event.sanctum_font.opt.c.result",
       "effects": [
         {
-          "kind": "hp",
-          "value": 6
+          "kind": "hpPercent",
+          "value": 8
         },
         {
           "kind": "pollution",

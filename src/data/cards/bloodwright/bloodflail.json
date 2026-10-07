@@ -7,18 +7,25 @@
   "keywords": [
     "exhaust"
   ],
-  "play": {
-    "handler": "multihit",
-    "params": {
-      "hits": 3,
-      "split": [
-        0.4,
-        0.3,
-        0.3
-      ],
-      "value": 6
+  "effects": [
+    {
+      "kind": "consumeBoons",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "value": 1
     }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "consumeBoons",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "value": 2
+      }
+    ]
   },
-  "upgraded": {},
   "i18n": "card.bloodflail"
 }

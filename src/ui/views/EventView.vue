@@ -108,7 +108,11 @@ function enhancementDesc(id: string): string {
     <div ref="stage" class="stage event-stage">
       <div class="topbar">
         <span>{{ nodeTitle }}</span>
-        <div class="r"><span class="hp">HP {{ run.hp }} / {{ run.maxHp }}</span></div>
+        <div class="r">
+          <span class="hp">HP {{ run.hp }} / {{ run.maxHp }}</span>
+          <!-- 删牌/换血这类抉择前先能翻一眼卡组（甲方：加个背包） -->
+          <span class="deck-entry" @click="router.push('/deck')">卡组</span>
+        </div>
       </div>
 
       <template v-if="event">
@@ -261,6 +265,8 @@ function enhancementDesc(id: string): string {
   border-bottom: 1px solid rgba(110, 88, 54, 0.25);
 }
 .topbar .hp { color: var(--blood-hi); font-family: var(--serif-num); }
+.topbar .deck-entry { cursor: pointer; margin-left: 16px; }
+.topbar .deck-entry:hover { color: var(--gold); }
 .hd { text-align: center; }
 .head { font-family: var(--serif-title); font-size: 28px; letter-spacing: 0.4em; color: var(--ink-bone); }
 .body {

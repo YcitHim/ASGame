@@ -4,7 +4,7 @@
  * 所有数值走修饰符管线；所有状态变更发事件；本文件不出现具体卡牌特判
  * （卡牌逻辑在 registry/handler 与 data JSON）。
  */
-import { applyBuff, buffApplication, buffStacks, tickBuffs, type BuffInstance } from "../buffs";
+import { applyBuff, buffApplication, buffStacks, isBoonBuff, tickBuffs, type BuffInstance } from "../buffs";
 import type { EventSink } from "../events/event-sink";
 import { evaluateValue, type Modifier } from "../pipeline";
 import { getEnhancementHandler } from "../registry/enhancement-handler";
@@ -885,6 +885,40 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
         unit.buffs = unit.buffs.filter((b) => b.id !== "corroding");
         sink.emit("BuffExpired", { targetId: t, buffId: "corroding" });
         if (value > 0) {
+          dealDamage(draft, sink, {
+            sourceId: ctx.sourceId,
+            actorId: ctx.actorId,
+            targetId: t,
+            base: stacks * value,
+            segment: 1,
+            segments: 1,
+            modifiers: [],
+          });
+        }
+      }
+      break;
+    }
+    /**
+     * 血链（玩家反馈重做）：兑现自己身上的「有利状态」。
+     * 筹码 = 全部加持层数 + 充能（甲方点名要把充能算进去）；负面状态不算也不消耗。
+     * 顺序上**先扣筹码再结算伤害**：不然力量会给自己这一击再加一次，同一批筹码记两遍。
+     */
+    case "consumeBoons": {
+      const boons = draft.player.buffs.filter((b) => isBoonBuff(b.id));
+      const stacks = boons.reduce((sum, b) => sum + Math.max(0, b.stacks), 0) + Math.max(0, draft.player.charge);
+      // 先清算筹码
+      if (boons.length > 0) {
+        draft.player.buffs = draft.player.buffs.filter((b) => !isBoonBuff(b.id));
+        for (const b of boons) sink.emit("BuffExpired", { targetId: PLAYER_ID, buffId: b.id });
+      }
+      const charge = draft.player.charge;
+      if (charge > 0) {
+        // 消耗不经 changeCharge：这不是「获得充能」，不该触发过载反噬
+        draft.player.charge = 0;
+        sink.emit("ChargeChanged", { targetId: PLAYER_ID, before: charge, after: 0, delta: -charge });
+      }
+      if (stacks > 0 && value > 0) {
+        for (const t of targetIds) {
           dealDamage(draft, sink, {
             sourceId: ctx.sourceId,
             actorId: ctx.actorId,

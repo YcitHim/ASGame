@@ -132,6 +132,15 @@ const effectSchema = z.discriminatedUnion("kind", [
     .strict(),
   z
     .object({
+      kind: z.literal("consumeBoons"),
+      target: targetSchema.optional(),
+      /** 每 1 层有利状态造成的伤害 */
+      value: z.number().int().min(0),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
       kind: z.literal("summon"),
       enemyId: z.string().regex(ID_PATTERN),
       count: z.number().int().min(1).optional(),
@@ -239,15 +248,13 @@ const eventEffectSchema = z
     rarity: z.enum(CARD_RARITIES).optional(),
     pool: z.array(z.string().regex(ID_PATTERN)).min(1).optional(),
     count: z.number().int().min(1).optional(),
-    /** loseRelic：目标 tier（缺省 1） */
-    tier: z.number().int().min(1).max(3).optional(),
   })
   .strict();
 
-/** 选项级条件（docs/54 §三 E6） */
+/** 选项级条件（docs/54 §三 E6 / docs/55 Q3） */
 const eventConditionSchema = z
   .object({
-    kind: z.enum(["hpPercentAtLeast", "pollutionAtLeast", "relicCountAtLeast"]),
+    kind: z.enum(["hpPercentAtLeast", "pollutionAtLeast", "loseableRelicAtLeast"]),
     value: z.number().min(0),
   })
   .strict();

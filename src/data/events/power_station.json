@@ -26,8 +26,8 @@
       "i18n": "event.power_station.opt.b.result",
       "effects": [
         {
-          "kind": "hp",
-          "value": -4
+          "kind": "hpPercent",
+          "value": -5
         },
         {
           "kind": "gainCard",

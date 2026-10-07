@@ -181,6 +181,7 @@ function toTitle(): void {
         <span>{{ t(run.act?.i18n ?? "", "远征") }} · 路线全图</span>
         <div class="r">
           <span class="hp">HP {{ run.hp }} / {{ run.maxHp }}</span>
+          <span class="deck-entry" @click="router.push('/deck')">卡组</span>
           <span @click="toTitle">返回标题</span>
         </div>
       </div>

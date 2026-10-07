@@ -12,6 +12,7 @@ import { Rng, type RngStream } from "../rng";
 export {
   checkEventCondition,
   eventConditionCurrent,
+  loseableRelicPool,
   percentHpDelta,
   resolveEventOption,
   type EventConditionContext,

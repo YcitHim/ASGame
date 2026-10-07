@@ -19,8 +19,16 @@ export type BuffDecayTiming = "turnStart" | "turnEnd" | "none";
  */
 export type ApplySemantics = "stacks" | "turns" | "stacksAndTurns";
 
+/**
+ * 状态极性（docs/46 的三色口径）：加持金 / 异常红 / 诅咒紫。
+ * 需要「哪些是我的筹码」的地方（血链）只认 boon，别的地方不用猜。
+ */
+export type BuffPolarity = "boon" | "affliction" | "curse";
+
 export interface BuffDefinition {
   readonly id: BuffId;
+  /** 极性（docs/46 §一）：加持 / 异常 / 诅咒 */
+  readonly polarity: BuffPolarity;
   /** 叠加策略（默认 stackAndRefresh = 层数累加 + 时长刷新） */
   readonly stacking: StackingPolicy;
   /** 衰减时机；none = 永久 */

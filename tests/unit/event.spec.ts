@@ -1,10 +1,12 @@
 import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  applyEventHp,
   checkEventCondition,
   createRunState,
   eventConditionCurrent,
   generateActMap,
+  loseableRelicPool,
   resolveEventOption,
 } from "@/core/map";
 import { loadGameContent } from "@/data/load";
@@ -116,33 +118,48 @@ describe("docs/54 §三 E4 maxHp / E2 removeCard / E3 upgradeRandom / E5 loseRel
     ).toBe(-1);
   });
 
-  it("E5 血之当铺当货：只吃 T1，无 tier 的件与 T2/T3 都不动", () => {
-    // 现池：T1 ×8 / T2 ×9 / T3 ×5 / 无 tier ×3（broken_oil 等）
-    const identity = [...content.relics.values()]
-      .filter((r) => r.tier === undefined)
-      .map((r) => r.id);
+  it("E5 血之当铺当货：池 = T1/T2 − 身份件（docs/55 Q1）", () => {
+    const identity = content.classes.get("bloodwright")!.startRelics ?? [];
     expect(identity.length).toBeGreaterThan(0);
-    const owned = [...identity, ...T1.slice(0, 3)];
-    const res = resolveEventOption(content, event("blood_pawnshop"), "a", ctx(13, { ownedRelics: owned }));
+    const T2 = [...content.relics.values()].filter((r) => r.tier === 2).map((r) => r.id).sort();
+    const owned = [...identity, ...T2.slice(0, 2), ...T1.slice(0, 2)];
+    // 身份件被排除，所以可典当池 = 2 件 T2 + 2 件 T1
+    expect(loseableRelicPool(content, owned, identity)).toHaveLength(4);
+    const res = resolveEventOption(
+      content,
+      event("blood_pawnshop"),
+      "a",
+      ctx(13, { ownedRelics: owned, identityRelics: identity }),
+    );
     expect(res?.loseRelicIds).toHaveLength(1);
-    expect(T1).toContain(res!.loseRelicIds[0]);
     expect(identity).not.toContain(res!.loseRelicIds[0]);
+    // 兜底：扣除身份件后池空 → 条件不满足，core 直接拒绝
+    expect(
+      resolveEventOption(
+        content,
+        event("blood_pawnshop"),
+        "a",
+        ctx(13, { ownedRelics: identity, identityRelics: identity }),
+      ),
+    ).toBeNull();
   });
 });
 
 describe("docs/54 §三 E6 选项条件", () => {
   it("三种条件各自的判定与当前值同源", () => {
-    const c = { hp: 30, maxHp: 60, pollution: 45, relicCount: 2 };
+    const c = { hp: 30, maxHp: 60, pollution: 45, relicCount: 3, loseableRelicCount: 1 };
     expect(checkEventCondition({ kind: "hpPercentAtLeast", value: 50 }, c)).toBe(true);
     expect(checkEventCondition({ kind: "hpPercentAtLeast", value: 51 }, c)).toBe(false);
     expect(checkEventCondition({ kind: "pollutionAtLeast", value: 45 }, c)).toBe(true);
-    expect(checkEventCondition({ kind: "relicCountAtLeast", value: 3 }, c)).toBe(false);
+    // 可典当数 ≠ 持有数（docs/55 Q3：身份件不算筹码）
+    expect(checkEventCondition({ kind: "loseableRelicAtLeast", value: 1 }, c)).toBe(true);
+    expect(checkEventCondition({ kind: "loseableRelicAtLeast", value: 2 }, c)).toBe(false);
     expect(checkEventCondition(undefined, c)).toBe(true);
     // 显示与判定同源：41/100 显示 41，判 50 就该不达标
-    const edge = { hp: 41, maxHp: 100, pollution: 0, relicCount: 0 };
+    const edge = { hp: 41, maxHp: 100, pollution: 0, relicCount: 0, loseableRelicCount: 0 };
     expect(eventConditionCurrent({ kind: "hpPercentAtLeast", value: 40 }, edge)).toBe(41);
     expect(eventConditionCurrent({ kind: "pollutionAtLeast", value: 40 }, edge)).toBe(0);
-    expect(eventConditionCurrent({ kind: "relicCountAtLeast", value: 2 }, edge)).toBe(0);
+    expect(eventConditionCurrent({ kind: "loseableRelicAtLeast", value: 2 }, edge)).toBe(0);
   });
 
   it("条件不满足时 core 直接拒绝结算（不是靠 UI 拦）", () => {
@@ -267,5 +284,70 @@ describe("事件在 runStore 的落库（docs/27 §三 / docs/54）", () => {
     expect(run.removeEventCard(0)).toBe(false);
     run.eventContinue();
     expect(run.eventRemovedIndex).toBeNull();
+  });
+});
+
+describe("docs/55 Q2 · maxHp 与当前 HP 同额（单点 applyEventHp）", () => {
+  const base = () => ({ ...createRunState(game.acts[0], content.classes.get("bloodwright")!, 7) });
+
+  it("正向：上限 +4 → 当前 HP 同时 +4（活扳手「喂它」是变相治疗）", () => {
+    const run = { ...base(), hp: 30 };
+    const next = applyEventHp(run, 0, 4);
+    expect(next.maxHp).toBe(run.maxHp + 4);
+    expect(next.hp).toBe(34);
+  });
+
+  it("负向：上限 −3 → 当前 HP 同时 −3（静默告解）", () => {
+    const run = { ...base(), hp: 40 };
+    const next = applyEventHp(run, 0, -3);
+    expect(next.maxHp).toBe(run.maxHp - 3);
+    expect(next.hp).toBe(37);
+  });
+
+  it("下限 1：扣上限不许把人扣死", () => {
+    const run = { ...base(), hp: 2 };
+    const next = applyEventHp(run, 0, -3);
+    expect(next.hp).toBe(1);
+  });
+
+  it("上限钳制：结算后的 HP 不会超过（新的）上限", () => {
+    const run = { ...base(), hp: 66 };
+    const next = applyEventHp(run, 10, 0);
+    expect(next.hp).toBe(run.maxHp);
+  });
+});
+
+describe("事件内容过军规（docs/54 §二 / docs/55 Q4）", () => {
+  it("每个事件都有收益轴，且不存在「纯惩罚凑数」选项", () => {
+    const beneficial = (k: string) =>
+      ["hp", "hpPercent", "maxHp", "gainRelic", "gainCard", "gainEnhancement", "removeCard", "upgradeRandom"].includes(k);
+    for (const ev of content.events.values()) {
+      const kinds = ev.options
+        .flatMap((o) => [...(o.effects ?? []), ...(o.outcomes ?? []).flatMap((x) => x.effects)])
+        .map((e) => e.kind);
+      expect(kinds.some(beneficial), `${ev.id} 至少要有一个收益选项`).toBe(true);
+    }
+  });
+
+  it("固定点数的 HP 收支只允许 ≤4 的剧情小额，其余一律 hpPercent（军规 2）", () => {
+    for (const ev of content.events.values()) {
+      const lists = ev.options.flatMap((o) => [o.effects ?? [], ...(o.outcomes ?? []).map((x) => x.effects)]).flat();
+      for (const eff of lists) {
+        if (eff.kind !== "hp") continue;
+        expect(Math.abs(eff.value ?? 0) <= 4, `${ev.id} 的固定 HP 收支 ${eff.value} 超过 ±4`).toBe(true);
+      }
+    }
+  });
+
+  it("docs/55 Q4 五处换算落地：圣泉 +15% / 圣泉装走 +8% / 净罪 +6% / 电站 −5% / 遗骨 +10%", () => {
+    const pctOf = (id: string, optId: string): number[] =>
+      (content.events.get(id)!.options.find((o) => o.id === optId)!.effects ?? [])
+        .filter((e) => e.kind === "hpPercent")
+        .map((e) => e.value ?? 0);
+    expect(pctOf("sanctum_font", "a")).toEqual([15]);
+    expect(pctOf("sanctum_font", "c")).toEqual([8]);
+    expect(pctOf("sanctum_absolution", "b")).toEqual([6]);
+    expect(pctOf("power_station", "b")).toEqual([-5]);
+    expect(pctOf("pilgrim_remains", "b")).toEqual([10]);
   });
 });

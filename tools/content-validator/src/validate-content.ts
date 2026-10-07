@@ -351,12 +351,13 @@ export function validateContent(input: ContentInput): ValidationResult {
             message: `${eff.kind} 的 value 不能为 0`,
           });
         }
-        // E5：默认 T1；写死 tier 时必须落在掉落件区间
-        if (eff.kind === "loseRelic" && eff.tier !== undefined && ![1, 2, 3].includes(eff.tier)) {
+        // docs/55 Q4 军规 2 的机器看守：事件的 HP 收支除了 ≤4 的剧情性小额，
+        // 一律走 hpPercent（否则「固定数值不缩放」的批评会随时复发）
+        if (eff.kind === "hp" && Math.abs(eff.value ?? 0) > 4) {
           issues.push({
             file: `event ${ev.id}`,
-            path: "opt.effects.tier",
-            message: `loseRelic 的 tier 只能是 1/2/3，收到 ${eff.tier}`,
+            path: "opt.effects.value",
+            message: `HP 收支 ${eff.value} 超过 ±4，必须改用 hpPercent（docs/54 军规 2 / docs/55 Q4）`,
           });
         }
       }
@@ -524,6 +525,9 @@ export function validateContent(input: ContentInput): ValidationResult {
       }
       if (e.kind === "spendPollution" && (e.value ?? 0) <= 0) {
         issues.push({ file, path: "effects", message: "spendPollution 的每点结算量必须 > 0" });
+      }
+      if (e.kind === "consumeBoons" && (e.value ?? 0) <= 0) {
+        issues.push({ file, path: "effects", message: "consumeBoons 的每层结算量必须 > 0" });
       }
     }
   };

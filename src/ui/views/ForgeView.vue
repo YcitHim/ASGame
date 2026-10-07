@@ -91,6 +91,7 @@ function backToMap(): void {
       <div class="topbar">
         <span>锻造祭坛 · {{ run.act ? t(run.act.i18n ?? "", "第一幕") : "第一幕" }}</span>
         <div class="r">
+          <span class="deck-entry" @click="router.push('/deck')">卡组</span>
           <span @click="backToMap">返回地图</span>
           <span @click="router.push('/')">放弃远征</span>
         </div>

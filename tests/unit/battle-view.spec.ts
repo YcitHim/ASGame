@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from "pinia";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createRouter, createWebHashHistory } from "vue-router";
 import { nextTick } from "vue";
+import type { DomainEvent } from "@/core/events";
 import BattleView from "@/ui/views/BattleView.vue";
 import { useBattleStore } from "@/stores/battle";
 import { useRunStore } from "@/stores/run";
@@ -177,7 +178,7 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
     wrapper.unmount();
   });
 
-  it("蓄力红屏只在「下回合就挨打」时亮，蓄力途中不提前紧张（甲方手感）", async () => {
+  it("蓄力全程不泛红；红屏只压在释放那一帧（甲方 2026-10-07）", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
     const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
@@ -186,25 +187,52 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
     const store = useBattleStore();
     store.skip();
 
-    // 遭遇是随机掷的：可能不止一个敌人，别人也可能开局就在蓄力。
-    // 这条用例只测"同一个蓄力敌人：thenIn 2 不红屏、thenIn 1 红屏"，
-    // 所以先把其他敌人的意图清干净，否则红屏是被别人点亮的（既有用例的偶发失败）。
+    // 遭遇是随机掷的：先把其他敌人的意图清干净，红屏只可能来自被测的那一个
     for (const other of store.battle!.enemies.slice(1)) {
       (other as unknown as { intent: unknown }).intent = null;
     }
-    const enemy = store.battle!.enemies[0] as unknown as { intent: unknown };
-    // 还剩 2 回合：只有意图条上的「蓄力 · 2回合后释放」，不红屏
-    enemy.intent = { kind: "charge", value: 4, block: 6, thenValue: 16, thenIn: 2 };
+    const enemy = store.battle!.enemies[0]!;
+    const patch = enemy as unknown as { intent: unknown };
+    // 蓄力中——还剩 2 回合和「下回合就砸」都不亮：
+    // 旧版这里会常亮全屏红，结果是蓄力时一直紧张、真打下来反而不亮（本末倒置）
+    patch.intent = { kind: "charge", value: 4, block: 6, thenValue: 16, thenIn: 2 };
     await nextTick();
-    expect(wrapper.find(".telegraph").exists()).toBe(false);
-
-    // 下回合就砸下来：红屏 + 报伤害
-    enemy.intent = { kind: "charge", value: 4, block: 6, thenValue: 16, thenIn: 1 };
+    expect(wrapper.find(".release-flash").exists()).toBe(false);
+    patch.intent = { kind: "charge", value: 4, block: 6, thenValue: 16, thenIn: 1 };
     await nextTick();
-    expect(wrapper.find(".telegraph").exists()).toBe(true);
-    expect(wrapper.find(".telegraph").text()).toContain("16");
+    expect(wrapper.find(".release-flash").exists()).toBe(false);
 
+    // 蓄力回合本身的 ChargeResolved（released:false）也不点亮
+    store.onAnimEvent({
+      type: "ChargeResolved",
+      seq: 1,
+      actionId: "t",
+      enemyId: enemy.id,
+      block: 6,
+      released: false,
+    } as DomainEvent);
+    await nextTick();
+    expect(wrapper.find(".release-flash").exists()).toBe(false);
+
+    // 真正释放：ChargeResolved(released) → 红屏 + 报伤害
+    store.onAnimEvent({
+      type: "ChargeResolved",
+      seq: 2,
+      actionId: "t",
+      enemyId: enemy.id,
+      block: 0,
+      released: true,
+      value: 16,
+    } as DomainEvent);
+    await nextTick();
+    expect(wrapper.find(".release-flash").exists()).toBe(true);
+    expect(wrapper.find(".release-flash").text()).toContain("16");
+
+    // 跳过动画要把红屏一并清掉，不留残影
     store.skip();
+    await nextTick();
+    expect(wrapper.find(".release-flash").exists()).toBe(false);
+
     wrapper.unmount();
   });
 
@@ -223,9 +251,20 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
     const store = useBattleStore();
     expect(store.battle?.enemies[0].defId).toBe("rust_throat");
 
-    // 蓄力预警台词
+    // 蓄力预警台词跟着「释放」那一帧出（甲方：蓄力时不泛红也不抢戏，砸下来再喊）
     const boss = store.battle!.enemies[0] as unknown as { intent: unknown; hp: number };
     boss.intent = { kind: "charge", value: 4, thenIn: 1, block: 0 };
+    await nextTick();
+    expect(wrapper.text()).not.toContain("听，锈在喉咙里唱。");
+    store.onAnimEvent({
+      type: "ChargeResolved",
+      seq: 1,
+      actionId: "t",
+      enemyId: store.battle!.enemies[0]!.id,
+      block: 0,
+      released: true,
+      value: 16,
+    } as DomainEvent);
     await nextTick();
     expect(wrapper.text()).toContain("听，锈在喉咙里唱。");
 

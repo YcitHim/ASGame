@@ -20,6 +20,7 @@ export const router = createRouter({
     { path: "/intermission", name: "intermission", component: () => import("./views/IntermissionView.vue") },
     { path: "/tutorial", name: "tutorial", component: () => import("./views/TutorialView.vue") },
     { path: "/codex", name: "codex", component: () => import("./views/CodexView.vue") },
+  { path: "/deck", name: "deck", component: () => import("./views/DeckView.vue") },
     { path: "/:pathMatch(.*)*", redirect: "/" },
   ],
 });

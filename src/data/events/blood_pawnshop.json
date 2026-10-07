@@ -7,8 +7,7 @@
       "i18n": "event.blood_pawnshop.opt.a.result",
       "effects": [
         {
-          "kind": "loseRelic",
-          "tier": 1
+          "kind": "loseRelic"
         },
         {
           "kind": "hpPercent",
@@ -16,8 +15,8 @@
         }
       ],
       "condition": {
-        "kind": "relicCountAtLeast",
-        "value": 2
+        "kind": "loseableRelicAtLeast",
+        "value": 1
       }
     },
     {

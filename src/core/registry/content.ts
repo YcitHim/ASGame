@@ -44,6 +44,13 @@ export interface CardEffect {
     | "transferPollution"
     /** 兑现蚀锈（docs/38 §二 B-2「终点站」）：消耗目标全部蚀锈，每层追加 value 伤害 */
     | "consumeCorroding"
+    /**
+     * 兑现自身「有利状态」（血链重做）：把身上**全部加持**（力量/再生/坚韧/荆棘/回血印记…）
+     * 与**充能**一起消耗，每 1 层造成 value 点伤害。
+     * 负面状态（虚弱/胆怯/污染/蚀锈/灼烧/冰缓/颠倒/眩晕）不算也不消耗——它们是敌人给的，
+     * 不是你的筹码。伤害先扣状态再结算，避免力量自己给自己加成（同一批筹码记两次）。
+     */
+    | "consumeBoons"
     /** 召唤（docs/40 §五）：亡语召唤用（tide_swarm 死亡生虫） */
     | "summon";
   readonly target?: TargetRef;
@@ -305,12 +312,15 @@ export interface EventEffect {
   readonly pool?: readonly string[];
   /** gainCard / loseRelic：抽几件（缺省 1） */
   readonly count?: number;
-  /** loseRelic：目标 tier（缺省 1；只吃掉落件，不吃无 tier 的身份件） */
-  readonly tier?: number;
 }
 
-/** 选项级条件（docs/54 §三 E6）：不满足 → 置灰 + 注明缺什么。 */
-export type EventConditionKind = "hpPercentAtLeast" | "pollutionAtLeast" | "relicCountAtLeast";
+/**
+ * 选项级条件（docs/54 §三 E6）：不满足 → 置灰 + 注明缺什么。
+ *
+ * 计数口径与效果池必须同源（docs/55 Q3）：`loseableRelicAtLeast` 数的是
+ * **可典当遗物**（T1/T2 − 本局职业身份件），也就是 loseRelic 真正会抽的那一池。
+ */
+export type EventConditionKind = "hpPercentAtLeast" | "pollutionAtLeast" | "loseableRelicAtLeast";
 
 export interface EventCondition {
   readonly kind: EventConditionKind;

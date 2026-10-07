@@ -24,6 +24,7 @@ import {
   currentNode,
   healRun,
   isRunComplete,
+  loseableRelicPool,
   mapView,
   noteBloodpact,
   pickRecastRemoval,
@@ -220,13 +221,18 @@ export const useRunStore = defineStore("run", {
       if (!node || node.kind !== "event") return undefined;
       return rollEvent(loadGameContent().content, this.run, node);
     },
-    /** 选项条件的判定输入（docs/54 E6）：HP 用局外值，遗物数用当前持有数。 */
+    /**
+     * 选项条件的判定输入（docs/54 E6 / docs/55 Q3）：HP 用局外值；
+     * 遗物数给两种口径——总数，以及**可典当数**（T1/T2 − 身份件，与 loseRelic 同源）。
+     */
     eventConditionContext(): EventConditionContext {
+      const identity = this.identityRelics;
       return {
         hp: this.run?.hp ?? 0,
         maxHp: this.maxHp,
         pollution: this.pollution,
         relicCount: this.relics.length,
+        loseableRelicCount: loseableRelicPool(loadGameContent().content, this.relics, identity).length,
       };
     },
     cardDef(): (cardId: string) => CardDefinition | undefined {
@@ -546,6 +552,7 @@ export const useRunStore = defineStore("run", {
         maxHp: this.run.maxHp,
         hp: this.run.hp,
         pollution: this.run.pollution,
+        identityRelics: this.identityRelics,
         deckUpgradeable: this.deck.map((c, i) => (c.upgraded ? -1 : i)).filter((i) => i >= 0),
       });
       // 条件不满足被 core 拒绝（UI 已置灰，这里是防呆）

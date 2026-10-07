@@ -90,6 +90,13 @@ let floaterCounter = 0;
 let cardPlayedSeq = 0;
 const queue = new AnimQueue();
 
+/**
+ * 蓄力释放红屏（甲方 2026-10-07）：**释放这一下**才泛红，蓄力途中不提前紧张。
+ * 蓄力期间的信息由敌人意图条承担（IntentIcon：蓄力 · N 回合后释放 → 下回合释放·准备防御）。
+ */
+export const RELEASE_FLASH_MS = 800;
+let releaseSeq = 0;
+
 /** 错误提示的存续上限（docs/41 §2.1）：2.5 秒后自动消散，避免跨回合残留。 */
 export const MESSAGE_TTL_MS = 2500;
 let messageTimer: ReturnType<typeof setTimeout> | null = null;
@@ -121,6 +128,8 @@ export const useBattleStore = defineStore("battle", {
     floaters: [] as Floater[],
     /** 当前展示的重读数（同屏至多一条，docs/51 §一） */
     bigFloater: null as BigFloater | null,
+    /** 蓄力链正在释放（甲方）：这一帧才泛红，蓄力途中不亮 */
+    releaseFlash: null as { id: number; enemyId: string; value: number } | null,
     /** 上一条重读数的时间戳（防刷屏 0.4s）；放在 state 里 = 换局/换 store 自动归零 */
     lastBigAt: 0,
     bigFloaterSeq: 0,
@@ -471,6 +480,7 @@ export const useBattleStore = defineStore("battle", {
       this.lungeUnits = [];
       this.guardUnits = [];
       this.bigFloater = null;
+      this.releaseFlash = null;
     },
 
     toggleSpeed(): void {
@@ -610,6 +620,17 @@ export const useBattleStore = defineStore("battle", {
           // 污染不走 BuffApplied（core 特判），单独补一条浮名
           if (event.targetId === "player" && event.delta > 0) {
             this.pushFloater("player", event.delta, "debuff", false, `污 污染 +${event.delta}`);
+          }
+          break;
+        // 蓄力链释放（甲方 2026-10-07）：红屏归到「真正砸下来」的这一下。
+        // ChargeResolved(released) 就在该次攻击之前发出，红屏正好压在命中动画上。
+        case "ChargeResolved":
+          if (event.released) {
+            const id = ++releaseSeq;
+            this.releaseFlash = { id, enemyId: event.enemyId, value: event.value ?? 0 };
+            setTimeout(() => {
+              if (this.releaseFlash?.id === id) this.releaseFlash = null;
+            }, RELEASE_FLASH_MS);
           }
           break;
         case "ChargeInterrupted":

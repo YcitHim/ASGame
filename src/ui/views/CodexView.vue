@@ -61,9 +61,33 @@ const achievedCount = computed(() =>
   devMode.value ? ACHIEVEMENT_IDS.length : ACHIEVEMENT_IDS.filter((id) => meta.isAchieved(id)).length,
 );
 
-const cards = computed(() =>
-  [...game.content.cards.values()].filter((c) => c.rarity !== "starter" || codex.cardSeen(c.id)).sort((a, b) => a.id.localeCompare(b.id)),
+/**
+ * 卡组图鉴分组（甲方 2026-10-07）：各职业的卡分开，中立/通用卡单独一组。
+ * 「通用」= class 不在职业表里的那些——现在 101 张卡全部有归属（所以按钮不出现），
+ * 一旦有新职业或中立卡，分组会自动长出来，不用回来改代码。
+ */
+const cardGroup = ref<string>("all");
+const visibleCards = computed(() =>
+  [...game.content.cards.values()]
+    .filter((c) => c.rarity !== "starter" || codex.cardSeen(c.id))
+    .sort((a, b) => a.id.localeCompare(b.id)),
 );
+const cardClasses = computed(() => [...game.content.classes.values()]);
+const hasOtherCards = computed(() =>
+  visibleCards.value.some((c) => !game.content.classes.has(c.class)),
+);
+const cardCounts = computed(() => {
+  const counts: Record<string, number> = { all: visibleCards.value.length, other: 0 };
+  for (const c of visibleCards.value) counts[c.class] = (counts[c.class] ?? 0) + 1;
+  return counts;
+});
+const cards = computed(() => {
+  if (cardGroup.value === "all") return visibleCards.value;
+  if (cardGroup.value === "other") {
+    return visibleCards.value.filter((c) => !game.content.classes.has(c.class));
+  }
+  return visibleCards.value.filter((c) => c.class === cardGroup.value);
+});
 const enemies = computed(() => [...game.content.enemies.values()].sort((a, b) => a.id.localeCompare(b.id)));
 
 function back(): void {
@@ -80,7 +104,7 @@ function back(): void {
       </div>
 
       <nav class="tabs">
-        <button class="tab" :class="{ active: tab === 'card' }" @click="tab = 'card'">卡牌 {{ cards.length }}</button>
+        <button class="tab" :class="{ active: tab === 'card' }" @click="tab = 'card'">卡牌 {{ cardCounts.all }}</button>
         <button class="tab" :class="{ active: tab === 'relic' }" @click="tab = 'relic'">遗物 {{ game.content.relics.size }}</button>
         <button class="tab" :class="{ active: tab === 'enemy' }" @click="tab = 'enemy'">敌人 {{ enemies.length }}</button>
         <button class="tab" :class="{ active: tab === 'achievement' }" @click="tab = 'achievement'">
@@ -90,6 +114,29 @@ function back(): void {
 
       <div class="body">
         <template v-if="tab === 'card'">
+          <!-- 职业分开（甲方）：找「我的牌」不用在三职业里翻 -->
+          <div class="subnav">
+            <button class="subtab" :class="{ active: cardGroup === 'all' }" @click="cardGroup = 'all'">
+              全部 {{ cardCounts.all }}
+            </button>
+            <button
+              v-for="cls in cardClasses"
+              :key="cls.id"
+              class="subtab"
+              :class="{ active: cardGroup === cls.id }"
+              @click="cardGroup = cls.id"
+            >
+              {{ t(cls.i18n + '.name', cls.id) }} {{ cardCounts[cls.id] ?? 0 }}
+            </button>
+            <button
+              v-if="hasOtherCards"
+              class="subtab"
+              :class="{ active: cardGroup === 'other' }"
+              @click="cardGroup = 'other'"
+            >
+              通用 {{ cardCounts.other }}
+            </button>
+          </div>
           <div class="card-grid">
             <div v-for="c in cards" :key="c.id" class="card-slot">
               <CardView
@@ -175,6 +222,25 @@ function back(): void {
 }
 .tab.active { color: var(--gold); border-color: var(--gold); box-shadow: 0 0 14px rgba(176, 141, 74, 0.25); }
 .body { margin-top: 16px; width: 1160px; max-height: 560px; overflow-y: auto; padding: 4px 10px 18px; }
+/* 卡牌分组副导航：比主 tab 轻一档 */
+.subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+.subtab {
+  padding: 5px 14px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--ink-dim);
+  border: 1px solid rgba(110, 88, 54, 0.35);
+  border-radius: var(--radius-sm);
+  background: rgba(18, 16, 14, 0.6);
+}
+.subtab:hover { color: var(--gold); }
+.subtab.active { color: var(--gold); border-color: var(--gold); background: rgba(176, 141, 74, 0.12); }
 .card-grid { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; }
 .card-slot { width: 170px; }
 .card-slot :deep(.card) { cursor: default; }

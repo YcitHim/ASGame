@@ -178,27 +178,26 @@ const hand = computed(() =>
 
 const logEntries = computed<LogEntry[]>(() => store.log.map((e) => describeEvent(e, store.enemyNames)));
 
-/** 蓄力预警：任意存活敌人正在蓄力 → 全屏提示（含"下回合多少点"的读招信息）。 */
-const chargingEnemies = computed(() =>
-  enemies.value
-    .filter((e) => e.hp > 0 && e.intent?.kind === "charge")
-    .map((e) => ({
-      id: e.id,
-      name: intentLabel(e.defId),
-      // 直接读 i18n 表：t(key, "") 在缺失时会回退成 key 本身，会把原始 key 渲染到屏幕上
-      line: game.i18n[`enemy.${e.defId}.line.charge`] ?? "",
-      thenValue: e.intent?.thenValue,
-      thenIn: e.intent?.thenIn,
-      block: e.intent?.block,
-    })),
-);
-
 /**
- * 红屏预警只在**马上要挨打的那一回合**亮（甲方 2026-10-07）：
- * 蓄力途中（还剩 2 回合以上）不提前制造紧张——那一段的信息由敌人意图条自己承担
- * （「蓄力 · N 回合后释放 X」）。到了 thenIn ≤ 1 的「下回合就砸下来」才红屏 + 报伤害。
+ * 蓄力释放红屏（甲方 2026-10-07）：**释放这一下**才泛红。
+ *
+ * 之前是「蓄力中且 thenIn ≤ 1 就常亮全屏红」，结果是蓄力的时候一直在紧张、
+ * 真打下来那一下反而不亮——本末倒置。现在红屏只在 ChargeResolved(released) 那一帧出现
+ * （store.releaseFlash），蓄力期间的信息交给敌人意图条与蓄力徽标。
  */
-const imminentCharges = computed(() => chargingEnemies.value.filter((c) => (c.thenIn ?? 1) <= 1));
+const releaseName = computed(() => {
+  const flash = store.releaseFlash;
+  if (!flash) return "";
+  const enemy = enemies.value.find((e) => e.id === flash.enemyId);
+  return enemy ? intentLabel(enemy.defId) : "";
+});
+/** Boss 蓄力台词：跟着释放那一下一起出（docs/27 §五 的「蓄力预警」台词位不变）。 */
+const releaseLine = computed(() => {
+  const flash = store.releaseFlash;
+  if (!flash) return "";
+  const enemy = enemies.value.find((e) => e.id === flash.enemyId);
+  return enemy ? (game.i18n[`enemy.${enemy.defId}.line.charge`] ?? "") : "";
+});
 
 /** 蓄力徽标（docs/19 §4）：蓄力中在敌人状态行显示「蓄力 ×N（M 回合后释放）」。 */
 function chargeBadge(enemy: {
@@ -624,6 +623,7 @@ function quitToTitleKeepRun(): void {
             跳过
           </button>
           <span @click="store.toggleSpeed()">{{ store.speed }}×</span>
+          <span class="deck-entry" @click="router.push('/deck')">卡组</span>
           <span @click="router.push('/settings')">设置</span>
           <span class="menu-entry" @click="menuOpen = true">主菜单</span>
         </div>
@@ -852,20 +852,14 @@ function quitToTitleKeepRun(): void {
         </div>
       </Teleport>
 
-      <!-- Boss 蓄力大招：全屏预警（带上后续伤害，读招才成立） -->
-      <div v-if="imminentCharges.length > 0" class="telegraph">
+      <!-- 蓄力释放：全屏泛红压在这一击上（甲方：蓄力时不亮，砸下来才亮） -->
+      <div v-if="store.releaseFlash" :key="store.releaseFlash.id" class="release-flash">
         <div class="telegraph-line" />
-        <p v-for="charge in imminentCharges" :key="charge.name" class="telegraph-charge">
-          {{ charge.name }}<template v-if="charge.block"> 蓄力并架起 <b>{{ charge.block }}</b> 点格挡</template><template v-else> 正在蓄力</template> ——
-          <template v-if="charge.thenValue !== undefined">
-            {{ charge.thenIn && charge.thenIn > 1 ? charge.thenIn + " 回合后" : "下回合" }}
-            <b>{{ charge.thenValue }}</b> 点重击
-          </template>
-          <template v-else>准备迎接重击</template>
+        <p class="telegraph-charge">
+          {{ releaseName }} 蓄力释放
+          <template v-if="store.releaseFlash.value > 0"> —— <b>{{ store.releaseFlash.value }}</b> 点重击</template>
         </p>
-        <p v-for="charge in imminentCharges.filter((c) => c.line)" :key="charge.name + '-line'" class="telegraph-line-quote">
-          「{{ charge.line }}」
-        </p>
+        <p v-if="releaseLine" class="telegraph-line-quote">「{{ releaseLine }}」</p>
         <div class="telegraph-line" />
       </div>
 
@@ -1172,31 +1166,31 @@ function quitToTitleKeepRun(): void {
   100% { opacity: 0; transform: translateX(-50%) translateY(-18px) scale(1); }
 }
 
-/* Boss 蓄力全屏预警 */
-.telegraph {
+/* 蓄力释放全屏泛红（甲方）：一次性脉冲，0.8s 收干净——常亮会把「紧张」变成「背景」 */
+.release-flash {
   position: absolute; inset: 0; z-index: 45; pointer-events: none;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-  background: radial-gradient(ellipse 80% 70% at 50% 50%, transparent 45%, var(--act-warn) 100%);
-  animation: telegraph-pulse 1.1s ease-in-out infinite;
+  background: radial-gradient(ellipse 80% 70% at 50% 50%, transparent 38%, var(--act-warn) 100%);
+  animation: release-flash 0.8s ease-out forwards;
 }
-.telegraph p {
+.release-flash p {
   font-family: var(--serif-title); font-size: 17px; letter-spacing: 0.34em;
   color: #f0b4a8; text-shadow: 0 0 18px rgba(192, 57, 43, 0.9), 0 2px 3px #000;
 }
 /* 预警文字压在敌人血条上会看不清：加暗色底衬（玩家反馈） */
-.telegraph-charge {
+.release-flash .telegraph-charge {
   padding: 5px 22px;
   border: 1px solid rgba(192, 57, 43, 0.4);
   border-radius: 2px;
   background: rgba(8, 5, 4, 0.78);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
 }
-.telegraph b {
+.release-flash b {
   color: #fff;
   font-family: var(--serif-num);
   font-size: 20px;
 }
-.telegraph-line { width: 460px; height: 1px; background: linear-gradient(90deg, transparent, var(--blood-hi), transparent); }
+.release-flash .telegraph-line { width: 460px; height: 1px; background: linear-gradient(90deg, transparent, var(--blood-hi), transparent); }
 
 /* 二阶段：狂暴反馈 */
 .enemy.enraged .enemy-fig {
@@ -1260,9 +1254,12 @@ function quitToTitleKeepRun(): void {
   80% { opacity: 1; }
   100% { opacity: 0; }
 }
-@keyframes telegraph-pulse {
-  0%, 100% { opacity: 0.55; }
-  50% { opacity: 1; }
+/* 起手一记重击感：瞬间亮起 + 轻微放大，然后收干净 */
+@keyframes release-flash {
+  0% { opacity: 0; transform: scale(1.04); }
+  12% { opacity: 1; transform: scale(1); }
+  55% { opacity: 0.7; }
+  100% { opacity: 0; }
 }
 
 .log-drawer {

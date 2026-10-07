@@ -23,6 +23,7 @@ import {
   applyEventHp,
   applyIntermission,
   checkEventCondition,
+  loseableRelicPool,
   relicPool,
   setRunHp,
   setRunPollution,
@@ -147,6 +148,7 @@ function chooseEventOption(
   def: import("../../../src/core/registry").EventDefinition,
   run: RunState,
   relicCount: number,
+  loseableRelicCount: number,
 ): string {
   const hpRatio = run.hp / Math.max(1, run.maxHp);
   const scoreEffect = (kind: string, value: number, count = 1): number => {
@@ -187,6 +189,7 @@ function chooseEventOption(
         maxHp: run.maxHp,
         pollution: run.pollution,
         relicCount,
+        loseableRelicCount,
       })
     ) {
       continue;
@@ -302,6 +305,8 @@ export function simulateRun(
   let run = createRunState(act, cls, seed, { unlocked, difficulty, companionRelic: companion });
   const deck: SimCard[] = cls.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] }));
   const relics = [...(cls.startRelics ?? []), ...(companion ? [companion] : [])];
+  // 身份件（docs/55 Q1）：loseRelic 与「可典当」条件都要把它排除在外
+  const identityRelics: readonly string[] = cls.startRelics ?? [];
 
   const cardsPlayed: Record<string, number> = {};
   const cardsPicked: Record<string, number> = {};
@@ -432,7 +437,12 @@ export function simulateRun(
     if (node.kind === "event") {
       const def = rollEvent(content, run, node);
       if (def) {
-        const optionId = chooseEventOption(def, run, relics.length);
+        const optionId = chooseEventOption(
+          def,
+          run,
+          relics.length,
+          loseableRelicPool(content, relics, identityRelics).length,
+        );
         const seed = (run.seed ^ Math.imul(run.layerIndex + 11, 0x27d4eb2f)) >>> 0;
         const res = resolveEventOption(content, def, optionId, {
           seed,
@@ -443,6 +453,7 @@ export function simulateRun(
           maxHp: run.maxHp,
           hp: run.hp,
           pollution: run.pollution,
+          identityRelics,
           deckUpgradeable: deck.map((c, i) => (c.upgraded ? -1 : i)).filter((i) => i >= 0),
         });
         if (res) {

@@ -48,6 +48,8 @@ export interface EventResolveContext {
   /** 当前 HP / 污染（docs/54 E6 条件判定；缺省不做条件判定） */
   readonly hp?: number;
   readonly pollution?: number;
+  /** 本局职业身份件（docs/55 Q1：loseRelic 必须排除它们） */
+  readonly identityRelics?: readonly string[];
 }
 
 /** 选项条件的判定输入（docs/54 E6）：UI 与结算共用同一份口径。 */
@@ -55,7 +57,30 @@ export interface EventConditionContext {
   readonly hp: number;
   readonly maxHp: number;
   readonly pollution: number;
+  /** 持有遗物总数 */
   readonly relicCount: number;
+  /** 可典当遗物数（T1/T2 − 本局职业身份件）——与 loseRelic 的抽取池同源，docs/55 Q3 */
+  readonly loseableRelicCount: number;
+}
+
+/**
+ * loseRelic 的抽取池（docs/55 Q1）：**T1/T2 − 本局职业身份件**。
+ *
+ * 身份件不是装备是器官——当掉它不是「付出代价」，是职业幻想当场解体，
+ * 玩家读不懂也防不住（血械没了卖血引擎，卖血牌全变纯自残）。血泵/压力表是 T1 池件，
+ * 不属于身份件，照当——那才是「玩家自己走进当铺、自己点的当货」的合法重戏剧。
+ */
+export function loseableRelicPool(
+  content: ContentDb,
+  ownedRelics: readonly string[],
+  identityRelics: readonly string[] = [],
+): string[] {
+  return [...ownedRelics]
+    .filter((id) => {
+      const tier = content.relics.get(id)?.tier;
+      return (tier === 1 || tier === 2) && !identityRelics.includes(id);
+    })
+    .sort();
 }
 
 /**
@@ -75,8 +100,8 @@ export function checkEventCondition(
     }
     case "pollutionAtLeast":
       return ctx.pollution >= condition.value;
-    case "relicCountAtLeast":
-      return ctx.relicCount >= condition.value;
+    case "loseableRelicAtLeast":
+      return ctx.loseableRelicCount >= condition.value;
     default:
       return true;
   }
@@ -89,8 +114,8 @@ export function eventConditionCurrent(condition: EventCondition, ctx: EventCondi
       return ctx.maxHp > 0 ? Math.floor((ctx.hp / ctx.maxHp) * 100) : 0;
     case "pollutionAtLeast":
       return ctx.pollution;
-    case "relicCountAtLeast":
-      return ctx.relicCount;
+    case "loseableRelicAtLeast":
+      return ctx.loseableRelicCount;
     default:
       return 0;
   }
@@ -155,6 +180,7 @@ export function resolveEventOption(
       maxHp: ctx.maxHp ?? 0,
       pollution: ctx.pollution ?? 0,
       relicCount: ctx.ownedRelics.length,
+      loseableRelicCount: loseableRelicPool(content, ctx.ownedRelics, ctx.identityRelics ?? []).length,
     });
     if (!ok) return null;
   }
@@ -199,12 +225,9 @@ export function resolveEventOption(
       case "pollution":
         pollutionDelta += effect.value ?? 0;
         break;
-      // E5：失去指定 tier 的随机一件（默认 T1）；只吃掉落件，无 tier 的身份件不动
+      // E5：从「可典当池」随机抽取（docs/55 Q1：T1/T2 − 身份件）
       case "loseRelic": {
-        const tier = effect.tier ?? 1;
-        const pool = [...ctx.ownedRelics]
-          .filter((id) => content.relics.get(id)?.tier === tier)
-          .sort();
+        const pool = loseableRelicPool(content, ctx.ownedRelics, ctx.identityRelics ?? []);
         loseRelicIds.push(...takeWeighted(rng, pool, () => 1, effect.count ?? 1));
         break;
       }
