@@ -203,7 +203,7 @@ async function main(): Promise<number> {
   console.log(`  站点 ${siteUrl}`);
 
   gitRun(["add", "-A"]);
-  const pending = gitOut(["status", "--porcelain"]);
+  let pending = gitOut(["status", "--porcelain"]);
   const ahead = aheadCount(branch);
   if (!pending && ahead === 0) {
     console.log("\n✓ 已是最新：没有待提交的改动，也没有待推送的提交。");
@@ -229,10 +229,21 @@ async function main(): Promise<number> {
     const message = opts.message || "chore: 同步更新";
     const c = gitRun(["commit", "-m", message]);
     if (c.code !== 0) {
-      console.log(`\n✗ 提交失败\n${c.output}`);
-      return 1;
+      // 并发场景：另一个工具/会话可能已抢先提交，此时工作区变干净但本地仍有提交待推送
+      pending = gitOut(["status", "--porcelain"]);
+      if (pending) {
+        console.log(`\n✗ 提交失败\n${c.output}`);
+        return 1;
+      }
+      console.log("\n⚠ 提交时工作区已变干净（可能有其他工具并发提交），改为推送现有提交");
+    } else {
+      console.log(`\n▸ 已提交 ${gitOut(["rev-parse", "--short", "HEAD"])} · ${message}`);
     }
-    console.log(`\n▸ 已提交 ${gitOut(["rev-parse", "--short", "HEAD"])} · ${message}`);
+  }
+
+  if (aheadCount(branch) === 0) {
+    console.log("\n✓ 没有需要推送的提交（可能已被其他工具抢先推送），跳过。");
+    return 0;
   }
 
   console.log("\n▸ 推送到 origin");
