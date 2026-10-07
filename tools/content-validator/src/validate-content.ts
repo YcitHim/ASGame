@@ -325,6 +325,39 @@ export function validateContent(input: ContentInput): ValidationResult {
         }
       }
     }
+    // 树状骨架（docs/48 §3.1 修订 1）：10 层；起点 / 祭坛 / Boss 单节点；中段 2~4
+    const total = act.layers.length;
+    if (total !== 10) {
+      issues.push({
+        file: `act ${act.id}`,
+        path: "layers",
+        message: `树状地图固定 10 层（l0 起点 / l1~l7 中段 / l8 祭坛 / l9 Boss，docs/48 §3.1 修订 1），当前 ${total} 层`,
+      });
+    }
+    act.layers.forEach((layer, i) => {
+      const edgeLayer = i === 0 || i >= total - 2;
+      if (edgeLayer && layer.width !== 1) {
+        issues.push({
+          file: `act ${act.id}`,
+          path: `layers.${layer.id}`,
+          message: "起点 / 祭坛 / Boss 层必须声明 width=1（docs/48 §3.1）",
+        });
+      }
+      if (!edgeLayer && (layer.width < 2 || layer.width > 4)) {
+        issues.push({
+          file: `act ${act.id}`,
+          path: `layers.${layer.id}`,
+          message: "中段层必须声明 width 2~4（docs/48 §3.1 修订 1）",
+        });
+      }
+      if ((i === 1 || i === total - 2) && layer.kinds.includes("elite")) {
+        issues.push({
+          file: `act ${act.id}`,
+          path: `layers.${layer.id}`,
+          message: "l1 与倒数第二层不出精英（docs/48 §3.2）",
+        });
+      }
+    });
     if (!(act.i18n in input.i18n)) {
       issues.push({ file: `act ${act.id}`, path: "i18n", message: `文案缺失：zh-CN 无 "${act.i18n}"` });
     }

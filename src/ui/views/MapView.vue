@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, useTemplateRef } from "vue";
+import { computed, nextTick, onMounted, useTemplateRef, watch } from "vue";
 import { useRouter } from "vue-router";
 import type { MapNode } from "@/core/registry";
 import { loadGameContent, t } from "@/data/load";
@@ -28,7 +28,7 @@ function devSkipLayer(): void {
 }
 /** 开发者模式：一路推进到 Boss 层。 */
 function devToBoss(): void {
-  for (let i = 0; i < 12 && !run.finished; i += 1) {
+  for (let i = 0; i < 14 && !run.finished; i += 1) {
     const node = run.current;
     if (node?.kind === "boss") break;
     run.advance();
@@ -73,24 +73,49 @@ const interNeeded = computed(() => run.needsIntermission);
 const reachable = computed(() => new Set(view.value?.reachable ?? []));
 const currentId = computed(() => view.value?.current?.id ?? "");
 
-/* ---------- 布局：层为行、列向展开；边用 SVG 细线 ---------- */
+/* ---------- 布局：10 层为行、层内按 col(0~3) 分列；边用 SVG 细线 ---------- */
 const COL_W = 176;
 const ROW_H = 62;
-const MAP_TOP = 16;
+const MAP_TOP = 12;
+const COLS = 4;
+/** 列心中点（col 0~3 → −1.5 ~ +1.5）：全图在舞台里左右居中 */
+const CENTER_COL = (COLS - 1) / 2;
 const MAP_W = 880;
-const MAP_H = MAP_TOP * 2 + 8 * ROW_H;
+const MAP_H = computed(() => MAP_TOP * 2 + Math.max(1, layers.value.length) * ROW_H);
 const CENTER_X = MAP_W / 2;
 
 const positions = computed(() => {
   const map = new Map<string, { x: number; y: number }>();
   layers.value.forEach((layer, li) => {
-    const n = layer.nodes.length;
-    layer.nodes.forEach((node, ni) => {
-      map.set(node.id, { x: CENTER_X + (ni - (n - 1) / 2) * COL_W, y: MAP_TOP + li * ROW_H });
-    });
+    for (const node of layer.nodes) {
+      const col = node.col ?? 0;
+      map.set(node.id, {
+        x: CENTER_X + (col - CENTER_COL) * COL_W,
+        y: MAP_TOP + li * ROW_H + ROW_H / 2,
+      });
+    }
   });
   return map;
 });
+
+/* ---------- 视口：超出时纵向滚动、当前位置自动居中（docs/48 §四 布局） ---------- */
+const viewport = useTemplateRef<HTMLElement>("viewport");
+/** 当前层的纵向锚点：有选中节点就用它，否则用该层第一个节点（分支层未选时也要有锚） */
+const currentY = computed(() => {
+  const picked = currentId.value ? positions.value.get(currentId.value) : undefined;
+  if (picked) return picked.y;
+  const first = layers.value[currentIndex.value]?.nodes[0];
+  return first ? positions.value.get(first.id)?.y : undefined;
+});
+function centerOnCurrent(): void {
+  const el = viewport.value;
+  const y = currentY.value;
+  if (!el || y === undefined) return;
+  const target = y - el.clientHeight / 2;
+  el.scrollTop = Math.max(0, Math.min(target, el.scrollHeight - el.clientHeight));
+}
+watch(currentY, () => void nextTick(centerOnCurrent));
+onMounted(() => void nextTick(centerOnCurrent));
 const edgeLines = computed(() =>
   edges.value
     .map((e) => ({ from: positions.value.get(e.from), to: positions.value.get(e.to) }))
@@ -176,7 +201,8 @@ function toTitle(): void {
 
       <h1 class="head">远 征 路 线</h1>
 
-      <div class="graph" :style="{ width: MAP_W + 'px', height: MAP_H + 'px' }">
+      <div ref="viewport" class="graph-viewport">
+        <div class="graph" :style="{ width: MAP_W + 'px', height: MAP_H + 'px' }">
         <svg class="edges" :width="MAP_W" :height="MAP_H" aria-hidden="true">
           <line
             v-for="(e, i) in edgeLines"
@@ -207,6 +233,7 @@ function toTitle(): void {
             </span>
           </button>
         </template>
+        </div>
       </div>
 
       <div v-if="interNeeded" class="victory-overlay">
@@ -253,7 +280,13 @@ function toTitle(): void {
 .dev-btn { padding: 4px 10px; font-size: 11px; color: var(--ink-dim); background: rgba(18,16,14,.7); border: 1px solid rgba(110,88,54,.4); border-radius: var(--radius-sm); cursor: pointer; }
 .dev-btn:hover { color: var(--gold); border-color: var(--gold); }
 .dev-hint { font-size: 10px; color: var(--ink-dim); }
-.graph { position: relative; margin-top: 10px; }
+.graph-viewport {
+  width: 100%; max-height: 500px; margin-top: 8px;
+  overflow-y: auto; overflow-x: hidden; scrollbar-width: thin;
+}
+.graph-viewport::-webkit-scrollbar { width: 6px; }
+.graph-viewport::-webkit-scrollbar-thumb { background: rgba(176, 141, 74, 0.35); border-radius: 3px; }
+.graph { position: relative; margin: 0 auto; }
 .edges { position: absolute; inset: 0; pointer-events: none; }
 .node {
   position: absolute; transform: translate(-50%, -50%);

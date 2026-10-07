@@ -83,8 +83,8 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
     setActivePinia(pinia);
     const run = useRunStore();
     run.startRun("bloodwright", 1);
-    // 分支地图共 8 层，Boss 在第 8 层（l7）
-    for (let i = 0; i < 7; i += 1) run.advance();
+    // 树状地图共 10 层，Boss 在 l9
+    for (let i = 0; i < 9; i += 1) run.advance();
     expect(run.current?.kind).toBe("boss");
 
     const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });

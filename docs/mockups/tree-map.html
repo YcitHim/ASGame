@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>树状地图 · 假设图（docs/48）</title>
+<title>树状地图 · 假设图 v2（docs/48 修订版 · 程序生成可交互）</title>
 <style>
   :root {
     --bg: #12100e;
@@ -16,6 +16,7 @@
     --ink-dim: #8d8270;
     --blood: #c0392b;
     --elite: #8e44ad;
+    --safe: #3aa08a;
     --node-fill: #1c1915;
   }
   body.act2 {
@@ -39,15 +40,25 @@
     transition: background .4s;
   }
   .wrap { width: 980px; max-width: 100%; }
-  header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
   h1 { font-size: 20px; letter-spacing: .35em; color: var(--gold-hi); font-weight: 600; }
   h1 small { font-size: 11px; letter-spacing: .15em; color: var(--ink-dim); margin-left: 12px; }
-  .toggle {
-    font-size: 12px; letter-spacing: .2em; cursor: pointer;
-    border: 1px solid var(--gold-dim); color: var(--ink-dim);
-    padding: 6px 14px; border-radius: 4px; background: transparent;
+  .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; font-size: 12px; color: var(--ink-dim); letter-spacing: .1em; }
+  .controls input {
+    width: 110px; background: var(--node-fill); color: var(--ink);
+    border: 1px solid var(--gold-dim); border-radius: 4px; padding: 5px 8px;
+    font-family: inherit; font-size: 12px;
   }
-  .toggle:hover { color: var(--gold-hi); border-color: var(--gold); }
+  .controls button, .toggle {
+    font-size: 12px; letter-spacing: .15em; cursor: pointer;
+    border: 1px solid var(--gold-dim); color: var(--ink-dim);
+    padding: 6px 14px; border-radius: 4px; background: transparent; font-family: inherit;
+  }
+  .controls button:hover, .toggle:hover { color: var(--gold-hi); border-color: var(--gold); }
+  .controls button.on { color: var(--gold-hi); border-color: var(--gold); }
+  .stats { font-size: 12px; color: var(--ink-dim); letter-spacing: .12em; margin-bottom: 8px; line-height: 1.7; }
+  .stats b { color: var(--gold-hi); font-weight: 400; }
+  .stats .ok { color: var(--safe); }
   .stage { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 8px; }
   svg { display: block; width: 100%; height: auto; }
 
@@ -56,15 +67,22 @@
   .edge.reachable { stroke: var(--gold-hi); stroke-width: 2; stroke-dasharray: 6 5; animation: dash 1.2s linear infinite; }
   @keyframes dash { to { stroke-dashoffset: -11; } }
 
+  .corr { fill: none; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
+  .corr.safe { stroke: var(--safe); stroke-width: 4; opacity: .45; }
+  .corr.greed { stroke: var(--blood); stroke-width: 2.5; opacity: .55; stroke-dasharray: 10 6; }
+
   .node circle.body { fill: var(--node-fill); stroke: var(--gold-dim); stroke-width: 1.5; }
   .node text { fill: var(--ink); font-size: 20px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
-  .node .kind-label { font-size: 9px; fill: var(--ink-dim); letter-spacing: .1em; }
+  .node .kind-label { font-size: 9px; fill: var(--ink-dim); letter-spacing: .1em; pointer-events: none; }
   .node.traveled circle.body { stroke: var(--gold); fill: #241f18; }
   body.act2 .node.traveled circle.body { fill: #142530; }
   .node.current circle.body { stroke: var(--gold-hi); stroke-width: 2.5; }
   .node.current .halo { fill: none; stroke: var(--gold-hi); stroke-width: 1.5; opacity: .7; animation: pulse 1.6s ease-in-out infinite; }
   @keyframes pulse { 0%,100% { r: 34; opacity: .7; } 50% { r: 40; opacity: .15; } }
+  .node.reachable { cursor: pointer; }
   .node.reachable circle.body { stroke: var(--gold-hi); stroke-dasharray: 4 3; }
+  .node.reachable:hover circle.body { fill: #2b241a; }
+  body.act2 .node.reachable:hover circle.body { fill: #16303d; }
   .node.elite text.glyph { fill: var(--elite); }
   .node.boss text.glyph { fill: var(--blood); font-size: 24px; }
   .node.boss circle.body { stroke: var(--blood); }
@@ -73,110 +91,226 @@
   .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; font-size: 11px; color: var(--ink-dim); letter-spacing: .1em; }
   .legend b { color: var(--ink); font-weight: 400; }
   .legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+  .legend .ln { display: inline-block; width: 18px; height: 0; border-top: 3px solid; margin-right: 5px; vertical-align: 3px; }
   footer { margin-top: 10px; font-size: 11px; color: var(--ink-dim); letter-spacing: .08em; line-height: 1.8; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>锈 蚀 回 廊<small>树状地图 · 假设图 · docs/48 规格</small></h1>
+    <h1><span id="actName">锈 蚀 回 廊</span><small>树状地图 · 假设图 v2 · docs/48 修订版（10 层 · 程序生成 · 可点击走图）</small></h1>
     <button class="toggle" id="themeBtn">切换：第二幕 · 沉没圣堂（青蓝）</button>
   </header>
-  <div class="stage"><svg id="map" viewBox="0 0 940 1140"></svg></div>
+  <div class="controls">
+    <label>种子 <input id="seedInput" type="number" value="20261007"></label>
+    <button id="genBtn">按种子生成</button>
+    <button id="randBtn">换一张（随机种子）</button>
+    <button id="walkBtn">重走此图</button>
+    <button id="corrBtn" class="on">走廊标注：开</button>
+  </div>
+  <div class="stats" id="stats"></div>
+  <div class="stage"><svg id="map" viewBox="0 0 940 1420"></svg></div>
   <div class="legend">
     <span><span class="sw" style="background:var(--gold)"></span><b>描金粗线</b>＝已走的路</span>
-    <span><span class="sw" style="background:var(--gold-hi)"></span><b>呼吸光环</b>＝当前位置（问号事件刚撞完）</span>
-    <span><span class="sw" style="border:1px dashed var(--gold-hi)"></span><b>虚线</b>＝下一步可达</span>
-    <span>其余细线＝存在但未走的路（全图始终可见）</span>
+    <span><span class="sw" style="background:var(--gold-hi)"></span><b>呼吸光环</b>＝当前位置</span>
+    <span><span class="sw" style="border:1px dashed var(--gold-hi)"></span><b>虚线</b>＝下一步可达（点击即走）</span>
+    <span><span class="ln" style="border-color:var(--safe)"></span><b>绿粗线</b>＝安全走廊（精英≤1 且篝火≥1）</span>
+    <span><span class="ln" style="border-color:var(--blood)"></span><b>红虚线</b>＝贪婪走廊（精英≥2）</span>
   </div>
   <footer>
-    结构按 docs/48 §三：8 层深度 · 中间层 2~4 节点（本图 19 节点）· 边只连相邻层、列差 ≤1、不相交 · 同层精英/篝火 ≤1 · l1 不出精英 · 祭坛→首领固定收尾。<br>
-    节点类型图标沿用游戏内字形：剑=战斗 角=精英 火=休息 砧=祭坛 匣=奖励 ？=事件 颅=首领。本图为结构示意，节点类型分布仅一例，实际由种子按层规格生成。
+    生成规则即 docs/48 修订版规格：10 层（l0 起点 / l1~l7 中段每层 2~4 节点 / l8 祭坛 / l9 首领）· 边只连相邻层、列差 ≤1（出边上界为 3，三分叉是自然产物）、不相交 ·
+    同层精英/篝火 ≤1 · l1 与 l7 不出精英 · 全图精英 2~4、篝火 1~3 · 每图校验：三分叉 ≥2、汇合点 ≥2、可行路径 ≥8、安全/贪婪走廊各 ≥1，不过整图重掷。<br>
+    同种子必同图（复现性），不同种子必不同图（内容量）。走廊标注仅本假设图演示用，游戏内 UI 不标注——图标自己说话（docs/48 §3.4）。
+    点「换一张」多试几个种子，感受地图的多样性；点击可达节点实际走一遍，试试「先贪精英、中途在汇合点切回安全路」。
   </footer>
 </div>
 
 <script>
-const X = c => 150 + c * 213;          // 列 0~3
-const Y = l => 140 + (7 - l) * 135;    // 层 0(底)~7(顶)
+// ============ 种子随机数 ============
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function sample(arr,k,rng){const a=[...arr],out=[];while(out.length<k&&a.length)out.push(a.splice(Math.floor(rng()*a.length),1)[0]);return out}
 
-const NODES = [
-  // [id, layer, col, kind, glyph, state]
-  ["n00", 0, 1, "battle", "剑", "traveled"],
-  ["n10", 1, 0, "battle", "剑", ""],
-  ["n11", 1, 1, "event",  "？", "traveled"],
-  ["n12", 1, 2, "battle", "剑", ""],
-  ["n20", 2, 0, "battle", "剑", ""],
-  ["n21", 2, 1, "chest",  "匣", ""],
-  ["n22", 2, 2, "event",  "？", "current"],
-  ["n23", 2, 3, "battle", "剑", ""],
-  ["n30", 3, 0, "elite",  "角", ""],
-  ["n32", 3, 2, "battle", "剑", "reachable"],
-  ["n33", 3, 3, "rest",   "火", "reachable"],
-  ["n41", 4, 1, "event",  "？", ""],
-  ["n42", 4, 2, "battle", "剑", ""],
-  ["n43", 4, 3, "battle", "剑", ""],
-  ["n51", 5, 1, "battle", "剑", ""],
-  ["n52", 5, 2, "elite",  "角", ""],
-  ["n53", 5, 3, "rest",   "火", ""],
-  ["n62", 6, 2, "altar",  "砧", ""],
-  ["n72", 7, 2, "boss",   "颅", ""],
-];
-const EDGES = [
-  ["n00","n10"],["n00","n11"],["n00","n12"],
-  ["n10","n20"],["n10","n21"],["n11","n21"],["n11","n22"],["n12","n22"],["n12","n23"],
-  ["n20","n30"],["n21","n30"],["n22","n32"],["n22","n33"],["n23","n33"],
-  ["n30","n41"],["n32","n41"],["n32","n42"],["n33","n42"],["n33","n43"],
-  ["n41","n51"],["n41","n52"],["n42","n52"],["n42","n53"],["n43","n53"],
-  ["n51","n62"],["n52","n62"],["n53","n62"],
-  ["n62","n72"],
-];
-const TRAVELED_EDGES = new Set(["n00-n11", "n11-n22"]);
-const REACHABLE_EDGES = new Set(["n22-n32", "n22-n33"]);
-const KIND_NAME = { battle:"战斗", elite:"精英", rest:"休息", altar:"祭坛", chest:"奖励", event:"事件", boss:"首领" };
-const LAYER_LABEL = { 0:"起点", 6:"祭坛层", 7:"首领层" };
+const MID=[1,2,3,4,5,6,7];
+const KIND_NAME={start:"起点",battle:"战斗",elite:"精英",rest:"休息",altar:"祭坛",chest:"奖励",event:"事件",boss:"首领"};
+const GLYPH={start:"始",battle:"剑",elite:"角",rest:"火",altar:"砧",chest:"匣",event:"？",boss:"颅"};
+const X=c=>150+c*213, Y=l=>80+(9-l)*142;
 
-const byId = Object.fromEntries(NODES.map(n => [n[0], n]));
-const svg = document.getElementById("map");
-const NS = "http://www.w3.org/2000/svg";
-const el = (t, attrs) => { const e = document.createElementNS(NS, t); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+// ============ 地图生成（docs/48 §3.1~§3.4 规格） ============
+function genMap(seed){
+  for(let attempt=0;attempt<80;attempt++){
+    const rng=mulberry32((seed+attempt*7919)>>>0);
+    const startCol=rng()<0.5?1:2;
+    const layers=[];
+    layers[0]=[{id:"n0_0",layer:0,col:startCol,kind:"start"}];
+    for(const l of MID){
+      const r=rng(), w=r<0.3?2:r<0.75?3:4;
+      const pool=[0,1,2,3],cols=[];
+      while(cols.length<w)cols.push(pool.splice(Math.floor(rng()*pool.length),1)[0]);
+      cols.sort((a,b)=>a-b);
+      layers[l]=cols.map((c,i)=>({id:`n${l}_${i}`,layer:l,col:c,kind:"battle"}));
+    }
+    layers[8]=[{id:"n8_0",layer:8,col:startCol,kind:"altar"}];
+    layers[9]=[{id:"n9_0",layer:9,col:startCol,kind:"boss"}];
 
-// 层标
-for (let l = 0; l <= 7; l++) {
-  const t = el("text", { x: 30, y: Y(l) + 4, class: "side-label" });
-  t.textContent = LAYER_LABEL[l] ?? ("第 " + (l + 1) + " 层");
-  svg.appendChild(t);
+    // 节点类型：精英 2~4 个落在 l2~l6 的不同层；篝火 1~3 个落在不同层
+    for(const l of sample([2,3,4,5,6],2+Math.floor(rng()*3),rng)){
+      const arr=layers[l];arr[Math.floor(rng()*arr.length)].kind="elite";
+    }
+    for(const l of sample(MID,1+Math.floor(rng()*3),rng)){
+      const cand=layers[l].filter(n=>n.kind==="battle");
+      if(cand.length)cand[Math.floor(rng()*cand.length)].kind="rest";
+    }
+    for(const l of MID)for(const n of layers[l])if(n.kind==="battle"){
+      const r=rng();n.kind=r<0.62?"battle":r<0.82?"event":"chest";
+    }
+
+    const byId={};for(const l of layers)for(const n of l)byId[n.id]=n;
+
+    // 边：相邻层、列差 ≤1（单节点层豁免）、不相交；先保证覆盖，再加随机额外边
+    const edges=[],adj={};for(const id in byId)adj[id]=[];
+    const crosses=(e1,e2)=>(e1[0].col-e2[0].col)*(e1[1].col-e2[1].col)<0;
+    for(let l=0;l<9;l++){
+      const A=layers[l],B=layers[l+1],free=A.length===1||B.length===1;
+      const cand=[];
+      for(const a of A)for(const b of B)if(free||Math.abs(a.col-b.col)<=1)cand.push([a,b]);
+      const chosen=[];
+      const d=e=>Math.abs(e[0].col-e[1].col);
+      const tryAdd=e=>{
+        if(chosen.some(c=>c[0]===e[0]&&c[1]===e[1]))return;
+        if(chosen.some(c=>crosses(c,e)))return;
+        chosen.push(e);
+      };
+      for(const b of B){const near=cand.filter(e=>e[1]===b).sort((x,y)=>d(x)-d(y));if(near.length)tryAdd(near[0]);}
+      for(const a of A){const near=cand.filter(e=>e[0]===a).sort((x,y)=>d(x)-d(y));if(near.length)tryAdd(near[0]);}
+      const extra=cand.slice();for(let i=extra.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[extra[i],extra[j]]=[extra[j],extra[i]];}
+      for(const e of extra)if(rng()<0.5)tryAdd(e);
+      for(const[a,b]of chosen){edges.push([a.id,b.id]);adj[a.id].push(b.id);}
+    }
+
+    // ===== 整图校验（§3.1 连通性 + 决策点密度 + §3.4 走廊保证） =====
+    const indeg={};for(const id in byId)indeg[id]=0;
+    for(const[a,b]of edges)indeg[b]++;
+    let connected=true;
+    for(const id in byId){const n=byId[id];
+      if(n.kind!=="boss"&&adj[id].length===0){connected=false;break;}
+      if(n.kind!=="start"&&indeg[id]===0){connected=false;break;}}
+    if(!connected)continue;
+    const forks=MID.flatMap(l=>layers[l]).filter(n=>adj[n.id].length===3).length;
+    const merges=MID.flatMap(l=>layers[l]).filter(n=>indeg[n.id]>=2).length;
+    if(forks<2||merges<2)continue;
+
+    // 可行路径数（DP，封顶 99999）
+    const pc={};pc["n0_0"]=1;
+    for(let l=0;l<9;l++)for(const n of layers[l])for(const t of adj[n.id])pc[t]=Math.min(99999,(pc[t]||0)+(pc[n.id]||0));
+    const pathCount=pc["n9_0"]||0;
+    if(pathCount<8)continue;
+
+    // 安全走廊：状态 BFS (节点, 精英数≤2, 篝火数≤1)，求精英≤1 且篝火≥1 的路径
+    const par={},seen=new Set(),q=[["n0_0",0,0]];
+    seen.add("n0_0|0|0");
+    let safeEnd=null;
+    while(q.length){
+      const[id,e,r]=q.shift();
+      if(id==="n9_0"&&e<=1&&r>=1){safeEnd=[id,e,r];break;}
+      for(const t of adj[id]){
+        const nb=byId[t];
+        const e2=Math.min(2,e+(nb.kind==="elite"?1:0)),r2=Math.min(1,r+(nb.kind==="rest"?1:0));
+        const k=t+"|"+e2+"|"+r2;
+        if(!seen.has(k)){seen.add(k);par[k]=[id,e,r];q.push([t,e2,r2]);}
+      }
+    }
+    if(!safeEnd)continue;
+
+    // 贪婪走廊：DP 求精英最多路径，需 ≥2
+    const ge={},gp={};ge["n0_0"]=0;
+    for(let l=0;l<9;l++)for(const n of layers[l]){
+      if(ge[n.id]===undefined)continue;
+      for(const t of adj[n.id]){
+        const v=ge[n.id]+(byId[t].kind==="elite"?1:0);
+        if(ge[t]===undefined||v>ge[t]){ge[t]=v;gp[t]=n.id;}
+      }
+    }
+    if((ge["n9_0"]||0)<2)continue;
+
+    // 重建走廊路径
+    const safePath=[];{let cur=safeEnd;while(cur){safePath.unshift(cur[0]);cur=par[cur[0]+"|"+cur[1]+"|"+cur[2]];}}
+    const greedPath=[];{let cur="n9_0";while(cur){greedPath.unshift(cur);cur=gp[cur];}}
+
+    return {layers,byId,edges,adj,pathCount,forks,merges,safePath,greedPath,
+      elites:Object.values(byId).filter(n=>n.kind==="elite").length,
+      rests:Object.values(byId).filter(n=>n.kind==="rest").length};
+  }
+  return null;
 }
-// 边
-for (const [a, b] of EDGES) {
-  const na = byId[a], nb = byId[b];
-  const key = a + "-" + b;
-  const cls = TRAVELED_EDGES.has(key) ? "edge traveled" : REACHABLE_EDGES.has(key) ? "edge reachable" : "edge";
-  svg.appendChild(el("line", { x1: X(na[2]), y1: Y(na[1]), x2: X(nb[2]), y2: Y(nb[1]), class: cls }));
+
+// ============ 渲染与走图交互 ============
+const svg=document.getElementById("map"),NS="http://www.w3.org/2000/svg";
+const el=(t,attrs)=>{const e=document.createElementNS(NS,t);for(const k in attrs)e.setAttribute(k,attrs[k]);return e};
+let map=null,current="n0_0",traveled=new Set(),traveledNodes=new Set(["n0_0"]),showCorr=true;
+
+function render(){
+  svg.innerHTML="";
+  const{layers,byId,edges,adj,safePath,greedPath}=map;
+  const reachable=current!=="n9_0"?adj[current]:[];
+
+  // 层标
+  for(let l=0;l<=9;l++){
+    const t=el("text",{x:30,y:Y(l)+4,class:"side-label"});
+    t.textContent=l===0?"起点":l===8?"祭坛层":l===9?"首领层":"第 "+(l+1)+" 层";
+    svg.appendChild(t);
+  }
+  // 走廊标注
+  if(showCorr){
+    for(const[path,cls]of[[safePath,"corr safe"],[greedPath,"corr greed"]]){
+      const pts=path.map(id=>X(byId[id].col)+","+Y(byId[id].layer)).join(" ");
+      svg.appendChild(el("polyline",{points:pts,class:cls}));
+    }
+  }
+  // 边
+  for(const[a,b]of edges){
+    const key=a+"-"+b;
+    const cls=traveled.has(key)?"edge traveled":(a===current&&reachable.includes(b)?"edge reachable":"edge");
+    svg.appendChild(el("line",{x1:X(byId[a].col),y1:Y(byId[a].layer),x2:X(byId[b].col),y2:Y(byId[b].layer),class:cls}));
+  }
+  // 节点
+  for(const l of layers)for(const n of l){
+    const isCur=n.id===current,isReach=reachable.includes(n.id),isTrav=traveledNodes.has(n.id);
+    const g=el("g",{class:`node ${n.kind}${isCur?" current":""}${isReach?" reachable":""}${isTrav&&!isCur?" traveled":""}`});
+    const r=n.kind==="boss"?34:27;
+    if(isCur)g.appendChild(el("circle",{class:"halo",cx:X(n.col),cy:Y(n.layer),r:34}));
+    g.appendChild(el("circle",{class:"body",cx:X(n.col),cy:Y(n.layer),r}));
+    const t=el("text",{class:"glyph",x:X(n.col),y:Y(n.layer)});t.textContent=GLYPH[n.kind];g.appendChild(t);
+    const lbl=el("text",{class:"kind-label",x:X(n.col),y:Y(n.layer)+r+14,"text-anchor":"middle"});
+    lbl.textContent=KIND_NAME[n.kind];g.appendChild(lbl);
+    if(isReach)g.addEventListener("click",()=>{traveled.add(current+"-"+n.id);traveledNodes.add(n.id);current=n.id;render();});
+    svg.appendChild(g);
+  }
+  // 统计行
+  const done=current==="n9_0";
+  document.getElementById("stats").innerHTML=
+    `种子 <b>${seedInput.value}</b> · 节点 <b>${Object.keys(map.byId).length}</b> · 可行路径 <b>${map.pathCount}</b> 条 · 三分叉 <b>${map.forks}</b> · 汇合点 <b>${map.merges}</b> · 精英 <b>${map.elites}</b> / 篝火 <b>${map.rests}</b> · `+
+    `<span class="ok">安全走廊 ✓</span> · <span class="ok">贪婪走廊 ✓</span>`+
+    (done?` · <b>已抵达首领——「重走此图」或换个种子</b>`:` · 点击虚线圈节点前进`);
 }
-// 节点
-for (const [id, layer, col, kind, glyph, state] of NODES) {
-  const g = el("g", { class: `node ${kind} ${state}` });
-  const r = kind === "boss" ? 34 : 27;
-  if (state === "current") g.appendChild(el("circle", { class: "halo", cx: X(col), cy: Y(layer), r: 34 }));
-  g.appendChild(el("circle", { class: "body", cx: X(col), cy: Y(layer), r }));
-  const t = el("text", { class: "glyph", x: X(col), y: Y(layer) });
-  t.textContent = glyph;
-  g.appendChild(t);
-  const lbl = el("text", { class: "kind-label", x: X(col), y: Y(layer) + r + 14 });
-  lbl.textContent = KIND_NAME[kind];
-  lbl.setAttribute("text-anchor", "middle");
-  g.appendChild(lbl);
-  svg.appendChild(g);
-}
+
+const seedInput=document.getElementById("seedInput");
+function build(){const s=parseInt(seedInput.value)||1;map=genMap(s);current="n0_0";traveled=new Set();traveledNodes=new Set(["n0_0"]);render();}
+document.getElementById("genBtn").onclick=build;
+document.getElementById("randBtn").onclick=()=>{seedInput.value=Math.floor(Math.random()*900000)+100000;build();};
+document.getElementById("walkBtn").onclick=()=>{current="n0_0";traveled=new Set();traveledNodes=new Set(["n0_0"]);render();};
+const corrBtn=document.getElementById("corrBtn");
+corrBtn.onclick=()=>{showCorr=!showCorr;corrBtn.classList.toggle("on",showCorr);corrBtn.textContent=showCorr?"走廊标注：开":"走廊标注：关";render();};
+seedInput.addEventListener("keydown",e=>{if(e.key==="Enter")build();});
+
 // 主题切换
-const btn = document.getElementById("themeBtn");
-let act2 = false;
-btn.onclick = () => {
-  act2 = !act2;
-  document.body.classList.toggle("act2", act2);
-  document.querySelector("h1").firstChild.textContent = act2 ? "沉 没 圣 堂" : "锈 蚀 回 廊";
-  btn.textContent = act2 ? "切换：第一幕 · 锈蚀回廊（锈金）" : "切换：第二幕 · 沉没圣堂（青蓝）";
+const themeBtn=document.getElementById("themeBtn");let act2=false;
+themeBtn.onclick=()=>{
+  act2=!act2;document.body.classList.toggle("act2",act2);
+  document.getElementById("actName").textContent=act2?"沉 没 圣 堂":"锈 蚀 回 廊";
+  themeBtn.textContent=act2?"切换：第一幕 · 锈蚀回廊（锈金）":"切换：第二幕 · 沉没圣堂（青蓝）";
 };
+
+build();
 </script>
 </body>
 </html>

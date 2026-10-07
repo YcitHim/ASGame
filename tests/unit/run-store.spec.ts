@@ -37,14 +37,16 @@ describe("S5 局外进度（runStore）", () => {
   it("分支地图：pickNode 选路 + advance 推进并记录已清", () => {
     const run = useRunStore();
     run.startRun("bloodwright", 1);
-    expect(run.view?.layers).toHaveLength(8);
+    expect(run.view?.layers).toHaveLength(10);
     // l0 是 width=1 的必经战斗：自动生效
     expect(run.current?.kind).toBe("battle");
     const firstId = run.current!.id;
     run.advance();
     expect(run.run?.layerIndex).toBe(1);
-    // l1 是分支层（列差 ≤1 的菱形收敛后为 2），未选路时没有 current
-    expect(run.view?.layers[1].nodes).toHaveLength(2);
+    // l1 是分支层（2~4），未选路时没有 current
+    const l1 = run.view!.layers[1].nodes;
+    expect(l1.length).toBeGreaterThanOrEqual(2);
+    expect(l1.length).toBeLessThanOrEqual(4);
     expect(run.current).toBeUndefined();
     run.pickNode(1);
     const secondId = run.current!.id;

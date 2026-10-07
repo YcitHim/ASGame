@@ -118,8 +118,9 @@ function applyEnhancementChoice(
 }
 
 /**
- * 路线评分（docs/48 §五.2）：低血优先休息，否则优先事件/祭坛/战斗，尽量避开精英。
+ * 路线评分（docs/48 §五.2）：低血优先休息，否则优先精英/事件，避开战斗与篝火。
  * 只在【可达】的候选里挑——DAG 里点不到的分支不能选。这不算调 AI 强度，只是让它会认路。
+ * （全图寻路版也试过，与贪心同分：10 层掉点来自幕长，不来自认路方式。）
  */
 function chooseBranchIndex(candidates: readonly { index: number; kind: string }[], run: RunState): number {
   const lowHp = run.hp < run.maxHp * 0.55;

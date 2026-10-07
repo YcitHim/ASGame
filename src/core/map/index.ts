@@ -7,7 +7,7 @@
 import type { RunDifficulty } from "../registry/content";
 import type { ActDefinition, ClassDefinition, EventDefinition, MapLayerSpec, MapNode, NodeKind } from "../registry/content";
 import type { ContentDb } from "../registry/content";
-import { Rng } from "../rng";
+import { Rng, type RngStream } from "../rng";
 
 export { resolveEventOption, type EventResolution } from "./event";
 
@@ -142,44 +142,64 @@ function kindWeights(spec: MapLayerSpec, act: ActDefinition): Readonly<Record<st
   return spec.weights ?? act.weights;
 }
 
-/**
- * 某层的基础宽度（docs/48 §3.1）：起点 / 祭坛 / Boss 层 = 1；中间层 2~4。
- * 层数据写 1 的中间层按结构规格抬到最小分支宽度 2。
- */
-function baseWidth(spec: MapLayerSpec, layerIdx: number, total: number): number {
-  if (layerIdx === 0 || layerIdx >= total - 2) return 1;
-  return Math.max(2, Math.min(4, Math.trunc(spec.width) || 2));
+/** 中段层下标（10 层时 = l1~l7）：除起点 / 祭坛 / Boss 之外的层（docs/48 §3.1 修订 1）。 */
+function midLayerIndexes(total: number): number[] {
+  const out: number[] = [];
+  for (let i = 1; i < total - 2; i += 1) out.push(i);
+  return out;
+}
+
+/** 可出精英的中段层：两端中段层（l1 与倒数第二层）不出精英（docs/48 §3.2）。 */
+function eliteLayerIndexes(total: number): number[] {
+  const mids = midLayerIndexes(total);
+  return mids.slice(1, -1);
+}
+
+/** 无放回抽 count 个（不足则全给），顺序随机。 */
+function sampleDistinct<T>(rng: RngStream, pool: readonly T[], count: number): T[] {
+  const rest = [...pool];
+  const out: T[] = [];
+  while (out.length < count && rest.length > 0) {
+    out.push(rest.splice(rng.nextInt(0, rest.length - 1), 1)[0]!);
+  }
+  return out;
+}
+
+/** 中段层宽度分布（docs/48 §3.1 假设图口径）：2~4，典型 ~21 节点/幕。 */
+function rollWidth(rng: RngStream): number {
+  const r = rng.nextFloat();
+  return r < 0.3 ? 2 : r < 0.75 ? 3 : 4;
 }
 
 /**
- * 层宽规划（docs/48 §3.1）：边「两端列差 ≤1 + 全连通」在数学上要求 **相邻层宽度差 ≤1**。
- * 两端单点因此必然收敛成菱形（l0=1 → l1=2；l6=1 → l5=2）。
- * 先取基础宽度，再正向 / 反向各夹一次，保证 |w[i]-w[i+1]| ≤ 1 恒成立——
- * 生成器因此不会产出「校验不过」的图，§3.3 的重掷分支在结构上不可达（有单测钉死）。
+ * 环境层类型（docs/48 §3.2）：稀有节点（精英 / 篝火）由全局布置决定，
+ * 这里只在「本层 kinds 去掉 elite / rest」里按 weights 抽。
  */
-function planWidths(act: ActDefinition): number[] {
-  const total = act.layers.length;
-  const widths = act.layers.map((spec, i) => baseWidth(spec, i, total));
-  const clampTo = (i: number, neighbour: number): void => {
-    if (i === 0 || i >= total - 2) return; // 起点 / 祭坛 / Boss 固定单节点
-    widths[i] = Math.max(Math.min(widths[i]!, neighbour + 1), Math.max(2, neighbour - 1));
-  };
-  for (let i = 1; i < total - 2; i += 1) clampTo(i, widths[i - 1]!);
-  for (let i = total - 3; i >= 1; i -= 1) clampTo(i, widths[i + 1]!);
-  return widths;
+function ambientKind(spec: MapLayerSpec, act: ActDefinition, rng: RngStream): NodeKind {
+  const authored = spec.kinds.filter((k) => k !== "elite" && k !== "rest");
+  const pool = authored.length > 0 ? authored : (["battle", "altar", "event"] as NodeKind[]);
+  const weights = kindWeights(spec, act);
+  const entries = pool.map((k) => [k, Math.max(0, weights[k] ?? 0)] as const).filter(([, w]) => w > 0);
+  return entries.length > 0 ? rng.weighted(entries) : rng.pick(pool);
 }
 
-/** 本层允许的类型；受"同层精英≤1 / 篝火≤1 / l1 不出精英"约束时回落全局五类。 */
-function allowedKinds(spec: MapLayerSpec, layerIdx: number, elites: number, rests: number): NodeKind[] {
-  const ok = (k: NodeKind): boolean => {
-    if (k === "elite" && (elites >= 1 || layerIdx <= 1)) return false;
-    if (k === "rest" && rests >= 1) return false;
-    return true;
-  };
-  const authored = spec.kinds.filter(ok);
-  if (authored.length > 0) return [...authored];
-  return (["battle", "elite", "rest", "altar", "event"] as NodeKind[]).filter(ok);
+/** 生成过程中的裸节点（还没挂遭遇 / 事件 / 精英池）。 */
+interface RawNode {
+  readonly layer: number;
+  readonly col: number;
+  kind: NodeKind;
 }
+
+/** 生成器重掷上限（docs/48 §3.3）：任一整图校验不过就重掷。 */
+const MAP_ATTEMPTS = 80;
+
+/**
+ * 稀有节点总量（docs/48 §3.2.4）：精英 2~4 / 幕、篝火 1~3 / 幕。
+ * §五.1 授权：通关率若因地图离开 45~65%，补偿对象是**节点配比**而非敌人数值。
+ * 10 层方案实测单幕胜率跌破区间，故先跑「低精英、高篝火」这一档（见 docs/48 执行记录）。
+ */
+const ELITE_RANGE: readonly [number, number] = [2, 4];
+const REST_RANGE: readonly [number, number] = [1, 3];
 
 /** 该层 battle 节点的遭遇池：本层没有就继承本幕最近一层有池的（DAG 新增层不饿死）。 */
 function inheritedPool<T>(act: ActDefinition, layerIdx: number, pick: (spec: MapLayerSpec) => T | undefined): T | undefined {
@@ -191,133 +211,399 @@ function inheritedPool<T>(act: ActDefinition, layerIdx: number, pick: (spec: Map
 }
 
 /**
- * 树状地图生成（docs/48 §三）：DAG，同一 seed → 同一图。
- * - 深度沿用 act.layers（8 层）；l1~l5 每层 2~4 个节点；起点/祭坛/Boss 单节点
- * - 类型沿用各层 kinds 与 weights（约束：同层精英 ≤1、篝火 ≤1、l1 不出精英）
- * - 边只连相邻层、列差 ≤1、单调不交叉，且保证连通性
+ * 一次生成尝试（docs/48 §三 修订版）：宽度 / 列 / 类型 / 边全在同一 map 流里掷。
+ * 是否合格交给 analyzeMapGraph；不合格由 generateMapGraph 就地重掷（§3.3）。
  */
-export function generateMapGraph(act: ActDefinition, seed: number): GeneratedMap {
-  const rng = new Rng((seed ^ 0x5f3759df) >>> 0).stream("map");
-  const eliteRng = new Rng((seed ^ 0xe117e3) >>> 0).stream("map");
+function draftMap(act: ActDefinition, rng: RngStream): GeneratedMap {
+  const total = act.layers.length;
+  const mids = midLayerIndexes(total);
+  const spine = rng.nextFloat() < 0.5 ? 1 : 2;
+  const raw: RawNode[][] = act.layers.map(() => []);
+  raw[0] = [{ layer: 0, col: spine, kind: act.layers[0]!.kinds[0] ?? "battle" }];
+  for (const l of mids) {
+    const width = rollWidth(rng);
+    const cols = sampleDistinct(rng, [0, 1, 2, 3], width).sort((a, b) => a - b);
+    raw[l] = cols.map((col) => ({ layer: l, col, kind: "battle" as NodeKind }));
+  }
+  raw[total - 2] = [{ layer: total - 2, col: spine, kind: "altar" }];
+  raw[total - 1] = [{ layer: total - 1, col: spine, kind: "boss" }];
+
+  // 稀有节点布置：先整体洗牌再取前 N，消耗的随机次数与 N 无关——
+  // 这样「改节点配比」不会把整张图重新掷一遍，混比实验才有可比的同批地图。
+  const eliteCount = ELITE_RANGE[0] + rng.nextInt(0, ELITE_RANGE[1] - ELITE_RANGE[0]);
+  const restCount = REST_RANGE[0] + rng.nextInt(0, REST_RANGE[1] - REST_RANGE[0]);
+  const eliteLayers = rng.shuffle(eliteLayerIndexes(total)).slice(0, eliteCount);
+  for (const l of eliteLayers) {
+    const node = rng.pick(raw[l]!);
+    if (node.kind === "battle") node.kind = "elite";
+  }
+  const restLayers = rng.shuffle(mids).slice(0, restCount);
+  for (const l of restLayers) {
+    const cand = raw[l]!.filter((n) => n.kind === "battle");
+    if (cand.length > 0) rng.pick(cand).kind = "rest";
+  }
+
   const elitesTaken: string[] = [];
-  const widths = planWidths(act);
-  const layers: MapLayer[] = act.layers.map((spec, layerIdx) => {
-    const width = widths[layerIdx] ?? 1;
-    let elitePick: string | undefined;
-    if (spec.elitePool && spec.elitePool.length > 0) {
-      const remaining = spec.elitePool.filter((id) => !elitesTaken.includes(id));
-      const pool = remaining.length > 0 ? remaining : [...spec.elitePool];
-      elitePick = pool[eliteRng.nextInt(0, pool.length - 1)];
-      elitesTaken.push(elitePick);
-    }
-    const encounters = spec.encounters ?? inheritedPool(act, layerIdx, (s) => s.encounters);
-    const events = spec.events ?? inheritedPool(act, layerIdx, (s) => s.events);
-    let elites = 0;
-    let rests = 0;
-    const nodes: MapNode[] = [];
-    for (let i = 0; i < width; i += 1) {
-      const allowed = allowedKinds(spec, layerIdx, elites, rests);
-      const weights = kindWeights(spec, act);
-      const entries = allowed
-        .map((k) => [k, Math.max(0, weights[k] ?? 0)] as const)
-        .filter(([, w]) => w > 0);
-      // 层内类型权重全为 0（如精英层的全局权重为 0）时，退化为在允许集合里均匀抽
-      const kind = entries.length > 0 ? rng.weighted(entries) : allowed[rng.nextInt(0, Math.max(0, allowed.length - 1))] ?? "battle";
-      if (kind === "elite") elites += 1;
-      if (kind === "rest") rests += 1;
-      nodes.push({
-        id: `${kind}_${layerIdx}_${i}`,
-        kind,
-        i18n: spec.i18n ?? act.nodeI18n?.[kind] ?? `node.${kind}`,
-        ...(encounters && kind === "battle" ? { encounters } : {}),
-        ...(events && kind === "event" ? { events } : {}),
-        ...(elitePick && kind === "elite" ? { enemies: [elitePick] } : {}),
-        // 写死的遭遇只贴给「本层声明过的类型」：被同层约束挤掉后回落生成的其它类型不继承，
-        // 否则 l3 的精英 rust_warden 会漏到同层生成出来的 battle 节点上（docs/48 §3.2）
-        ...(spec.enemies && spec.kinds.includes(kind) && (kind === "battle" || kind === "elite" || kind === "boss")
-          ? { enemies: spec.enemies }
-          : {}),
-      });
-    }
-    return { id: spec.id, nodes };
-  });
-  return { layers, edges: buildEdges(layers) };
+  const layers: MapLayer[] = act.layers.map((spec, l) => ({
+    id: spec.id,
+    nodes: raw[l]!.map((r, i) => makeNode(act, spec, l, i, r, rng, elitesTaken)),
+  }));
+  return { layers, edges: buildEdges(layers, rng) };
 }
 
+/** 组装节点：补环境类型与遭遇 / 事件 / 精英（同幕按层序抽、后排斥前，docs/48 §3.2）。 */
+function makeNode(
+  act: ActDefinition,
+  spec: MapLayerSpec,
+  layerIdx: number,
+  index: number,
+  rawNode: RawNode,
+  rng: RngStream,
+  elitesTaken: string[],
+): MapNode {
+  const kind = rawNode.kind === "battle" ? ambientKind(spec, act, rng) : rawNode.kind;
+  const encounters = spec.encounters ?? inheritedPool(act, layerIdx, (s) => s.encounters);
+  const events = spec.events ?? inheritedPool(act, layerIdx, (s) => s.events);
+  let enemies: readonly string[] | undefined;
+  if (kind === "elite" && spec.elitePool && spec.elitePool.length > 0) {
+    const remaining = spec.elitePool.filter((id) => !elitesTaken.includes(id));
+    const pool = remaining.length > 0 ? remaining : [...spec.elitePool];
+    const pick = pool[rng.nextInt(0, pool.length - 1)]!;
+    elitesTaken.push(pick);
+    enemies = [pick];
+  } else if ((kind === "battle" || kind === "elite" || kind === "boss") && spec.enemies && spec.enemies.length > 0) {
+    // 写死的遭遇只给单节点必经层（l0 / Boss）；分支层写死遭遇由 validator 拦
+    enemies = spec.enemies;
+  }
+  return {
+    id: `${kind}_${layerIdx}_${index}`,
+    kind,
+    col: rawNode.col,
+    i18n: spec.i18n ?? act.nodeI18n?.[kind] ?? `node.${kind}`,
+    ...(encounters && kind === "battle" ? { encounters } : {}),
+    ...(events && kind === "event" ? { events } : {}),
+    ...(enemies ? { enemies } : {}),
+  };
+}
+
+type Seg = readonly [MapNode, MapNode];
+
 /**
- * 层间连边（docs/48 §3.1）：单调对齐保证"列差 ≤1 + 边不交叉 + 全连通"。
- * 后层比前层多出来的节点从最后一列扇出，少出来的节点汇到最后一列。
+ * 层间连边（docs/48 §3.1）：只连相邻层、两端列差 ≤1（单节点层豁免，全连）、边不交叉。
+ * 先保证「每个目标有入边、每个源有出边」，再随机补到一半——三分叉与汇合点由此自然产生。
  */
-function buildEdges(layers: readonly MapLayer[]): MapEdge[] {
+function buildEdges(layers: readonly MapLayer[], rng: RngStream): MapEdge[] {
   const edges: MapEdge[] = [];
-  for (let i = 0; i + 1 < layers.length; i += 1) {
-    const from = layers[i]!.nodes;
-    const to = layers[i + 1]!.nodes;
-    const m = from.length;
-    const n = to.length;
-    if (m === 0 || n === 0) continue;
-    for (let a = 0; a < m; a += 1) edges.push({ from: from[a]!.id, to: to[Math.min(a, n - 1)]!.id });
-    if (n > m) for (let b = m; b < n; b += 1) edges.push({ from: from[m - 1]!.id, to: to[b]!.id });
+  const colDiff = (a: MapNode, b: MapNode): number => Math.abs((a.col ?? 0) - (b.col ?? 0));
+  const crosses = (x: Seg, y: Seg): boolean =>
+    ((x[0].col ?? 0) - (y[0].col ?? 0)) * ((x[1].col ?? 0) - (y[1].col ?? 0)) < 0;
+  for (let l = 0; l + 1 < layers.length; l += 1) {
+    const A = layers[l]!.nodes;
+    const B = layers[l + 1]!.nodes;
+    if (A.length === 0 || B.length === 0) continue;
+    const free = A.length === 1 || B.length === 1;
+    const cand: Seg[] = [];
+    for (const a of A) for (const b of B) if (free || colDiff(a, b) <= 1) cand.push([a, b]);
+    const chosen: Seg[] = [];
+    const tryAdd = (edge: Seg): void => {
+      if (chosen.some((c) => c[0] === edge[0] && c[1] === edge[1])) return;
+      if (chosen.some((c) => crosses(c, edge))) return;
+      chosen.push(edge);
+    };
+    for (const b of B) {
+      const near = cand.filter((e) => e[1] === b).sort((x, y) => colDiff(x[0], x[1]) - colDiff(y[0], y[1]));
+      if (near.length > 0) tryAdd(near[0]!);
+    }
+    for (const a of A) {
+      const near = cand.filter((e) => e[0] === a).sort((x, y) => colDiff(x[0], x[1]) - colDiff(y[0], y[1]));
+      if (near.length > 0) tryAdd(near[0]!);
+    }
+    for (const edge of rng.shuffle(cand)) if (rng.nextFloat() < 0.5) tryAdd(edge);
+    for (const [a, b] of chosen) edges.push({ from: a.id, to: b.id });
   }
   return edges;
 }
 
+/** 兜底图的节点类型（与随机生成无关，固定式）。 */
+function fallbackKind(li: number, i: number, total: number, elites: readonly number[], rest: number): NodeKind {
+  if (li === total - 2) return "altar";
+  if (li === total - 1) return "boss";
+  if (elites.includes(li) && i === 1) return "elite";
+  if (li === rest && i === 2) return "rest";
+  return "battle";
+}
+
 /**
- * DAG 结构校验（docs/48 §3.1）：validator 与单测共用的「常驻检查」，空数组 = 合格。
- * 校验：只连相邻层 / 列差 ≤1 / 边不交叉 / 除起点外每节点 ≥1 入边 /
- * 除终点外每节点 ≥1 出边 / 同层精英 ≤1、篝火 ≤1 / l1 不出精英。
+ * 兜底图（docs/48 §3.3「最多 10 次后整幕重掷」的最后一档）：菱形三列 + 定式边，
+ * 数学上必过全部整图校验。正常路径用不到，只在随机生成连续失败时接管（保证"生成必成功"）。
  */
-export function checkMapGraph(map: GeneratedMap): string[] {
-  const issues: string[] = [];
-  const layerOf = new Map<string, number>();
-  const colOf = new Map<string, number>();
-  map.layers.forEach((layer, li) =>
-    layer.nodes.forEach((node, ni) => {
-      layerOf.set(node.id, li);
-      colOf.set(node.id, ni);
-    }),
-  );
-  const inDeg = new Map<string, number>();
-  const outDeg = new Map<string, number>();
-  for (const edge of map.edges) {
-    const from = layerOf.get(edge.from);
-    const to = layerOf.get(edge.to);
-    if (from === undefined || to === undefined) {
-      issues.push(`边 ${edge.from}→${edge.to} 引用了不存在的节点`);
+function fallbackMap(act: ActDefinition): GeneratedMap {
+  const total = act.layers.length;
+  const mids = midLayerIndexes(total);
+  const eliteLayers = eliteLayerIndexes(total).slice(0, 2);
+  const restLayer = mids[0];
+  const elitesTaken: string[] = [];
+  const layers: MapLayer[] = act.layers.map((spec, li) => {
+    const isEnd = li === 0 || li >= total - 2;
+    const cols = isEnd ? [1] : [0, 1, 2];
+    const nodes: MapNode[] = cols.map((col, i) => {
+      const kind = fallbackKind(li, i, total, eliteLayers, restLayer);
+      let enemies: readonly string[] | undefined;
+      if (kind === "elite") {
+        const pool = spec.elitePool && spec.elitePool.length > 0 ? spec.elitePool : (spec.enemies ?? []);
+        const pick = pool.length > 0 ? pool[elitesTaken.length % pool.length] : undefined;
+        if (pick) {
+          elitesTaken.push(pick);
+          enemies = [pick];
+        }
+      } else if ((kind === "battle" || kind === "boss") && spec.enemies && spec.enemies.length > 0) {
+        enemies = spec.enemies;
+      }
+      const encounters = spec.encounters ?? inheritedPool(act, li, (s) => s.encounters);
+      const events = spec.events ?? inheritedPool(act, li, (s) => s.events);
+      return {
+        id: `${kind}_${li}_${i}`,
+        kind,
+        col,
+        i18n: spec.i18n ?? act.nodeI18n?.[kind] ?? `node.${kind}`,
+        ...(encounters && kind === "battle" ? { encounters } : {}),
+        ...(events && kind === "event" ? { events } : {}),
+        ...(enemies ? { enemies } : {}),
+      };
+    });
+    return { id: spec.id, nodes };
+  });
+  const edges: MapEdge[] = [];
+  const pattern: readonly (readonly [number, number])[] = [[0, 0], [1, 0], [1, 1], [1, 2], [2, 2]];
+  for (let li = 0; li + 1 < total; li += 1) {
+    const A = layers[li]!.nodes;
+    const B = layers[li + 1]!.nodes;
+    if (A.length === 1 || B.length === 1) {
+      for (const a of A) for (const b of B) edges.push({ from: a.id, to: b.id });
       continue;
     }
-    if (to - from !== 1) issues.push(`边 ${edge.from}→${edge.to} 跨了非相邻层`);
-    if (Math.abs((colOf.get(edge.from) ?? 0) - (colOf.get(edge.to) ?? 0)) > 1) {
-      issues.push(`边 ${edge.from}→${edge.to} 两端列差 > 1`);
+    for (const [a, b] of pattern) {
+      const from = A[a];
+      const to = B[b];
+      if (from && to) edges.push({ from: from.id, to: to.id });
     }
-    outDeg.set(edge.from, (outDeg.get(edge.from) ?? 0) + 1);
-    inDeg.set(edge.to, (inDeg.get(edge.to) ?? 0) + 1);
   }
-  // 平面约束：同一对相邻层内，from 靠左的边不允许落到更右的列（否则两线交叉）
-  for (let li = 0; li + 1 < map.layers.length; li += 1) {
-    const segs = map.edges
-      .filter((e) => layerOf.get(e.from) === li)
-      .map((e) => ({ a: colOf.get(e.from) ?? 0, b: colOf.get(e.to) ?? 0 }));
-    for (const x of segs) {
-      for (const y of segs) {
-        if (x.a < y.a && x.b > y.b) {
-          issues.push(`第 ${li}→${li + 1} 层的边交叉（${x.a}→${x.b} 与 ${y.a}→${y.b}）`);
+  return { layers, edges };
+}
+
+/** 幕 id 混进种子：同一 run.seed 下 act1 / act2 生成两张不同的图（docs/40 §二 口径）。 */
+function actSeed(act: ActDefinition, seed: number): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < act.id.length; i += 1) h = Math.imul(h ^ act.id.charCodeAt(i), 0x01000193) >>> 0;
+  return (seed ^ h ^ 0x5f3759df) >>> 0;
+}
+
+/**
+ * 树状地图生成（docs/48 §三 修订版）：DAG，同一 seed → 同一图。
+ * 重掷直到整图校验全过（连边 / 密度 / 路径数 / 走廊），80 次仍不过则用兜底图。
+ */
+export function generateMapGraph(act: ActDefinition, seed: number): GeneratedMap {
+  const rng = new Rng(actSeed(act, seed)).stream("map");
+  for (let attempt = 0; attempt < MAP_ATTEMPTS; attempt += 1) {
+    const draft = draftMap(act, rng);
+    if (analyzeMapGraph(draft).issues.length === 0) return draft;
+  }
+  return fallbackMap(act);
+}
+
+export interface MapAnalysis {
+  readonly nodes: number;
+  /** 出度 ≥3 的中段节点（三分叉） */
+  readonly forks: number;
+  /** 入度 ≥2 的中段节点（汇合点） */
+  readonly merges: number;
+  /** start→Boss 可行路径数（封顶 99999） */
+  readonly paths: number;
+  readonly elites: number;
+  readonly rests: number;
+  readonly safePath: readonly string[];
+  readonly greedyPath: readonly string[];
+  readonly issues: readonly string[];
+}
+
+/** 安全走廊：start→Boss，精英 ≤1 且篝火 ≥1（docs/48 §3.4）。 */
+function findSafePath(
+  out: ReadonlyMap<string, readonly string[]>,
+  kindOf: ReadonlyMap<string, NodeKind>,
+  startId: string,
+  bossId: string,
+): string[] {
+  const key = (id: string, e: number, r: number): string => `${id}|${e}|${r}`;
+  const parent = new Map<string, string>();
+  const seen = new Set<string>([key(startId, 0, 0)]);
+  let queue: { id: string; e: number; r: number }[] = [{ id: startId, e: 0, r: 0 }];
+  let end: { id: string; e: number; r: number } | undefined;
+  while (queue.length > 0 && !end) {
+    const next: { id: string; e: number; r: number }[] = [];
+    for (const cur of queue) {
+      if (cur.id === bossId && cur.e <= 1 && cur.r >= 1) {
+        end = cur;
+        break;
+      }
+      for (const t of out.get(cur.id) ?? []) {
+        const kind = kindOf.get(t);
+        const e = Math.min(2, cur.e + (kind === "elite" ? 1 : 0));
+        const r = Math.min(1, cur.r + (kind === "rest" ? 1 : 0));
+        const k = key(t, e, r);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        parent.set(k, key(cur.id, cur.e, cur.r));
+        next.push({ id: t, e, r });
+      }
+    }
+    queue = next;
+  }
+  if (!end) return [];
+  const path: string[] = [];
+  let cur: string | undefined = key(end.id, end.e, end.r);
+  while (cur) {
+    path.unshift(cur.split("|")[0]!);
+    cur = parent.get(cur);
+  }
+  return path;
+}
+
+/** 贪婪走廊：存在精英 ≥2 的 start→Boss 路径（docs/48 §3.4）。 */
+function findGreedyPath(
+  map: GeneratedMap,
+  out: ReadonlyMap<string, readonly string[]>,
+  kindOf: ReadonlyMap<string, NodeKind>,
+  startId: string,
+  bossId: string,
+): string[] {
+  const best = new Map<string, number>([[startId, 0]]);
+  const parent = new Map<string, string>();
+  for (const layer of map.layers) {
+    for (const node of layer.nodes) {
+      const cur = best.get(node.id);
+      if (cur === undefined) continue;
+      for (const t of out.get(node.id) ?? []) {
+        const value = cur + (kindOf.get(t) === "elite" ? 1 : 0);
+        if ((best.get(t) ?? -1) < value) {
+          best.set(t, value);
+          parent.set(t, node.id);
         }
       }
     }
   }
+  if ((best.get(bossId) ?? 0) < 2) return [];
+  const path: string[] = [];
+  let cur: string | undefined = bossId;
+  while (cur) {
+    path.unshift(cur);
+    cur = parent.get(cur);
+  }
+  return path;
+}
+
+/**
+ * 整图分析（docs/48 §3.1 修订 2 / §3.2 / §3.4）：validator、生成器与单测共用的常驻检查。
+ * issues 非空 = 整图不合格（应重掷）。
+ */
+export function analyzeMapGraph(map: GeneratedMap): MapAnalysis {
+  const issues: string[] = [];
+  const layerOf = new Map<string, number>();
+  const colOf = new Map<string, number>();
+  const kindOf = new Map<string, NodeKind>();
+  const out = new Map<string, string[]>();
+  const indeg = new Map<string, number>();
+  map.layers.forEach((layer, li) =>
+    layer.nodes.forEach((node) => {
+      layerOf.set(node.id, li);
+      colOf.set(node.id, node.col ?? 0);
+      kindOf.set(node.id, node.kind);
+      out.set(node.id, []);
+      indeg.set(node.id, 0);
+    }),
+  );
+  const last = map.layers.length - 1;
+  for (const edge of map.edges) {
+    const a = layerOf.get(edge.from);
+    const b = layerOf.get(edge.to);
+    if (a === undefined || b === undefined) {
+      issues.push(`边 ${edge.from}→${edge.to} 引用了不存在的节点`);
+      continue;
+    }
+    if (b - a !== 1) issues.push(`边 ${edge.from}→${edge.to} 跨了非相邻层`);
+    out.get(edge.from)?.push(edge.to);
+    indeg.set(edge.to, (indeg.get(edge.to) ?? 0) + 1);
+  }
+  // 列差 ≤1（单节点层豁免）+ 平面约束（不交叉）
+  for (let li = 0; li < last; li += 1) {
+    const A = map.layers[li]!;
+    const B = map.layers[li + 1]!;
+    const free = A.nodes.length === 1 || B.nodes.length === 1;
+    const segs = map.edges
+      .filter((e) => layerOf.get(e.from) === li)
+      .map((e) => ({ a: colOf.get(e.from) ?? 0, b: colOf.get(e.to) ?? 0 }));
+    if (!free) {
+      for (const s of segs) {
+        if (Math.abs(s.a - s.b) > 1) issues.push(`第 ${li}→${li + 1} 层的边列差 ${Math.abs(s.a - s.b)} > 1`);
+      }
+    }
+    for (const x of segs) {
+      for (const y of segs) {
+        if (x.a < y.a && x.b > y.b) issues.push(`第 ${li}→${li + 1} 层的边交叉（${x.a}→${x.b} 与 ${y.a}→${y.b}）`);
+      }
+    }
+  }
+  // 层骨架 / 连通性 / 同层约束 / 祭坛前不出精英
   map.layers.forEach((layer, li) => {
-    const elites = layer.nodes.filter((n) => n.kind === "elite").length;
-    const rests = layer.nodes.filter((n) => n.kind === "rest").length;
-    if (elites > 1) issues.push(`第 ${li} 层有 ${elites} 个精英（同层 ≤1）`);
-    if (rests > 1) issues.push(`第 ${li} 层有 ${rests} 个篝火（同层 ≤1）`);
-    if (li === 1 && elites > 0) issues.push("l1 不允许出现精英");
+    const edgeLayer = li === 0 || li >= last - 1;
+    if (edgeLayer && layer.nodes.length !== 1) issues.push(`第 ${li} 层应是单节点`);
+    if (!edgeLayer && (layer.nodes.length < 2 || layer.nodes.length > 4)) {
+      issues.push(`第 ${li} 层中段节点 ${layer.nodes.length} 个（应 2~4）`);
+    }
+    const elitesHere = layer.nodes.filter((n) => n.kind === "elite").length;
+    const restsHere = layer.nodes.filter((n) => n.kind === "rest").length;
+    if (elitesHere > 1) issues.push(`第 ${li} 层精英 ${elitesHere} 个（同层 ≤1）`);
+    if (restsHere > 1) issues.push(`第 ${li} 层篝火 ${restsHere} 个（同层 ≤1）`);
+    if ((li === 1 || li === last - 2) && elitesHere > 0) issues.push(`第 ${li} 层不允许出现精英`);
     for (const node of layer.nodes) {
-      if (li > 0 && !inDeg.has(node.id)) issues.push(`节点 ${node.id} 没有入边`);
-      if (li + 1 < map.layers.length && !outDeg.has(node.id)) issues.push(`节点 ${node.id} 没有出边`);
+      if (li > 0 && (indeg.get(node.id) ?? 0) === 0) issues.push(`节点 ${node.id} 没有入边`);
+      if (li < last && (out.get(node.id)?.length ?? 0) === 0) issues.push(`节点 ${node.id} 没有出边`);
     }
   });
-  return issues;
+  const kinds = [...kindOf.values()];
+  const elites = kinds.filter((k) => k === "elite").length;
+  const rests = kinds.filter((k) => k === "rest").length;
+  if (elites < 2 || elites > 4) issues.push(`全图精英 ${elites} 个（应 2~4）`);
+  if (rests < 1 || rests > 3) issues.push(`全图篝火 ${rests} 个（应 1~3）`);
+  // 决策点密度（修订 2）
+  const midIds = map.layers.slice(1, last).flatMap((l) => l.nodes.map((n) => n.id));
+  const forks = midIds.filter((id) => (out.get(id)?.length ?? 0) >= 3).length;
+  const merges = midIds.filter((id) => (indeg.get(id) ?? 0) >= 2).length;
+  if (forks < 2) issues.push(`三分叉 ${forks} 个（应 ≥2）`);
+  if (merges < 2) issues.push(`汇合点 ${merges} 个（应 ≥2）`);
+  // 可行路径数（DP）
+  const startId = map.layers[0]?.nodes[0]?.id ?? "";
+  const bossId = map.layers[last]?.nodes[0]?.id ?? "";
+  const ways = new Map<string, number>([[startId, 1]]);
+  for (let li = 0; li < last; li += 1) {
+    for (const node of map.layers[li]!.nodes) {
+      const n = ways.get(node.id) ?? 0;
+      if (n === 0) continue;
+      for (const t of out.get(node.id) ?? []) ways.set(t, Math.min(99999, (ways.get(t) ?? 0) + n));
+    }
+  }
+  const paths = ways.get(bossId) ?? 0;
+  if (paths < 8) issues.push(`可行路径 ${paths} 条（应 ≥8）`);
+  // 走廊保证（修订 3）
+  const safePath = findSafePath(out, kindOf, startId, bossId);
+  const greedyPath = findGreedyPath(map, out, kindOf, startId, bossId);
+  if (safePath.length === 0) issues.push("缺少安全走廊（精英 ≤1 且篝火 ≥1 的 start→Boss 路径）");
+  if (greedyPath.length === 0) issues.push("缺少贪婪走廊（精英 ≥2 的 start→Boss 路径）");
+  return { nodes: layerOf.size, forks, merges, paths, elites, rests, safePath, greedyPath, issues };
+}
+
+/** 整图校验的简写：空数组 = 合格（validator 与单测的常驻检查）。 */
+export function checkMapGraph(map: GeneratedMap): string[] {
+  return [...analyzeMapGraph(map).issues];
 }
 
 /** 兼容旧调用：只要层表的走这里（边表另取 generateMapGraph）。 */

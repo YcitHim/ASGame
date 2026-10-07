@@ -266,7 +266,7 @@ export interface EventDefinition {
  */
 export interface MapLayerSpec {
   readonly id: string;
-  /** 候选节点数（1 = 必经/汇合，2~3 = 分支） */
+  /** 声明的层宽：l0/l8/l9 = 1，中段 2~4（docs/48 §3.1 修订 1）。实际宽度由生成器按种子掷 */
   readonly width: number;
   /** 本层允许生成的节点类型；实际类型按 weights 抽取 */
   readonly kinds: readonly NodeKind[];
@@ -287,6 +287,8 @@ export interface MapLayerSpec {
 export interface MapNode {
   readonly id: string;
   readonly kind: NodeKind;
+  /** 层内列坐标 0~3（docs/48 §3.1 修订 1）：DAG 生成时写入，UI 按列排布 */
+  readonly col?: number;
   /** battle / elite / boss 节点的敌人 id 列表 */
   readonly enemies?: readonly string[];
   /** 节点副标题（可选，i18n key） */

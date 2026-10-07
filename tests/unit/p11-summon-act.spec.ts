@@ -7,7 +7,7 @@ import {
   hasNextAct,
   actOf,
 } from "@/core/map";
-import { createContentDb, type ActDefinition, type EnemyDefinition } from "@/core/registry";
+import { createContentDb, type ActDefinition, type EnemyDefinition, type NodeKind } from "@/core/registry";
 import { TEST_CARDS, handIndex } from "../helpers/combat";
 
 /** docs/40 §二/§三/§五 · 转地图与召唤机制。 */
@@ -95,27 +95,31 @@ describe("docs/40 summon 机制", () => {
   });
 });
 
-describe("docs/40 转地图与精英池", () => {
+describe("docs/48 树状地图与精英池", () => {
+  const midKinds: NodeKind[] = ["battle", "altar", "event"];
   const act2ish: ActDefinition = {
     id: "act2ish",
     i18n: "act.test",
     classes: ["bloodwright"],
     weights: { battle: 50, elite: 0, rest: 0, altar: 25, event: 25 },
-    layers: [
-      { id: "l0", width: 1, kinds: ["battle"], enemies: ["caller"] },
-      { id: "l1", width: 2, kinds: ["battle"], enemies: ["caller"] },
-      { id: "l2", width: 1, kinds: ["elite"], elitePool: ["jailer", "tidecaller"] },
-      { id: "l3", width: 1, kinds: ["elite"], elitePool: ["jailer", "tidecaller"] },
-    ],
+    layers: Array.from({ length: 10 }, (_, i) => ({
+      id: `l${i}`,
+      width: i === 0 || i >= 8 ? 1 : 3,
+      kinds: i === 8 ? (["altar"] as NodeKind[]) : i === 9 ? (["boss"] as NodeKind[]) : midKinds,
+      ...(i >= 2 && i <= 6 ? { elitePool: ["jailer", "tidecaller"] } : {}),
+    })),
   };
 
-  it("同幕双精英池不重复", () => {
+  it("同幕精英池不重复（按层序抽、后排斥前）", () => {
     const map = generateActMap(act2ish, 12345);
-    const a = map[2].nodes[0].enemies?.[0];
-    const b = map[3].nodes[0].enemies?.[0];
-    expect(a).toBeTruthy();
-    expect(b).toBeTruthy();
-    expect(a).not.toBe(b);
+    const eliteIds = map
+      .flatMap((l) => l.nodes)
+      .filter((n) => n.kind === "elite")
+      .map((n) => n.enemies?.[0]);
+    expect(eliteIds.length).toBeGreaterThanOrEqual(2);
+    expect(eliteIds[0]).toBeTruthy();
+    expect(eliteIds[1]).toBeTruthy();
+    expect(eliteIds[0]).not.toBe(eliteIds[1]);
   });
 
   it("applyIntermission：切幕 / 回血 40%（floor）/ 污染清零 / 层进度重置", () => {

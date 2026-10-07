@@ -94,9 +94,15 @@
     },
     {
       "id": "l2",
-      "width": 1,
+      "width": 3,
       "kinds": [
-        "battle"
+        "battle",
+        "altar",
+        "event"
+      ],
+      "elitePool": [
+        "sanctum_jailer",
+        "tidecaller"
       ],
       "encounters": [
         {
@@ -124,9 +130,11 @@
     },
     {
       "id": "l3",
-      "width": 1,
+      "width": 3,
       "kinds": [
-        "elite"
+        "battle",
+        "altar",
+        "event"
       ],
       "elitePool": [
         "sanctum_jailer",
@@ -135,9 +143,15 @@
     },
     {
       "id": "l4",
-      "width": 1,
+      "width": 3,
       "kinds": [
-        "rest"
+        "battle",
+        "altar",
+        "event"
+      ],
+      "elitePool": [
+        "sanctum_jailer",
+        "tidecaller"
       ]
     },
     {
@@ -147,6 +161,10 @@
         "battle",
         "altar",
         "event"
+      ],
+      "elitePool": [
+        "sanctum_jailer",
+        "tidecaller"
       ],
       "encounters": [
         {
@@ -182,9 +200,11 @@
     },
     {
       "id": "l6",
-      "width": 1,
+      "width": 3,
       "kinds": [
-        "elite"
+        "battle",
+        "altar",
+        "event"
       ],
       "elitePool": [
         "sanctum_jailer",
@@ -193,6 +213,22 @@
     },
     {
       "id": "l7",
+      "width": 3,
+      "kinds": [
+        "battle",
+        "altar",
+        "event"
+      ]
+    },
+    {
+      "id": "l8",
+      "width": 1,
+      "kinds": [
+        "altar"
+      ]
+    },
+    {
+      "id": "l9",
       "width": 1,
       "kinds": [
         "boss"

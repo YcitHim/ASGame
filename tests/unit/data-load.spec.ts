@@ -33,24 +33,23 @@ describe("真实内容装载（data/load）", () => {
     expect(game.i18n["card.strike.name"]).toBe("打击");
   });
 
-  it("分支地图层模板：入口/精英/汇合/Boss，分支层带遭遇与事件池", () => {
+  it("树状地图层模板：10 层骨架 / 精英池 / 收尾祭坛→Boss（docs/48 §3.1）", () => {
     const act = loadGameContent().acts[0];
-    expect(act.layers).toHaveLength(8);
+    expect(act.layers).toHaveLength(10);
     expect(act.weights).toEqual({ battle: 40, elite: 15, rest: 15, altar: 15, event: 15 });
-    // 入口必经战斗、精英层、Boss 层
+    // 入口必经战斗、收尾祭坛 → Boss
     expect(act.layers[0].width).toBe(1);
     expect(act.layers[0].kinds).toEqual(["battle"]);
-    expect(act.layers[3].kinds).toEqual(["elite"]);
-    expect(act.layers[3].enemies).toEqual(["rust_warden"]);
-    expect(act.layers[7].kinds).toEqual(["boss"]);
-    expect(act.layers[7].enemies).toEqual(["rust_throat"]);
-    // 精英后（l4=休息）与 Boss 前（l6=祭坛）各一个汇合点（width=1）
-    expect(act.layers[4].width).toBe(1);
-    expect(act.layers[4].kinds).toEqual(["rest"]);
-    expect(act.layers[6].width).toBe(1);
-    expect(act.layers[6].kinds).toEqual(["altar"]);
-    // 分支层：3 选 1，带遭遇池与事件池
-    expect(act.layers[1].width).toBe(3);
+    expect(act.layers[8].width).toBe(1);
+    expect(act.layers[8].kinds).toEqual(["altar"]);
+    expect(act.layers[9].width).toBe(1);
+    expect(act.layers[9].kinds).toEqual(["boss"]);
+    expect(act.layers[9].enemies).toEqual(["rust_throat"]);
+    // 精英池挂 l2~l6；l1 / l7 不出精英（docs/48 §3.2）
+    for (const i of [2, 3, 4, 5, 6]) expect(act.layers[i].elitePool).toEqual(["rust_warden"]);
+    expect(act.layers[1].kinds).not.toContain("elite");
+    expect(act.layers[7].kinds).not.toContain("elite");
+    // 中段层带遭遇池与事件池
     expect(act.layers[1].encounters?.length).toBe(3);
     expect(act.layers[1].events?.length).toBe(5);
   });
@@ -61,12 +60,12 @@ describe("真实内容装载（data/load）", () => {
     const a = generateActMap(act, 12345);
     const b = generateActMap(act, 12345);
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
-    expect(a).toHaveLength(8);
-    // docs/48 §3.1：起点 / 祭坛 / Boss 单节点，中间层 2~4
+    expect(a).toHaveLength(10);
+    // docs/48 §3.1 修订 1：起点 / 祭坛 / Boss 单节点，中间层 2~4
     expect(a[0].nodes).toHaveLength(1);
-    expect(a[6].nodes).toHaveLength(1);
-    expect(a[7].nodes).toHaveLength(1);
-    for (const idx of [1, 2, 3, 4, 5]) {
+    expect(a[8].nodes).toHaveLength(1);
+    expect(a[9].nodes).toHaveLength(1);
+    for (const idx of [1, 2, 3, 4, 5, 6, 7]) {
       expect(a[idx].nodes.length, `l${idx}`).toBeGreaterThanOrEqual(2);
       expect(a[idx].nodes.length, `l${idx}`).toBeLessThanOrEqual(4);
       expect(a[idx].nodes.filter((n) => n.kind === "elite").length).toBeLessThanOrEqual(1);

@@ -17,18 +17,25 @@ const act1 = acts.find((a) => a.id === "act1")!;
 const act2 = acts.find((a) => a.id === "act2")!;
 
 describe("docs/40 act2 数据", () => {
-  it("act2 八层：双精英夹一个必经休息、Boss 沉钟唱诗长", () => {
-    expect(act2.layers).toHaveLength(8);
-    expect(act2.layers[3].elitePool).toEqual(["sanctum_jailer", "tidecaller"]);
-    expect(act2.layers[6].elitePool).toEqual(["sanctum_jailer", "tidecaller"]);
-    expect(act2.layers[4].kinds).toEqual(["rest"]);
-    expect(act2.layers[7].enemies).toEqual(["drowned_choirmaster"]);
+  it("act2 十层：精英池挂 l2~l6、l1/l7 无精英、Boss 沉钟唱诗长（docs/48 §3.1）", () => {
+    expect(act2.layers).toHaveLength(10);
+    for (const i of [2, 3, 4, 5, 6]) {
+      expect(act2.layers[i].elitePool).toEqual(["sanctum_jailer", "tidecaller"]);
+    }
+    expect(act2.layers[1].kinds).not.toContain("elite");
+    expect(act2.layers[7].kinds).not.toContain("elite");
+    expect(act2.layers[9].enemies).toEqual(["drowned_choirmaster"]);
   });
 
-  it("同幕双精英不重复（地图生成）", () => {
+  it("同幕精英不重复（地图生成，前两只必不同）", () => {
     for (const seed of [1, 2, 3, 42, 999]) {
       const map = generateActMap(act2, seed);
-      expect(map[3].nodes[0].enemies?.[0]).not.toBe(map[6].nodes[0].enemies?.[0]);
+      const eliteIds = map
+        .flatMap((l) => l.nodes)
+        .filter((n) => n.kind === "elite")
+        .map((n) => n.enemies?.[0]);
+      expect(eliteIds.length).toBeGreaterThanOrEqual(2);
+      expect(eliteIds[0]).not.toBe(eliteIds[1]);
     }
   });
 
@@ -36,7 +43,7 @@ describe("docs/40 act2 数据", () => {
     const map = generateActMap(act2, 42);
     const battle = map[0].nodes[0];
     expect(battle.i18n).toBe("node.act2.battle");
-    expect(map[7].nodes[0].i18n).toBe("node.act2.boss");
+    expect(map[9].nodes[0].i18n).toBe("node.act2.boss");
     // 第一幕仍用通用文案
     const map1 = generateActMap(act1, 42);
     expect(map1[0].nodes[0].i18n).toBe("node.battle");

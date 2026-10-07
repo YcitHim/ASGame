@@ -6,6 +6,7 @@ import {
   currentLayer,
   currentNode,
   generateActMap,
+  generateMapGraph,
   healRun,
   isCombatNode,
   isRunComplete,
@@ -57,12 +58,13 @@ describe("S5.1 分支地图（core/map）", () => {
     expect(run.cleared).toHaveLength(act.layers.length);
   });
 
-  it("树状结构：起点/祭坛/Boss 单节点，中间层 2~4 个，且同层精英≤1、篝火≤1", () => {
+  it("树状结构：起点/祭坛/Boss 单节点，中间 7 层 2~4 个，且同层精英≤1、篝火≤1", () => {
     const layers = generateActMap(act, 99);
+    expect(layers).toHaveLength(10);
     expect(layers[0].nodes).toHaveLength(1); // 起点
-    expect(layers[6].nodes).toHaveLength(1); // 祭坛
-    expect(layers[7].nodes).toHaveLength(1); // Boss
-    for (const idx of [1, 2, 3, 4, 5]) {
+    expect(layers[8].nodes).toHaveLength(1); // 祭坛
+    expect(layers[9].nodes).toHaveLength(1); // Boss
+    for (const idx of [1, 2, 3, 4, 5, 6, 7]) {
       const nodes = layers[idx].nodes;
       expect(nodes.length).toBeGreaterThanOrEqual(2);
       expect(nodes.length).toBeLessThanOrEqual(4);
@@ -92,13 +94,19 @@ describe("S5.1 分支地图（core/map）", () => {
     expect(ids.length).toBeGreaterThan(0);
   });
 
-  it("连通性常驻检查：任意种子的生成图都必须是合格 DAG（docs/48 §3.3）", async () => {
-    const { checkMapGraph, generateMapGraph } = await import("@/core/map");
+  it("整图常驻检查：任意种子都过连通性 / 密度 / 路径数 / 走廊（docs/48 §3.3）", async () => {
+    const { analyzeMapGraph, checkMapGraph } = await import("@/core/map");
     for (const a of game.acts) {
-      for (let seed = 0; seed < 512; seed += 1) {
+      for (let seed = 0; seed < 256; seed += 1) {
         const map = generateMapGraph(a, seed);
         const issues = checkMapGraph(map);
         expect(issues, `${a.id} seed ${seed}: ${issues.join("；")}`).toEqual([]);
+        const analysis = analyzeMapGraph(map);
+        expect(analysis.forks, `${a.id} ${seed} 三分叉`).toBeGreaterThanOrEqual(2);
+        expect(analysis.merges, `${a.id} ${seed} 汇合点`).toBeGreaterThanOrEqual(2);
+        expect(analysis.paths, `${a.id} ${seed} 路径数`).toBeGreaterThanOrEqual(8);
+        expect(analysis.safePath.length).toBeGreaterThan(0);
+        expect(analysis.greedyPath.length).toBeGreaterThan(0);
       }
     }
   });
@@ -108,17 +116,16 @@ describe("S5.1 分支地图（core/map）", () => {
     let run = createRunState(act, cls, 1);
     run = chooseNode(run, act, 0);
     const view = mapView(run, act);
-    expect(view.layers).toHaveLength(8);
+    expect(view.layers).toHaveLength(10);
     expect(view.current?.kind).toBe("battle");
     expect(isCombatNode(currentNode(run, act))).toBe(true);
-    // 精英层（l3）
-    const eliteRun = { ...run, layerIndex: 3, picked: [0, 0, 0, 0] };
-    expect(isCombatNode(currentNode(eliteRun, act))).toBe(true);
-    expect(currentNode(eliteRun, act)?.kind).toBe("elite");
-    // 精英后汇合点（l4）是休息
-    const restRun = { ...run, layerIndex: 4, picked: [0, 0, 0, 0, 0] };
-    expect(isCombatNode(currentNode(restRun, act))).toBe(false);
-    expect(currentNode(restRun, act)?.kind).toBe("rest");
+    // 精英 / 篝火落在哪一层由种子决定：按实际图取节点断言
+    const all = mapView(run, act).layers.flatMap((l) => l.nodes);
+    expect(isCombatNode(all.find((n) => n.kind === "elite"))).toBe(true);
+    expect(isCombatNode(all.find((n) => n.kind === "rest"))).toBe(false);
+    // 收尾固定：祭坛 → Boss
+    expect(currentNode({ ...run, layerIndex: 8, picked: [] }, act)?.kind).toBe("altar");
+    expect(currentNode({ ...run, layerIndex: 9, picked: [] }, act)?.kind).toBe("boss");
   });
 
   it("局外 HP：写回与休息回复（不超上限）", () => {

@@ -29,10 +29,10 @@ describe("S5 UI 流程视图挂载", () => {
     const run = useRunStore();
     run.startRun("bloodwright", 1);
     await nextTick();
-    // docs/48 §3.1：一幕 13~19 个节点（起点/祭坛/Boss 各 1，中间层 2~4）
+    // docs/48 §3.1 修订 1：一幕 17~31 个节点（起点/祭坛/Boss 各 1，中间 7 层 2~4）
     const nodes = wrapper.findAll(".node");
-    expect(nodes.length).toBeGreaterThanOrEqual(13);
-    expect(nodes.length).toBeLessThanOrEqual(19);
+    expect(nodes.length).toBeGreaterThanOrEqual(17);
+    expect(nodes.length).toBeLessThanOrEqual(31);
     // 全图可见（docs/48 §4）：节点全部渲染，不做雾隐
     expect(nodes.length).toBe(run.view!.layers.flatMap((l) => l.nodes).length);
     // 入口层（l0）只有一个必经节点，也是唯一可进入的
@@ -43,7 +43,7 @@ describe("S5 UI 流程视图挂载", () => {
   it("MapView：一幕打完先弹幕间入口，两幕打完全局胜利", async () => {
     const { wrapper } = mountView(MapView, (run) => {
       run.startRun("bloodwright", 1);
-      for (let i = 0; i < 8; i += 1) run.advance();
+      for (let i = 0; i < 10; i += 1) run.advance();
     });
     await nextTick();
     // docs/40：一幕通关 → 幕间，而非全局胜利
@@ -52,7 +52,7 @@ describe("S5 UI 流程视图挂载", () => {
     // 过幕后再走完第二幕 → 全局胜利
     const run = useRunStore();
     run.enterNextAct();
-    for (let i = 0; i < 8; i += 1) run.advance();
+    for (let i = 0; i < 10; i += 1) run.advance();
     await nextTick();
     expect(wrapper.text()).toContain("远 征 胜 利");
     wrapper.unmount();
@@ -69,7 +69,7 @@ describe("S5 UI 流程视图挂载", () => {
   it("RewardView：Boss 节点显示远征胜利而非卡奖", async () => {
     const { wrapper } = mountView(RewardView, (run) => {
       run.startRun("bloodwright", 1);
-      for (let i = 0; i < 7; i += 1) run.advance();
+      for (let i = 0; i < 9; i += 1) run.advance();
     });
     await nextTick();
     expect(wrapper.text()).toContain("远 征 胜 利");
