@@ -8,6 +8,7 @@ import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
 import { useTutorialStore } from "@/stores/tutorial";
 import { TUTORIAL_CHAPTERS, chapterSteps } from "@/ui/tutorial";
+import { stepDebugCommands } from "@/ui/tutorial-script";
 
 /**
  * docs/42 速成版（甲方要求：不墨迹）。
@@ -39,14 +40,28 @@ describe("docs/42 速成版 · 脚本结构", () => {
     if (battle.kind !== "battle") throw new Error("脚本异常");
     expect(battle.steps).toHaveLength(8);
     expect(game.content.enemies.has(battle.enemies[0]!)).toBe(true);
-    // 敌人 HP 被抬高，保证"异常"那一课演得完
-    expect(battle.enemyHp).toBeGreaterThan(36);
+    // docs/43 甲方反馈「太磨」：HP 压到 26，三回合内打完，又够演完异常/蓄力两课
+    expect(battle.enemyHp).toBeGreaterThan(20);
+    expect(battle.enemyHp).toBeLessThanOrEqual(30);
+  });
+
+  it("敌人意图由脚本钉死：先挂异常、再一回合蓄力（不再靠种子碰运气）", () => {
+    const battle = TUTORIAL_CHAPTERS[0];
+    if (battle.kind !== "battle") throw new Error("脚本异常");
+    expect(battle.steps[0]?.intent).toEqual({ kind: "debuff", buffId: "weak", value: 1 });
+    // 「异常」那一课也钉一次，断点续做不会因为敌人随机出招卡死
+    const debuffStep = battle.steps.find((s) => s.goal.kind === "playerDebuffed");
+    expect(debuffStep?.intent?.kind).toBe("debuff");
+    const chargeStep = battle.steps.find((s) => s.goal.kind === "blockEndTurn");
+    expect(chargeStep?.intent).toEqual({ kind: "charge", value: 2, block: 4, release: 10 });
   });
 
   it("前四步是 UI 导览：分别指向状态栏 / 能量 / 手牌 / 意图，且都要玩家点「知道了」", () => {
     const battle = TUTORIAL_CHAPTERS[0];
     if (battle.kind !== "battle") throw new Error("脚本异常");
     expect(battle.steps.slice(0, 4).map((s) => s.focus)).toEqual(["status", "energy", "hand", "intent"]);
+    // 「异常」那一课专门高亮状态行（甲方的「诅咒指引区」）
+    expect(battle.steps.find((s) => s.goal.kind === "playerDebuffed")?.focus).toBe("debuff");
     for (const step of battle.steps.slice(0, 4)) {
       expect(step.goal.kind).toBe("acknowledge");
       expect(step.why.length).toBeGreaterThan(0);
@@ -54,17 +69,17 @@ describe("docs/42 速成版 · 脚本结构", () => {
     }
   });
 
-  it("后四步：攻击 → 防御（严判定）→ 被挂异常 → 清场", () => {
+  it("后四步：攻击 → 被挂异常 → 蓄力防御（严判定）→ 清场", () => {
     const battle = TUTORIAL_CHAPTERS[0];
     if (battle.kind !== "battle") throw new Error("脚本异常");
     expect(battle.steps.slice(4).map((s) => s.goal.kind)).toEqual([
       "playType",
-      "blockEndTurn",
       "playerDebuffed",
+      "blockEndTurn",
       "killAll",
     ]);
     // 防御课是严判定，且必须有保底发的格挡牌（不能靠发牌运气）
-    const block = battle.steps[5]!;
+    const block = battle.steps[6]!;
     expect(block.strict).toBe(true);
     expect(block.classGrant?.bloodwright).toContain("defend");
     expect(block.classGrant?.engineer).toContain("brassguard");
@@ -106,29 +121,35 @@ describe("docs/42 速成版 · 判定", () => {
     expect(tutorial.stepIndex).toBe(0);
   });
 
-  it("攻击课认 attack、防御课认格挡后结束回合（严判定给纠正）", () => {
+  it("攻击课认 attack；异常课要真被挂；防御课认格挡后结束回合（严判定给纠正）", () => {
     const { tutorial } = setup();
     tutorial.stepIndex = 4;
     tutorial.noteCardPlayed("defend", "skill");
     expect(tutorial.stepIndex).toBe(4);
     tutorial.noteCardPlayed("strike", "attack");
     expect(tutorial.stepIndex).toBe(5);
-    tutorial.noteEndTurn({ block: 0 });
+    // 异常课：清场 / 结束回合都不算，得真吃到一次减益
+    tutorial.noteEndTurn({ block: 5 });
     expect(tutorial.stepIndex).toBe(5);
+    tutorial.notePlayerDebuffed();
+    expect(tutorial.stepIndex).toBe(6);
+    // 蓄力防御课：没格挡不推进并给纠正
+    tutorial.noteEndTurn({ block: 0 });
+    expect(tutorial.stepIndex).toBe(6);
     expect(tutorial.correction.length).toBeGreaterThan(0);
     tutorial.noteEndTurn({ block: 5 });
-    expect(tutorial.stepIndex).toBe(6);
+    expect(tutorial.stepIndex).toBe(7);
     expect(tutorial.correction).toBe("");
   });
 
   it("被挂异常才推进「异常」那一课；清场才推进最后一步", () => {
     const { tutorial } = setup();
-    tutorial.stepIndex = 6;
+    tutorial.stepIndex = 5;
     expect(tutorial.step?.goal.kind).toBe("playerDebuffed");
     tutorial.noteCleared();
-    expect(tutorial.stepIndex).toBe(6);
+    expect(tutorial.stepIndex).toBe(5);
     tutorial.notePlayerDebuffed();
-    expect(tutorial.stepIndex).toBe(7);
+    expect(tutorial.stepIndex).toBe(6);
     expect(tutorial.debuffed).toBe(true);
   });
 
@@ -228,7 +249,7 @@ describe("docs/42 速成版 · 战斗接入", () => {
     run.startRun("bloodwright", 5);
     const tutorial = useTutorialStore();
     tutorial.begin();
-    tutorial.stepIndex = 6;
+    tutorial.stepIndex = 5;
     const store = useBattleStore();
     const chapter = TUTORIAL_CHAPTERS[0];
     if (chapter.kind !== "battle" || !tutorial.run) throw new Error("脚本异常");
@@ -248,9 +269,128 @@ describe("docs/42 速成版 · 战斗接入", () => {
     expect(store.battle).not.toBeNull();
     // 玩家吃到减益时通过事件流推进（这里直接验证信号通路）
     tutorial.notePlayerDebuffed();
-    expect(tutorial.stepIndex).toBe(7);
+    expect(tutorial.stepIndex).toBe(6);
   });
 });
+
+describe("docs/43 改版 · 脚本钉意图（core DebugCommand）", () => {
+  it("charge 钉成「一回合蓄力」：下回合自动释放重击，且蓄力时架格挡", () => {
+    let s = createBattleState({
+      battleId: "intent-test",
+      seed: 3,
+      player: { maxHp: 66, energy: 3, hp: 66, pollution: 0 },
+      enemies: [{ id: "polluting_preacher", maxHp: 26 }],
+      deck: ["defend", "defend", "defend", "defend", "defend"],
+      handSize: 5,
+      relics: [],
+      content: game.content,
+      safetyFloor: 1,
+    });
+    const eid = s.enemies[0]!.id;
+    s = reduce(s, { type: "DebugCommand", actionId: "d0", command: `intent ${eid} charge 2 4 10` }).state;
+    expect(s.enemies[0]!.intent).toMatchObject({ kind: "charge", value: 2, block: 4, thenValue: 10, thenIn: 1 });
+    // 玩家结束回合 → 敌人蓄力（架 4 格挡），并把释放段排进链
+    s = reduce(s, { type: "EndTurn", actionId: "e1" }).state;
+    expect(s.enemies[0]!.block).toBe(4);
+    expect(s.enemies[0]!.intent).toMatchObject({ kind: "attack", value: 10, released: true });
+    // 再结束一回 → 重击落地
+    const before = s.player.hp;
+    s = reduce(s, { type: "EndTurn", actionId: "e2" }).state;
+    expect(s.player.hp).toBeLessThan(before);
+  });
+
+  it("debuff 钉得动：结束回合就会吃到指定的减益", () => {
+    let s = createBattleState({
+      battleId: "intent-debuff",
+      seed: 3,
+      player: { maxHp: 66, energy: 3, hp: 66, pollution: 0 },
+      enemies: [{ id: "polluting_preacher", maxHp: 26 }],
+      deck: ["defend", "defend", "defend", "defend", "defend"],
+      handSize: 5,
+      relics: [],
+      content: game.content,
+      safetyFloor: 1,
+    });
+    const eid = s.enemies[0]!.id;
+    s = reduce(s, { type: "DebugCommand", actionId: "d0", command: `intent ${eid} debuff weak 1` }).state;
+    expect(s.enemies[0]!.intent).toMatchObject({ kind: "debuff", buffId: "weak", stacks: 1 });
+    // weak 可能在同一动作里被下一回合的 tick 到掉，所以看事件流（教学判定也走事件流）
+    const r = reduce(s, { type: "EndTurn", actionId: "e1" });
+    const debuffed = r.events.some(
+      (e) => e.type === "BuffApplied" && e.targetId === "player" && e.buffId === "weak",
+    );
+    expect(debuffed).toBe(true);
+  });
+});
+
+describe("docs/43 改版 · 整场通关（按脚本走不卡死）", () => {
+  it("认屏幕 → 攻击 → 被挂异常 → 挡一回合蓄力 → 清场", () => {
+    const run = useRunStore();
+    run.startRun("bloodwright", 5);
+    const tutorial = useTutorialStore();
+    tutorial.begin();
+    const store = useBattleStore();
+    const chapter = TUTORIAL_CHAPTERS[0];
+    if (chapter.kind !== "battle" || !tutorial.run) throw new Error("脚本异常");
+    store.startTutorial({
+      chapterId: chapter.id,
+      seed: chapter.seed,
+      enemies: chapter.enemies,
+      enemyHp: chapter.enemyHp,
+      deck: tutorial.run.deck,
+      hp: 66,
+      maxHp: tutorial.run.maxHp,
+      relics: [],
+    });
+
+    const apply = () => {
+      const commands = stepDebugCommands({
+        grant: tutorial.stepGrant,
+        intent: tutorial.stepIntent,
+        enemyId: store.battle?.enemies[0]?.id ?? "",
+      });
+      for (const command of commands) store.debug(command);
+      store.skip();
+    };
+    const playType = (type: string) => {
+      const hand = store.battle!.piles.hand;
+      const index = hand.findIndex(
+        (id) => game.content.cards.get(store.battle!.cardInstances[id]!.cardId)?.type === type,
+      );
+      expect(index).toBeGreaterThanOrEqual(0);
+      store.playCard(index, store.battle!.enemies[0]!.id);
+      store.skip();
+    };
+
+    apply();
+    for (let i = 0; i < 4; i += 1) {
+      expect(tutorial.needsAcknowledge).toBe(true);
+      tutorial.noteAcknowledge();
+      apply();
+    }
+    // 攻击课
+    expect(tutorial.step?.goal.kind).toBe("playType");
+    playType("attack");
+    apply();
+    // 异常课：脚本钉的是「虚弱」，结束回合必吃到
+    expect(tutorial.step?.goal.kind).toBe("playerDebuffed");
+    store.endTurn();
+    store.skip();
+    expect(tutorial.debuffed).toBe(true);
+    expect(tutorial.step?.goal.kind).toBe("blockEndTurn");
+    // 蓄力课：意图被钉成 1 回合蓄力，玩家叠格挡再结束回合
+    apply();
+    expect(store.battle?.enemies[0]?.intent?.kind).toBe("charge");
+    playType("skill");
+    store.endTurn();
+    store.skip();
+    expect(tutorial.step?.goal.kind).toBe("killAll");
+    // 清场：收尾
+    store.debug(`kill ${store.battle!.enemies[0]!.id}`);
+    expect(store.battle!.enemies[0]!.hp).toBe(0);
+  });
+});
+
 
 describe("docs/43 Q2 · 教学断点（meta 槽）", () => {
   beforeEach(() => {

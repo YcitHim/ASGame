@@ -3,8 +3,12 @@
  *
  * 指令：noop / set hp <n> / set energy <n> / add buff <id> <stacks> [duration]
  *       / give card <id> / draw <n> / kill <enemyId> / seed <n>
+ *       / intent <enemyId> attack <value>
+ *       / intent <enemyId> debuff <buffId> <stacks>
+ *       / intent <enemyId> charge <value> <block> <release>
  * 约定：所有 bug 复现步骤用这些指令描述。
  */
+import type { IntentPayload } from "../events";
 import type { BuffId } from "../registry/ids";
 import { Rng } from "../rng";
 import type { EventSink } from "../events/event-sink";
@@ -80,6 +84,43 @@ export function executeDebugCommand(draft: Draft, sink: EventSink, command: stri
       unit.hp = 0;
       killUnit(draft, sink, id);
       return { ok: true, message: `已击杀 ${id}` };
+    }
+
+    /**
+     * 钉死某只敌人的当前意图（教学脚本用，docs/42 速成版）：
+     * 不走 RNG 抽取，直接改 combat 状态；`charge` 会自动把释放段排进 forcedChain。
+     * 这让教学能稳定地演「1 回合蓄力」而不用靠种子碰运气。
+     */
+    case "intent": {
+      const id = tokens[1];
+      const kind = tokens[2];
+      const enemy = id ? draft.enemies.find((e) => e.id === id) : undefined;
+      if (!enemy || !kind) {
+        return { ok: false, message: "用法：intent <enemyId> attack|debuff|charge …" };
+      }
+      let payload: IntentPayload;
+      if (kind === "charge") {
+        const value = int(tokens[3]) ?? 0;
+        const block = int(tokens[4]) ?? 0;
+        const release = int(tokens[5]) ?? value + 6;
+        // 释放段交给 forcedChain：下一回合敌人行动完就会自动揭示，无需再钉
+        enemy.forcedChain = [{ kind: "attack", value: release, released: true }];
+        payload = { kind: "charge", value, block, thenValue: release, thenIn: 1 };
+      } else if (kind === "debuff") {
+        const buffId = (tokens[3] ?? "weak") as BuffId;
+        const stacks = int(tokens[4]) ?? 1;
+        enemy.forcedChain = [];
+        payload = { kind: "debuff", buffId, stacks };
+      } else if (kind === "attack") {
+        enemy.forcedChain = [];
+        payload = { kind: "attack", value: int(tokens[3]) ?? 0 };
+      } else {
+        enemy.forcedChain = [];
+        payload = { kind: "defend", value: int(tokens[3]) ?? 0 };
+      }
+      enemy.intent = payload;
+      sink.emit("IntentRevealed", { enemyId: enemy.id, intent: payload });
+      return { ok: true, message: `${enemy.id} 的意图已钉为 ${kind}` };
     }
 
     case "seed": {

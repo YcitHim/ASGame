@@ -7,7 +7,13 @@
 import { defineStore } from "pinia";
 import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
-import { TUTORIAL_CHAPTERS, chapterSteps, tutorialChapter, type TutorialStep } from "@/ui/tutorial";
+import {
+  TUTORIAL_CHAPTERS,
+  chapterSteps,
+  tutorialChapter,
+  type TutorialIntentScript,
+  type TutorialStep,
+} from "@/ui/tutorial";
 
 /** 教学局状态（跨步骤带着走） */
 export interface TutorialRunState {
@@ -65,6 +71,11 @@ export const useTutorialStore = defineStore("tutorial", {
     },
     isBattleChapter(state): boolean {
       return tutorialChapter(state.chapterIndex)?.kind === "battle";
+    },
+    /** 当前步骤要钉的敌人意图（教学脚本，见 TutorialIntentScript） */
+    stepIntent(state): TutorialIntentScript | null {
+      const step = chapterSteps(tutorialChapter(state.chapterIndex))[state.stepIndex];
+      return step?.intent ?? null;
     },
     /** 当前步骤要发的保底牌（grant + 按职业的 classGrant） */
     stepGrant(state): readonly string[] {

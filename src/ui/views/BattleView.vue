@@ -13,6 +13,7 @@ import { isDebugEnabled } from "@/systems/debug";
 import { useStageFit } from "@/ui/composables/useStageFit";
 import { actCopy } from "@/ui/act-copy";
 import { TUTORIAL_TITLE } from "@/ui/tutorial";
+import { stepDebugCommands } from "@/ui/tutorial-script";
 import { describeEvent, type LogEntry } from "@/ui/log-format";
 import BattleLog from "@/ui/components/BattleLog.vue";
 import BuffRow from "@/ui/components/BuffRow.vue";
@@ -60,8 +61,8 @@ function startTutorialBattle(): void {
     // 职业身份件按教学局记下的职业取——从标题页续做时并没有在跑的远征
     relics: game.content.classes.get(tutorial.run.classId)?.startRelics ?? [],
   });
-  // 战斗建好之后再发样例牌（否则 grant 会打空）
-  applyStepGrant();
+  // 战斗建好之后再发样例牌 / 钉敌人意图（否则会打空）
+  applyStepScript();
 }
 
 /**
@@ -74,15 +75,22 @@ function advanceTutorialChapter(): void {
 }
 
 /**
- * 教学步骤带 grant / classGrant 时，把这几个「样例牌」塞进手牌（走 core 的 DebugCommand，确定性）。
+ * 教学步骤的脚本化动作（走 core 的 DebugCommand，完全确定性）：
+ * - grant / classGrant → 把样例牌塞进手牌
+ * - intent → 把敌人下一步钉死（不用靠种子碰运气，见 TutorialIntentScript）
  * 必须在战斗已经建好之后调用——immediate 的 watcher 跑在 onMounted 之前，那时还没有战斗。
  */
-function applyStepGrant(): void {
+function applyStepScript(): void {
   if (!tutorial.active || !store.battle) return;
-  for (const cardId of tutorial.stepGrant) store.debug(`give card ${cardId}`);
+  const commands = stepDebugCommands({
+    grant: tutorial.stepGrant,
+    intent: tutorial.stepIntent,
+    enemyId: store.battle.enemies[0]?.id ?? "",
+  });
+  for (const command of commands) store.debug(command);
 }
 
-watch(() => [tutorial.chapterIndex, tutorial.stepIndex] as const, () => applyStepGrant());
+watch(() => [tutorial.chapterIndex, tutorial.stepIndex] as const, () => applyStepScript());
 
 /** ESC 打开设置（玩家习惯：ESC = 菜单）。设置页自 v1.0.3 起可滚动，能看全。 */
 function onKeydown(event: KeyboardEvent): void {
@@ -480,6 +488,7 @@ function back(): void {
               broken: store.brokenUnits.includes(enemy.id),
               'tut-focus': tutorial.focus === 'intent',
             }"
+            data-tut-label="敌人意图"
           >
             <IntentIcon :intent="enemy.intent" />
             <span v-if="store.brokenUnits.includes(enemy.id)" class="broken-tag">断链</span>
@@ -530,6 +539,7 @@ function back(): void {
             dying: store.dyingUnits.includes('player'),
             'tut-focus': tutorial.focus === 'status',
           }"
+          data-tut-label="状态栏"
         >
           <div class="pp-name">
             {{ className }}
@@ -543,9 +553,16 @@ function back(): void {
             :height="18"
             :show-limit="isBloodwright"
           />
-          <div v-if="player && player.buffs.length > 0" class="pp-status">
+          <!-- 教学「异常」那一课要先把这块指给玩家看：即使还没吃到减益也留一个空行 -->
+          <div
+            v-if="(player && player.buffs.length > 0) || tutorial.focus === 'debuff'"
+            class="pp-status"
+            :class="{ 'tut-focus': tutorial.focus === 'debuff' }"
+            data-tut-label="异常挂在这"
+          >
             <span class="pp-status-label">状态</span>
-            <BuffRow :buffs="player.buffs" align="start" />
+            <BuffRow v-if="player && player.buffs.length > 0" :buffs="player.buffs" align="start" />
+            <span v-else class="pp-empty">暂无异常</span>
           </div>
           <template v-if="showFloaters">
             <DamageFloat v-for="f in floatersFor['player'] ?? []" :key="f.id" :floater="f" />
@@ -555,7 +572,7 @@ function back(): void {
       </div>
 
       <!-- 手牌区 -->
-      <div class="hand-zone" :class="{ 'tut-focus': tutorial.focus === 'hand' }">
+      <div class="hand-zone" :class="{ 'tut-focus': tutorial.focus === 'hand' }" data-tut-label="手牌区">
         <div class="hand" :class="{ targeting: store.targeting !== null }">
           <CardView
             v-for="(card, index) in hand"
@@ -578,7 +595,7 @@ function back(): void {
           />
         </div>
 
-        <div class="left-corner" :class="{ 'tut-focus': tutorial.focus === 'energy' }">
+        <div class="left-corner" :class="{ 'tut-focus': tutorial.focus === 'energy' }" data-tut-label="能量">
           <EnergyOrb
             v-if="player"
             :energy="player.energy"
@@ -773,6 +790,7 @@ function back(): void {
 }
 .pp-status-label { flex: none; padding-top: 7px; font-size: 10px; letter-spacing: 0.24em; color: var(--ink-dim); }
 .pp-status .buffrow { margin-top: 0; }
+.pp-empty { padding-top: 7px; font-size: 11px; letter-spacing: 0.16em; color: var(--ink-dim); opacity: 0.7; }
 .pp-name small { font-size: 10px; color: var(--blood-hi); letter-spacing: 0.12em; margin-left: 8px; }
 
 .hand-zone { position: absolute; left: 0; right: 0; bottom: 0; height: 212px; z-index: 20; }
@@ -1019,6 +1037,35 @@ function back(): void {
 @keyframes tut-focus-pulse {
   0%, 100% { outline-color: rgba(176, 141, 74, 0.55); }
   50% { outline-color: rgba(216, 180, 106, 1); }
+}
+/*
+ * 指引标签（甲方要求：能量 / 卡牌 / 诅咒的指引区做清楚一点）：
+ * 光有金框新手还是不知道"这是干嘛的"——把区域名直接钉在被高亮的那一块上。
+ * 标签锚在自己的区块上，随舞台缩放一起走，不写死在屏幕坐标里。
+ */
+/* 只给"本来没定位"的区块补定位；手牌区 / 能量球本身是 absolute，不能被覆盖成 relative */
+.intent-slot.tut-focus[data-tut-label],
+.pp-status.tut-focus[data-tut-label] { position: relative; }
+.tut-focus[data-tut-label]::after {
+  content: attr(data-tut-label);
+  position: absolute; top: -26px; left: 50%; transform: translateX(-50%);
+  z-index: 40;
+  padding: 2px 12px; white-space: nowrap;
+  font-size: 11px; letter-spacing: 0.18em;
+  color: #1c1408;
+  background: linear-gradient(180deg, #dcb86e, #a8803d);
+  border: 1px solid #ecd8a4; border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.65);
+  pointer-events: none;
+  animation: tut-focus-pulse 1.5s ease-in-out infinite;
+}
+/* 意图图标在屏幕最上方：标签放它下面，免得顶到顶栏 */
+.intent-slot.tut-focus[data-tut-label]::after { top: 100%; margin-top: 6px; }
+/* 手牌区是通栏：标签贴在手牌上方一点 */
+.hand-zone.tut-focus[data-tut-label]::after { top: 6px; }
+/* 状态行矮且窄：标签挂到它右边，别压住血条 */
+.pp-status.tut-focus[data-tut-label]::after {
+  top: 50%; left: calc(100% + 10px); transform: translateY(-50%);
 }
 /* 顶栏加高后，敌人区整体下移同样高度，意图图标重新露出来 */
 .battle-stage.tut-on .enemy-zone { top: 96px; }

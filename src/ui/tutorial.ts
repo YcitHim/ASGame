@@ -27,7 +27,21 @@ export type TutorialGoal =
   | { kind: "killAll" };
 
 /** 这一步要高亮屏幕上的哪一块（UI 导览的核心：说到哪指到哪）。 */
-export type TutorialFocus = "status" | "energy" | "hand" | "intent";
+export type TutorialFocus = "status" | "energy" | "hand" | "intent" | "debuff";
+
+/**
+ * 教学脚本钉死的敌人意图（docs/42 速成版改版）：
+ * 教学不再靠种子碰运气——每一步可以直接指定敌人下一步做什么，保证「一回合蓄力」
+ * 「挂异常」这两课一定演得到。走 core 的 DebugCommand（与 give card 同一套）。
+ */
+export interface TutorialIntentScript {
+  readonly kind: "attack" | "debuff" | "charge";
+  readonly value?: number;
+  readonly block?: number;
+  /** charge 的释放段伤害 */
+  readonly release?: number;
+  readonly buffId?: string;
+}
 
 export interface TutorialStep {
   /** 这是什么（第一行，金色） */
@@ -40,6 +54,8 @@ export interface TutorialStep {
   readonly highlightType?: string;
   /** 高亮这张牌 */
   readonly highlightCardId?: string;
+  /** 这一步开始时把敌人意图钉成指定值（见 TutorialIntentScript） */
+  readonly intent?: TutorialIntentScript;
   /** 这一步开始时把这几张牌塞进手牌 */
   readonly grant?: readonly string[];
   /** 同上，按职业给（防御课要用本职业的格挡牌） */
@@ -93,45 +109,58 @@ export const TUTORIAL_CHAPTERS: readonly TutorialChapter[] = [
     title: "第一课 · 看懂屏幕",
     theme: "你不需要记住所有规则，只要先认全这块屏幕。",
     enemies: ["polluting_preacher"],
-    // 提到 60 血：它要活到把「异常」那一课演完
-    enemyHp: 60,
+    // 26 血：三回合内能打完，又够活到把「异常 / 蓄力」两课演完（原来 60 血太磨）
+    enemyHp: 26,
     seed: 9,
     byline: "—— 铆叔 · 老一代守夜人",
     steps: [
       {
         why: "这是你的状态栏",
-        how: "红条是你的命；下面依次是格挡、状态。敌人给你挂的异常也显示在这里。",
+        how: "红条是命，下面是格挡和状态——敌人给你挂的异常全显示在这。",
         focus: "status",
+        // 从第一回合就让它盯上你：意图课上正好看到「给你挂异常」的图标
+        intent: { kind: "debuff", buffId: "weak", value: 1 },
         goal: { kind: "acknowledge" },
       },
       {
         why: "这是能量",
-        how: "每回合回满。打牌花的就是它，用不完不隔夜。",
+        how: "每回合回满，打牌就花它；用不完不隔夜。",
         focus: "energy",
         goal: { kind: "acknowledge" },
       },
       {
         why: "这是手牌区",
-        how: "你的动作全在这里。左上角数字是费用，数字变灰就是现在打不起。",
+        how: "动作全在这。左上角数字是费用，变灰就是现在打不起。",
         focus: "hand",
         goal: { kind: "acknowledge" },
       },
       {
         why: "这是敌人意图",
-        how: "它头顶的图标预告下回合要干什么：剑＝攻击（数字就是伤害），写「弱」「污」的＝给你挂异常。",
+        how: "它头顶的图标预告下回合干什么：剑＝攻击（数字是伤害）、盾＝防御、写「弱」「污」＝给你挂异常、紫＝蓄力。",
         focus: "intent",
         goal: { kind: "acknowledge" },
       },
       {
-        why: "先摸清它有多疼",
+        why: "先打它一下",
         how: "点一张高亮的攻击牌打出去。",
         highlightType: "attack",
         goal: { kind: "playType", cardType: "attack" },
       },
       {
-        why: "格挡是临时的血：先替你挨，每回合开始清零。",
-        how: "它要动手了——打一张防御牌叠格挡，再结束回合。",
+        why: "小心敌人给你挂的「诅咒」",
+        how: "结束回合，看它往你身上挂什么。异常都落在状态栏：虚弱让你伤害 ×0.75，污染攒到 100 会反噬你 10 点。",
+        focus: "debuff",
+        // 也钉一次：断点续做时这一步不会因为敌人随机出招而卡住
+        intent: { kind: "debuff", buffId: "weak", value: 1 },
+        goal: { kind: "playerDebuffed" },
+      },
+      {
+        why: "它蓄力了——一回合后就是重击",
+        how: "紫色蓄力＝下回合放重击，同时它自己会架起格挡。打一张防御牌叠格挡，再结束回合。",
+        focus: "intent",
         highlightType: "skill",
+        // 钉一个「一回合蓄力」：这一课不让玩家等两个回合（甲方要求）
+        intent: { kind: "charge", value: 2, block: 4, release: 10 },
         // 起手 5 张里有没有防御是发牌运气，保底发一张本职业的格挡牌
         classGrant: {
           bloodwright: ["defend"],
@@ -143,14 +172,8 @@ export const TUTORIAL_CHAPTERS: readonly TutorialChapter[] = [
         correct: "这一下会打在你身上——先打一张高亮的防御牌，再结束回合。",
       },
       {
-        why: "你被挂了异常",
-        how: "看状态栏。污染攒到 100 会反噬你 10 点；虚弱让你造成的伤害 ×0.75。敌人不打你的时候，多半就是在给你上这些。",
-        focus: "status",
-        goal: { kind: "playerDebuffed" },
-      },
-      {
-        why: "剩下的就是把它打掉。",
-        how: "顶不住就先叠格挡。到这儿你基本会玩了——后面遇到新东西，屏幕上会自己提示你。",
+        why: "最后，把它打掉。",
+        how: "顶不住就继续叠格挡。到这儿你基本会玩了——后面遇到新东西，屏幕会自己提示你。",
         goal: { kind: "killAll" },
       },
     ],
