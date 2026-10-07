@@ -59,6 +59,24 @@ describe("content-validator（G1）", () => {
     expect(issues.some((i) => i.message.includes("card.bloodbolt.name"))).toBe(true);
   });
 
+  it("debuff 意图缺 buffId 会报错（docs/41 §2.2）", () => {
+    const input = baseInput();
+    input.enemies = [
+      {
+        file: "src/data/enemies/ghost.json",
+        data: {
+          id: "ghost",
+          i18n: "enemy.ghost",
+          maxHp: 10,
+          intents: [{ intent: { kind: "debuff", stacks: 2 }, weight: 1 }],
+        },
+      },
+    ];
+    input.i18n = { ...input.i18n, "enemy.ghost.name": "幽灵" };
+    const { issues } = validateContent(input);
+    expect(issues.some((i) => i.message.includes("buffId"))).toBe(true);
+  });
+
   it("appliesTo 指向不存在的卡牌会报错", () => {
     const input = baseInput();
     input.enhancements = [

@@ -155,6 +155,23 @@ export function validateContent(input: ContentInput): ValidationResult {
       }
     });
   }
+  // 意图标签可读性（docs/41 §2.2）：debuff 意图必须声明具体减益 id，
+  // 否则 UI 只能兜底「干扰」——玩家会看到与实际行为不符的提示。
+  for (const e of enemies) {
+    e.intents.forEach((entry, i) => {
+      const walk = (intent: typeof entry.intent, path: string): void => {
+        if (intent.kind === "debuff" && !intent.buffId) {
+          issues.push({
+            file: `enemy ${e.id}`,
+            path,
+            message: "debuff 意图必须声明 buffId（docs/41 §2.2：意图标签要显示实际减益名）",
+          });
+        }
+        if (intent.thenIntent) walk(intent.thenIntent, `${path}.thenIntent`);
+      };
+      walk(entry.intent, `intents.${i}.intent`);
+    });
+  }
   for (const r of relics) checkId("relic", r.id);
   for (const e of events) checkId("event", e.id);
   for (const c of classes) checkId("class", c.id);

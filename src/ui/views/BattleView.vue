@@ -520,7 +520,7 @@ function back(): void {
         </div>
       </Teleport>
 
-      <div v-if="store.message" class="message">{{ store.message }}</div>
+      <div v-if="store.message" class="message" :class="store.messageKind">{{ store.message }}</div>
 
       <!-- 日志抽屉 -->
       <div v-if="showLog" class="log-drawer">
@@ -651,8 +651,11 @@ function back(): void {
 
 .message {
   position: absolute; left: 50%; bottom: 220px; transform: translateX(-50%); z-index: 35;
-  font-size: 12px; letter-spacing: 0.2em; color: var(--blood-hi);
+  font-size: 12px; letter-spacing: 0.2em;
 }
+/* 报错（打牌失败）血色；操作引导（选择目标）金色，不抢眼也不吓人（docs/41 §2.1） */
+.message.error { color: var(--blood-hi); }
+.message.info { color: var(--gold); }
 
 /* Boss 蓄力全屏预警 */
 .telegraph {

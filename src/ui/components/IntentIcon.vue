@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { IntentPayload } from "@/core/events";
+import { buffMeta } from "./buff-meta";
 
 const props = defineProps<{ intent: IntentPayload | null }>();
 
@@ -25,7 +26,14 @@ const sub = computed(() => {
     if (parts.length === 0) parts.push("蓄力");
     return parts.join(" · ");
   }
-  return { attack: "攻击", defend: "防御", debuff: "诅咒", summon: "召唤", unknown: "未知" }[i.kind];
+  if (i.kind === "debuff") {
+    // docs/41 §2.2：不再把一切 debuff 硬编码成「诅咒」——读 payload 的实际减益名；
+    // 数据侧缺 buffId 时兜底「干扰」（validator 会对缺漏报错，这里只保证不骗玩家）。
+    if (!i.buffId) return "干扰";
+    const meta = buffMeta(i.buffId);
+    return i.stacks && i.stacks > 0 ? `${meta.name} ${i.stacks}${meta.unit}` : meta.name;
+  }
+  return { attack: "攻击", defend: "防御", summon: "召唤", unknown: "未知" }[i.kind];
 });
 
 const color = computed(() => (props.intent?.kind === "attack" ? "#C0392B" : "#B08D4A"));

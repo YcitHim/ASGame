@@ -40,3 +40,22 @@ describe("关键词注解（UI）", () => {
     expect(Object.keys(GLOSSARY).length).toBeGreaterThan(8);
   });
 });
+
+/** docs/41 §2.3 / §2.4：词条消歧与补全。 */
+describe("docs/41 词条消歧", () => {
+  it("「保留」明确指向手牌，不指格挡", () => {
+    expect(GLOSSARY["保留"]).toContain("手牌");
+    expect(GLOSSARY["保留"]).toContain("不是格挡");
+  });
+
+  it("护盾存续另立「维续」，与「保留」不混用", () => {
+    expect(GLOSSARY["维续"]).toContain("格挡");
+    expect(GLOSSARY["维续"]).not.toContain("保留");
+  });
+
+  it("补全「弃牌阶段」与「血契」词条", () => {
+    expect(GLOSSARY["弃牌阶段"]).toContain("弃牌堆");
+    expect(GLOSSARY["血契"]).toContain("成本");
+    expect(GLOSSARY["血契"]).toContain("效果");
+  });
+});

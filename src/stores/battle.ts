@@ -27,6 +27,11 @@ let floaterCounter = 0;
 let cardPlayedSeq = 0;
 const queue = new AnimQueue();
 
+/** 错误提示的存续上限（docs/41 §2.1）：2.5 秒后自动消散，避免跨回合残留。 */
+export const MESSAGE_TTL_MS = 2500;
+let messageTimer: ReturnType<typeof setTimeout> | null = null;
+let messageSerial = 0;
+
 export const useBattleStore = defineStore("battle", {
   state: () => ({
     battle: null as BattleState | null,
@@ -36,6 +41,10 @@ export const useBattleStore = defineStore("battle", {
     floaters: [] as Floater[],
     playing: false,
     message: "",
+    /** 提示所属回合（docs/41 §2.1）：TurnStarted 到达时按回合号清理上一回合的提示 */
+    messageTurn: 0,
+    /** 提示性质：error = 打牌失败等报错（会定时消散）；info = 「选择目标」等操作引导（不自动消散） */
+    messageKind: "info" as "error" | "info",
     shake: 0,
     targeting: null as number | null,
     speed: 1 as 1 | 2,
@@ -113,7 +122,8 @@ export const useBattleStore = defineStore("battle", {
       codex.markEnemies(this.battle.enemies.map((e) => e.defId));
       this.log = [];
       this.floaters = [];
-      this.message = "";
+      this.clearMessage();
+      this.messageTurn = 0;
       this.targeting = null;
       this.skip();
       this.dispatch({ type: "Noop", actionId: `battle-start-${++actionCounter}` });
@@ -130,6 +140,10 @@ export const useBattleStore = defineStore("battle", {
         runStore.setPollution(result.state.player.pollution);
         runStore.noteTurns(result.state.turn);
       }
+      // 提示生命周期（docs/41 §2.1）：新回合到达 → 上一回合的提示必须消失
+      for (const event of result.events) {
+        if (event.type === "TurnStarted" && event.turn > this.messageTurn) this.clearMessage();
+      }
       // 成就埋点（docs/36 T1 / docs/38 §三 C-3）：从事件流里读，core 不做局外判断
       for (const event of result.events) {
         if (event.type === "CardPlayed" && event.bloodPaid > 0) runStore.noteBloodpact();
@@ -145,10 +159,41 @@ export const useBattleStore = defineStore("battle", {
       return result.events;
     },
 
+    /**
+     * 设置提示（docs/41 §2.1）：带回合戳；error 类 2.5 秒自动消散。
+     * 提示是纯表现，不进 core、不进事件流。
+     */
+    setMessage(text: string, kind: "error" | "info" = "error"): void {
+      messageSerial += 1;
+      const serial = messageSerial;
+      if (messageTimer !== null) {
+        clearTimeout(messageTimer);
+        messageTimer = null;
+      }
+      this.message = text;
+      this.messageKind = kind;
+      this.messageTurn = this.battle?.turn ?? 0;
+      if (kind === "error") {
+        messageTimer = setTimeout(() => {
+          messageTimer = null;
+          if (messageSerial === serial) this.clearMessage();
+        }, MESSAGE_TTL_MS);
+      }
+    },
+
+    clearMessage(): void {
+      if (messageTimer !== null) {
+        clearTimeout(messageTimer);
+        messageTimer = null;
+      }
+      this.message = "";
+      this.messageKind = "info";
+    },
+
     selectCard(handIndex: number): void {
       if (!this.battle || this.playing || this.over) return;
       if (this.battle.phase !== "playerAction") {
-        this.message = "当前不可出牌";
+        this.setMessage("当前不可出牌");
         return;
       }
       const check = validatePlayCardState(this.battle, handIndex, null);
@@ -158,10 +203,10 @@ export const useBattleStore = defineStore("battle", {
       }
       if (check.reason === "需要指定目标") {
         this.targeting = handIndex;
-        this.message = "选择目标";
+        this.setMessage("选择目标", "info");
         return;
       }
-      this.message = check.reason;
+      this.setMessage(check.reason);
     },
 
     selectTarget(enemyId: string): void {
@@ -175,10 +220,10 @@ export const useBattleStore = defineStore("battle", {
       if (!this.battle || this.playing || this.over) return;
       const check = validatePlayCardState(this.battle, handIndex, targetId);
       if (!check.ok) {
-        this.message = check.reason;
+        this.setMessage(check.reason);
         return;
       }
-      this.message = "";
+      this.clearMessage();
       this.dispatch({
         type: "PlayCard",
         actionId: `play-${++actionCounter}`,
