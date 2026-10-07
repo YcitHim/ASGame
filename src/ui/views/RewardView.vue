@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
 import type { CardDefinition } from "@/core/registry";
-import { t } from "@/data/load";
+import { loadGameContent, t } from "@/data/load";
 import { useCodexStore } from "@/stores/codex";
 import { useRunStore } from "@/stores/run";
 import { useTipsStore } from "@/stores/tips";
@@ -10,6 +10,7 @@ import { useTutorialStore } from "@/stores/tutorial";
 import { actCopy } from "@/ui/act-copy";
 import CardView from "@/ui/components/CardView.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
+import { relicFitNote, relicResourceFit, type RelicFit } from "@/ui/relic-fit";
 
 const router = useRouter();
 const run = useRunStore();
@@ -73,8 +74,6 @@ onMounted(() => {
     return;
   }
   const codex = useCodexStore();
-  // 首遇提示（docs/42 §五）：教学里讲过三选一，正式局首次再遇不再弹
-  tips.triggerUnlessTaught("reward_pick", tutorial.finished);
   if (mode.value === "card") {
     rewards.value = run.cardRewards();
     codex.markCards(rewards.value);
@@ -84,6 +83,9 @@ onMounted(() => {
       codex.markRelics(companionOffers.value);
       if (companionOffers.value.length > 0) cardStep.value = "companion";
     }
+    // 首遇提示（docs/42 §五）：只有真的进到「卡牌三选一」才弹——
+    // 首胜那一步先选的是随身遗物，在那一步弹「挑一张牌」是错位的
+    if (cardStep.value === "card") showPickTip();
   } else if (mode.value === "elite") {
     // 精英 / 残骸锻核 = T2 常规池（docs/38 §一 A-1）
     relicOffers.value = run.relicChoices([2]);
@@ -117,11 +119,38 @@ function takeBossRelic(id: string): void {
   bossTaken.value = id;
 }
 
+/**
+ * 首胜三选一里的「机制不合」件（docs/43 §2.4 配套 / docs/50 §三）：
+ * 压力表对非炉心、血泵对非血械 = 纯白板。照常出现，但置灰 + 一行标注 + 不可选。
+ */
+function companionFit(id: string): RelicFit {
+  return relicResourceFit(id, run.classId, loadGameContent().content);
+}
+function companionNote(id: string): string {
+  return relicFitNote(companionFit(id));
+}
+function isCompanionFit(id: string): boolean {
+  return companionFit(id).ok;
+}
+
+/** 卡牌三选一的首遇提示（docs/42 §五）：教学里讲过三选一，正式局首次再遇不再弹。 */
+function showPickTip(): void {
+  tips.triggerUnlessTaught("reward_pick", tutorial.finished);
+}
+
 /** 取走首胜随身遗物 → 回到卡牌三选一。 */
 function takeCompanion(id: string): void {
+  if (!isCompanionFit(id)) return;
   run.takeCompanionRelic(id);
   tips.trigger("relic_pick");
   cardStep.value = "card";
+  showPickTip();
+}
+
+/** 放弃首胜随身遗物 → 直接走卡牌三选一。 */
+function skipCompanion(): void {
+  cardStep.value = "card";
+  showPickTip();
 }
 
 function pickEnhanceOffer(id: string): void {
@@ -241,13 +270,21 @@ function rarityLabel(rarity: string | undefined): string {
           <p class="sub">第一场胜利 · 从三件里挑一件带走</p>
         </header>
         <div class="relics">
-          <button v-for="id in companionOffers" :key="id" class="relic" @click="takeCompanion(id)">
+          <button
+            v-for="id in companionOffers"
+            :key="id"
+            class="relic"
+            :class="{ unfit: !isCompanionFit(id) }"
+            :disabled="!isCompanionFit(id)"
+            @click="takeCompanion(id)"
+          >
             <b>{{ t(`relic.${id}.name`, id) }}</b>
             <p>{{ t(`relic.${id}.desc`, "") }}</p>
-            <span class="pick">取 走</span>
+            <span v-if="!isCompanionFit(id)" class="unfit-note">{{ companionNote(id) }}</span>
+            <span class="pick">{{ isCompanionFit(id) ? "取 走" : "不 可 选" }}</span>
           </button>
         </div>
-        <button class="skip" @click="cardStep = 'card'">放 弃</button>
+        <button class="skip" @click="skipCompanion">放 弃</button>
       </template>
 
       <template v-else>
@@ -435,6 +472,25 @@ function rarityLabel(rarity: string | undefined): string {
   font-size: 12px;
   line-height: 1.8;
   color: var(--ink-dim);
+}
+/* 机制不合件（docs/43 §2.4 / docs/50 §三）：照常出现，置灰 + 标注 + 不可选 */
+.relic.unfit {
+  opacity: 0.42;
+  filter: grayscale(0.7);
+  cursor: not-allowed;
+}
+.relic.unfit:hover {
+  transform: none;
+  border-color: rgba(110, 88, 54, 0.35);
+}
+.unfit-note {
+  display: block;
+  margin-top: 10px;
+  font-size: 10px;
+  line-height: 1.6;
+  letter-spacing: 0.08em;
+  color: var(--blood-hi);
+  opacity: 0.85;
 }
 .none {
   color: var(--ink-dim);

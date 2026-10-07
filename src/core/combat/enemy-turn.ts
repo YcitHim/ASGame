@@ -77,6 +77,7 @@ export function generateIntents(draft: Draft, sink: EventSink): void {
       enemy.intentHistory,
       draft.rng.stream("combat"),
       summonContext(draft),
+      draft.turn,
     );
     const intent = reveal(enemy, roll.intent, draft);
     enemy.intent = intent;
@@ -125,6 +126,10 @@ export function runEnemyTurn(draft: Draft, sink: EventSink): void {
             segments: hits,
           });
         }
+        // 攻击携带的附加减益（docs/47 §四「震慑重击」：命中附加眩晕）
+        if (intent.buffId) {
+          applyBuffToTarget(draft, sink, PLAYER_ID, intent.buffId as BuffId, intent.stacks ?? 1, intent.duration);
+        }
         break;
       }
       case "defend":
@@ -133,6 +138,12 @@ export function runEnemyTurn(draft: Draft, sink: EventSink): void {
       case "debuff":
         if (intent.buffId) {
           applyBuffToTarget(draft, sink, PLAYER_ID, intent.buffId as BuffId, intent.stacks ?? 1, intent.duration);
+        }
+        break;
+      case "selfBuff":
+        // 自身增益（docs/47 §三.1）：与 debuff 同构、target = 自己
+        if (intent.buffId) {
+          applyBuffToTarget(draft, sink, enemy.id, intent.buffId as BuffId, intent.stacks ?? 1, intent.duration);
         }
         break;
       case "charge": {

@@ -1,0 +1,54 @@
+{
+  "id": "rust_bell_penitent",
+  "i18n": "enemy.rust_bell_penitent",
+  "maxHp": 88,
+  "stunResistant": true,
+  "startBuffs": [
+    {
+      "buffId": "tenacity",
+      "stacks": 2
+    }
+  ],
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 9
+      },
+      "weight": 2,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "selfBuff",
+        "buffId": "tenacity",
+        "stacks": 1
+      },
+      "weight": 2,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "debuff",
+        "buffId": "timid",
+        "stacks": 1
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "charge",
+        "value": 3,
+        "block": 8,
+        "releaseOverride": 14,
+        "thenIntent": {
+          "kind": "attack",
+          "value": 14
+        }
+      },
+      "weight": 1,
+      "maxConsecutive": 1
+    }
+  ]
+}

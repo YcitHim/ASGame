@@ -160,7 +160,7 @@
         "targetId": "rust_throat"
       }
     ],
-    "eventHash": "ad993dcccf911bec7304b4743bca3111dede3787381923a1798630cb9bfe749c",
+    "eventHash": "5556d45b548541b01f65df0d381bb6b7475518e7a4ab05e81ee53b6adba055a2",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",

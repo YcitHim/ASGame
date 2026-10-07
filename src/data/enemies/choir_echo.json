@@ -32,6 +32,15 @@
       },
       "weight": 2,
       "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "debuff",
+        "buffId": "reverse",
+        "stacks": 1
+      },
+      "weight": 2,
+      "maxConsecutive": 1
     }
   ]
 }

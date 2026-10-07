@@ -111,9 +111,13 @@ describe("真实内容：蓄力链数值表（docs/18 冻结值）", () => {
       // docs/45 Q2：污染布道者蓄力 2 段 → 1 段（释放值保持 11）
       polluting_preacher: { release: [11], block: [4] },
       riveted_heavy: { release: [14], block: [6] },
-      rust_warden: { release: [19], block: [8, 8] },
+      // docs/47 §四.1：守卫新增 everyTurns 4 的「锈崩重锤」（释放 16 / 架 10）
+      rust_warden: { release: [19, 16], block: [8, 8, 10] },
       rust_sentinel: { release: [12], block: [4] },
       rust_throat: { release: [16, 18, 24], block: [] },
+      // docs/47 §四.2：新怪的蓄力链（链枷手的释放段附带眩晕，不改变释放值）
+      rust_bell_penitent: { release: [14], block: [8] },
+      chain_flailer: { release: [18], block: [6] },
     };
 
     for (const [id, want] of Object.entries(expected)) {

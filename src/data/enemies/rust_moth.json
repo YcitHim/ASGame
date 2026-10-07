@@ -1,20 +1,21 @@
 {
-  "id": "rust_acolyte",
-  "i18n": "enemy.rust_acolyte",
-  "maxHp": 14,
+  "id": "rust_moth",
+  "i18n": "enemy.rust_moth",
+  "maxHp": 28,
   "intents": [
     {
       "intent": {
         "kind": "attack",
-        "value": 4
+        "value": 4,
+        "hits": 2
       },
-      "weight": 1,
+      "weight": 3,
       "maxConsecutive": 2
     },
     {
       "intent": {
         "kind": "debuff",
-        "buffId": "chill",
+        "buffId": "reverse",
         "stacks": 1
       },
       "weight": 2,

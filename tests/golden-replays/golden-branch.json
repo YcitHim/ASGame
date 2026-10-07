@@ -134,7 +134,7 @@
       {
         "type": "PlayCard",
         "actionId": "p7",
-        "handIndex": 4,
+        "handIndex": 1,
         "targetId": "rust_sentinel"
       },
       {
@@ -144,17 +144,13 @@
         "targetId": "rust_sentinel"
       },
       {
-        "type": "EndTurn",
-        "actionId": "e9"
-      },
-      {
         "type": "PlayCard",
-        "actionId": "p10",
+        "actionId": "p9",
         "handIndex": 2,
         "targetId": "rust_sentinel"
       }
     ],
-    "eventHash": "497e645d231d61a29f15e829a4ead61f786306269bf2a0579cb0cf4ca084d008",
+    "eventHash": "712ac6849be999fc5ef664cf191e1fcb5cbd2df87e5438627bd259227eb6c408",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -180,8 +176,7 @@
       "UnitDied",
       "PollutionChanged",
       "TurnEnded",
-      "ChargeResolved",
-      "BlockGained",
+      "BuffApplied",
       "BlockGained",
       "TurnStarted",
       "CardsDrawn",
@@ -189,15 +184,16 @@
       "HpLost",
       "HpHealed",
       "CardPlayed",
+      "DamageDealt",
+      "HpLost",
+      "BuffTriggered",
       "BlockBroken",
       "DamageDealt",
       "HpLost",
       "CardExhausted",
-      "TurnEnded",
-      "ChargeResolved",
-      "BlockBroken"
+      "TurnEnded"
     ],
-    "turns": 4,
+    "turns": 3,
     "outcome": "win"
   }
 }

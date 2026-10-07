@@ -116,27 +116,87 @@
       {
         "type": "PlayCard",
         "actionId": "p8",
-        "handIndex": 4,
-        "targetId": "riveted_heavy"
+        "handIndex": 2,
+        "targetId": "corroded_swarm"
       },
       {
         "type": "PlayCard",
         "actionId": "p9",
         "handIndex": 0,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p10",
+        "handIndex": 0,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e11"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p12",
+        "handIndex": 0,
+        "targetId": "corroded_swarm"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p13",
+        "handIndex": 0,
         "targetId": "riveted_heavy"
       },
       {
         "type": "EndTurn",
-        "actionId": "e10"
+        "actionId": "e14"
       },
       {
         "type": "PlayCard",
-        "actionId": "p11",
+        "actionId": "p15",
+        "handIndex": 1,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p16",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e17"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p18",
         "handIndex": 4,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p19",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p20",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e21"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p22",
+        "handIndex": 1,
         "targetId": "riveted_heavy"
       }
     ],
-    "eventHash": "98653b9a8cbc61636df869b0904746df42bbdf20875863bf17dc8c022b999039",
+    "eventHash": "65537ddd2ab02262726e7d4e509271c9ae40a455fb0ea9861a492b1ec3e99dc3",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -150,9 +210,10 @@
       "DamageDealt",
       "HpLost",
       "TurnEnded",
-      "PollutionChanged",
-      "ChargeResolved",
+      "BuffApplied",
       "BlockGained",
+      "BuffTicked",
+      "HpLost",
       "TurnStarted",
       "CardsDrawn",
       "IntentRevealed",
@@ -164,22 +225,21 @@
       "CardPlayed",
       "BuffApplied",
       "TurnEnded",
-      "DamageDealt",
-      "HpLost",
-      "BuffTriggered",
-      "DamageDealt",
-      "HpLost",
-      "UnitDied",
       "PollutionChanged",
-      "ChargeResolved",
       "DamageDealt",
       "HpLost",
       "BuffTriggered",
       "DamageDealt",
       "HpLost",
-      "TurnStarted"
+      "BuffTicked",
+      "TurnStarted",
+      "DeckShuffled",
+      "CardsDrawn",
+      "IntentRevealed",
+      "IntentRevealed",
+      "CardPlayed"
     ],
-    "turns": 4,
+    "turns": 7,
     "outcome": "win"
   }
 }

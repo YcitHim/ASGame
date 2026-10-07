@@ -14,6 +14,9 @@ import { loadNodeContent } from "./load";
 import { relicPool } from "../../../src/core/map";
 import { buildReport } from "./report";
 import { simulateRun } from "./sim";
+// docs/50 §三：人工标注「仅某职业可评」的件——其余职业行标 N/A，不进绝对线计算。
+// relic-fit 是纯类型依赖（无运行期 import），工具侧复用同一份口径，避免两处判定漂移。
+import { MANUAL_CLASS_ONLY } from "../../../src/ui/relic-fit";
 
 interface Options {
   games: number;
@@ -68,7 +71,8 @@ function main(): number {
 
   // 同一批种子贯穿所有组合：件间差异 = 遗物差异
   const seeds = Array.from({ length: games }, (_, i) => i + 1);
-  const perClass: Record<string, Record<string, number>> = {};
+  /** null = 该件对该职业无意义（N/A，docs/50 §三），不参与任何区间判定 */
+  const perClass: Record<string, Record<string, number | null>> = {};
   const totals: Record<string, { wins: number; games: number }> = {};
   for (const id of pool) totals[id] = { wins: 0, games: 0 };
 
@@ -85,6 +89,12 @@ function main(): number {
   for (const cls of classes) {
     perClass[cls] = {};
     for (const relicId of pool) {
+      const lock = MANUAL_CLASS_ONLY[relicId];
+      if (lock && lock !== cls) {
+        perClass[cls][relicId] = null;
+        if (!quiet) console.log(`  ${cls.padEnd(11)} ${relicId.padEnd(15)} N/A（仅 ${lock} 评测）`);
+        continue;
+      }
       const results = seeds.map((seed) => simulateRun(content, act, seed, cls, "normal", [], relicId));
       const report = buildReport(results);
       perClass[cls][relicId] = report.winRate;
@@ -111,7 +121,10 @@ function main(): number {
   console.log(`
 ${header.join(" ")}`);
   for (const row of [...overall].sort((a, b) => b.rate - a.rate)) {
-    const cells = classes.map((c) => pct(perClass[c][row.id]).padEnd(11));
+    const cells = classes.map((c) => {
+      const value = perClass[c][row.id];
+      return (value == null ? "N/A" : pct(value)).padEnd(11);
+    });
     // 目标区间（docs/41 §五）：最弱件 ≥ 池子中位数的 70%
     const share = median === 0 ? 0 : row.rate / median;
     console.log(
@@ -129,7 +142,11 @@ ${header.join(" ")}`);
   console.log("[companion-report] 绝对线：每件 ≥ 本职业空随身槽基线 -1.5pp");
   for (const cls of classes) {
     const bar = baseline[cls] - RELIC_FLOOR_PP / 100;
-    const under = pool.filter((id) => perClass[cls][id] < bar);
+    // N/A 的件（docs/50 §三）不进绝对线——它们本来就不该出现在这个职业的池子里
+    const under = pool.filter((id) => {
+      const value = perClass[cls][id];
+      return value != null && value < bar;
+    });
     console.log(
       `  ${cls.padEnd(11)} 基线 ${pct(baseline[cls])} · 底线 ${pct(bar)} · ${
         under.length === 0 ? "全部达标" : `不达标 ${under.join(" / ")}`

@@ -27,6 +27,15 @@
       },
       "weight": 1,
       "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "debuff",
+        "buffId": "timid",
+        "stacks": 1
+      },
+      "weight": 2,
+      "maxConsecutive": 1
     }
   ]
 }

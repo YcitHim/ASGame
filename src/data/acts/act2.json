@@ -189,6 +189,13 @@
             "drowned_crawler"
           ],
           "weight": 3
+        },
+        {
+          "enemies": [
+            "silent_matron",
+            "deep_diver"
+          ],
+          "weight": 3
         }
       ],
       "events": [

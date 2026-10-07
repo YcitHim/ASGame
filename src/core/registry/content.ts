@@ -119,7 +119,7 @@ export interface CardDefinition {
 }
 
 export interface IntentDefinition {
-  readonly kind: "attack" | "defend" | "debuff" | "charge" | "summon" | "unknown";
+  readonly kind: "attack" | "defend" | "debuff" | "charge" | "summon" | "selfBuff" | "unknown";
   /**
    * 普通招式 = 伤害/数值；蓄力 = **每层一次性增幅值**（docs/18 Q2）。
    * 蓄力链的释放值 = 普攻基准 + 蓄力值 × 层数，释放即消耗、不残留。
@@ -154,6 +154,29 @@ export interface EnemyIntentEntry {
   readonly condition?: ConditionNode;
   /** 同一意图最多连续出现次数（0.1 读招体验） */
   readonly maxConsecutive?: number;
+  /**
+   * 节拍技（docs/47 §三.2）：战斗回合数 %N==0 时**强制顶替**本次抽取（优先于 weight），
+   * 同回合多条命中取数组序第一条，自身仍受 maxConsecutive 约束——
+   * 把「大招」从 weight 玄学变成玩家数得出来的节拍。
+   */
+  readonly everyTurns?: number;
+  /**
+   * 追击条件（docs/47 §三.3）：玩家身上该 buff 层数 ≥ minStacks 时才可被抽中，
+   * 不满足按召唤同款规则重抽（docs/40 §五.2 先例）。
+   */
+  readonly playerBuff?: { readonly buffId: BuffId; readonly minStacks: number };
+}
+
+/** 开场状态（docs/47 §三.4）：战斗开始即挂在敌人自己身上。 */
+export interface StartBuff {
+  readonly buffId: BuffId;
+  readonly stacks: number;
+}
+
+/** 分裂亡语（docs/47 §三.4，M3 锁定）：死亡时原地召唤 enemyId × count，分裂物不再分裂。 */
+export interface DeathSplit {
+  readonly enemyId: string;
+  readonly count: number;
 }
 
 /** 敌人 JSON 的原始形状（两个装载器共用：新增字段只在这里映射，避免静默丢字段）。 */
@@ -161,6 +184,8 @@ export interface RawEnemyDefinition {
   readonly id: string;
   readonly maxHp: number;
   readonly intents: readonly EnemyIntentEntry[];
+  readonly startBuffs?: readonly StartBuff[];
+  readonly deathSplit?: DeathSplit;
   readonly onDeath?: readonly CardEffect[];
   /** 免疫断链（docs/38 §三 C-1）：Boss 例外条款，与 releaseOverride 同一登记处 */
   readonly interruptImmune?: boolean;
@@ -175,6 +200,8 @@ export function buildEnemyDefinition(raw: RawEnemyDefinition, name: string): Ene
     name,
     maxHp: raw.maxHp,
     intents: raw.intents,
+    ...(raw.startBuffs ? { startBuffs: raw.startBuffs } : {}),
+    ...(raw.deathSplit ? { deathSplit: raw.deathSplit } : {}),
     ...(raw.onDeath ? { onDeath: raw.onDeath } : {}),
     ...(raw.interruptImmune ? { interruptImmune: true } : {}),
     ...(raw.stunResistant ? { stunResistant: true } : {}),
@@ -186,6 +213,10 @@ export interface EnemyDefinition {
   readonly name: string;
   readonly maxHp: number;
   readonly intents: readonly EnemyIntentEntry[];
+  /** 开场状态（docs/47 §三.4）：战斗开始即挂在敌人自己身上 */
+  readonly startBuffs?: readonly StartBuff[];
+  /** 分裂亡语（docs/47 §三.4，M3 锁定） */
+  readonly deathSplit?: DeathSplit;
   /** 亡语（docs/16 P2.2）：该单位死亡并完成死亡清理后结算的效果 */
   readonly onDeath?: readonly CardEffect[];
   /** 免疫断链（docs/38 §三 C-1）：蓄力被虚弱/易伤命中时不被打断 */

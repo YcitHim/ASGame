@@ -22,7 +22,8 @@ describe("真实内容装载（data/load）", () => {
   it("卡牌 / 敌人 / 关卡 / 文案全部可用，敌人名按 i18n 解析", () => {
     const game = loadGameContent();
     expect(game.content.cards.size).toBeGreaterThanOrEqual(30);
-    expect(game.content.enemies.size).toBe(18);
+    // docs/47 M1/M2：4 只新怪落库（忏悔者 / 链枷手 / 锈蛾 / 静默嬷嬷）
+    expect(game.content.enemies.size).toBe(22);
     expect(game.content.relics.size).toBe(25);
     expect(game.content.classes.size).toBe(3);
     // 两幕：锈蚀回廊 + 沉没圣堂（docs/40）
@@ -30,6 +31,10 @@ describe("真实内容装载（data/load）", () => {
     expect(game.acts[1].id).toBe("act2");
     expect(game.content.enemies.get("rust_hound")?.name).toBe("锈蚀猎犬");
     expect(game.content.enemies.get("rust_throat")?.name).toBe("锈喉");
+    expect(game.content.enemies.get("rust_bell_penitent")?.name).toBe("锈钟忏悔者");
+    expect(game.content.enemies.get("chain_flailer")?.name).toBe("蚀锁链枷手");
+    expect(game.content.enemies.get("rust_moth")?.name).toBe("蚀骨锈蛾");
+    expect(game.content.enemies.get("silent_matron")?.name).toBe("静默嬷嬷");
     expect(game.i18n["card.strike.name"]).toBe("打击");
   });
 
@@ -47,7 +52,10 @@ describe("真实内容装载（data/load）", () => {
     expect(act.layers[9].kinds).toEqual(["boss"]);
     expect(act.layers[9].enemies).toEqual(["rust_throat"]);
     // 精英池挂 l2~l6；l1 / l7 不出精英（docs/48 §3.2）
-    for (const i of [2, 3, 4, 5, 6]) expect(act.layers[i].elitePool).toEqual(["rust_warden"]);
+    // docs/47 §四.2：act1 精英池扩到 3 只，精英节点不再撞衫
+    for (const i of [2, 3, 4, 5, 6]) {
+      expect(act.layers[i].elitePool).toEqual(["rust_warden", "rust_bell_penitent", "chain_flailer"]);
+    }
     expect(act.layers[1].kinds).not.toContain("elite");
     expect(act.layers[7].kinds).not.toContain("elite");
     // 中段层带遭遇池与事件池

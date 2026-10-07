@@ -8,6 +8,7 @@ import MapView from "@/ui/views/MapView.vue";
 import RewardView from "@/ui/views/RewardView.vue";
 import RestView from "@/ui/views/RestView.vue";
 import { useRunStore } from "@/stores/run";
+import { useTipsStore } from "@/stores/tips";
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -63,10 +64,49 @@ describe("S5 UI 流程视图挂载", () => {
     await nextTick();
     // 甲方 2026-10-07：随身遗物改成首胜后发放
     expect(wrapper.findAll(".relic")).toHaveLength(3);
-    await wrapper.findAll(".relic")[0]!.trigger("click");
+    // docs/50 §三：机制不合的件置灰不可选，跳过它们再点
+    const pickable = wrapper.findAll(".relic:not([disabled])");
+    expect(pickable.length).toBeGreaterThan(0);
+    await pickable[0]!.trigger("click");
     await nextTick();
     expect(wrapper.findAll(".option")).toHaveLength(3);
     expect(wrapper.find(".skip").exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it("RewardView：机制不合的随身遗物照常出现，但置灰 + 一行标注 + 不可选（docs/50 §三）", async () => {
+    let unfitSeen = 0;
+    // 三选一来自随机池，多跑几个种子保证至少撞见一次「炉心件 / 卖血件」
+    for (let seed = 1; seed <= 12; seed += 1) {
+      const { wrapper } = mountView(RewardView, (run) => run.startRun("rustspeaker", seed));
+      await nextTick();
+      const unfit = wrapper.findAll(".relic.unfit");
+      for (const button of unfit) {
+        unfitSeen += 1;
+        // 置灰件必须不可选，并且带一行「本职业无 X 机制」的标注
+        expect(button.attributes("disabled")).toBeDefined();
+        expect(button.find(".unfit-note").text()).toContain("本职业无");
+        expect(button.find(".unfit-note").text()).toContain("机制");
+        expect(button.find(".pick").text()).toContain("不 可 选");
+      }
+      wrapper.unmount();
+    }
+    expect(unfitSeen).toBeGreaterThan(0);
+  });
+
+  it("RewardView：首胜选随身遗物时不弹「挑一张牌」（提示与当前动作对齐）", async () => {
+    const { wrapper } = mountView(RewardView, (run) => run.startRun("bloodwright", 1));
+    await nextTick();
+    const tips = useTipsStore();
+    // 这一步选的是随身遗物，卡牌三选一的提示不该在这时候出现
+    expect(wrapper.findAll(".relic").length).toBe(3);
+    expect(tips.current).toBeNull();
+    const pickable = wrapper.findAll(".relic:not([disabled])");
+    await pickable[0]!.trigger("click");
+    await nextTick();
+    // 进了卡牌三选一才弹（relic_pick 占着同屏唯一一条，reward_pick 排队等它）
+    expect(tips.current).toBe("relic_pick");
+    expect(tips.queue).toContain("reward_pick");
     wrapper.unmount();
   });
 

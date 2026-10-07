@@ -23,6 +23,15 @@
       },
       "weight": 2,
       "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "debuff",
+        "buffId": "chill",
+        "stacks": 1
+      },
+      "weight": 2,
+      "maxConsecutive": 1
     }
   ]
 }

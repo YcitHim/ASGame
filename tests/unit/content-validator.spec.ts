@@ -77,6 +77,49 @@ describe("content-validator（G1）", () => {
     expect(issues.some((i) => i.message.includes("buffId"))).toBe(true);
   });
 
+  it("docs/47 §三：攻击携带的眩晕同样必须预告（不能靠 attack 绕过蓄力/节拍约束）", () => {
+    const naked = baseInput();
+    naked.enemies = [
+      {
+        file: "src/data/enemies/ghost.json",
+        data: {
+          id: "ghost",
+          i18n: "enemy.ghost",
+          maxHp: 10,
+          intents: [{ intent: { kind: "attack", value: 5, buffId: "stun", stacks: 1 }, weight: 1 }],
+        },
+      },
+    ];
+    naked.i18n = { ...naked.i18n, "enemy.ghost.name": "幽灵" };
+    expect(validateContent(naked).issues.some((i) => i.message.includes("眩晕"))).toBe(true);
+
+    // 蓄力链释放段附带眩晕 = 有预告，放行
+    const chained = baseInput();
+    chained.enemies = [
+      {
+        file: "src/data/enemies/flailer.json",
+        data: {
+          id: "flailer",
+          i18n: "enemy.flailer",
+          maxHp: 10,
+          intents: [
+            {
+              intent: {
+                kind: "charge",
+                value: 4,
+                releaseOverride: 18,
+                thenIntent: { kind: "attack", value: 18, buffId: "stun", stacks: 1 },
+              },
+              weight: 1,
+            },
+          ],
+        },
+      },
+    ];
+    chained.i18n = { ...chained.i18n, "enemy.flailer.name": "链枷手" };
+    expect(validateContent(chained).issues.some((i) => i.message.includes("眩晕"))).toBe(false);
+  });
+
   it("docs/45 Q11：正式内容数据里出现调试指令串会报错", () => {
     const input = baseInput();
     input.enemies = [

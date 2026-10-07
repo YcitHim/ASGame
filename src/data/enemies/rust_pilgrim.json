@@ -20,6 +20,18 @@
       },
       "weight": 2,
       "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 13
+      },
+      "weight": 2,
+      "maxConsecutive": 1,
+      "playerBuff": {
+        "buffId": "pollution",
+        "minStacks": 1
+      }
     }
   ]
 }

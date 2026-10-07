@@ -251,7 +251,7 @@ export { ENHANCEMENT_TIERS };
 
 /** 意图定义（可递归：蓄力链 蓄 →（可再蓄）→ 释放，docs/18 Q1） */
 export interface IntentJson {
-  kind: "attack" | "defend" | "debuff" | "charge" | "summon" | "unknown";
+  kind: "attack" | "defend" | "debuff" | "charge" | "summon" | "selfBuff" | "unknown";
   value?: number;
   hits?: number;
   buffId?: string;
@@ -270,7 +270,7 @@ export interface IntentJson {
 
 const intentBaseSchema = z
   .object({
-    kind: z.enum(["attack", "defend", "debuff", "charge", "summon", "unknown"]),
+    kind: z.enum(["attack", "defend", "debuff", "charge", "summon", "selfBuff", "unknown"]),
     value: z.number().int().min(0).optional(),
     hits: z.number().int().min(1).optional(),
     buffId: z.enum(BUFF_IDS).optional(),
@@ -295,6 +295,13 @@ const enemyIntentSchema = z
     weight: z.number().min(0),
     condition: conditionSchema.optional(),
     maxConsecutive: z.number().int().min(1).optional(),
+    /** 节拍技（docs/47 §三.2）：回合数 %N==0 时强制顶替 */
+    everyTurns: z.number().int().min(1).optional(),
+    /** 追击条件（docs/47 §三.3）：玩家身上该 buff 层数 ≥ minStacks 才可抽中 */
+    playerBuff: z
+      .object({ buffId: z.enum(BUFF_IDS), minStacks: z.number().int().min(1) })
+      .strict()
+      .optional(),
   })
   .strict();
 
@@ -309,6 +316,15 @@ export const enemySchema = z
     interruptImmune: z.boolean().optional(),
     /** 眩晕抗性（docs/46 §3.5）：精英 / Boss 首次被眩晕后本场免疫后续 */
     stunResistant: z.boolean().optional(),
+    /** 开场状态（docs/47 §三.4）：战斗开始即挂在自己身上 */
+    startBuffs: z
+      .array(z.object({ buffId: z.enum(BUFF_IDS), stacks: z.number().int().min(1) }).strict())
+      .optional(),
+    /** 分裂亡语（docs/47 §三.4）：**M3 锁定**，正式数据出现即报错 */
+    deathSplit: z
+      .object({ enemyId: z.string().regex(ID_PATTERN), count: z.number().int().min(1) })
+      .strict()
+      .optional(),
   })
   .strict();
 

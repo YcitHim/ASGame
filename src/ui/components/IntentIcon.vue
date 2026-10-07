@@ -13,6 +13,8 @@ const label = computed(() => {
   if (i.kind === "attack") return `${i.value ?? 0}${(i.hits ?? 1) > 1 ? "×" + i.hits : ""}`;
   if (i.kind === "defend") return String(i.value ?? 0);
   if (i.kind === "charge") return "蓄";
+  // 自身增益（docs/47 §三.1）：显示层数，归「防御系」图标
+  if (i.kind === "selfBuff") return `+${i.stacks ?? 1}`;
   return "?";
 });
 
@@ -43,6 +45,11 @@ const sub = computed(() => {
     const hits = (i.hits ?? 1) > 1 ? `×${i.hits}` : "";
     return `即将承受 ${i.value ?? 0}${hits} 伤害`;
   }
+  if (i.kind === "selfBuff") {
+    if (!i.buffId) return "自身增益";
+    const meta = buffMeta(i.buffId);
+    return `给自己 ${meta.name} ${i.stacks ?? 1}${meta.unit}`;
+  }
   if (i.kind === "debuff") {
     // docs/41 §2.2：不再把一切 debuff 硬编码成「诅咒」——读 payload 的实际减益名；
     // 数据侧缺 buffId 时兜底「干扰」（validator 会对缺漏报错，这里只保证不骗玩家）。
@@ -50,7 +57,7 @@ const sub = computed(() => {
     const meta = buffMeta(i.buffId);
     return i.stacks && i.stacks > 0 ? `${meta.name} ${i.stacks}${meta.unit}` : meta.name;
   }
-  return { attack: "攻击", defend: "防御", summon: "召唤", unknown: "未知" }[i.kind];
+  return { attack: "攻击", defend: "防御", summon: "召唤", selfBuff: "自身增益", unknown: "未知" }[i.kind];
 });
 
 const color = computed(() => (props.intent?.kind === "attack" ? "#C0392B" : "#B08D4A"));
@@ -71,6 +78,10 @@ const tip = computed(() => {
       </template>
       <template v-else-if="intent?.kind === 'defend'">
         <path d="M12 3 L20 6 V12 C20 17 16.5 20 12 21.5 C7.5 20 4 17 4 12 V6 Z" />
+      </template>
+      <template v-else-if="intent?.kind === 'selfBuff'">
+        <path d="M12 3 L20 6 V12 C20 17 16.5 20 12 21.5 C7.5 20 4 17 4 12 V6 Z" />
+        <path d="M12 8 v7 M8.5 11.5 h7" />
       </template>
       <template v-else-if="intent?.kind === 'charge'">
         <path d="M12 3 A9 9 0 1 1 3 12 M12 7 A5 5 0 1 0 17 12" />

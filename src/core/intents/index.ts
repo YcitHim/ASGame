@@ -6,6 +6,7 @@
  * 在链上一次性算死，运行期不记账、释放即消耗（不残留、不滚雪球）。
  */
 import type { IntentPayload } from "../events";
+import { buffStacks } from "../buffs";
 import { evaluateCondition, type ConditionContext } from "../registry/condition";
 import type { EnemyDefinition, EnemyIntentEntry, IntentDefinition } from "../registry/content";
 import type { RngStream } from "../rng";
@@ -80,25 +81,28 @@ export function buildChargeChain(charge: IntentDefinition): ChargeChain {
     kind: "attack",
     value: releaseValue,
     ...(terminal?.hits !== undefined ? { hits: terminal.hits } : {}),
+    // 释放段携带的附加减益（docs/47 §四：链枷手「震慑重击」命中附加眩晕）
+    ...(terminal?.buffId !== undefined
+      ? { buffId: terminal.buffId, ...(terminal.stacks !== undefined ? { stacks: terminal.stacks } : {}) }
+      : {}),
     released: true,
   });
 
   return { chargeValues, releaseValue, steps };
 }
 
-function eligible(
-  def: EnemyDefinition,
-  ctx: ConditionContext,
-  history: readonly string[],
-  enforceConsecutive: boolean,
-): EnemyIntentEntry[] {
-  return def.intents.filter((entry) => {
-    if (entry.condition && !evaluateCondition(entry.condition, ctx)) return false;
-    if (!enforceConsecutive) return true;
-    const max = entry.maxConsecutive;
-    if (max == null) return true;
-    return trailingRepeat(history, intentKey(entry.intent)) < max;
-  });
+/** 追击条件（docs/47 §三.3）：玩家身上层数不够，这条就不该被抽中。 */
+function playerBuffOk(entry: EnemyIntentEntry, ctx: ConditionContext): boolean {
+  const need = entry.playerBuff;
+  if (!need) return true;
+  return buffStacks(ctx.buffs, need.buffId) >= need.minStacks;
+}
+
+/** 连续限制：同一条最多连出 maxConsecutive 次。 */
+function consecutiveOk(entry: EnemyIntentEntry, history: readonly string[]): boolean {
+  const max = entry.maxConsecutive;
+  if (max == null) return true;
+  return trailingRepeat(history, intentKey(entry.intent)) < max;
 }
 
 /** 召唤可用性上下文（docs/40 §五-2/3）：场上总数与某召唤物已有数量。 */
@@ -125,9 +129,21 @@ export interface IntentRoll {
   readonly chain?: readonly IntentPayload[];
 }
 
+/** 把抽中的一条展开成 IntentRoll（蓄力走链，其余直传）。 */
+function rollEntry(entry: EnemyIntentEntry): IntentRoll {
+  if (entry.intent.kind === "charge") {
+    const { steps } = buildChargeChain(entry.intent);
+    const first = steps[0];
+    if (!first) return { intent: { kind: "unknown" }, key: "unknown:0:1:" };
+    return { intent: first, key: intentKey(entry.intent), chain: steps.slice(1) };
+  }
+  return { intent: intentToPayload(entry.intent), key: intentKey(entry.intent) };
+}
+
 /**
  * 按意图表抽取下回合意图。
- * 条件不过滤掉全部候选时，放宽"连续限制"再抽一次（保证总有招可出）。
+ * 顺序：**节拍技优先**（docs/47 §三.2，回合数到点直接顶替）→ 常规按 weight 抽。
+ * 条件/追击/召唤/连续限制全过滤光时，放宽"连续限制"再抽一次（保证总有招可出）。
  * 抽到蓄力时展开成链：首环立刻揭示，其余环节写进 forcedChain。
  */
 export function generateIntent(
@@ -136,10 +152,24 @@ export function generateIntent(
   history: readonly string[],
   rng: RngStream,
   summon?: SummonContext,
+  turn = 0,
 ): IntentRoll {
-  const usable = (entry: EnemyIntentEntry): boolean => summonUsable(entry.intent, summon);
-  let pool = eligible(def, ctx, history, true).filter(usable);
-  if (pool.length === 0) pool = eligible(def, ctx, history, false).filter(usable);
+  const usable = (entry: EnemyIntentEntry): boolean =>
+    summonUsable(entry.intent, summon) && playerBuffOk(entry, ctx);
+  const passable = (entry: EnemyIntentEntry): boolean =>
+    (!entry.condition || evaluateCondition(entry.condition, ctx)) && usable(entry);
+
+  // 节拍技：回合数 %N == 0 的条目按数组序强制顶替（同回合多条取第一条）
+  if (turn > 0) {
+    for (const entry of def.intents) {
+      if (entry.everyTurns == null || turn % entry.everyTurns !== 0) continue;
+      if (!passable(entry) || !consecutiveOk(entry, history)) continue;
+      return rollEntry(entry);
+    }
+  }
+
+  let pool = def.intents.filter((entry) => passable(entry) && consecutiveOk(entry, history));
+  if (pool.length === 0) pool = def.intents.filter(passable);
   if (pool.length === 0) {
     // 召唤不可用时的兜底（docs/40 §五-2）：退回该敌人最低档普攻；没有普攻则 unknown
     const attacks = def.intents.filter((e) => e.intent.kind === "attack");
@@ -150,11 +180,5 @@ export function generateIntent(
     return { intent: { kind: "unknown" }, key: "unknown:0:1:" };
   }
   const entry = rng.weighted(pool.map((e) => [e, e.weight] as const));
-  if (entry.intent.kind === "charge") {
-    const { steps } = buildChargeChain(entry.intent);
-    const first = steps[0];
-    if (!first) return { intent: { kind: "unknown" }, key: "unknown:0:1:" };
-    return { intent: first, key: intentKey(entry.intent), chain: steps.slice(1) };
-  }
-  return { intent: intentToPayload(entry.intent), key: intentKey(entry.intent) };
+  return rollEntry(entry);
 }

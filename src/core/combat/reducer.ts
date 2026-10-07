@@ -17,6 +17,7 @@ import { generateIntents, runEnemyTurn } from "./enemy-turn";
 import { effectiveCard, playCard } from "./play-card";
 import { resetTurnRelics, resolveTriggers } from "./relics";
 import {
+  applyBuffToTarget,
   drawCards,
   resolveCurses,
   resolvePollutionCritical,
@@ -74,6 +75,13 @@ function startBattle(draft: Draft, sink: EventSink): void {
   sink.emit("CardsDrawn", { cardIds: hand });
 
   rollReverseCosts(draft);
+  // 开场状态（docs/47 §三.4）：战斗开始即挂在敌人自己身上
+  for (const enemy of draft.enemies) {
+    const def = draft.content.enemies.get(enemy.defId);
+    for (const sb of def?.startBuffs ?? []) {
+      applyBuffToTarget(draft, sink, enemy.id, sb.buffId, sb.stacks);
+    }
+  }
   resolveTriggers(draft, sink, "onBattleStart");
   generateIntents(draft, sink);
   draft.phase = "playerAction";

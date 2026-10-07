@@ -228,22 +228,56 @@ export function validateContent(input: ContentInput): ValidationResult {
 
   // 九相后半（docs/46 §3.5 / §六.8）：眩晕的两条硬约束
   for (const e of enemies) {
+    // docs/47 §三：减益也可以挂在攻击上（链枷手「震慑重击」= 蓄力链释放段命中附加眩晕），
+    // 所以这里只认 buffId，不限定 kind——否则攻击携带的眩晕会绕过预告约束。
     const appliesStun = e.intents.some((entry) => {
       let cursor: typeof entry.intent | undefined = entry.intent;
       while (cursor) {
-        if (cursor.kind === "debuff" && cursor.buffId === "stun") return true;
+        if (cursor.buffId === "stun") return true;
         cursor = cursor.thenIntent;
       }
       return false;
     });
     if (!appliesStun) continue;
-    const hasTelegraph = e.intents.some((entry) => entry.intent.kind === "charge");
-    if (!hasTelegraph) {
+    // 预告形式二选一（docs/47 §二.1）：蓄力链，或 everyTurns 节拍（玩家数得出来第几回合挨）
+    const hasCharge = e.intents.some((entry) => entry.intent.kind === "charge");
+    const hasBeat = e.intents.some((entry) => {
+      if (entry.everyTurns == null) return false;
+      let cursor: typeof entry.intent | undefined = entry.intent;
+      while (cursor) {
+        if (cursor.buffId === "stun") return true;
+        cursor = cursor.thenIntent;
+      }
+      return false;
+    });
+    if (!hasCharge && !hasBeat) {
       issues.push({
         file: `enemy ${e.id}`,
         path: "intents",
-        message: "对玩家施加眩晕必须提前一回合预告（表里要有蓄力链，docs/46 §3.5 / §六.8）",
+        message: "对玩家施加眩晕必须提前预告（蓄力链或 everyTurns 节拍，docs/46 §3.5 / docs/47 §二.1）",
       });
+    }
+  }
+  // 分裂亡语 M3 锁定（docs/47 §七）：正式数据出现 deathSplit 即报错
+  for (const e of enemies) {
+    if (e.deathSplit) {
+      issues.push({
+        file: `enemy ${e.id}`,
+        path: "deathSplit",
+        message: "分裂（deathSplit）仍锁定在 M3（docs/47 §七），正式数据不得挂载",
+      });
+    }
+  }
+  // 开场状态只允许挂「加持/异常」类，不许拿它绕过召唤等其它机制
+  for (const e of enemies) {
+    for (const sb of e.startBuffs ?? []) {
+      if (sb.buffId === "pollution") {
+        issues.push({
+          file: `enemy ${e.id}`,
+          path: "startBuffs",
+          message: "开场状态不允许挂 pollution（那是玩家侧资源，敌人没有）",
+        });
+      }
     }
   }
   for (const c of cards) {

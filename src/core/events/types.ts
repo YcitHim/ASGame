@@ -15,7 +15,7 @@ export interface EnemySetup {
 }
 
 export interface IntentPayload {
-  readonly kind: "attack" | "defend" | "debuff" | "charge" | "summon" | "unknown";
+  readonly kind: "attack" | "defend" | "debuff" | "charge" | "summon" | "selfBuff" | "unknown";
   readonly value?: number;
   readonly hits?: number;
   readonly buffId?: string;

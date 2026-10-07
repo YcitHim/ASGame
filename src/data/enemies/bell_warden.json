@@ -31,6 +31,16 @@
       },
       "weight": 2,
       "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "debuff",
+        "buffId": "stun",
+        "stacks": 1
+      },
+      "weight": 2,
+      "maxConsecutive": 1,
+      "everyTurns": 4
     }
   ]
 }

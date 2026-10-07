@@ -1,0 +1,33 @@
+{
+  "id": "silent_matron",
+  "i18n": "enemy.silent_matron",
+  "maxHp": 64,
+  "intents": [
+    {
+      "intent": {
+        "kind": "debuff",
+        "buffId": "stun",
+        "stacks": 1
+      },
+      "weight": 2,
+      "maxConsecutive": 1,
+      "everyTurns": 5
+    },
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 9
+      },
+      "weight": 3,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "defend",
+        "value": 9
+      },
+      "weight": 1,
+      "maxConsecutive": 1
+    }
+  ]
+}

@@ -7,6 +7,48 @@
   "intents": [
     {
       "intent": {
+        "kind": "debuff",
+        "buffId": "stun",
+        "stacks": 1
+      },
+      "weight": 1,
+      "maxConsecutive": 1,
+      "everyTurns": 4,
+      "condition": {
+        "type": "selfHpBelow",
+        "percent": 30
+      }
+    },
+    {
+      "intent": {
+        "kind": "debuff",
+        "buffId": "reverse",
+        "stacks": 1
+      },
+      "weight": 1,
+      "maxConsecutive": 1,
+      "everyTurns": 4,
+      "condition": {
+        "type": "selfHpBelow",
+        "percent": 60
+      }
+    },
+    {
+      "intent": {
+        "kind": "debuff",
+        "buffId": "chill",
+        "stacks": 1
+      },
+      "weight": 1,
+      "maxConsecutive": 1,
+      "everyTurns": 4,
+      "condition": {
+        "type": "selfHpAtLeast",
+        "percent": 60
+      }
+    },
+    {
+      "intent": {
         "kind": "attack",
         "value": 11,
         "hits": 2

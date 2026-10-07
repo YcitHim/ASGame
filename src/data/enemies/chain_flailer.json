@@ -1,12 +1,14 @@
 {
-  "id": "rust_sentinel",
-  "i18n": "enemy.rust_sentinel",
-  "maxHp": 40,
+  "id": "chain_flailer",
+  "i18n": "enemy.chain_flailer",
+  "maxHp": 96,
+  "stunResistant": true,
   "intents": [
     {
       "intent": {
-        "kind": "defend",
-        "value": 8
+        "kind": "attack",
+        "value": 8,
+        "hits": 2
       },
       "weight": 2,
       "maxConsecutive": 1
@@ -14,28 +16,23 @@
     {
       "intent": {
         "kind": "attack",
-        "value": 10
+        "value": 12
       },
       "weight": 2,
-      "maxConsecutive": 1
+      "maxConsecutive": 2
     },
     {
       "intent": {
         "kind": "charge",
-        "value": 2,
-        "block": 4,
+        "value": 4,
+        "block": 6,
+        "releaseOverride": 18,
         "thenIntent": {
           "kind": "attack",
-          "value": 10
+          "value": 18,
+          "buffId": "stun",
+          "stacks": 1
         }
-      },
-      "weight": 1
-    },
-    {
-      "intent": {
-        "kind": "selfBuff",
-        "buffId": "bramble",
-        "stacks": 2
       },
       "weight": 2,
       "maxConsecutive": 1
