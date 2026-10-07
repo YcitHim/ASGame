@@ -61,6 +61,11 @@ export interface TutorialStep {
   /** 同上，按职业给（防御课要用本职业的格挡牌） */
   readonly classGrant?: Readonly<Record<string, readonly string[]>>;
   readonly goal: TutorialGoal;
+  /**
+   * 做到之后**不自动翻页**，停在原地等玩家点「知道了」再走（甲方反馈：
+   * 吃到异常那一步没有引导，看完状态栏不知道下一步干嘛）。
+   */
+  readonly ack?: boolean;
   /** 严判定：没做到就不推进，给一句纠正 */
   readonly strict?: boolean;
   readonly correct?: string;
@@ -99,8 +104,10 @@ export const TUTORIAL_NARRATOR = "铆叔";
 
 /**
  * 只教一件事：**看懂屏幕 + 敢出手**。
- * 敌人选「浊化布道者」（36 血，会攻击 / 挂污染 / 挂虚弱），种子 9 的意图序列是
- * 攻击 → 污染 → 攻击 → 虚弱——正好把"防御"和"异常"两课按顺序送到玩家脸上。
+ * 敌人 = 「污染布道者」，但意图不再看它的随机表——每一步都可以用 intent 钉死。
+ *
+ * 三回合打完（甲方：「周期太长了」）：
+ *   回合1 挂异常 → 回合2 一回合蓄力（这一回合叠挡没用）→ 回合3 重击（这时叠挡才算数）→ 清场。
  */
 export const TUTORIAL_CHAPTERS: readonly TutorialChapter[] = [
   {
@@ -148,19 +155,29 @@ export const TUTORIAL_CHAPTERS: readonly TutorialChapter[] = [
       },
       {
         why: "小心敌人给你挂的「诅咒」",
-        how: "结束回合，看它往你身上挂什么。异常都落在状态栏：虚弱让你伤害 ×0.75，污染攒到 100 会反噬你 10 点。",
+        how: "结束回合，它就会给你挂异常（虚弱 / 污染）。挂上之后显示在状态栏这一行。",
         focus: "debuff",
-        // 也钉一次：断点续做时这一步不会因为敌人随机出招而卡住
+        // 钉一次：断点续做时这一步不会因为敌人随机出招而卡住
         intent: { kind: "debuff", buffId: "weak", value: 1 },
         goal: { kind: "playerDebuffed" },
+        // 吃到异常后停一下，让玩家点「知道了」再走（甲方反馈：6/8 没有引导）
+        ack: true,
       },
       {
-        why: "它蓄力了——一回合后就是重击",
-        how: "紫色蓄力＝下回合放重击，同时它自己会架起格挡。打一张防御牌叠格挡，再结束回合。",
+        why: "它在蓄力——这一回合别急着叠挡",
+        how: "紫色蓄力＝下回合放重击；而格挡每回合开始就清零，现在叠的挡到重击那回合早就没了。直接结束回合，下回合再叠。",
         focus: "intent",
-        highlightType: "skill",
         // 钉一个「一回合蓄力」：这一课不让玩家等两个回合（甲方要求）
         intent: { kind: "charge", value: 2, block: 4, release: 10 },
+        // min 0 = "把回合结束掉"；真正的叠挡判定在下一课
+        goal: { kind: "blockEndTurn", min: 0 },
+        ack: true,
+      },
+      {
+        why: "重击来了——现在叠格挡才算数",
+        how: "打一张防御牌叠格挡，再结束回合。格挡会先替你挨这一下。",
+        focus: "intent",
+        highlightType: "skill",
         // 起手 5 张里有没有防御是发牌运气，保底发一张本职业的格挡牌
         classGrant: {
           bloodwright: ["defend"],
@@ -169,7 +186,7 @@ export const TUTORIAL_CHAPTERS: readonly TutorialChapter[] = [
         },
         goal: { kind: "blockEndTurn", min: 1 },
         strict: true,
-        correct: "这一下会打在你身上——先打一张高亮的防御牌，再结束回合。",
+        correct: "重击这一下真的会打在你身上——先打一张高亮的防御牌，再结束回合。",
       },
       {
         why: "最后，把它打掉。",

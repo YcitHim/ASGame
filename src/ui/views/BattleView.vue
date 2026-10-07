@@ -454,6 +454,10 @@ function back(): void {
               <b class="tut-why">{{ tutorial.step?.why }}</b>
               <span class="tut-how">{{ tutorial.step?.how }}</span>
             </p>
+            <!-- 判定做到、这一步要求玩家点「知道了」才翻页（docs/43 甲方反馈） -->
+            <p v-if="tutorial.stepDone && !tutorial.correction" class="tut-done">
+              ✔ 做对了——点「知道了」继续。
+            </p>
           </div>
           <button v-if="tutorial.needsAcknowledge" class="tut-ack" @click="tutorial.noteAcknowledge()">
             知 道 了
@@ -1017,6 +1021,7 @@ function back(): void {
 .tut-how { font-size: 12px; letter-spacing: 0.06em; color: var(--ink-bone); }
 /* 纠错（docs/42 §四）：做错了不推进，但也不惩罚——只说一句该怎么改 */
 .tut-correct { font-size: 12px; letter-spacing: 0.06em; color: var(--blood-hi); }
+.tut-done { margin-top: 2px; font-size: 12px; letter-spacing: 0.06em; color: var(--gold); }
 /* 导览步的「知道了」：玩家读完自己翻页 */
 .tut-ack {
   flex: none; padding: 4px 12px;

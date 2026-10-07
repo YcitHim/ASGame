@@ -38,7 +38,8 @@ describe("docs/42 速成版 · 脚本结构", () => {
     expect(TUTORIAL_CHAPTERS.map((c) => c.kind)).toEqual(["battle", "graduation"]);
     const battle = TUTORIAL_CHAPTERS[0];
     if (battle.kind !== "battle") throw new Error("脚本异常");
-    expect(battle.steps).toHaveLength(8);
+    // 4 步认屏幕 + 攻击 + 异常 + 蓄力（这一回合别叠挡）+ 挡重击 + 清场 = 9
+    expect(battle.steps).toHaveLength(9);
     expect(game.content.enemies.has(battle.enemies[0]!)).toBe(true);
     // docs/43 甲方反馈「太磨」：HP 压到 26，三回合内打完，又够演完异常/蓄力两课
     expect(battle.enemyHp).toBeGreaterThan(20);
@@ -52,8 +53,11 @@ describe("docs/42 速成版 · 脚本结构", () => {
     // 「异常」那一课也钉一次，断点续做不会因为敌人随机出招卡死
     const debuffStep = battle.steps.find((s) => s.goal.kind === "playerDebuffed");
     expect(debuffStep?.intent?.kind).toBe("debuff");
-    const chargeStep = battle.steps.find((s) => s.goal.kind === "blockEndTurn");
+    const chargeStep = battle.steps.find((s) => s.intent?.kind === "charge");
     expect(chargeStep?.intent).toEqual({ kind: "charge", value: 2, block: 4, release: 10 });
+    // 异常 / 蓄力两步都要玩家点「知道了」再走（甲方反馈：没有引导）
+    expect(debuffStep?.ack).toBe(true);
+    expect(chargeStep?.ack).toBe(true);
   });
 
   it("前四步是 UI 导览：分别指向状态栏 / 能量 / 手牌 / 意图，且都要玩家点「知道了」", () => {
@@ -69,18 +73,26 @@ describe("docs/42 速成版 · 脚本结构", () => {
     }
   });
 
-  it("后四步：攻击 → 被挂异常 → 蓄力防御（严判定）→ 清场", () => {
+  it("后五步：攻击 → 异常 → 蓄力(先别叠挡) → 挡重击(严判定) → 清场", () => {
     const battle = TUTORIAL_CHAPTERS[0];
     if (battle.kind !== "battle") throw new Error("脚本异常");
     expect(battle.steps.slice(4).map((s) => s.goal.kind)).toEqual([
       "playType",
       "playerDebuffed",
       "blockEndTurn",
+      "blockEndTurn",
       "killAll",
     ]);
-    // 防御课是严判定，且必须有保底发的格挡牌（不能靠发牌运气）
-    const block = battle.steps[6]!;
+    // 蓄力那一课不是叠挡课：min 0（结束回合就行），且文案要说明"现在叠挡没用"
+    const charge = battle.steps[6]!;
+    if (charge.goal.kind !== "blockEndTurn") throw new Error("脚本异常");
+    expect(charge.goal.min).toBe(0);
+    expect(charge.how).toContain("清零");
+    // 挡重击那一课才是严判定，且必须有保底发的格挡牌（不能靠发牌运气）
+    const block = battle.steps[7]!;
     expect(block.strict).toBe(true);
+    if (block.goal.kind !== "blockEndTurn") throw new Error("脚本异常");
+    expect(block.goal.min).toBe(1);
     expect(block.classGrant?.bloodwright).toContain("defend");
     expect(block.classGrant?.engineer).toContain("brassguard");
     expect(block.classGrant?.rustspeaker).toContain("scrapguard");
@@ -121,25 +133,48 @@ describe("docs/42 速成版 · 判定", () => {
     expect(tutorial.stepIndex).toBe(0);
   });
 
-  it("攻击课认 attack；异常课要真被挂；防御课认格挡后结束回合（严判定给纠正）", () => {
+  it("攻击课认 attack；异常课要真被挂且点「知道了」；蓄力课只结束回合；挡重击才认格挡", () => {
     const { tutorial } = setup();
     tutorial.stepIndex = 4;
     tutorial.noteCardPlayed("defend", "skill");
     expect(tutorial.stepIndex).toBe(4);
     tutorial.noteCardPlayed("strike", "attack");
     expect(tutorial.stepIndex).toBe(5);
-    // 异常课：清场 / 结束回合都不算，得真吃到一次减益
+    // 异常课：结束回合 / 清场都不算，得真吃到一次减益
     tutorial.noteEndTurn({ block: 5 });
     expect(tutorial.stepIndex).toBe(5);
     tutorial.notePlayerDebuffed();
+    expect(tutorial.stepIndex).toBe(5);
+    expect(tutorial.stepDone).toBe(true);
+    expect(tutorial.needsAcknowledge).toBe(true);
+    tutorial.noteAcknowledge();
     expect(tutorial.stepIndex).toBe(6);
-    // 蓄力防御课：没格挡不推进并给纠正
+    // 蓄力课：min 0——结束回合就够，且也要点「知道了」才走
+    expect(tutorial.step?.goal.kind).toBe("blockEndTurn");
     tutorial.noteEndTurn({ block: 0 });
     expect(tutorial.stepIndex).toBe(6);
+    expect(tutorial.stepDone).toBe(true);
+    tutorial.noteAcknowledge();
+    expect(tutorial.stepIndex).toBe(7);
+    // 挡重击课：没格挡不推进并给纠正；有格挡才过
+    tutorial.noteEndTurn({ block: 0 });
+    expect(tutorial.stepIndex).toBe(7);
     expect(tutorial.correction.length).toBeGreaterThan(0);
     tutorial.noteEndTurn({ block: 5 });
-    expect(tutorial.stepIndex).toBe(7);
+    expect(tutorial.stepIndex).toBe(8);
     expect(tutorial.correction).toBe("");
+  });
+
+  it("异常课不卡死：进这一步之前就已经被挂过，也直接算做到（只等「知道了」）", () => {
+    const { tutorial } = setup();
+    // 模拟玩家在攻击课提前结束回合、先吃了异常
+    tutorial.debuffed = true;
+    tutorial.stepIndex = 4;
+    tutorial.noteCardPlayed("strike", "attack");
+    expect(tutorial.stepIndex).toBe(5);
+    expect(tutorial.stepDone).toBe(true);
+    tutorial.noteAcknowledge();
+    expect(tutorial.stepIndex).toBe(6);
   });
 
   it("被挂异常才推进「异常」那一课；清场才推进最后一步", () => {
@@ -149,7 +184,8 @@ describe("docs/42 速成版 · 判定", () => {
     tutorial.noteCleared();
     expect(tutorial.stepIndex).toBe(5);
     tutorial.notePlayerDebuffed();
-    expect(tutorial.stepIndex).toBe(6);
+    expect(tutorial.stepIndex).toBe(5);
+    expect(tutorial.stepDone).toBe(true);
     expect(tutorial.debuffed).toBe(true);
   });
 
@@ -267,8 +303,11 @@ describe("docs/42 速成版 · 战斗接入", () => {
     store.endTurn();
     store.skip();
     expect(store.battle).not.toBeNull();
-    // 玩家吃到减益时通过事件流推进（这里直接验证信号通路）
+    // 玩家吃到减益时通过事件流推进（这里直接验证信号通路）；标了 ack 的步骤要点「知道了」才翻页
     tutorial.notePlayerDebuffed();
+    expect(tutorial.stepDone).toBe(true);
+    expect(tutorial.stepIndex).toBe(5);
+    tutorial.noteAcknowledge();
     expect(tutorial.stepIndex).toBe(6);
   });
 });
@@ -352,15 +391,15 @@ describe("docs/43 改版 · 整场通关（按脚本走不卡死）", () => {
       for (const command of commands) store.debug(command);
       store.skip();
     };
-    const playType = (type: string) => {
+    const playCard = (match: (cardId: string) => boolean) => {
       const hand = store.battle!.piles.hand;
-      const index = hand.findIndex(
-        (id) => game.content.cards.get(store.battle!.cardInstances[id]!.cardId)?.type === type,
-      );
+      const index = hand.findIndex((id) => match(store.battle!.cardInstances[id]!.cardId));
       expect(index).toBeGreaterThanOrEqual(0);
       store.playCard(index, store.battle!.enemies[0]!.id);
       store.skip();
     };
+    const playType = (type: string) =>
+      playCard((cardId) => game.content.cards.get(cardId)?.type === type);
 
     apply();
     for (let i = 0; i < 4; i += 1) {
@@ -372,16 +411,26 @@ describe("docs/43 改版 · 整场通关（按脚本走不卡死）", () => {
     expect(tutorial.step?.goal.kind).toBe("playType");
     playType("attack");
     apply();
-    // 异常课：脚本钉的是「虚弱」，结束回合必吃到
+    // 异常课：脚本钉的是「虚弱」，结束回合必吃到；吃到后要点「知道了」
     expect(tutorial.step?.goal.kind).toBe("playerDebuffed");
     store.endTurn();
     store.skip();
     expect(tutorial.debuffed).toBe(true);
+    expect(tutorial.step?.goal.kind).toBe("playerDebuffed");
+    expect(tutorial.needsAcknowledge).toBe(true);
+    tutorial.noteAcknowledge();
     expect(tutorial.step?.goal.kind).toBe("blockEndTurn");
-    // 蓄力课：意图被钉成 1 回合蓄力，玩家叠格挡再结束回合
+    // 蓄力课：意图被钉成 1 回合蓄力；这一课只要求结束回合（叠挡没用），也要点「知道了」
     apply();
     expect(store.battle?.enemies[0]?.intent?.kind).toBe("charge");
-    playType("skill");
+    store.endTurn();
+    store.skip();
+    expect(tutorial.stepDone).toBe(true);
+    tutorial.noteAcknowledge();
+    expect(tutorial.stepIndex).toBe(7);
+    // 挡重击课：此时意图已由蓄力链变成「释放」，叠格挡再结束回合
+    expect(store.battle?.enemies[0]?.intent?.kind).toBe("attack");
+    playCard((cardId) => cardId === "defend");
     store.endTurn();
     store.skip();
     expect(tutorial.step?.goal.kind).toBe("killAll");

@@ -31,6 +31,8 @@ export const useTutorialStore = defineStore("tutorial", {
     stepIndex: 0,
     finished: false,
     run: null as TutorialRunState | null,
+    /** 当前步骤的判定已满足，但这一步要求玩家点「知道了」才翻页（step.ack） */
+    stepDone: false,
     /** 严判定失败的纠正话术（显示在提示带里，不推进） */
     correction: "",
     /** 免死已触发次数（docs/42 §四：第二次补满并继续） */
@@ -65,9 +67,14 @@ export const useTutorialStore = defineStore("tutorial", {
       if (!this.active) return null;
       return this.step?.highlightCardId ?? null;
     },
-    /** 当前步骤的「知道了」按钮：只有导览步（acknowledge）才有 */
+    /**
+     * 当前步骤的「知道了」按钮：
+     * - 导览步（acknowledge）永远有；
+     * - 标了 ack 的判定步，做到之后也会亮出来（让玩家停一下再走）。
+     */
     needsAcknowledge(): boolean {
-      return this.active && this.step?.goal.kind === "acknowledge";
+      if (!this.active || !this.step) return false;
+      return this.step.goal.kind === "acknowledge" || (this.step.ack === true && this.stepDone);
     },
     isBattleChapter(state): boolean {
       return tutorialChapter(state.chapterIndex)?.kind === "battle";
@@ -96,6 +103,7 @@ export const useTutorialStore = defineStore("tutorial", {
       this.chapterIndex = 0;
       this.stepIndex = 0;
       this.correction = "";
+      this.stepDone = false;
       this.safetySaves = 0;
       this.debuffed = false;
       this.run = {
@@ -123,6 +131,7 @@ export const useTutorialStore = defineStore("tutorial", {
       this.chapterIndex = saved.chapterIndex;
       this.stepIndex = saved.stepIndex;
       this.correction = "";
+      this.stepDone = false;
       this.safetySaves = 0;
       this.debuffed = false;
       this.run = {
@@ -153,12 +162,39 @@ export const useTutorialStore = defineStore("tutorial", {
       });
     },
 
+    /** 判定满足：普通步骤直接翻页；标了 ack 的步骤停下来等「知道了」。 */
+    _satisfy(): void {
+      const step = this.step;
+      if (!step) return;
+      this.correction = "";
+      if (step.ack === true) {
+        this.stepDone = true;
+        return;
+      }
+      this._advance();
+    },
+
+    /**
+     * 进入新步骤时的"已经满足"兜底：
+     * 玩家可能在上一课就把异常吃到了（比如提前结束回合），那一课不该卡死。
+     */
+    _checkPreSatisfied(): void {
+      const step = this.step;
+      if (!step) return;
+      if (step.goal.kind === "playerDebuffed" && this.debuffed) {
+        if (step.ack === true) this.stepDone = true;
+        else this._advance();
+      }
+    },
+
     _advance(): void {
       this.correction = "";
+      this.stepDone = false;
       const steps = this.steps;
       if (this.stepIndex + 1 < steps.length) {
         this.stepIndex += 1;
         this._persist();
+        this._checkPreSatisfied();
         return;
       }
       const id = this.chapter?.id;
@@ -168,11 +204,11 @@ export const useTutorialStore = defineStore("tutorial", {
 
     /* ---------- 判定信号（battle store / 视图转发） ---------- */
 
-    /** 导览步：玩家点了「知道了」。 */
+    /** 「知道了」：导览步直接翻页；标了 ack 的判定步在做到之后也用它翻页。 */
     noteAcknowledge(): void {
       const step = this.step;
       if (!this.active || !step) return;
-      if (step.goal.kind === "acknowledge") this._advance();
+      if (step.goal.kind === "acknowledge" || (step.ack === true && this.stepDone)) this._advance();
     },
 
     noteCardPlayed(cardId: string, cardType: string): void {
@@ -182,7 +218,7 @@ export const useTutorialStore = defineStore("tutorial", {
       let ok: boolean | null = null;
       if (goal.kind === "playCardId") ok = goal.cardId === cardId;
       else if (goal.kind === "playType") ok = goal.cardType === cardType;
-      if (ok === true) this._advance();
+      if (ok === true) this._satisfy();
     },
 
     noteEndTurn(state: { block: number }): void {
@@ -190,7 +226,7 @@ export const useTutorialStore = defineStore("tutorial", {
       if (!this.active || !step) return;
       const goal = step.goal;
       if (goal.kind !== "blockEndTurn") return;
-      if (state.block >= goal.min) this._advance();
+      if (state.block >= goal.min) this._satisfy();
       else if (step.strict) this.correction = step.correct ?? `这一步还没做完——${step.how}`;
     },
 
@@ -199,13 +235,13 @@ export const useTutorialStore = defineStore("tutorial", {
       this.debuffed = true;
       const step = this.step;
       if (!this.active || !step) return;
-      if (step.goal.kind === "playerDebuffed") this._advance();
+      if (step.goal.kind === "playerDebuffed") this._satisfy();
     },
 
     noteCleared(): void {
       const step = this.step;
       if (!this.active || !step) return;
-      if (step.goal.kind === "killAll") this._advance();
+      if (step.goal.kind === "killAll") this._satisfy();
     },
 
     noteSafetyNet(): number {
@@ -219,6 +255,7 @@ export const useTutorialStore = defineStore("tutorial", {
     nextChapter(): boolean {
       this.correction = "";
       this.stepIndex = 0;
+      this.stepDone = false;
       this.safetySaves = 0;
       this.debuffed = false;
       const index = this.chapterIndex + 1;
@@ -242,6 +279,7 @@ export const useTutorialStore = defineStore("tutorial", {
       this.stepIndex = 0;
       this.run = null;
       this.correction = "";
+      this.stepDone = false;
       this.debuffed = false;
       this._persist();
     },
