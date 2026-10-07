@@ -668,7 +668,11 @@ export function killUnit(draft: Draft, sink: EventSink, unitId: string): number 
 
 /**
  * 把效果列表解析成栈上的动作（ADR-002）。
- * 条件与目标在此刻快照；倒序压栈，弹出时仍是卡面书写顺序。
+ * 目标在此刻快照；**条件推迟到执行时求值**（见 executeWork）；倒序压栈，弹出时仍是卡面书写顺序。
+ *
+ * 为什么条件不能在入栈时快照：同一张牌的前序效果会改状态，后面的条件必须看得见。
+ * 「红线运转」= 先 +4 充能、再判「充能 ≥8 时抽 2 张」——入栈时充能还是 4，快照就会把抽牌整条丢掉，
+ * 玩家拿着 4 充能打出这张牌永远拿不到那两张牌（玩家反馈实锤）。
  */
 export function enqueueEffects(
   draft: Draft,
@@ -681,7 +685,6 @@ export function enqueueEffects(
   for (const effect of effects) {
     // 目标条件（targetHasBuff）必须逐目标求值，不能在这里快照（docs/38 §二 B-3）
     const targetCondition = hasTargetCondition(effect.condition);
-    if (!targetCondition && !evaluateCondition(effect.condition, conditionContext(draft))) continue;
     if (effect.kind === "damage") damageIndex += 1;
     const targetIds = resolveTargets(draft, defaultTarget(effect), ctx.actorId, ctx.chosenTargetId);
     pending.push({ effect, ctx, targetIds, damageIndex, damageTotal, ...(targetCondition ? { targetCondition } : {}) });
@@ -711,6 +714,8 @@ function hasTargetCondition(node: ConditionNode | undefined): boolean {
 
 function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
   const { effect, ctx, damageIndex, damageTotal } = work;
+  // 非目标条件：在这里（执行时）求值——同一张牌的前序效果可能刚刚改过它要读的状态
+  if (!work.targetCondition && !evaluateCondition(effect.condition, conditionContext(draft))) return;
   // 目标条件：按每个目标现场求值（docs/38 §二 B-3「疫触」）
   const targetIds = work.targetCondition
     ? work.targetIds.filter((t) => {

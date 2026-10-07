@@ -21,8 +21,18 @@ const CHARGE8: CardDefinition = {
   effects: [{ kind: "gainCharge", value: 8 }],
 };
 
+/** 测试辅助卡：一次性攒 4 充能（复现玩家反馈的起手刻度） */
+const CHARGE4: CardDefinition = {
+  id: "charge4",
+  class: "bloodwright",
+  type: "skill",
+  rarity: "common",
+  cost: 0,
+  effects: [{ kind: "gainCharge", value: 4 }],
+};
+
 const content = createContentDb({
-  cards: new Map([...game.content.cards, ["charge8", CHARGE8]]),
+  cards: new Map([...game.content.cards, ["charge8", CHARGE8], ["charge4", CHARGE4]]),
   enemies: new Map([
     [
       "dummy",
@@ -62,6 +72,12 @@ const dealt = (events: readonly { type: string }[]) =>
     .filter((e): e is { type: string; value: number } => e.type === "DamageDealt")
     .map((e) => e.value);
 
+/** 这一批事件里实际抽到的牌（用来验证条件抽牌真的发生了）。 */
+const drawn = (events: readonly { type: string }[]) =>
+  events.flatMap((e) =>
+    e.type === "CardsDrawn" && "cardIds" in e ? ((e as { cardIds: readonly string[] }).cardIds) : [],
+  );
+
 describe("P4.1 副线卡", () => {
   it("火芯刺：4 伤 + 2 充能", () => {
     const r = play(battle(["sparkjab"]), "sparkjab");
@@ -78,17 +94,28 @@ describe("P4.1 副线卡", () => {
     expect(r.state.player.charge).toBe(0);
   });
 
-  it("红线运转：充能 ≥8 时抽牌（打出前判定），<8 时不抽", () => {
-    const charged = play(battle(["charge8", "redline"]), "charge8");
-    expect(charged.state.player.charge).toBe(8);
-    const high = play(charged.state, "redline");
-    expect(high.state.player.charge).toBe(0); // 8+4=12 > 10 → 过载反噬并清零
-    expect(high.events.some((e) => e.type === "Overloaded")).toBe(true);
-    expect(high.events.filter((e) => e.type === "CardsDrawn").length).toBeGreaterThanOrEqual(1);
+  it("红线运转：先 +4 充能、再判「充能 ≥8」（玩家反馈实锤）", () => {
+    // 玩家报告的场景：手里 4 点充能 → 打出后正好 8 → 必须给那两张牌。
+    // 修复前条件在「入栈时」快照（那时还是 4），整条抽牌被丢掉。
+    const first = play(battle(["charge4", "strike", "redline", "defend", "defend"]), "charge4");
+    expect(first.state.player.charge).toBe(4);
+    const second = play(first.state, "strike"); // 再铺一张，保证牌堆里有牌可抽
+    const hit = play(second.state, "redline");
+    expect(hit.state.player.charge).toBe(8);
+    expect(drawn(hit.events)).toHaveLength(2);
 
+    // 0 充能起手：只到 4，条件不成立，不抽
     const low = play(battle(["redline"]), "redline");
     expect(low.state.player.charge).toBe(4);
-    expect(dealt(low.events)).toEqual([]);
+    expect(drawn(low.events)).toHaveLength(0);
+
+    // 8 充能起手：+4 过 10 → 过载反噬清零 → 结算时「充能 ≥8」不成立，这一手也不抽
+    const charged = play(battle(["charge8", "redline"]), "charge8");
+    expect(charged.state.player.charge).toBe(8);
+    const over = play(charged.state, "redline");
+    expect(over.events.some((e) => e.type === "Overloaded")).toBe(true);
+    expect(over.state.player.charge).toBe(0);
+    expect(drawn(over.events)).toHaveLength(0);
   });
 
   it("污血献祭：污染 +12 并抽 2 张", () => {
