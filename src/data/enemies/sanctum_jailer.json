@@ -2,6 +2,7 @@
   "id": "sanctum_jailer",
   "i18n": "enemy.sanctum_jailer",
   "maxHp": 120,
+  "stunResistant": true,
   "intents": [
     {
       "intent": {

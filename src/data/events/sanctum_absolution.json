@@ -1,0 +1,38 @@
+{
+  "id": "sanctum_absolution",
+  "i18n": "event.sanctum_absolution",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.sanctum_absolution.opt.a.result",
+      "effects": [
+        {
+          "kind": "pollution",
+          "value": -100
+        },
+        {
+          "kind": "hp",
+          "value": -8
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.sanctum_absolution.opt.b.result",
+      "effects": [
+        {
+          "kind": "pollution",
+          "value": -40
+        },
+        {
+          "kind": "hp",
+          "value": 5
+        }
+      ]
+    },
+    {
+      "id": "c",
+      "i18n": "event.sanctum_absolution.opt.c.result"
+    }
+  ]
+}

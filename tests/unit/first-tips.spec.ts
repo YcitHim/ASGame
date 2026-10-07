@@ -14,7 +14,7 @@ describe("docs/41 §4.1 首遇提示", () => {
     setActivePinia(createPinia());
   });
 
-  it("12 条词条：5 条战斗层 + 7 条循环层（docs/42 §五）", () => {
+  it("14 条词条：5 条战斗层 + 7 条循环层 + 2 条九相（docs/42 §五 / docs/49 Phase 2a）", () => {
     expect(FIRST_TIPS.map((t) => t.id)).toEqual([
       "discard",
       "bloodpact",
@@ -28,6 +28,8 @@ describe("docs/41 §4.1 首遇提示", () => {
       "upgrade",
       "relic_pick",
       "boss_warning",
+      "curse",
+      "burn",
     ]);
     for (const tip of FIRST_TIPS) {
       expect(tip.title.length).toBeGreaterThan(0);

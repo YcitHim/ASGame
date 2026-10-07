@@ -7,11 +7,12 @@
     "rustspeaker"
   ],
   "weights": {
-    "battle": 40,
+    "battle": 50,
     "elite": 15,
     "rest": 15,
     "altar": 15,
-    "event": 15
+    "event": 20,
+    "reward": 15
   },
   "layers": [
     {
@@ -50,7 +51,8 @@
       "kinds": [
         "battle",
         "altar",
-        "event"
+        "event",
+        "reward"
       ],
       "encounters": [
         {
@@ -89,7 +91,8 @@
       "kinds": [
         "battle",
         "altar",
-        "event"
+        "event",
+        "reward"
       ],
       "elitePool": [
         "rust_warden"
@@ -124,7 +127,8 @@
       "kinds": [
         "battle",
         "altar",
-        "event"
+        "event",
+        "reward"
       ],
       "elitePool": [
         "rust_warden"
@@ -136,7 +140,8 @@
       "kinds": [
         "battle",
         "altar",
-        "event"
+        "event",
+        "reward"
       ],
       "elitePool": [
         "rust_warden"
@@ -148,7 +153,8 @@
       "kinds": [
         "battle",
         "altar",
-        "event"
+        "event",
+        "reward"
       ],
       "elitePool": [
         "rust_warden"
@@ -190,7 +196,8 @@
       "kinds": [
         "battle",
         "altar",
-        "event"
+        "event",
+        "reward"
       ],
       "elitePool": [
         "rust_warden"
@@ -202,7 +209,8 @@
       "kinds": [
         "battle",
         "altar",
-        "event"
+        "event",
+        "reward"
       ]
     },
     {

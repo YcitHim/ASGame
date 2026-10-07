@@ -36,7 +36,8 @@ describe("真实内容装载（data/load）", () => {
   it("树状地图层模板：10 层骨架 / 精英池 / 收尾祭坛→Boss（docs/48 §3.1）", () => {
     const act = loadGameContent().acts[0];
     expect(act.layers).toHaveLength(10);
-    expect(act.weights).toEqual({ battle: 40, elite: 15, rest: 15, altar: 15, event: 15 });
+    // docs/49 §六：中段环境配比 战斗 50 / 事件 20 / 匣 15 / 祭坛 15
+    expect(act.weights).toEqual({ battle: 50, elite: 15, rest: 15, altar: 15, event: 20, reward: 15 });
     // 入口必经战斗、收尾祭坛 → Boss
     expect(act.layers[0].width).toBe(1);
     expect(act.layers[0].kinds).toEqual(["battle"]);

@@ -1,0 +1,38 @@
+{
+  "id": "raving",
+  "class": "rustspeaker",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 1,
+  "effects": [
+    {
+      "kind": "gainPollution",
+      "value": 2
+    },
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "buff": "reverse",
+      "stacks": 2
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "gainPollution",
+        "value": 1
+      },
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "buff": "reverse",
+        "stacks": 2
+      }
+    ]
+  },
+  "i18n": "card.raving"
+}

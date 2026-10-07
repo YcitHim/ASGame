@@ -2,6 +2,7 @@
   "id": "rust_warden",
   "i18n": "enemy.rust_warden",
   "maxHp": 72,
+  "stunResistant": true,
   "intents": [
     {
       "intent": {

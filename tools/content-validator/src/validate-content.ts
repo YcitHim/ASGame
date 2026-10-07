@@ -226,6 +226,38 @@ export function validateContent(input: ContentInput): ValidationResult {
   for (const e of events) checkId("event", e.id);
   for (const c of classes) checkId("class", c.id);
 
+  // 九相后半（docs/46 §3.5 / §六.8）：眩晕的两条硬约束
+  for (const e of enemies) {
+    const appliesStun = e.intents.some((entry) => {
+      let cursor: typeof entry.intent | undefined = entry.intent;
+      while (cursor) {
+        if (cursor.kind === "debuff" && cursor.buffId === "stun") return true;
+        cursor = cursor.thenIntent;
+      }
+      return false;
+    });
+    if (!appliesStun) continue;
+    const hasTelegraph = e.intents.some((entry) => entry.intent.kind === "charge");
+    if (!hasTelegraph) {
+      issues.push({
+        file: `enemy ${e.id}`,
+        path: "intents",
+        message: "对玩家施加眩晕必须提前一回合预告（表里要有蓄力链，docs/46 §3.5 / §六.8）",
+      });
+    }
+  }
+  for (const c of cards) {
+    const lists = [c.effects ?? [], c.upgraded?.effects ?? [], c.power?.effects ?? [], c.upgraded?.power?.effects ?? []];
+    const appliesStun = lists.flat().some((eff) => eff.kind === "applyBuff" && eff.buff === "stun");
+    if (appliesStun && c.rarity !== "rare") {
+      issues.push({
+        file: `card ${c.id}`,
+        path: "rarity",
+        message: "玩家侧眩晕只允许稀有卡持有（docs/46 §3.5）",
+      });
+    }
+  }
+
   // 强化 appliesTo / mutex 引用
   const cardIds = new Set(cards.map((c) => c.id));
   const enhIds = new Set(enhancements.map((e) => e.id));

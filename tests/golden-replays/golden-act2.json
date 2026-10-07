@@ -143,13 +143,13 @@
         "type": "PlayCard",
         "actionId": "p10",
         "handIndex": 0,
-        "targetId": "bell_warden"
+        "targetId": "tidecaller"
       },
       {
         "type": "PlayCard",
         "actionId": "p11",
         "handIndex": 1,
-        "targetId": "bell_warden"
+        "targetId": "tidecaller"
       },
       {
         "type": "PlayCard",
@@ -200,28 +200,13 @@
         "actionId": "p20",
         "handIndex": 1,
         "targetId": "tidecaller"
-      },
-      {
-        "type": "EndTurn",
-        "actionId": "e21"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p22",
-        "handIndex": 3,
-        "targetId": "tidecaller"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p23",
-        "handIndex": 3,
-        "targetId": "tidecaller"
       }
     ],
-    "eventHash": "f4efcd80fa5e35767f1eaf95206940b6af266484887effec2a085c3319eed52e",
+    "eventHash": "27efae5b96cb8b957eb49de17d008bbb1d33d5a1316a78c0523cb715dc9ccf32",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
+      "ChargeChanged",
       "ChargeChanged",
       "IntentRevealed",
       "IntentRevealed",
@@ -258,10 +243,9 @@
       "HpLost",
       "TurnEnded",
       "ChargeResolved",
-      "DamageDealt",
-      "HpLost"
+      "DamageDealt"
     ],
-    "turns": 6,
+    "turns": 5,
     "outcome": "win"
   }
 }

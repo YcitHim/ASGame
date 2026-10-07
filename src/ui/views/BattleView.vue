@@ -140,6 +140,12 @@ const player = computed(() => state.value?.player ?? null);
 const enemies = computed(() => state.value?.enemies ?? []);
 const phase = computed(() => state.value?.phase ?? "battleStart");
 const canAct = computed(() => phase.value === "playerAction" && !store.playing && !store.over);
+/**
+ * 眩晕（docs/46 §3.5）：被眩晕的整回合不可出牌——但**结束回合必须仍然可用**，
+ * 否则玩家会被永久锁死在自己的回合里。所以这里单独给一个 canPlay。
+ */
+const stunned = computed(() => (player.value?.buffs ?? []).some((b) => b.id === "stun"));
+const canPlay = computed(() => canAct.value && !stunned.value);
 
 const hand = computed(() =>
   (state.value?.piles.hand ?? []).map((instanceId, index) => {
@@ -597,6 +603,7 @@ function back(): void {
 
       <!-- 手牌区 -->
       <div class="hand-zone" :class="{ 'tut-focus': tutorial.focus === 'hand' }" data-tut-label="手牌区">
+        <div v-if="stunned" class="stun-banner">眩 晕 · 本回合不可出牌，可以直接结束回合</div>
         <div class="hand" :class="{ targeting: store.targeting !== null }">
           <CardView
             v-for="(card, index) in hand"
@@ -605,7 +612,7 @@ function back(): void {
             :cost="card.cost"
             :keywords="card.keywords"
             :type="card.type"
-            :playable="card.playable && canAct"
+            :playable="card.playable && canPlay"
             :selected="store.targeting === index"
             :dragging="drag?.index === index && drag?.moved === true"
             :index="index"
@@ -814,7 +821,21 @@ function back(): void {
 .pp-empty { padding-top: 7px; font-size: 11px; letter-spacing: 0.16em; color: var(--ink-dim); opacity: 0.7; }
 .pp-name small { font-size: 10px; color: var(--blood-hi); letter-spacing: 0.12em; margin-left: 8px; }
 
-.hand-zone { position: absolute; left: 0; right: 0; bottom: 0; height: 212px; z-index: 20; }
+/* 眩晕（docs/46 §3.5）：不可出牌但可结束回合，横幅把规则说清楚 */
+        .stun-banner {
+          position: absolute; top: -4px; left: 50%; transform: translateX(-50%); z-index: 6;
+          padding: 4px 14px;
+          font-family: var(--serif-title); font-size: 12px; letter-spacing: 0.24em;
+          color: #d9c2ff; background: rgba(40, 24, 60, 0.92);
+          border: 1px solid rgba(158, 106, 194, 0.75); border-radius: 999px;
+          box-shadow: 0 0 16px rgba(158, 106, 194, 0.4);
+          animation: stun-pulse 1.6s ease-in-out infinite;
+        }
+        @keyframes stun-pulse {
+          0%, 100% { box-shadow: 0 0 12px rgba(158, 106, 194, 0.35); }
+          50% { box-shadow: 0 0 22px rgba(158, 106, 194, 0.65); }
+        }
+        .hand-zone { position: absolute; left: 0; right: 0; bottom: 0; height: 212px; z-index: 20; }
 .hand {
   position: absolute; left: 50%; bottom: -16px; transform: translateX(-50%);
   display: flex; align-items: flex-end; height: 230px;

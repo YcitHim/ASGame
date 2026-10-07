@@ -13,7 +13,7 @@
     "validate": "tsx tools/content-validator/src/cli.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "ci": "npm run lint && npm run typecheck && npm run validate && npm run test:coverage && npm run sim -- 100 --class engineer && npm run sim -- 100 --class bloodwright --ai-floor",
+    "ci": "npm run lint && npm run typecheck && npm run validate && npm run test:coverage && npm run sim -- 100 --class engineer --sentinel && npm run sim -- 100 --class bloodwright --ai-floor",
     "test:coverage": "vitest run --coverage",
     "sim": "tsx tools/headless-sim/src/cli.ts",
     "sim:elite": "tsx tools/headless-sim/src/cli.ts --scenario elite_warden",

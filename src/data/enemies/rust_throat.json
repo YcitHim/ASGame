@@ -106,5 +106,6 @@
       }
     }
   ],
-  "interruptImmune": true
+  "interruptImmune": true,
+  "stunResistant": true
 }

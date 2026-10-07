@@ -307,6 +307,8 @@ export const enemySchema = z
     /** 亡语（docs/16 P2.2）：死亡清理后结算 */
     onDeath: z.array(effectSchema).optional(),
     interruptImmune: z.boolean().optional(),
+    /** 眩晕抗性（docs/46 §3.5）：精英 / Boss 首次被眩晕后本场免疫后续 */
+    stunResistant: z.boolean().optional(),
   })
   .strict();
 

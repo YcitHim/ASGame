@@ -1,13 +1,13 @@
 {
   "id": "pressuregauge",
   "i18n": "relic.pressuregauge",
-  "timing": "onTurnStart",
+  "timing": "onBattleStart",
   "effects": [
     {
-      "kind": "clampCharge",
-      "value": 5
+      "kind": "gainCharge",
+      "value": 2
     }
   ],
-  "once": "turn",
+  "once": "battle",
   "tier": 1
 }

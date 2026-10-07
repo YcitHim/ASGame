@@ -489,9 +489,19 @@ export const useBattleStore = defineStore("battle", {
             const meta = buffMeta(event.buffId);
             const amount = event.duration != null ? event.duration : event.stacks;
             this.pushFloater("player", amount, "debuff", false, `${meta.glyph} ${meta.name}`);
+            // 首遇提示（docs/46 §六.7 / docs/49 Phase 2a）：首次被挂诅咒、首次被灼烧
+            if (event.buffId === "chill" || event.buffId === "reverse" || event.buffId === "stun") {
+              useTipsStore().trigger("curse");
+            } else if (event.buffId === "burn") {
+              useTipsStore().trigger("burn");
+            }
           }
           break;
         }
+        case "StunResisted":
+          // 眩晕抗性（docs/46 §3.5）：精英 / Boss 首免后再免
+          this.pushFloater(event.targetId, 0, "debuff", false, "抵抗 免疫眩晕");
+          break;
         case "PollutionChanged":
           // 污染不走 BuffApplied（core 特判），单独补一条浮名
           if (event.targetId === "player" && event.delta > 0) {

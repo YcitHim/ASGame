@@ -84,6 +84,10 @@ export function attackModifiers(draft: Draft, actorId: string, targetId: string)
   // 锈蚀难度：敌人打出的伤害上浮（docs/36 T2）。只作用于敌方攻击者，
   // 反伤 / 环境伤害的 actorId 不是敌人实例，自然不吃倍率。
   if (actorId !== PLAYER_ID) {
+    // 冰缓（docs/46 §3.7 对敌映射）：敌人没有能量可冻，改为造伤 −20%（层数只决定持续回合）
+    if (buffStacks(actor, "chill") > 0) {
+      mods.push({ sourceId: "chill", layer: "buff", op: "mul", value: 0.8 });
+    }
     const mul = DIFFICULTY_PARAMS[draft.difficulty].enemyDamageMul;
     if (mul !== 1) mods.push({ sourceId: "difficulty", layer: "buff", op: "mul", value: mul });
   }
@@ -318,6 +322,17 @@ export function applyBuffToTarget(
   }
   const unit = findUnit(draft, targetId);
   if (!unit || unit.hp <= 0) return;
+  // 眩晕抗性（docs/46 §3.5）：精英 / Boss 首次被眩晕后，本场战斗免疫后续眩晕
+  if (buffId === "stun" && targetId !== PLAYER_ID) {
+    const enemy = draft.enemies.find((e) => e.id === targetId);
+    if (enemy && draft.content.enemies.get(enemy.defId)?.stunResistant) {
+      if (enemy.stunResisted) {
+        sink.emit("StunResisted", { targetId });
+        return;
+      }
+      enemy.stunResisted = true;
+    }
+  }
   const application = buffApplication(buffId, amount, explicitDuration);
   unit.buffs = applyBuff(unit.buffs, { id: buffId, ...application });
   const applied = unit.buffs.find((b) => b.id === buffId);
@@ -334,8 +349,9 @@ export function applyBuffToTarget(
 export const MAX_CHARGE_INTERRUPTS = 2;
 
 /**
- * 断链（docs/38 §三 C-1 / docs/46 §2.1）：蓄力链中的敌人被施加虚弱 / 胆怯即断链——
+ * 断链（docs/38 §三 C-1 / docs/46 §2.1 / §3.5）：蓄力链中的敌人被施加虚弱 / 胆怯 / 眩晕即断链——
  * 剩余链取消（蓄力层清零）、本回合空转。Boss 由数据 interruptImmune 免疫。
+ * 眩晕是更硬的中断：除了断链，行动权也在 runEnemyTurn 里被跳过。
  */
 function maybeInterruptCharge(
   draft: Draft,
@@ -344,7 +360,7 @@ function maybeInterruptCharge(
   buffId: BuffId,
 ): void {
   if (targetId === PLAYER_ID) return;
-  if (buffId !== "weak" && buffId !== "timid") return;
+  if (buffId !== "weak" && buffId !== "timid" && buffId !== "stun") return;
   const enemy = draft.enemies.find((e) => e.id === targetId);
   if (!enemy || enemy.hp <= 0) return;
   if (enemy.intent?.kind !== "charge") return;
@@ -507,6 +523,49 @@ export function resolvePollutionCritical(draft: Draft, sink: EventSink): void {
   }
 }
 
+/**
+ * 诅咒结算（docs/46 §3.7/§3.8/§3.9）——回合开始统一处理，两侧通用：
+ * - **灼烧**：每层扣 1 点**生命上限**（战斗内），当前 HP 被顶到上限之上时按差额掉血。
+ *   上限只在战斗结束时恢复（restoreMaxHp），已损失 HP 不补。
+ * - **冰缓 / 颠倒**：层数 = 剩余回合，回合开始 −1 层，归零即移除（效果随即失效）。
+ * 不进泛用 tick —— 灼烧要改 maxHp，冰缓/颠倒的「层」要当作回合数递减。
+ */
+export function resolveCurses(draft: Draft, sink: EventSink): void {
+  for (const unit of [draft.player, ...draft.enemies]) {
+    if (unit.hp <= 0) continue;
+
+    const burn = Math.min(5, buffStacks(unit.buffs, "burn"));
+    if (burn > 0) {
+      unit.maxHp = Math.max(1, unit.maxHp - burn);
+      let lost = 0;
+      if (unit.hp > unit.maxHp) {
+        lost = unit.hp - unit.maxHp;
+        unit.hp = unit.maxHp;
+      }
+      sink.emit("BuffTicked", { targetId: unit.id, buffId: "burn", stacks: burn, damage: lost });
+      if (lost > 0) sink.emit("HpLost", { targetId: unit.id, value: lost, reason: "burn" });
+      if (unit.hp <= 0) killUnit(draft, sink, unit.id);
+    }
+
+    for (const id of ["chill", "reverse"] as const) {
+      const buff = unit.buffs.find((b) => b.id === id);
+      if (!buff) continue;
+      const next = buff.stacks - 1;
+      if (next <= 0) {
+        unit.buffs = unit.buffs.filter((b) => b.id !== id);
+        sink.emit("BuffExpired", { targetId: unit.id, buffId: id });
+      } else {
+        unit.buffs = unit.buffs.map((b) => (b.id === id ? { id, stacks: next, duration: b.duration } : b));
+      }
+    }
+  }
+}
+
+/** 灼烧只在本场扣上限：战斗结束时全线恢复（docs/46 §3.9，已损失的当前 HP 不补）。 */
+export function restoreMaxHp(draft: Draft): void {
+  for (const unit of [draft.player, ...draft.enemies]) unit.maxHp = unit.baseMaxHp;
+}
+
 /** 抽牌；堆空时把弃牌堆洗入（唯一合法洗牌入口）。 */
 export function drawCards(draft: Draft, sink: EventSink, count: number): string[] {
   const drawn: string[] = [];
@@ -569,6 +628,7 @@ export function summonUnit(
       name: def.name,
       hp: def.maxHp,
       maxHp: def.maxHp,
+      baseMaxHp: def.maxHp,
       block: 0,
       enduringBlock: 0,
       buffs: [],
@@ -576,6 +636,7 @@ export function summonUnit(
       intentHistory: [],
       forcedChain: [],
       interruptsTaken: 0,
+      stunResisted: false,
       summonerId,
       spawnedTurn: draft.turn,
     });

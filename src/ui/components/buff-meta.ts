@@ -26,6 +26,11 @@ export const BUFF_META: Record<string, BuffMeta> = {
   block: { name: "格挡", glyph: "盾", tint: "#54636f", unit: "点" },
   corroding: { name: "蚀锈", glyph: "蚀", tint: "#556b2a", unit: "伤害" },
   mending: { name: "回血印记", glyph: "愈", tint: "#3f6b3a", unit: "点" },
+  // 九相后半（docs/49 Phase 2a）：异常红 / 诅咒紫
+  burn: { name: "灼烧", glyph: "灼", tint: "#8c2f22", unit: "层" },
+  chill: { name: "冰缓", glyph: "缓", tint: "#3f5a7a", unit: "回合" },
+  reverse: { name: "颠倒", glyph: "颠", tint: "#5b3a7a", unit: "回合" },
+  stun: { name: "眩晕", glyph: "晕", tint: "#3f2f6b", unit: "回合" },
 };
 
 export function buffMeta(id: string): BuffMeta {

@@ -29,6 +29,8 @@ export interface PlayerState {
   readonly id: "player";
   readonly hp: number;
   readonly maxHp: number;
+  /** 战斗开始时的上限（docs/46 §3.9 灼烧：战斗内扣上限、结束恢复） */
+  readonly baseMaxHp: number;
   readonly block: number;
   /** 维续格挡池（docs/46 §3.4 坚韧）：回合开始不清零的格挡底座，上限 25 */
   readonly enduringBlock: number;
@@ -55,6 +57,8 @@ export interface EnemyState {
   readonly name: string;
   readonly hp: number;
   readonly maxHp: number;
+  /** 战斗开始时的上限（docs/46 §3.9 灼烧） */
+  readonly baseMaxHp: number;
   readonly block: number;
   /** 维续格挡池（docs/46 §3.4 坚韧），敌人侧同构 */
   readonly enduringBlock: number;
@@ -65,6 +69,8 @@ export interface EnemyState {
   readonly forcedChain: readonly IntentPayload[];
   /** 已被断链次数（docs/38 §三 C-1：每只敌人每场最多 2 次） */
   readonly interruptsTaken: number;
+  /** 眩晕抗性已用掉（docs/46 §3.5：精英/Boss 首次被眩晕后本场免疫后续） */
+  readonly stunResisted: boolean;
   /** 召唤者 id（docs/40 §五）：召唤物在被召唤者死亡时殉爆 */
   readonly summonerId?: string;
   /** 入场回合（docs/40 §五-4）：入场当回合不行动 */
@@ -91,6 +97,8 @@ export interface BattleState {
   readonly modifiers: readonly Modifier[];
   readonly handSize: number;
   readonly cardsPlayedThisTurn: number;
+  /** 颠倒（docs/46 §3.8）：本回合手牌的费用被随机覆盖（instanceId → 0~3），无颠倒时为空 */
+  readonly reverseCosts: Readonly<Record<string, number>>;
   /** 本回合（含刚结束的敌方回合）玩家是否受过攻击伤害（docs/16 P2.3） */
   readonly tookDamageThisTurn: boolean;
   /** 事件全局序号计数器 */
@@ -174,6 +182,7 @@ export function createBattleState(config: BattleConfig): BattleState {
       id: "player",
       hp: config.player.hp ?? config.player.maxHp,
       maxHp: config.player.maxHp,
+      baseMaxHp: config.player.maxHp,
       block: 0,
       enduringBlock: 0,
       energy: config.player.energy,
@@ -202,6 +211,7 @@ export function createBattleState(config: BattleConfig): BattleState {
         name: def?.name ?? defId,
         hp: maxHp,
         maxHp,
+        baseMaxHp: maxHp,
         block: 0,
         enduringBlock: 0,
         buffs: [],
@@ -209,6 +219,7 @@ export function createBattleState(config: BattleConfig): BattleState {
         intentHistory: [],
         forcedChain: [],
         interruptsTaken: 0,
+        stunResisted: false,
       };
     }),
     piles: { draw, hand: [], discard: [], exhaust: [] },
@@ -216,6 +227,7 @@ export function createBattleState(config: BattleConfig): BattleState {
     modifiers: [],
     handSize: config.handSize ?? DEFAULT_HAND_SIZE,
     cardsPlayedThisTurn: 0,
+    reverseCosts: {},
     tookDamageThisTurn: false,
     eventSeq: 0,
     content,

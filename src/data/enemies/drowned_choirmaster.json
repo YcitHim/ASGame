@@ -3,6 +3,7 @@
   "i18n": "enemy.drowned_choirmaster",
   "maxHp": 150,
   "interruptImmune": true,
+  "stunResistant": true,
   "intents": [
     {
       "intent": {

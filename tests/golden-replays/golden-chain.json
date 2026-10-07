@@ -117,7 +117,7 @@
         "type": "PlayCard",
         "actionId": "p8",
         "handIndex": 4,
-        "targetId": "corroded_swarm"
+        "targetId": "riveted_heavy"
       },
       {
         "type": "PlayCard",
@@ -134,101 +134,9 @@
         "actionId": "p11",
         "handIndex": 4,
         "targetId": "riveted_heavy"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p12",
-        "handIndex": 0,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p13",
-        "handIndex": 0,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "EndTurn",
-        "actionId": "e14"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p15",
-        "handIndex": 0,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p16",
-        "handIndex": 0,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p17",
-        "handIndex": 0,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "EndTurn",
-        "actionId": "e18"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p19",
-        "handIndex": 2,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p20",
-        "handIndex": 0,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "EndTurn",
-        "actionId": "e21"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p22",
-        "handIndex": 1,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p23",
-        "handIndex": 0,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "EndTurn",
-        "actionId": "e24"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p25",
-        "handIndex": 4,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p26",
-        "handIndex": 0,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p27",
-        "handIndex": 0,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "EndTurn",
-        "actionId": "e28"
       }
     ],
-    "eventHash": "988e30c776b0500a10e94e55078d0bd974f1611ba2c1c9262fef959bfe56fe66",
+    "eventHash": "98653b9a8cbc61636df869b0904746df42bbdf20875863bf17dc8c022b999039",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -261,17 +169,17 @@
       "BuffTriggered",
       "DamageDealt",
       "HpLost",
+      "UnitDied",
+      "PollutionChanged",
       "ChargeResolved",
       "DamageDealt",
       "HpLost",
       "BuffTriggered",
       "DamageDealt",
       "HpLost",
-      "TurnStarted",
-      "DeckShuffled",
-      "CardsDrawn"
+      "TurnStarted"
     ],
-    "turns": 8,
+    "turns": 4,
     "outcome": "win"
   }
 }

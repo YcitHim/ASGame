@@ -92,13 +92,14 @@ describe("docs/29 §二⑥ 炉心机士卡牌", () => {
     expect(dealt(play(charged.state, "coreoverload").events)).toEqual([12]);
   });
 
-  it("压力表（clampCharge）：回合开始时充能高于 5 时平衡回 5（docs/45 Q5 回退态）", () => {
-    let s = play(battle(["charge4", "charge4"], ["pressuregauge"]), "charge4").state;
-    s = play(s, "charge4").state;
-    expect(s.player.charge).toBe(8);
-    // 结束回合 → 敌人行动 → 下一回合开始触发压力表
-    s = reduce(s, { type: "EndTurn", actionId: "e" }).state;
-    expect(s.player.charge).toBe(5);
+  it("压力表（重做）：战斗开始时 +2 充能，clamp 彻底移除（docs/45 Q5 原裁 / docs/49 §3.1）", () => {
+    const s = battle(["charge4", "charge4"], ["pressuregauge"]);
+    expect(s.player.charge).toBe(2);
+    const after = play(s, "charge4").state;
+    expect(after.player.charge).toBe(6);
+    // 旧 clamp 行为必须彻底消失：回合开始不再把充能压回 5
+    const next = reduce(after, { type: "EndTurn", actionId: "e" }).state;
+    expect(next.player.charge).toBe(6);
   });
 
   it("减重可作用于炉心攻击牌（活塞冲拳）", () => {

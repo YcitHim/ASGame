@@ -18,6 +18,8 @@ function parseArgs(argv: string[]): {
   aiFloor: boolean;
   /** 连打幕数（docs/40 §九-15）：1 = 单幕，2 = 双幕连打 */
   actCount: number;
+  /** 哨兵模式（docs/49 §二）：只记录数字、不判健康区间，不卡批次 */
+  sentinel: boolean;
 } {
   let games = 100;
   let scenario: string | null = null;
@@ -25,8 +27,13 @@ function parseArgs(argv: string[]): {
   let difficulty: RunDifficulty = "normal";
   let aiFloor = false;
   let actCount = 1;
+  let sentinel = false;
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i];
+    if (token === "--sentinel") {
+      sentinel = true;
+      continue;
+    }
     if (token === "--ai-floor") {
       aiFloor = true;
       continue;
@@ -70,11 +77,11 @@ function parseArgs(argv: string[]): {
     const n = Number(token);
     if (Number.isFinite(n) && n > 0) games = Math.trunc(n);
   }
-  return { games, scenario, classId, difficulty, aiFloor, actCount };
+  return { games, scenario, classId, difficulty, aiFloor, actCount, sentinel };
 }
 
 function main(): number {
-  const { games, scenario, classId, difficulty, aiFloor, actCount } = parseArgs(process.argv.slice(2));
+  const { games, scenario, classId, difficulty, aiFloor, actCount, sentinel } = parseArgs(process.argv.slice(2));
   const { content, acts } = loadNodeContent();
   const act = acts[0];
   if (!act) {
@@ -104,6 +111,14 @@ function main(): number {
   );
   const report = buildReport(results);
   console.log(formatReport(report));
+
+  // 哨兵模式（docs/49 §二）：通关率不再作放行门禁，只记录 + 抓断崖
+  if (sentinel) {
+    console.log(
+      `\n[headless-sim] 哨兵记录：${(report.winRate * 100).toFixed(1)}%（docs/49 §二：健康区间暂停使用，数字只作观察基线）`,
+    );
+    return 0;
+  }
 
   // 锈蚀档只摸底不设线（docs/36 §四）；普通档沿用 45~65% 健康区间
   if (difficulty !== "normal") {

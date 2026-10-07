@@ -16,7 +16,9 @@ import type { EffectWork } from "./work";
 
 export interface MutableUnit {
   readonly id: string;
-  readonly maxHp: number;
+  /** 战斗开始时的上限；灼烧只改 maxHp，战斗结束时按它恢复（docs/46 §3.9） */
+  readonly baseMaxHp: number;
+  maxHp: number;
   hp: number;
   block: number;
   /** 维续格挡池（docs/46 §3.4 坚韧）：回合开始不清零、上限 25 */
@@ -43,6 +45,8 @@ export interface MutableEnemy extends MutableUnit {
   intentHistory: string[];
   forcedChain: IntentPayload[];
   interruptsTaken: number;
+  /** 眩晕抗性已用掉（docs/46 §3.5） */
+  stunResisted: boolean;
   summonerId?: string;
   spawnedTurn?: number;
 }
@@ -63,6 +67,8 @@ export interface Draft {
   phase: Phase;
   eventSeq: number;
   cardsPlayedThisTurn: number;
+  /** 颠倒（docs/46 §3.8）：本回合手牌费用的随机覆盖，回合开始重掷 */
+  reverseCosts: Record<string, number>;
   tookDamageThisTurn: boolean;
   player: MutablePlayer;
   enemies: MutableEnemy[];
@@ -93,10 +99,12 @@ export function toDraft(state: BattleState): Draft {
     phase: state.phase,
     eventSeq: state.eventSeq,
     cardsPlayedThisTurn: state.cardsPlayedThisTurn,
+    reverseCosts: { ...state.reverseCosts },
     tookDamageThisTurn: state.tookDamageThisTurn,
     player: {
       id: "player",
       hp: state.player.hp,
+      baseMaxHp: state.player.baseMaxHp,
       maxHp: state.player.maxHp,
       block: state.player.block,
       enduringBlock: state.player.enduringBlock,
@@ -115,6 +123,7 @@ export function toDraft(state: BattleState): Draft {
       defId: e.defId,
       name: e.name,
       hp: e.hp,
+      baseMaxHp: e.baseMaxHp,
       maxHp: e.maxHp,
       block: e.block,
       enduringBlock: e.enduringBlock,
@@ -123,6 +132,7 @@ export function toDraft(state: BattleState): Draft {
       intentHistory: [...e.intentHistory],
       forcedChain: [...e.forcedChain],
       interruptsTaken: e.interruptsTaken,
+      stunResisted: e.stunResisted,
       ...(e.summonerId !== undefined ? { summonerId: e.summonerId } : {}),
       ...(e.spawnedTurn !== undefined ? { spawnedTurn: e.spawnedTurn } : {}),
     })),
@@ -151,6 +161,7 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
       id: "player",
       hp: draft.player.hp,
       maxHp: draft.player.maxHp,
+      baseMaxHp: draft.player.baseMaxHp,
       block: draft.player.block,
       enduringBlock: draft.player.enduringBlock,
       energy: draft.player.energy,
@@ -168,6 +179,7 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
       defId: e.defId,
       name: e.name,
       hp: e.hp,
+      baseMaxHp: e.baseMaxHp,
       maxHp: e.maxHp,
       block: e.block,
       enduringBlock: e.enduringBlock,
@@ -176,6 +188,7 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
       intentHistory: [...e.intentHistory],
       forcedChain: [...e.forcedChain],
       interruptsTaken: e.interruptsTaken,
+      stunResisted: e.stunResisted,
       ...(e.summonerId !== undefined ? { summonerId: e.summonerId } : {}),
       ...(e.spawnedTurn !== undefined ? { spawnedTurn: e.spawnedTurn } : {}),
     })),
@@ -189,6 +202,7 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
     modifiers: draft.modifiers.map((m) => ({ ...m })),
     handSize: draft.handSize,
     cardsPlayedThisTurn: draft.cardsPlayedThisTurn,
+    reverseCosts: { ...draft.reverseCosts },
     tookDamageThisTurn: draft.tookDamageThisTurn,
     eventSeq,
     content: draft.content,

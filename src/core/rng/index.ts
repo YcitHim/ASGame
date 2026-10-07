@@ -8,7 +8,7 @@
  *       序列 = mulberry32 状态机。纯整数运算，可快照/恢复。
  */
 
-export const STREAM_NAMES = ["combat", "reward", "map", "event", "ai", "fx"] as const;
+export const STREAM_NAMES = ["combat", "reward", "map", "event", "ai", "fx", "curse"] as const;
 export type StreamName = (typeof STREAM_NAMES)[number];
 
 export interface RngStreamSnapshot {

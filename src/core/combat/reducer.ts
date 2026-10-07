@@ -9,6 +9,7 @@
 import type { Action } from "../actions";
 import type { DomainEvent } from "../events";
 import { EventSink } from "../events";
+import { buffStacks, hasBuff } from "../buffs";
 import { isInnate, turnEndDestination } from "../keywords";
 import { executeDebugCommand } from "./debug";
 import { definitionOf, fromDraft, livingEnemies, toDraft, type Draft } from "./draft";
@@ -17,10 +18,12 @@ import { effectiveCard, playCard } from "./play-card";
 import { resetTurnRelics, resolveTriggers } from "./relics";
 import {
   drawCards,
+  resolveCurses,
   resolvePollutionCritical,
   resolveMending,
   resolveRegeneration,
   resolveTenacity,
+  restoreMaxHp,
   tickAllBuffs,
 } from "./resolve";
 import type { BattleState } from "./state";
@@ -28,6 +31,21 @@ import type { BattleState } from "./state";
 export interface ReduceResult {
   readonly state: BattleState;
   readonly events: readonly DomainEvent[];
+}
+
+/**
+ * 颠倒（docs/46 §3.8）：回合开始把手牌费用重掷为 0~3（同回合内稳定，UI 与结算同源）。
+ * 随机走独立的 curse 流，不污染 combat 流；没有颠倒时清空。
+ */
+function rollReverseCosts(draft: Draft): void {
+  if (buffStacks(draft.player.buffs, "reverse") <= 0) {
+    draft.reverseCosts = {};
+    return;
+  }
+  const rng = draft.rng.stream("curse");
+  const costs: Record<string, number> = {};
+  for (const instanceId of draft.hand) costs[instanceId] = rng.nextInt(0, 3);
+  draft.reverseCosts = costs;
 }
 
 /** 战斗开始：洗牌、固有词条优先入手、发初始手牌、揭示意图。 */
@@ -55,6 +73,7 @@ function startBattle(draft: Draft, sink: EventSink): void {
   });
   sink.emit("CardsDrawn", { cardIds: hand });
 
+  rollReverseCosts(draft);
   resolveTriggers(draft, sink, "onBattleStart");
   generateIntents(draft, sink);
   draft.phase = "playerAction";
@@ -89,11 +108,14 @@ function checkBattleEnd(draft: Draft, sink: EventSink): boolean {
   if (draft.phase === "battleEnd") return true;
   if (draft.player.hp <= 0) {
     draft.phase = "battleEnd";
+    restoreMaxHp(draft);
     sink.emit("BattleEnded", { result: "lose", rewardsSeed: 0 });
     return true;
   }
   if (livingEnemies(draft).length === 0) {
     draft.phase = "battleEnd";
+    // 灼烧的减上限只在本场生效（docs/46 §3.9）：结算前恢复，已损失的 HP 不补
+    restoreMaxHp(draft);
     const rewardsSeed = draft.rng.stream("reward").nextInt(0, 0xffffffff);
     sink.emit("BattleEnded", { result: "win", rewardsSeed });
     return true;
@@ -104,6 +126,12 @@ function checkBattleEnd(draft: Draft, sink: EventSink): boolean {
 /** 结束回合 → 敌人行动 → 下一回合 turnStart → 抽牌 → 揭示意图。 */
 function endTurn(draft: Draft, sink: EventSink): void {
   draft.phase = "turnEnd";
+  // 眩晕（docs/46 §3.5）：被跳过的那一回合结束即消耗掉（施加发生在敌方回合内，
+  // 所以必须在敌方回合之前清，否则刚挂上的眩晕会被同一次 endTurn 吃掉）
+  if (hasBuff(draft.player.buffs, "stun")) {
+    draft.player.buffs = draft.player.buffs.filter((b) => b.id !== "stun");
+    sink.emit("BuffExpired", { targetId: "player", buffId: "stun" });
+  }
   resolveHandAtTurnEnd(draft, sink);
   resolveTriggers(draft, sink, "onTurnEnd");
   tickAllBuffs(draft, sink, "turnEnd");
@@ -125,6 +153,8 @@ function endTurn(draft: Draft, sink: EventSink): void {
   resolveRegeneration(draft, sink);
   resolveMending(draft, sink);
   resolvePollutionCritical(draft, sink);
+  // 诅咒结算（docs/46 §3.7/3.8/3.9）：灼烧扣上限 + 冰缓/颠倒按回合递减
+  resolveCurses(draft, sink);
   draft.player.energy = draft.player.maxEnergy;
   // 只清玩家自己的格挡（坚韧持有时改为置回维续池）；敌人格挡不在此处清（见上方 enemyAction）
   resolveTenacity(draft.player);
@@ -137,6 +167,7 @@ function endTurn(draft: Draft, sink: EventSink): void {
   drawCards(draft, sink, Math.max(0, draft.handSize - draft.hand.length));
 
   draft.phase = "playerAction";
+  rollReverseCosts(draft);
   generateIntents(draft, sink);
 }
 
@@ -148,7 +179,8 @@ export function reduce(state: BattleState, action: Action): ReduceResult {
 
   switch (action.type) {
     case "PlayCard":
-      if (draft.phase === "playerAction") {
+      // 眩晕（docs/46 §3.5）：玩家被眩晕的整回合不可出牌，但可以结束回合
+      if (draft.phase === "playerAction" && !hasBuff(draft.player.buffs, "stun")) {
         playCard(draft, sink, action.handIndex, action.targetId ?? null);
       }
       break;

@@ -3,7 +3,10 @@
  */
 import type { IntentPayload } from "../events";
 import type { EventSink } from "../events/event-sink";
+import { buffStacks, hasBuff } from "../buffs";
 import { generateIntent } from "../intents";
+import type { MutableEnemy } from "./draft";
+import type { RngStream } from "../rng";
 import type { BuffId } from "../registry/ids";
 import { enemyConditionContext } from "./resolve";
 import {
@@ -27,6 +30,26 @@ function summonContext(draft: Draft): SummonContext {
   };
 }
 
+/**
+ * 颠倒（docs/46 §3.8 对敌映射）：意图数值在预告时随机化为原值的 50%~150%，
+ * 并在载荷上打 fuzzed 标记——玩家知道它疯了，但不知道疯成什么样（UI 显示「?」）。
+ * 随机走独立的 curse 流；没有颠倒的敌人不消耗该流。
+ */
+function fuzzIntent(intent: IntentPayload, rng: RngStream): IntentPayload {
+  const roll = (n: number): number => Math.max(1, Math.round(n * (0.5 + rng.nextFloat())));
+  return {
+    ...intent,
+    fuzzed: true,
+    ...(intent.value !== undefined ? { value: roll(intent.value) } : {}),
+    ...(intent.stacks !== undefined ? { stacks: roll(intent.stacks) } : {}),
+    ...(intent.block !== undefined ? { block: roll(intent.block) } : {}),
+  };
+}
+
+function reveal(enemy: MutableEnemy, intent: IntentPayload, draft: Draft): IntentPayload {
+  return buffStacks(enemy.buffs, "reverse") > 0 ? fuzzIntent(intent, draft.rng.stream("curse")) : intent;
+}
+
 /** 为每个存活敌人抽取下回合意图并揭示。 */
 export function generateIntents(draft: Draft, sink: EventSink): void {
   for (const enemy of draft.enemies) {
@@ -35,8 +58,9 @@ export function generateIntents(draft: Draft, sink: EventSink): void {
     // 蓄力链：上一环指定的后续直接揭示，不再随机
     const queued = enemy.forcedChain.shift();
     if (queued) {
-      enemy.intent = queued;
-      sink.emit("IntentRevealed", { enemyId: enemy.id, intent: queued });
+      const intent = reveal(enemy, queued, draft);
+      enemy.intent = intent;
+      sink.emit("IntentRevealed", { enemyId: enemy.id, intent });
       continue;
     }
 
@@ -54,10 +78,11 @@ export function generateIntents(draft: Draft, sink: EventSink): void {
       draft.rng.stream("combat"),
       summonContext(draft),
     );
-    enemy.intent = roll.intent;
+    const intent = reveal(enemy, roll.intent, draft);
+    enemy.intent = intent;
     enemy.intentHistory = [...enemy.intentHistory, roll.key];
     enemy.forcedChain = roll.chain ? [...roll.chain] : [];
-    sink.emit("IntentRevealed", { enemyId: enemy.id, intent: roll.intent });
+    sink.emit("IntentRevealed", { enemyId: enemy.id, intent });
   }
 }
 
@@ -68,6 +93,14 @@ export function runEnemyTurn(draft: Draft, sink: EventSink): void {
   for (const enemy of acting) {
     if (enemy.hp <= 0) continue;
     if (enemy.spawnedTurn === draft.turn) continue;
+    // 眩晕（docs/46 §3.5）：跳过整回合行动、意图清空，然后消耗掉
+    if (hasBuff(enemy.buffs, "stun")) {
+      sink.emit("BuffTicked", { targetId: enemy.id, buffId: "stun", stacks: 1, damage: 0 });
+      enemy.intent = { kind: "unknown" };
+      enemy.buffs = enemy.buffs.filter((b) => b.id !== "stun");
+      sink.emit("BuffExpired", { targetId: enemy.id, buffId: "stun" });
+      continue;
+    }
     const intent = enemy.intent;
     if (!intent) continue;
 

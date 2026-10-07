@@ -8,6 +8,8 @@ const props = defineProps<{ intent: IntentPayload | null }>();
 const label = computed(() => {
   const i = props.intent;
   if (!i) return "?";
+  // 颠倒（docs/46 §3.8）：数值被随机化，别把假数字当预告——只给「?」
+  if (i.fuzzed) return "?";
   if (i.kind === "attack") return `${i.value ?? 0}${(i.hits ?? 1) > 1 ? "×" + i.hits : ""}`;
   if (i.kind === "defend") return String(i.value ?? 0);
   if (i.kind === "charge") return "蓄";
@@ -30,6 +32,7 @@ const stage = computed<"none" | "charging" | "imminent" | "incoming">(() => {
 const sub = computed(() => {
   const i = props.intent;
   if (!i) return "未知";
+  if (i.fuzzed) return "颠倒 · 数值未知";
   if (i.kind === "charge") {
     const value = i.thenValue ?? 0;
     if (stage.value === "imminent") return `下回合释放 ${value} · 准备防御`;

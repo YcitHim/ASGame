@@ -6,6 +6,7 @@
  * 且强化数值一律经 layer:"enhancement" 的 Modifier 注入修饰符管线（ADR-003，可追溯）。
  */
 import type { CardDefinition, CardEffect, KeywordId } from "../registry";
+import { buffStacks } from "../buffs";
 import { evaluateValue, type Modifier } from "../pipeline";
 import { afterPlayDestination, pactHpCost } from "../keywords";
 import { getCardHandler } from "../registry/handler";
@@ -107,12 +108,15 @@ export function effectiveCardWithEnhancements(
   def: CardDefinition,
 ): EffectiveCard {
   const base = effectiveCard(def, instance);
-  if (instance.enhancements.length === 0) return base;
+  const modifiers: Modifier[] = [];
+  // 冰缓（docs/46 §3.7）：玩家侧手牌费用 +1，走 cardCost 的 buff 层（层数只决定持续回合）
+  if (buffStacks(draft.player.buffs, "chill") > 0) {
+    modifiers.push({ sourceId: "chill:buff:cardCost", layer: "buff", op: "add", value: 1 });
+  }
 
   let effects = base.effects;
   let play = base.play;
   let keywords = base.keywords;
-  const modifiers: Modifier[] = [];
   const ctx = enhancementContext(draft, 0);
 
   for (const enhancementId of instance.enhancements) {
@@ -138,7 +142,8 @@ export function effectiveCardWithEnhancements(
   }
 
   return withComputed({
-    cost: base.cost,
+    // 颠倒（docs/46 §3.8）：本回合该牌的费用被随机覆盖为 0~3；没有颠倒时用卡面费用
+    cost: draft.reverseCosts[instance.instanceId] ?? base.cost,
     effects,
     play,
     keywords,

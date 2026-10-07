@@ -2,6 +2,7 @@
   "id": "tidecaller",
   "i18n": "enemy.tidecaller",
   "maxHp": 100,
+  "stunResistant": true,
   "intents": [
     {
       "intent": {

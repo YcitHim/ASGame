@@ -1,0 +1,38 @@
+{
+  "id": "shockhammer",
+  "class": "engineer",
+  "type": "attack",
+  "rarity": "rare",
+  "cost": 3,
+  "effects": [
+    {
+      "kind": "damage",
+      "value": 8
+    },
+    {
+      "kind": "applyBuff",
+      "target": {
+        "type": "chosenEnemy"
+      },
+      "buff": "stun",
+      "stacks": 1
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "value": 11
+      },
+      {
+        "kind": "applyBuff",
+        "target": {
+          "type": "chosenEnemy"
+        },
+        "buff": "stun",
+        "stacks": 1
+      }
+    ]
+  },
+  "i18n": "card.shockhammer"
+}

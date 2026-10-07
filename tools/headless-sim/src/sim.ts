@@ -430,6 +430,18 @@ export function simulateRun(
       continue;
     }
 
+    // 奖励节点「匣」（docs/49 §六）：免费卡牌三选一，与战斗奖励同结构、不叠加
+    if (node.kind === "reward") {
+      const rewards = rollCardRewards(content, act, run, run.layerIndex);
+      const pick = bestReward(rewards, content);
+      if (pick) {
+        deck.push({ cardId: pick, upgraded: false, enhancements: [] });
+        cardsPicked[pick] = (cardsPicked[pick] ?? 0) + 1;
+      }
+      run = advanceNode(run, act);
+      continue;
+    }
+
     if (node.kind === "altar") {
       const applied = applyEnhancementChoice(
         content,

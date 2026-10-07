@@ -105,7 +105,7 @@
         "type": "PlayCard",
         "actionId": "p4",
         "handIndex": 1,
-        "targetId": "corroded_swarm"
+        "targetId": "riveted_heavy"
       },
       {
         "type": "PlayCard",
@@ -138,7 +138,7 @@
       {
         "type": "PlayCard",
         "actionId": "p10",
-        "handIndex": 2,
+        "handIndex": 1,
         "targetId": "riveted_heavy"
       },
       {
@@ -146,24 +146,13 @@
         "actionId": "p11",
         "handIndex": 1,
         "targetId": "riveted_heavy"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p12",
-        "handIndex": 1,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p13",
-        "handIndex": 1,
-        "targetId": "riveted_heavy"
       }
     ],
-    "eventHash": "35d6874cc424e18a658627e317077cbb70ef7a25b32cdf42d70ea49a2d2a6bba",
+    "eventHash": "7b69926bd0a28ad8bfbf70142b8932d6b816a5ba7f4d2fad7fc7c287c6ff289d",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
+      "ChargeChanged",
       "ChargeChanged",
       "IntentRevealed",
       "IntentRevealed",
@@ -175,20 +164,19 @@
       "CardPlayed",
       "DamageDealt",
       "HpLost",
+      "UnitDied",
+      "PollutionChanged",
       "TurnEnded",
-      "DamageDealt",
-      "HpLost",
       "DamageDealt",
       "HpLost",
       "TurnStarted",
       "CardsDrawn",
       "IntentRevealed",
-      "IntentRevealed",
       "CardPlayed",
       "DamageDealt",
       "HpLost",
-      "UnitDied",
-      "PollutionChanged",
+      "DamageDealt",
+      "HpLost",
       "CardPlayed",
       "DamageDealt",
       "HpLost",

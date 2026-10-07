@@ -36,6 +36,7 @@ const DURATION: Partial<Record<DomainEvent["type"], number>> = {
   ChargeChanged: 120,
   Overloaded: 200,
   ChargeResolved: 200,
+  StunResisted: 160,
 };
 
 export function eventDelay(event: DomainEvent): number {

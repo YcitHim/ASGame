@@ -164,6 +164,8 @@ export interface RawEnemyDefinition {
   readonly onDeath?: readonly CardEffect[];
   /** 免疫断链（docs/38 §三 C-1）：Boss 例外条款，与 releaseOverride 同一登记处 */
   readonly interruptImmune?: boolean;
+  /** 眩晕抗性（docs/46 §3.5）：精英 / Boss 首次被眩晕后，本场战斗免疫后续眩晕 */
+  readonly stunResistant?: boolean;
 }
 
 /** 由 JSON 原始对象 + 解析后的显示名构造敌人定义。 */
@@ -175,6 +177,7 @@ export function buildEnemyDefinition(raw: RawEnemyDefinition, name: string): Ene
     intents: raw.intents,
     ...(raw.onDeath ? { onDeath: raw.onDeath } : {}),
     ...(raw.interruptImmune ? { interruptImmune: true } : {}),
+    ...(raw.stunResistant ? { stunResistant: true } : {}),
   };
 }
 
@@ -187,6 +190,8 @@ export interface EnemyDefinition {
   readonly onDeath?: readonly CardEffect[];
   /** 免疫断链（docs/38 §三 C-1）：蓄力被虚弱/易伤命中时不被打断 */
   readonly interruptImmune?: boolean;
+  /** 眩晕抗性（docs/46 §3.5）：精英 / Boss 首次被眩晕后，本场战斗免疫后续眩晕 */
+  readonly stunResistant?: boolean;
 }
 
 export interface EnhancementDefinition {

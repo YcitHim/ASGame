@@ -32,6 +32,8 @@ export interface IntentPayload {
   /** 召唤意图（docs/40 §五）：召唤物定义 id 与数量 */
   readonly enemyId?: string;
   readonly count?: number;
+  /** 颠倒（docs/46 §3.8）：意图数值被随机化，UI 只显示「?」 */
+  readonly fuzzed?: boolean;
 }
 
 export interface EventPayloadMap {
@@ -63,15 +65,21 @@ export interface EventPayloadMap {
   };
   BlockGained: { targetId: string; value: number; total: number };
   BlockBroken: { targetId: string; value: number };
-  HpLost: { targetId: string; value: number; reason: "damage" | "bloodpact" | "pollution" | "backlash" };
+  HpLost: {
+    targetId: string;
+    value: number;
+    reason: "damage" | "bloodpact" | "pollution" | "backlash" | "burn";
+  };
   HpHealed: { targetId: string; value: number; total: number; reason: "regen" | "card" | "relic" };
   BuffApplied: { targetId: string; buffId: string; stacks: number; duration: number | null };
   BuffTriggered: { targetId: string; buffId: string; stacks: number };
   BuffExpired: { targetId: string; buffId: string };
   /** 计时 Buffer 结算（docs/38 §二 B-2 蚀锈）：目标回合结束受到 damage 点伤害 */
   BuffTicked: { targetId: string; buffId: string; stacks: number; damage: number };
-  /** 断链（docs/38 §三 C-1）：蓄力中的敌人被虚弱/胆怯命中，链条取消、本回合空转 */
+  /** 断链（docs/38 §三 C-1）：蓄力中的敌人被虚弱/胆怯/眩晕命中，链条取消、本回合空转 */
   ChargeInterrupted: { enemyId: string; buffId: string; times: number };
+  /** 眩晕抗性（docs/46 §3.5）：精英 / Boss 首次被眩晕后，本场战斗免疫后续眩晕 */
+  StunResisted: { targetId: string };
   /** 召唤（docs/40 §五）：敌人召唤出新单位，入场当回合不行动 */
   UnitSummoned: { summonerId: string; enemyId: string; defId: string };
   PollutionChanged: { targetId: string; before: number; after: number; delta: number; critical: boolean };

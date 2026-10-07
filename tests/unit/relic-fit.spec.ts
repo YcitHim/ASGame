@@ -9,14 +9,10 @@ import { relicResourceFit, requiredResource } from "@/ui/relic-fit";
 const game = loadGameContent();
 
 describe("docs/43 §2.4 · 随身遗物相性", () => {
-  it("压力表需要充能 → 只与炉心机士相性", () => {
-    expect(requiredResource(game.content.relics.get("pressuregauge")!)).toBe("charge");
-    expect(relicResourceFit("pressuregauge", "engineer", game.content).ok).toBe(true);
-    for (const cls of ["bloodwright", "rustspeaker"]) {
-      const fit = relicResourceFit("pressuregauge", cls, game.content);
-      expect(fit.ok).toBe(false);
-      expect(fit.resource).toBe("充能");
-      expect(fit.ownerClassId).toBe("engineer");
+  it("压力表重做为「战斗开始 +2 充能」后不再吃资源 → 三职业都相性 OK（docs/49 §3.1）", () => {
+    expect(requiredResource(game.content.relics.get("pressuregauge")!)).toBeNull();
+    for (const cls of ["engineer", "bloodwright", "rustspeaker"]) {
+      expect(relicResourceFit("pressuregauge", cls, game.content).ok).toBe(true);
     }
   });
 

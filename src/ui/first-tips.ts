@@ -74,6 +74,17 @@ export const FIRST_TIPS: readonly FirstTipDefinition[] = [
     title: "Boss 层",
     body: "顶上就是 Boss。\n血不满、牌没整好之前，别急着敲门。",
   },
+  // ---- docs/49 Phase 2a：九相后半的两条缺口（docs/46 §六.7） ----
+  {
+    id: "curse",
+    title: "诅咒",
+    body: "冰缓 / 颠倒 / 眩晕是「诅咒」——不改数值，改规则：加费、乱数、夺走一整个回合。\n被挂诅咒时先看状态栏上的层数，那是它还剩几回合。",
+  },
+  {
+    id: "burn",
+    title: "灼烧",
+    body: "灼烧每层每回合扣 1 点生命上限；上限被压低时，超出的部分直接从当前 HP 扣。\n战斗结束时上限会恢复，但已经掉的血不会补——想少挨，就早点结束这场。",
+  },
 ];
 
 export function firstTip(id: string): FirstTipDefinition | undefined {
