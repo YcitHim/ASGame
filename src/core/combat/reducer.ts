@@ -18,6 +18,7 @@ import { effectiveCard, playCard } from "./play-card";
 import { resetTurnRelics, resolveTriggers } from "./relics";
 import {
   applyBuffToTarget,
+  decayTimedCurses,
   drawCards,
   resolveCorroding,
   resolveCurses,
@@ -148,6 +149,8 @@ function endTurn(draft: Draft, sink: EventSink): void {
   resolveHandAtTurnEnd(draft, sink);
   resolveTriggers(draft, sink, "onTurnEnd");
   tickAllBuffs(draft, sink, "turnEnd");
+  // 冰缓 / 颠倒（层数 = 剩余回合）：在自己回合结束时 −1（docs/46 §3.7/§3.8）
+  decayTimedCurses(sink, [draft.player]);
   sink.emit("TurnEnded", { turn: draft.turn });
 
   draft.phase = "enemyAction";
@@ -163,6 +166,8 @@ function endTurn(draft: Draft, sink: EventSink): void {
   if (checkBattleEnd(draft, sink)) return;
   runEnemyTurn(draft, sink);
   if (checkBattleEnd(draft, sink)) return;
+  // 敌人的冰缓 / 颠倒同样在自己的回合结束时递减
+  decayTimedCurses(sink, draft.enemies);
 
   draft.phase = "turnStart";
   draft.turn += 1;

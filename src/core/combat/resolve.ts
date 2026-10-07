@@ -537,11 +537,13 @@ export function resolvePollutionCritical(draft: Draft, sink: EventSink): void {
 }
 
 /**
- * 诅咒结算（docs/46 §3.7/§3.8/§3.9）——回合开始统一处理，两侧通用：
- * - **灼烧**：每层扣 1 点**生命上限**（战斗内），当前 HP 被顶到上限之上时按差额掉血。
- *   上限只在战斗结束时恢复（restoreMaxHp），已损失 HP 不补。
- * - **冰缓 / 颠倒**：层数 = 剩余回合，回合开始 −1 层，归零即移除（效果随即失效）。
- * 不进泛用 tick —— 灼烧要改 maxHp，冰缓/颠倒的「层」要当作回合数递减。
+ * 灼烧结算（docs/46 §3.9）——玩家回合开始统一处理，两侧通用：
+ * 每层扣 1 点**生命上限**（战斗内），当前 HP 被顶到上限之上时按差额掉血；
+ * 上限只在战斗结束时恢复（restoreMaxHp），已损失 HP 不补。
+ *
+ * 冰缓 / 颠倒不在这里：它们的「层」是**剩余回合**，必须在**受影响单位自己的回合结束**时 −1
+ * （见 decayTimedCurses）——写在玩家回合开始会有一个致命差一：敌人刚在我方回合挂上的诅咒，
+ * 会在玩家还没轮到出手时就被扣掉，等于完全没生效（甲方报的「颠倒对角色不生效 + 状态栏也没有」）。
  */
 export function resolveCurses(draft: Draft, sink: EventSink): void {
   for (const unit of [draft.player, ...draft.enemies]) {
@@ -559,7 +561,16 @@ export function resolveCurses(draft: Draft, sink: EventSink): void {
       if (lost > 0) sink.emit("HpLost", { targetId: unit.id, value: lost, reason: "burn" });
       if (unit.hp <= 0) killUnit(draft, sink, unit.id);
     }
+  }
+}
 
+/**
+ * 冰缓 / 颠倒（docs/46 §3.7/§3.8）：层数 = 剩余回合，在**该单位自己的回合结束时 −1**，
+ * 归零即移除。谁挂的不重要，重要的是「挂上之后至少要活过对方的一整个回合」。
+ */
+export function decayTimedCurses(sink: EventSink, units: readonly MutableUnit[]): void {
+  for (const unit of units) {
+    if (unit.hp <= 0) continue;
     for (const id of ["chill", "reverse"] as const) {
       const buff = unit.buffs.find((b) => b.id === id);
       if (!buff) continue;
@@ -594,8 +605,25 @@ export function drawCards(draft: Draft, sink: EventSink, count: number): string[
     draft.hand.push(card);
     drawn.push(card);
   }
+  // 颠倒（docs/46 §3.8）：本回合内抽到的牌也要吃到随机费用——
+  // 否则「抽牌流的构筑」会顺手把诅咒绕过去，等于诅咒只罚了一半的手牌。
+  rollReverseCostsForNewCards(draft);
   sink.emit("CardsDrawn", { cardIds: drawn });
   return drawn;
+}
+
+/**
+ * 给手上还没有随机费用的牌补掷一个 0~3（颠倒专用）。
+ * 回合开始由 reducer 全量重掷，回合内抽牌走这里增量补齐；没有颠倒时什么都不做。
+ */
+export function rollReverseCostsForNewCards(draft: Draft): void {
+  if (buffStacks(draft.player.buffs, "reverse") <= 0) return;
+  const missing = draft.hand.filter((id) => draft.reverseCosts[id] === undefined);
+  if (missing.length === 0) return;
+  const rng = draft.rng.stream("curse");
+  const costs = { ...draft.reverseCosts };
+  for (const instanceId of missing) costs[instanceId] = rng.nextInt(0, 3);
+  draft.reverseCosts = costs;
 }
 
 export type { EffectContext } from "./work";
