@@ -431,8 +431,10 @@ export function validateContent(input: ContentInput): ValidationResult {
     }
   }
 
-  // docs/54 §三 E8：赌局明示赔率——含 outcomes 的选项，label 必须写出每个结果的百分比。
-  // 只做「缺哪个百分比」的单向检查：文案里合法的百分比（如「−8% HP」）不该被误判。
+  // 甲方 2026-10-07 裁定：**事件选项文案不得剧透结果**（含赌局赔率）——
+  // docs/54 §二 军规 3「赌局明示赔率」与 §三 E8 的「label 必须写出百分比」就此作废，
+  // 选项标签只留风味，结果由选完之后的 result 文案揭晓。
+  // 这里退化成一条更弱的守卫：赌局必须有 outcomes，且权重之和 > 0（别写出永远抽不中的死结果）。
   for (const ev of events) {
     for (const opt of ev.options) {
       const outcomes = opt.outcomes ?? [];
@@ -443,19 +445,6 @@ export function validateContent(input: ContentInput): ValidationResult {
           file: `event ${ev.id}`,
           path: `opt.${opt.id}.outcomes`,
           message: "赌局的 weight 之和必须 > 0",
-        });
-        continue;
-      }
-      const label = input.i18n[`${ev.i18n}.opt.${opt.id}.label`];
-      if (label === undefined) continue; // 文案缺失由 i18n 检查报，别重复报
-      const missing = outcomes
-        .map((o) => Math.round((Math.max(0, o.weight) / total) * 100))
-        .filter((pct) => !label.includes(`${pct}%`));
-      if (missing.length > 0) {
-        issues.push({
-          file: `event ${ev.id}`,
-          path: `opt.${opt.id}.label`,
-          message: `赌局选项必须写明赔率（文案缺 ${missing.map((p) => `${p}%`).join(" / ")}）——docs/54 军规 3`,
         });
       }
     }
