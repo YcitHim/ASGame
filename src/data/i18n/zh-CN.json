@@ -670,5 +670,7 @@
   "result.victory.act1": "锈喉已倒下，锈蚀回廊暂时沉寂。",
   "result.victory.act2": "沉钟唱罢，圣堂重新沉回水底。",
   "result.bossFall.act1": "锈喉倒下，锈蚀回廊重归死寂。",
-  "result.bossFall.act2": "唱诗长沉入水底，圣堂重归安静。"
+  "result.bossFall.act2": "唱诗长沉入水底，圣堂重归安静。",
+  "ach.guide.name": "引路人",
+  "ach.guide.desc": "走完教学遭遇战的三场。"
 }

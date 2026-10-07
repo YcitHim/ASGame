@@ -6,12 +6,14 @@ import { relicPool, type RunDifficulty } from "@/core/map";
 import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
 import { useSettingsStore } from "@/stores/settings";
+import { useTutorialStore } from "@/stores/tutorial";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
 const router = useRouter();
 const run = useRunStore();
 const meta = useMetaStore();
 const settings = useSettingsStore();
+const tutorial = useTutorialStore();
 /** 开发者模式（测试跳关）：解锁全部 + 指定起始幕/层 */
 const devMode = computed(() => settings.values.developerMode);
 const devAct = ref(0);
@@ -121,8 +123,11 @@ const deckTipInfo = computed(() => {
   };
 });
 
-function choose(classId: string): void {
-  if (!isUnlocked(classId)) return;
+/** 首次进远征前问一次「要人带路吗？」（docs/41 §4.3）；开发者模式跳过（测试不想被拦）。 */
+const askTutorial = ref(false);
+const pendingClassId = ref("");
+
+function startRunWith(classId: string): void {
   run.startRun(
     classId,
     undefined,
@@ -130,6 +135,33 @@ function choose(classId: string): void {
     companionDef.value,
     devMode.value ? { actIndex: devAct.value, layerIndex: devLayer.value } : {},
   );
+}
+
+function choose(classId: string): void {
+  if (!isUnlocked(classId)) return;
+  meta.ensureLoaded();
+  if (!meta.tutorialOffered && !meta.tutorialDone && !devMode.value) {
+    pendingClassId.value = classId;
+    askTutorial.value = true;
+    return;
+  }
+  startRunWith(classId);
+  void router.push("/map");
+}
+
+/** 选「要人带路」：先开好这一局（教学要用所选职业的起始卡组），再进教学。 */
+function acceptTutorial(): void {
+  startRunWith(pendingClassId.value);
+  tutorial.begin();
+  askTutorial.value = false;
+  void router.push("/tutorial");
+}
+
+/** 选「不用」：直接开始远征，并记住不要再问。 */
+function declineTutorial(): void {
+  meta.markTutorialOffered();
+  startRunWith(pendingClassId.value);
+  askTutorial.value = false;
   void router.push("/map");
 }
 
@@ -144,6 +176,19 @@ function back(): void {
       <div class="topbar">
         <span>开始远征</span>
         <div class="r"><span @click="back">返回标题</span></div>
+      </div>
+
+      <!-- 首次进远征：可选的新手引导（docs/41 §4.3），不选也绝不再拦 -->
+      <div v-if="askTutorial" class="ask-overlay">
+        <div class="ask">
+          <h2>要人带路吗？</h2>
+          <p>三场演武：出牌与能量 → 读意图与防御 → 蓄力与爆发。</p>
+          <p class="dim">跟着提示走，做对才推进；随时可以跳过。教学不发奖励。</p>
+          <div class="ask-actions">
+            <button class="etch-btn" @click="acceptTutorial">要，带我看一遍</button>
+            <button class="etch-btn ghost" @click="declineTutorial">不用，直接开始</button>
+          </div>
+        </div>
       </div>
 
       <h1 class="head">{{ t("class.select.title", "选择你的朝圣之路") }}</h1>
@@ -287,6 +332,28 @@ function back(): void {
 </template>
 
 <style scoped>
+/* 首次进远征的引导询问（docs/41 §4.3） */
+.ask-overlay {
+  position: absolute; inset: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(4, 3, 2, 0.72);
+}
+.ask {
+  width: 520px; padding: 26px 30px; text-align: center;
+  background: rgba(14, 12, 10, 0.96);
+  border: 1px solid var(--edge-gold); border-radius: var(--radius-md);
+  box-shadow: var(--panel-shadow);
+}
+.ask h2 {
+  font-family: var(--serif-title); font-size: 24px; letter-spacing: 0.32em;
+  color: var(--gold); font-weight: 500; margin-bottom: 14px;
+}
+.ask p { font-size: 13px; line-height: 1.9; letter-spacing: 0.08em; color: var(--ink-bone); }
+.ask p.dim { color: var(--ink-dim); font-size: 12px; }
+.ask-actions { display: flex; gap: 12px; justify-content: center; margin-top: 20px; }
+.ask-actions .etch-btn { padding: 10px 20px; font-size: 13px; }
+.etch-btn.ghost { opacity: 0.75; }
+
 .class-stage {
   display: flex;
   flex-direction: column;

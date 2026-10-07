@@ -157,6 +157,8 @@ describe("docs/36 T2 · 锈蚀难度", () => {
 
     const pinia2 = setup();
     useMetaStore().markCleared("bloodwright");
+    // 跳过首次教学询问，直接验证难度档写进 run（docs/41 §4.3）
+    useMetaStore().markTutorialOffered();
     const wrapper2 = mount(ClassSelectView, { global: { plugins: [pinia2, router] } });
     await wrapper2.vm.$nextTick();
     const rustBtn = wrapper2.findAll(".depth-btn")[1];

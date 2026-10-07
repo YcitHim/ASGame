@@ -6,17 +6,19 @@ import type { RelicDefinition } from "@/core/registry";
 import { loadGameContent, t } from "@/data/load";
 import { useCodexStore } from "@/stores/codex";
 import { ACHIEVEMENT_IDS, useMetaStore } from "@/stores/meta";
+import { useTipsStore } from "@/stores/tips";
 import CardView from "@/ui/components/CardView.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
 const router = useRouter();
 const codex = useCodexStore();
 const meta = useMetaStore();
+const tips = useTipsStore();
 const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 
 const game = loadGameContent();
-type Tab = "card" | "relic" | "enemy" | "achievement";
+type Tab = "card" | "relic" | "enemy" | "tip" | "achievement";
 const tab = ref<Tab>("card");
 
 onMounted(() => {
@@ -71,6 +73,9 @@ function back(): void {
         <button class="tab" :class="{ active: tab === 'card' }" @click="tab = 'card'">卡牌 {{ cards.length }}</button>
         <button class="tab" :class="{ active: tab === 'relic' }" @click="tab = 'relic'">遗物 {{ game.content.relics.size }}</button>
         <button class="tab" :class="{ active: tab === 'enemy' }" @click="tab = 'enemy'">敌人 {{ enemies.length }}</button>
+        <button class="tab" :class="{ active: tab === 'tip' }" @click="tab = 'tip'">
+          {{ t("codex.tab.tip", "提示") }} {{ meta.tips.length }}/{{ tips.all.length }}
+        </button>
         <button class="tab" :class="{ active: tab === 'achievement' }" @click="tab = 'achievement'">
           {{ t("codex.tab.achievement", "成就") }} {{ achievedCount }}/{{ ACHIEVEMENT_IDS.length }}
         </button>
@@ -112,6 +117,19 @@ function back(): void {
                 <p v-if="relicKnown(r) && relicFlavor(r.id)" class="flavor">{{ relicFlavor(r.id) }}</p>
               </article>
             </template>
+          </div>
+        </template>
+
+        <template v-else-if="tab === 'tip'">
+          <div class="rows">
+            <div class="tip-actions">
+              <span>首遇提示：第一次遇到机制时弹一次，点掉后不再出现（会记在这份存档里）。</span>
+              <button class="etch-btn tip-reset" @click="tips.resetAll()">重新显示一遍</button>
+            </div>
+            <article v-for="tip in tips.all" :key="tip.id" class="row" :class="{ locked: !meta.hasSeenTip(tip.id) }">
+              <h3>{{ tip.title }}<small>{{ meta.hasSeenTip(tip.id) ? "已读" : "未读" }}</small></h3>
+              <p class="tip-body">{{ tip.body }}</p>
+            </article>
           </div>
         </template>
 
@@ -191,4 +209,11 @@ function back(): void {
   letter-spacing: 0.24em; color: var(--gold-dim); font-weight: 400;
 }
 .row p.flavor { color: var(--gold-dim); font-style: italic; }
+/* 首遇提示回看（docs/41 §4.1） */
+.tip-actions {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  font-size: 11px; letter-spacing: 0.08em; color: var(--ink-dim);
+}
+.tip-reset { padding: 6px 14px; font-size: 11px; }
+.row p.tip-body { white-space: pre-line; }
 </style>

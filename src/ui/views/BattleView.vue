@@ -7,14 +7,18 @@ import { loadGameContent, t } from "@/data/load";
 import { useBattleStore } from "@/stores/battle";
 import { useRunStore } from "@/stores/run";
 import { useSettingsStore } from "@/stores/settings";
+import { useTipsStore } from "@/stores/tips";
+import { useTutorialStore } from "@/stores/tutorial";
 import { isDebugEnabled } from "@/systems/debug";
 import { useStageFit } from "@/ui/composables/useStageFit";
 import { actCopy } from "@/ui/act-copy";
+import { tutorialStage } from "@/ui/tutorial";
 import { describeEvent, type LogEntry } from "@/ui/log-format";
 import BattleLog from "@/ui/components/BattleLog.vue";
 import BuffRow from "@/ui/components/BuffRow.vue";
 import CardView from "@/ui/components/CardView.vue";
 import DamageFloat from "@/ui/components/DamageFloat.vue";
+import FirstTip from "@/ui/components/FirstTip.vue";
 import DebugConsole from "@/ui/components/DebugConsole.vue";
 import EnergyOrb from "@/ui/components/EnergyOrb.vue";
 import HpBar from "@/ui/components/HpBar.vue";
@@ -25,6 +29,8 @@ const router = useRouter();
 const store = useBattleStore();
 const run = useRunStore();
 const settings = useSettingsStore();
+const tips = useTipsStore();
+const tutorial = useTutorialStore();
 const stage = useTemplateRef<HTMLElement>("stage");
 const { scale: stageScale } = useStageFit(stage);
 
@@ -33,7 +39,20 @@ const showLog = ref(false);
 const shaking = ref(false);
 const isDev = isDebugEnabled();
 
+/** 教学进行中时，战斗来自脚本（docs/41 §4.3）而不是 run 进度。 */
+function startTutorialStage(): void {
+  const stage = tutorialStage(tutorial.stageIndex);
+  if (!stage) return;
+  store.startTutorial({ stageId: stage.id, seed: stage.seed, enemies: stage.enemies });
+}
+
 onMounted(() => {
+  if (tutorial.active) {
+    const stage = tutorialStage(tutorial.stageIndex);
+    const expected = stage ? `tutorial:${stage.id}` : "";
+    if (!store.battle || store.over || store.runKey !== expected) startTutorialStage();
+    return;
+  }
   // 新战斗 / 上一场已结算 / 换了职业或开了新局（陈旧战斗）时，都按当前局外卡组重开
   const expectedKey = `${run.run?.classId ?? ""}:${run.run?.seed ?? ""}`;
   if (!store.battle || store.over || store.runKey !== expectedKey) store.start();
@@ -144,6 +163,13 @@ const floatersFor = computed(() => {
 const battleAnim = computed(() => settings.values.battleAnim);
 const showFloaters = computed(() => battleAnim.value !== "off");
 const showMotion = computed(() => battleAnim.value === "full");
+
+// 首遇提示压后（docs/41 §4.1）：战斗高潮（动画播放中）不弹，等行动结束再出现
+watch(
+  () => store.playing,
+  (playing) => tips.setBusy(playing),
+  { immediate: true },
+);
 
 watch(
   () => store.shake,
@@ -309,12 +335,28 @@ const className = computed(() => {
 const isBloodwright = computed(() => (run.run?.classId ?? "bloodwright") === "bloodwright");
 
 function restartRun(): void {
+  if (tutorial.active) {
+    startTutorialStage();
+    return;
+  }
   store.restart();
 }
 
 function goReward(): void {
   store.skip();
+  // 教学：打完一场直接进下一场，三场走完回教学页收尾（docs/41 §4.3）
+  if (tutorial.active) {
+    if (tutorial.completeStage() === "next") startTutorialStage();
+    else void router.push("/tutorial");
+    return;
+  }
   void router.push("/reward");
+}
+
+/** 教学：随时跳过（不给奖励、不算完成）；已经开了局就继续远征。 */
+function skipTutorial(): void {
+  tutorial.abort();
+  void router.push(run.active ? "/map" : "/");
 }
 
 function back(): void {
@@ -327,8 +369,10 @@ function back(): void {
     <div ref="stage" class="stage battle-stage" :class="{ shaking }">
       <!-- 顶栏 -->
       <div class="topbar">
-        <span>{{ actName }} — 遭遇 {{ store.battle?.battleId ?? "" }}</span>
+        <span v-if="tutorial.active">教 学 · {{ tutorial.stage?.title ?? "" }}</span>
+        <span v-else>{{ actName }} — 遭遇 {{ store.battle?.battleId ?? "" }}</span>
         <div class="r">
+          <span v-if="tutorial.active" @click="skipTutorial">跳过教学</span>
           <span @click="showLog = !showLog">{{ showLog ? "收起日志" : "日志" }}</span>
           <span @click="store.skip()">跳过</span>
           <span @click="store.toggleSpeed()">{{ store.speed }}×</span>
@@ -448,6 +492,7 @@ function back(): void {
             :enhancement-ids="card.enhancementIds"
             :upgraded="card.upgraded"
             :rarity="card.rarity"
+            :highlight="tutorial.highlightType !== null && card.type === tutorial.highlightType"
             @grab="onGrab"
           />
         </div>
@@ -536,6 +581,15 @@ function back(): void {
       </Teleport>
 
       <div v-if="store.message" class="message" :class="store.messageKind">{{ store.message }}</div>
+
+      <!-- 首遇提示（docs/41 §4.1）：同屏至多 1 条 -->
+      <FirstTip />
+
+      <!-- 教学步骤提示（docs/41 §4.3）：一句话 + 手牌高亮，做对才推进 -->
+      <div v-if="tutorial.active && tutorial.step" class="tut-hint">
+        <span class="tut-step">{{ tutorial.stageIndex + 1 }}/{{ tutorial.total }} · {{ tutorial.stepIndex + 1 }}/{{ tutorial.stage?.steps.length }}</span>
+        <span class="tut-text">{{ tutorial.step.hint }}</span>
+      </div>
 
       <!-- 日志抽屉 -->
       <div v-if="showLog" class="log-drawer">
@@ -833,6 +887,20 @@ function back(): void {
 
 /* 玩家飘字位置（docs/41 §3.2）：伤害 / 格挡浮在面板上沿（血条上方），
    减益浮名落在状态栏那一行——都不遮血条数字 */
+/* 教学步骤提示带（docs/41 §4.3） */
+.tut-hint {
+  position: absolute; top: 42px; left: 50%; transform: translateX(-50%);
+  z-index: 42; display: flex; align-items: center; gap: 14px;
+  padding: 9px 18px; max-width: 900px;
+  background: rgba(12, 10, 8, 0.9);
+  border: 1px solid var(--edge-gold); border-radius: var(--radius-sm);
+  box-shadow: var(--panel-shadow);
+}
+.tut-step {
+  flex: none; font-family: var(--serif-title); font-size: 11px; letter-spacing: 0.14em; color: var(--gold-dim);
+}
+.tut-text { font-size: 13px; letter-spacing: 0.1em; color: var(--ink-bone); }
+
 .player-panel .dmgfloat { top: -26px; }
 .player-panel .dmgfloat.debuff { top: 74px; }
 

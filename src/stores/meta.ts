@@ -14,7 +14,7 @@ function devMode(): boolean {
   return useSettingsStore().values.developerMode;
 }
 
-/** 成就墙首批 12 条（docs/38 §三 C-3）。 */
+/** 成就墙首批 12 条（docs/38 §三 C-3）+ 「引路人」（docs/41 §4.3 教学）。 */
 export const ACHIEVEMENT_IDS = [
   "clear_bloodwright",
   "clear_engineer",
@@ -28,6 +28,7 @@ export const ACHIEVEMENT_IDS = [
   "backlash3_win",
   "rust_clear",
   "codex_all",
+  "guide",
 ] as const;
 export type AchievementId = (typeof ACHIEVEMENT_IDS)[number];
 
@@ -45,6 +46,12 @@ interface MetaState {
   records: Record<string, RunRecord>;
   /** 跨局累计统计（成就判定用）：累计断链次数 */
   stats: { interrupts: number };
+  /** 首遇提示已读记录（docs/41 §4.1）：跨局不再重复弹 */
+  tips: string[];
+  /** 教学：是否已问过「要人带路吗？」（docs/41 §4.3） */
+  tutorialOffered: boolean;
+  /** 教学：是否完成过三场教学 */
+  tutorialDone: boolean;
 }
 
 /** 一次远征的成就输入（由 run store 汇总）。 */
@@ -81,6 +88,12 @@ export const useMetaStore = defineStore("meta", {
     achievements: [] as string[],
     records: {} as Record<string, RunRecord>,
     stats: { interrupts: 0 },
+    /** 首遇提示已读（docs/41 §4.1） */
+    tips: [] as string[],
+    /** 教学：首次进远征前问一次是否要带路（docs/41 §4.3） */
+    tutorialOffered: false,
+    /** 教学：三场走完解锁「引路人」徽章 */
+    tutorialDone: false,
     /** 最近一次通关新解锁的内容 id（结算页弹提示用） */
     lastUnlocked: [] as string[],
     /** 最近一次通关新达成的成就 id（结算页弹提示用） */
@@ -118,6 +131,9 @@ export const useMetaStore = defineStore("meta", {
         this.achievements = saved.achievements ?? [];
         this.records = saved.records ?? {};
         this.stats = { interrupts: saved.stats?.interrupts ?? 0 };
+        this.tips = saved.tips ?? [];
+        this.tutorialOffered = saved.tutorialOffered ?? false;
+        this.tutorialDone = saved.tutorialDone ?? false;
       }
       this.loaded = true;
     },
@@ -128,6 +144,9 @@ export const useMetaStore = defineStore("meta", {
         achievements: [...this.achievements],
         records: { ...this.records },
         stats: { ...this.stats },
+        tips: [...this.tips],
+        tutorialOffered: this.tutorialOffered,
+        tutorialDone: this.tutorialDone,
       } satisfies MetaState);
     },
     unlock(ids: readonly string[]): string[] {
@@ -152,6 +171,42 @@ export const useMetaStore = defineStore("meta", {
         this.persist();
       }
     },
+    /** 首遇提示是否已读（docs/41 §4.1）。 */
+    hasSeenTip(id: string): boolean {
+      this.ensureLoaded();
+      return this.tips.includes(id);
+    },
+
+    markTipSeen(id: string): void {
+      this.ensureLoaded();
+      if (this.tips.includes(id)) return;
+      this.tips = [...this.tips, id];
+      this.persist();
+    },
+
+    /** 教学：记下"已经问过要不要带路"，之后不再问（docs/41 §4.3）。 */
+    markTutorialOffered(): void {
+      this.ensureLoaded();
+      if (this.tutorialOffered) return;
+      this.tutorialOffered = true;
+      this.persist();
+    },
+
+    /** 教学三场走完：解锁图鉴「引路人」徽章（不给任何数值/内容奖励）。 */
+    markTutorialDone(): void {
+      this.ensureLoaded();
+      this.tutorialDone = true;
+      if (!this.achievements.includes("guide")) this.achievements = [...this.achievements, "guide"];
+      this.persist();
+    },
+
+    /** 图鉴页「重新显示一遍」。 */
+    resetTips(): void {
+      this.ensureLoaded();
+      this.tips = [];
+      this.persist();
+    },
+
     /** 记录达成成就，返回本次新达成项。 */
     achieve(ids: readonly string[]): string[] {
       this.ensureLoaded();

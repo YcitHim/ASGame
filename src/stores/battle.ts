@@ -14,6 +14,8 @@ import { AnimQueue } from "@/ui/anim-queue";
 import { buffMeta } from "@/ui/components/buff-meta";
 import { useCodexStore } from "@/stores/codex";
 import { useRunStore } from "@/stores/run";
+import { useTipsStore } from "@/stores/tips";
+import { useTutorialStore } from "@/stores/tutorial";
 
 /**
  * 飘字（docs/41 §3.2）：结算结果的可视化，只读事件流、不回写状态。
@@ -23,7 +25,14 @@ import { useRunStore } from "@/stores/run";
  *  - guard：「格挡！」（完全格挡，一点血没掉）
  *  - debuff：减益浮名（图标字 + 名称 + 层数）
  */
-export type FloaterKind = "damage" | "heal" | "block" | "guard" | "debuff";
+export type FloaterKind = "damage" | "heal" | "block" | "guard" | "debuff" | "net" | "pact";
+
+/** 教学战斗配置（docs/41 §4.3）：不挂 run 进度，敌人 / 种子固定。 */
+export interface TutorialBattleConfig {
+  readonly stageId: string;
+  readonly seed: number;
+  readonly enemies: readonly string[];
+}
 
 export interface Floater {
   readonly id: number;
@@ -45,9 +54,20 @@ export const MESSAGE_TTL_MS = 2500;
 let messageTimer: ReturnType<typeof setTimeout> | null = null;
 let messageSerial = 0;
 
+/**
+ * 卖血飘字合并（docs/41 §4.2）：一张牌的自伤与回血要显示成一次净值变化。
+ * 事件流里自伤与回血是两条事件（间隔约 140ms），所以先把自伤挂起，
+ * 有回血就合并成「净 ±N」；260ms 内没有回血，就当纯代价牌报「血契 −N」。
+ */
+const PACT_MERGE_WINDOW_MS = 260;
+let pactPending = 0;
+let pactTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const useBattleStore = defineStore("battle", {
   state: () => ({
     battle: null as BattleState | null,
+    /** 非空 = 当前是教学战斗（docs/41 §4.3）：不写 run 进度、打完交 tutorial store 接管 */
+    tutorialConfig: null as TutorialBattleConfig | null,
     /** 本场战斗对应的「职业:种子」标识；换职业/开新局时用来识别陈旧战斗并重开 */
     runKey: "",
     log: [] as DomainEvent[],
@@ -100,10 +120,48 @@ export const useBattleStore = defineStore("battle", {
       queue.setSpeed(this.speed);
     },
 
+    /**
+     * 启动一场教学战斗（docs/41 §4.3）：卡组用玩家所选职业的起始卡组、敌人与种子来自脚本。
+     * 不读 run.current、不写 run 进度——教学不该污染正在进行的远征。
+     */
+    startTutorial(config: TutorialBattleConfig): void {
+      this.ensureConfigured();
+      const game = loadGameContent();
+      const run = useRunStore();
+      const cls = run.classDef ?? [...game.content.classes.values()][0];
+      if (!cls) return;
+      this.tutorialConfig = config;
+      this.runKey = `tutorial:${config.stageId}`;
+      this.battle = createBattleState({
+        battleId: `tutorial-${config.stageId}`,
+        seed: config.seed,
+        player: {
+          maxHp: cls.player.maxHp,
+          energy: cls.player.energy,
+          hp: cls.player.maxHp,
+          pollution: 0,
+        },
+        enemies: config.enemies.map((id) => ({ id })),
+        deck: cls.startDeck.map((cardId) => ({ cardId, upgraded: false, enhancements: [] })),
+        relics: [...(cls.startRelics ?? [])],
+        content: game.content,
+        difficulty: "normal",
+      });
+      this.log = [];
+      this.floaters = [];
+      this.cancelPact();
+      this.clearMessage();
+      this.messageTurn = 0;
+      this.targeting = null;
+      this.skip();
+      this.dispatch({ type: "Noop", actionId: `tutorial-${++actionCounter}` });
+    },
+
     start(): void {
       this.ensureConfigured();
       const game = loadGameContent();
       const run = useRunStore();
+      this.tutorialConfig = null;
       // 防呆：未开局、或上一局已阵亡（HP<=0）时，一律开新局——
       // 否则会用 0 HP 建战斗，第一帧就再次判负（表现为"再战点不动"）。
       if (!run.active || !run.run || run.hp <= 0) run.startRun();
@@ -137,8 +195,13 @@ export const useBattleStore = defineStore("battle", {
       codex.markCards(run.deck.map((c) => c.cardId));
       codex.markRelics(run.relics);
       codex.markEnemies(this.battle.enemies.map((e) => e.defId));
+      // 首遇提示 ③（docs/41 §4.1）：手里第一次带着「保留」牌进战斗
+      if (run.deck.some((c) => game.content.cards.get(c.cardId)?.keywords?.includes("retain"))) {
+        useTipsStore().trigger("retain");
+      }
       this.log = [];
       this.floaters = [];
+      this.cancelPact();
       this.clearMessage();
       this.messageTurn = 0;
       this.targeting = null;
@@ -151,8 +214,9 @@ export const useBattleStore = defineStore("battle", {
       const result = reduce(this.battle, action);
       this.battle = result.state;
       const runStore = useRunStore();
-      if (result.state.phase === "battleEnd") {
+      if (result.state.phase === "battleEnd" && this.tutorialConfig === null) {
         // 战斗结束把剩余 HP / 污染写回局外进度（跨节点保留，供事件结算）
+        // 教学战斗不写：它不是这局远征的一部分
         runStore.setHp(result.state.player.hp);
         runStore.setPollution(result.state.player.pollution);
         runStore.noteTurns(result.state.turn);
@@ -160,7 +224,20 @@ export const useBattleStore = defineStore("battle", {
       // 提示生命周期（docs/41 §2.1）：新回合到达 → 上一回合的提示必须消失
       for (const event of result.events) {
         if (event.type === "TurnStarted" && event.turn > this.messageTurn) this.clearMessage();
+        // 教学步骤判定与首遇提示走事件流本身（不走动画回调）：
+        // 玩家点「跳过」时动画不下发事件，但教程与说明必须照常推进（docs/41 §4.1/§4.3）
+        if (event.type === "CardPlayed") {
+          if (this.tutorialConfig) {
+            const type = loadGameContent().content.cards.get(event.cardId)?.type;
+            if (type) useTutorialStore().notePlay(type);
+          }
+          if (event.bloodPaid > 0) useTipsStore().trigger("bloodpact");
+        } else if (event.type === "ChargeResolved" && !event.released) {
+          useTipsStore().trigger("charge");
+        }
       }
+      // 回合结束清掉挂起的卖血合并（避免跨回合串味）
+      if (result.events.some((e) => e.type === "TurnEnded")) this.cancelPact();
       // 成就埋点（docs/36 T1 / docs/38 §三 C-3）：从事件流里读，core 不做局外判断
       for (const event of result.events) {
         if (event.type === "CardPlayed" && event.bloodPaid > 0) runStore.noteBloodpact();
@@ -223,6 +300,8 @@ export const useBattleStore = defineStore("battle", {
         this.setMessage("选择目标", "info");
         return;
       }
+      // 首遇提示 ⑤（docs/41 §4.1）：第一次能量不足
+      if (check.reason.includes("能量不足")) useTipsStore().trigger("energy");
       this.setMessage(check.reason);
     },
 
@@ -237,6 +316,7 @@ export const useBattleStore = defineStore("battle", {
       if (!this.battle || this.playing || this.over) return;
       const check = validatePlayCardState(this.battle, handIndex, targetId);
       if (!check.ok) {
+        if (check.reason.includes("能量不足")) useTipsStore().trigger("energy");
         this.setMessage(check.reason);
         return;
       }
@@ -251,6 +331,10 @@ export const useBattleStore = defineStore("battle", {
 
     endTurn(): void {
       if (!this.battle || this.playing || this.over) return;
+      // 首遇提示 ①（docs/41 §4.1）：第一次回合结束还留着没打出的牌
+      if (this.battle.piles.hand.length > 0) useTipsStore().trigger("discard");
+      // 教学：结束回合也算一次"操作正确"
+      if (this.tutorialConfig) useTutorialStore().noteEndTurn();
       this.selectTargetNoop();
       this.dispatch({ type: "EndTurn", actionId: `end-${++actionCounter}` });
     },
@@ -310,7 +394,28 @@ export const useBattleStore = defineStore("battle", {
           if (event.targetId !== "player") this.markUnit("guardUnits", event.targetId, 420);
           break;
         case "HpHealed":
-          this.pushFloater(event.targetId, event.value, "heal", false);
+          if (event.targetId === "player" && pactPending > 0) {
+            // 同一张牌的自伤 + 回血 → 一次净值（docs/41 §4.2）
+            const net = event.value - pactPending;
+            this.cancelPact();
+            this.pushFloater("player", net, "net", false, `净 ${net >= 0 ? "+" : "−"}${Math.abs(net)}`);
+          } else {
+            this.pushFloater(event.targetId, event.value, "heal", false);
+          }
+          break;
+        case "HpLost":
+          // 卖血代价先挂起：有回血就合并，没有就当纯代价牌报出来
+          if (event.targetId === "player" && event.reason === "bloodpact") {
+            pactPending += event.value;
+            if (pactTimer === null) {
+              pactTimer = setTimeout(() => {
+                pactTimer = null;
+                const cost = pactPending;
+                pactPending = 0;
+                if (cost > 0) this.pushFloater("player", cost, "pact", false, `血契 −${cost}`);
+              }, PACT_MERGE_WINDOW_MS);
+            }
+          }
           break;
         case "UnitDied":
           this.markUnit("dyingUnits", event.unitId, 500);
@@ -345,6 +450,14 @@ export const useBattleStore = defineStore("battle", {
         default:
           break;
       }
+    },
+
+    cancelPact(): void {
+      if (pactTimer !== null) {
+        clearTimeout(pactTimer);
+        pactTimer = null;
+      }
+      pactPending = 0;
     },
 
     /** 给某个单位打一段限时状态（命中闪白 / 死亡 / 意图翻入）。 */

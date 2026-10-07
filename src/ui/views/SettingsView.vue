@@ -5,6 +5,7 @@ import { useRouter } from "vue-router";
 import EmberField from "@/ui/components/EmberField.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
 import { type Settings, useSettingsStore } from "@/stores/settings";
+import { useTutorialStore } from "@/stores/tutorial";
 
 const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
@@ -40,6 +41,12 @@ function onBattleAnim(value: Settings["battleAnim"]): void {
 function onSpeed(event: Event): void {
   const speed = Number((event.target as HTMLInputElement).value) === 2 ? 2 : 1;
   store.update({ animationSpeed: speed as Settings["animationSpeed"] });
+}
+
+/** 重看教学（docs/41 §4.3）：从设置页随时重进。 */
+function replayTutorial(): void {
+  useTutorialStore().begin();
+  void router.push("/tutorial");
 }
 
 function back(): void {
@@ -118,6 +125,15 @@ function back(): void {
             <label><input type="radio" name="speed" :checked="values.animationSpeed === 1" value="1" @change="onSpeed" /> 1×</label>
             <label><input type="radio" name="speed" :checked="values.animationSpeed === 2" value="2" @change="onSpeed" /> 2×</label>
           </div>
+        </div>
+
+        <h3 class="group">教学</h3>
+        <div class="row">
+          <div class="label">
+            <b>重看教学</b>
+            <small>随时重进三场演武；教学不发奖励，只是带路</small>
+          </div>
+          <button class="etch-btn" @click="replayTutorial">进 入 教 学</button>
         </div>
 
         <h3 class="group">开发者</h3>

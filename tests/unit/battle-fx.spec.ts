@@ -83,6 +83,44 @@ describe("docs/41 §3.2 受击飘字", () => {
   });
 });
 
+/** docs/41 §4.2：卖血牌的自伤与回血要合并成一次净值，不能拆成"先扣再回"。 */
+describe("docs/41 §4.2 卖血净值飘字", () => {
+  beforeEach(() => setActivePinia(createPinia()));
+
+  it("同一次出牌的自伤 + 回血合并为「净 +4」", async () => {
+    const store = useBattleStore();
+    store.onAnimEvent(ev("CardPlayed", { cardId: "transfusion", handIndex: 0, targetId: null, costPaid: 1, bloodPaid: 2 }));
+    store.onAnimEvent(ev("HpLost", { targetId: "player", value: 2, reason: "bloodpact" }));
+    store.onAnimEvent(ev("HpHealed", { targetId: "player", value: 6, total: 60, reason: "card" }));
+    expect(store.floaters).toHaveLength(1);
+    expect(store.floaters[0].kind).toBe("net");
+    expect(store.floaters[0].text).toBe("净 +4");
+    expect(store.floaters.some((f) => f.kind === "heal")).toBe(false);
+    // 合并窗口过后不应再补一条"血契"
+    await new Promise((r) => setTimeout(r, 320));
+    expect(store.floaters.some((f) => f.kind === "pact")).toBe(false);
+  });
+
+  it("纯代价牌（无回血）报「血契 −N」", async () => {
+    const store = useBattleStore();
+    store.onAnimEvent(ev("HpLost", { targetId: "player", value: 2, reason: "bloodpact" }));
+    expect(store.floaters).toHaveLength(0);
+    await new Promise((r) => setTimeout(r, 320));
+    expect(store.floaters).toHaveLength(1);
+    expect(store.floaters[0].kind).toBe("pact");
+    expect(store.floaters[0].text).toBe("血契 −2");
+  });
+
+  it("非卖血掉血不受影响（伤害照常走红色 −N）", () => {
+    const store = useBattleStore();
+    store.onAnimEvent(
+      ev("DamageDealt", { sourceId: "e1", targetId: "player", base: 5, layers: [], value: 5, blocked: 0, hpLost: 5, segment: 1, segments: 1 }),
+    );
+    store.onAnimEvent(ev("HpHealed", { targetId: "player", value: 3, total: 63, reason: "regen" }));
+    expect(store.floaters.map((f) => f.kind)).toEqual(["damage", "heal"]);
+  });
+});
+
 describe("docs/41 §3.1 敌人动作", () => {
   beforeEach(() => setActivePinia(createPinia()));
 

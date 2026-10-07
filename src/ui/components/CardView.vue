@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { I18N, t } from "@/data/load";
+import { netHpText } from "@/ui/card-value";
 import { hasTip, highlightText, keywordTip, termsIn } from "@/ui/glossary";
 import { computeTipPlacement } from "@/ui/tip-position";
 
@@ -22,6 +23,8 @@ const props = defineProps<{
   display?: boolean;
   /** flavor 位（docs/29 ⑤）：手牌小屏态省略、悬停/放大态显示；force 时（图鉴/详情）常显 */
   showFlavor?: boolean;
+  /** 教学高亮（docs/41 §4.3）：这一步要求打的就是这类牌 */
+  highlight?: boolean;
 }>();
 
 const emit = defineEmits<{ (e: "grab", index: number, event: PointerEvent): void }>();
@@ -53,6 +56,8 @@ const desc = computed(() =>
     : t(`card.${props.cardId}.desc`, ""),
 );
 const descHtml = computed(() => highlightText(desc.value));
+/** 卖血牌净值行（docs/41 §4.2）：只有"同时失去与回复"的牌才有 */
+const netHp = computed(() => netHpText(props.cardId, props.upgraded === true));
 /** 卡面斜体小字（docs/27 §四）：只作文本，不参与任何逻辑 */
 // 直接读 i18n 表：t(key, "") 缺失时会回退成 key 本身，炉心机士卡没有 flavor 会渲染出原始 key
 const flavor = computed(() => I18N[`card.${props.cardId}.flavor`] ?? "");
@@ -127,7 +132,7 @@ function onLeave(): void {
     class="card"
     :class="[
       `rarity-${rarity ?? 'common'}`,
-      { 'not-playable': !playable, selected, dragging, display },
+      { 'not-playable': !playable, selected, dragging, display, highlight },
     ]"
     :style="{ transform: `rotate(${rotation}deg) translateY(${lift}px)` }"
     @pointerdown="emit('grab', index, $event)"
@@ -148,6 +153,7 @@ function onLeave(): void {
       </template>
     </div>
     <div class="ctext" v-html="descHtml" />
+    <div v-if="netHp" class="cnet">{{ netHp }}</div>
     <div v-if="flavor" class="cflavor" :class="{ force: showFlavor }">{{ flavor }}</div>
     <div class="enhslots" :title="enhancementTip">
       <i v-for="n in 3" :key="n" :class="{ on: n <= (enhancements ?? 0) }" />
@@ -302,6 +308,22 @@ function onLeave(): void {
   color: var(--ink-dim);
   text-align: center;
   overflow: hidden;
+}
+/* 卖血牌净值行（docs/41 §4.2）：灰色小字，比效果文本低一档但始终可见 */
+/* 教学高亮（docs/41 §4.3）：金色描边 + 呼吸，明确"这一步就点它" */
+.card.highlight {
+  box-shadow: 0 0 0 2px var(--gold), 0 0 26px rgba(176, 141, 74, 0.55);
+  animation: card-highlight 1.4s ease-in-out infinite;
+}
+@keyframes card-highlight {
+  0%, 100% { box-shadow: 0 0 0 2px var(--gold), 0 0 14px rgba(176, 141, 74, 0.35); }
+  50% { box-shadow: 0 0 0 2px var(--gold), 0 0 30px rgba(176, 141, 74, 0.7); }
+}
+.cnet {
+  margin-top: 3px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: #9a9081;
 }
 .cflavor {
   /* 放在描述之后的正向流里：以前绝对定位会被长描述顶穿（玩家报「黄字和介绍重叠」） */

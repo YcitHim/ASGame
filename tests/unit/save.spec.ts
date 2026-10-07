@@ -71,7 +71,14 @@ describe("systems/save（ADR-008）", () => {
       run: { layerIndex: 2, unlocked: [], difficulty: "normal", usedBloodpact: false, overloadCount: 0 },
     });
     const meta = migrate({ version: 5, data: { clearedClasses: ["bloodwright"], unlocked: [] } });
-    expect(meta?.data).toEqual({ clearedClasses: ["bloodwright"], unlocked: [] });
+    // 9 → 10 会给 meta 槽补 tips 与教学状态（docs/41 §4.1 / §4.3）
+    expect(meta?.data).toEqual({
+      clearedClasses: ["bloodwright"],
+      unlocked: [],
+      tips: [],
+      tutorialOffered: false,
+      tutorialDone: false,
+    });
   });
 
   it("v7 进度档迁移到 v8 时补成就统计字段；非进度档不被污染", () => {
@@ -95,6 +102,23 @@ describe("systems/save（ADR-008）", () => {
   it("来自未来版本的存档不猜，直接丢弃", () => {
     localStorage.setItem(slotKey("progress"), JSON.stringify({ version: SCHEMA_VERSION + 5, data: {} }));
     expect(readSlot("progress", "fallback")).toBe("fallback");
+  });
+});
+
+describe("存档迁移 9 → 10（docs/41 §4.1）", () => {
+  it("meta 槽补 tips 数组；进度档不被污染", async () => {
+    const { migrate, SCHEMA_VERSION } = await import("@/systems/save");
+    expect(SCHEMA_VERSION).toBe(10);
+
+    const meta = migrate({ version: 9, savedAt: 0, data: { clearedClasses: ["bloodwright"], achievements: [] } });
+    expect((meta?.data as { tips: string[] }).tips).toEqual([]);
+
+    const progress = migrate({ version: 9, savedAt: 0, data: { run: { actIndex: 1 } } });
+    expect((progress?.data as Record<string, unknown>).tips).toBeUndefined();
+
+    // 已有 tips 的存档不被覆盖
+    const kept = migrate({ version: 9, savedAt: 0, data: { clearedClasses: [], tips: ["discard"] } });
+    expect((kept?.data as { tips: string[] }).tips).toEqual(["discard"]);
   });
 });
 

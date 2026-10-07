@@ -8,7 +8,7 @@
 export const SAVE_NAMESPACE = "rustandblood";
 
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 export type SaveSlot = "settings" | "progress" | "replay" | "codex" | "meta";
 
@@ -149,6 +149,20 @@ const migrations: Record<number, (data: unknown) => unknown> = {
         deepestLayer: layerIndex,
         legacy: layerIndex >= 8,
       },
+    };
+  },
+  // 9 → 10（docs/41 §4.1 / §4.3）：meta 槽新增 tips（首遇提示已读）与教学状态。
+  // 只碰 meta 槽（带 achievements / clearedClasses 的那个），不污染进度档。
+  // 旧档视为"没被问过、没做过教学"（tutorialOffered 默认 false 会再问一次，符合预期）。
+  9: (data) => {
+    if (typeof data !== "object" || data === null) return data;
+    const record = data as Record<string, unknown>;
+    if (!("achievements" in record) && !("clearedClasses" in record)) return record;
+    return {
+      ...record,
+      tips: record["tips"] ?? [],
+      tutorialOffered: record["tutorialOffered"] ?? false,
+      tutorialDone: record["tutorialDone"] ?? false,
     };
   },
 };

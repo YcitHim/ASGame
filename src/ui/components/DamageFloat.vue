@@ -28,6 +28,10 @@ const text = computed(() => {
 }
 .dmgfloat.big { font-size: 48px; color: #f0b4a8; }
 .dmgfloat.heal { color: #a8c48e; text-shadow: 0 0 12px rgba(94, 123, 76, 0.9), 0 2px 2px #000; }
+/* 卖血净值（docs/41 §4.2）：一次显示"这张牌最后赚/亏了多少血"，不再拆成 −2 然后 +6 */
+.dmgfloat.net { color: #a8c48e; font-size: 28px; }
+/* 纯代价牌（无回血）：血契 −N 用暗红，与敌方伤害区分 */
+.dmgfloat.pact { color: #b06a5a; font-size: 24px; }
 /* 被格挡的部分：蓝色，字号小一档，并右移一格——它与真实掉血同帧产生，不能叠在一起 */
 .dmgfloat.block {
   left: 64%;
