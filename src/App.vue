@@ -5,11 +5,14 @@ import RotateMask from "@/ui/components/RotateMask.vue";
 import FirstTip from "@/ui/components/FirstTip.vue";
 import { useSettingsStore } from "@/stores/settings";
 import { useActTheme } from "@/ui/composables/useActTheme";
+import { useAudio } from "@/ui/composables/useAudio";
 
 // 启动即从存档恢复设置（ADR-008：设置持久化从第一天生效）
 useSettingsStore().init();
 // 当前幕主题（docs/40 §四①）：act-1 赭红 / act-2 青蓝
 useActTheme();
+// 音频层（docs/43 Q1）：音量跟随设置，首次手势解锁并开 BGM
+useAudio();
 
 /**
  * 首遇提示（docs/41 §4.1）挂在根上：**谁触发就在谁的页面上弹**。

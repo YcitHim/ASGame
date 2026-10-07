@@ -8,6 +8,7 @@ import { useMetaStore } from "@/stores/meta";
 import { type Settings, useSettingsStore } from "@/stores/settings";
 import { useTipsStore } from "@/stores/tips";
 import { useTutorialStore } from "@/stores/tutorial";
+import { previewSfx, toggleBgmPreview, type SfxId } from "@/ui/composables/useAudio";
 import { TUTORIAL_CHAPTERS, TUTORIAL_TITLE } from "@/ui/tutorial";
 
 const stage = useTemplateRef<HTMLElement>("stage");
@@ -32,13 +33,35 @@ interface VolumeRow {
 
 const volumes: VolumeRow[] = [
   { key: "masterVolume", label: "主音量", hint: "全局总闸" },
-  { key: "bgmVolume", label: "音乐", hint: "BGM 通道" },
-  { key: "sfxVolume", label: "音效", hint: "出牌 / 命中 / UI" },
+  { key: "bgmVolume", label: "音乐", hint: "循环氛围 BGM" },
+  { key: "sfxVolume", label: "音效", hint: "出牌 / 命中 / 回合切换" },
 ];
 
 function onVolume(key: VolumeRow["key"], event: Event): void {
   const value = Number((event.target as HTMLInputElement).value) / 100;
   store.update({ [key]: value });
+}
+
+/**
+ * 试听（docs/45 Q10）：四条音效各给一个按钮，音量行也给一个——
+ * 命中分敌我两种，策划要的是"听得出区别"，那就得让耳朵直接比对。
+ */
+const SFX_PREVIEWS: readonly { id: SfxId; label: string }[] = [
+  { id: "cardPlay", label: "出牌" },
+  { id: "hitEnemy", label: "打中敌人" },
+  { id: "hitPlayer", label: "自己挨打" },
+  { id: "turn", label: "回合切换" },
+];
+
+/** BGM 试听是开关（一个按钮管开停），状态只在设置页本地维护。 */
+const bgmOn = ref(false);
+function onPreviewBgm(): void {
+  bgmOn.value = toggleBgmPreview();
+}
+
+/** 音效滑块松手时放一声样本：调音量立刻听得到。 */
+function onVolumeCommit(key: VolumeRow["key"]): void {
+  if (key === "sfxVolume") previewSfx("hitEnemy");
 }
 
 function onToggle(key: "developerMode" | "tipPopups", event: Event): void {
@@ -114,22 +137,33 @@ function back(): void {
 
       <section v-if="page === 'settings'" class="panel">
         <h3 class="group">音频</h3>
-        <p class="group-note">音频尚未实现，计划随 v1.1 上线——下面的滑块先禁用，免得调了没反应像是 bug。</p>
-        <div v-for="row in volumes" :key="row.key" class="row disabled">
+        <p class="group-note">
+          出牌 / 命中（打中敌人、自己挨打两种）/ 回合切换 四条音效，加一首循环氛围 BGM。改动即时生效。
+        </p>
+        <div v-for="row in volumes" :key="row.key" class="row">
           <div class="label">
             <b>{{ row.label }}</b>
-            <small>{{ row.hint }} · 暂未开放 · v1.1</small>
+            <small>{{ row.hint }}</small>
           </div>
           <input
             class="slider"
             type="range"
             min="0"
             max="100"
-            disabled
             :value="Math.round(values[row.key] * 100)"
             @input="onVolume(row.key, $event)"
+            @change="onVolumeCommit(row.key)"
           />
           <span class="num">{{ Math.round(values[row.key] * 100) }}</span>
+        </div>
+        <div class="try-row">
+          <span class="try-label">试听</span>
+          <button v-for="s in SFX_PREVIEWS" :key="s.id" class="etch-btn try" @click="previewSfx(s.id)">
+            {{ s.label }}
+          </button>
+          <button class="etch-btn try" :class="{ on: bgmOn }" @click="onPreviewBgm">
+            {{ bgmOn ? "停下 BGM" : "氛围 BGM" }}
+          </button>
         </div>
 
         <h3 class="group">反馈</h3>
@@ -381,7 +415,31 @@ function back(): void {
   letter-spacing: 0.06em;
   color: var(--gold-dim);
 }
-.row.disabled { opacity: 0.55; }
+.try-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 4px 0 2px;
+}
+
+.try-label {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--ink-dim);
+}
+
+.etch-btn.try {
+  padding: 5px 12px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.etch-btn.try.on {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
 .row {
   display: flex;
   align-items: center;

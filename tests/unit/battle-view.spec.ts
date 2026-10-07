@@ -186,6 +186,12 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
     const store = useBattleStore();
     store.skip();
 
+    // 遭遇是随机掷的：可能不止一个敌人，别人也可能开局就在蓄力。
+    // 这条用例只测"同一个蓄力敌人：thenIn 2 不红屏、thenIn 1 红屏"，
+    // 所以先把其他敌人的意图清干净，否则红屏是被别人点亮的（既有用例的偶发失败）。
+    for (const other of store.battle!.enemies.slice(1)) {
+      (other as unknown as { intent: unknown }).intent = null;
+    }
     const enemy = store.battle!.enemies[0] as unknown as { intent: unknown };
     // 还剩 2 回合：只有意图条上的「蓄力 · 2回合后释放」，不红屏
     enemy.intent = { kind: "charge", value: 4, block: 6, thenValue: 16, thenIn: 2 };

@@ -10,6 +10,7 @@ import { isCombatNode, rollEncounter } from "@/core/map";
 import type { Action } from "@/core/actions";
 import type { DomainEvent } from "@/core/events";
 import { loadGameContent } from "@/data/load";
+import { playSfx } from "@/systems/audio";
 import { AnimQueue } from "@/ui/anim-queue";
 import { buffMeta } from "@/ui/components/buff-meta";
 import { useCodexStore } from "@/stores/codex";
@@ -498,8 +499,15 @@ export const useBattleStore = defineStore("battle", {
     },
 
     onAnimEvent(event: DomainEvent): void {
+      // 音效（docs/43 Q1 / docs/45 Q10）：出牌 / 命中（敌我两种）/ 回合切换。
+      // 只有这一条链会响——音频跟着动画事件走，玩家点「跳过」时自然一并跳过，
+      // 不会在跳过一整套连击时哐哐哐放四声命中。
       switch (event.type) {
+        case "TurnStarted":
+          playSfx("turn");
+          break;
         case "DamageDealt": {
+          playSfx(event.targetId === "player" ? "hitPlayer" : "hitEnemy");
           // 敌人 → 玩家的攻击：敌人向玩家方向前扑（docs/41 §3.1）
           if (event.targetId === "player" && event.sourceId !== "player") {
             this.pulseUnit("lungeUnits", event.sourceId, 260);
@@ -611,6 +619,7 @@ export const useBattleStore = defineStore("battle", {
           this.markUnit("flipUnits", event.enemyId, 200);
           break;
         case "CardPlayed":
+          playSfx("cardPlay");
           this.cardPlayed = { cardId: event.cardId, targetId: event.targetId, seq: ++cardPlayedSeq };
           break;
         default:
