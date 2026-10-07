@@ -60,6 +60,43 @@ function zodIssues(file: string, error: unknown): ValidationIssue[] {
   }));
 }
 
+/**
+ * docs/45 Q11：正式内容数据里**不允许**出现 core 的调试指令串。
+ * `intent` 是教学脚本专用的钉意图指令（TutorialStep.intent），只能活在 src/ui/tutorial.ts；
+ * 一旦有人把它写进敌人/关卡/事件 JSON（调试残留或"正式内容作弊"），构建期直接报错。
+ */
+const DEBUG_COMMAND_PATTERN =
+  /^(noop$|set (hp|energy) \d|add buff \S+|give card \S+|draw \d|kill \S+|seed \d|intent \S+)/;
+
+function scanDebugCommands(
+  file: string,
+  data: unknown,
+  issues: ValidationIssue[],
+  path = "",
+): void {
+  if (typeof data === "string") {
+    if (DEBUG_COMMAND_PATTERN.test(data.trim())) {
+      issues.push({
+        file,
+        path: path || "(root)",
+        message: `正式内容里出现调试指令串「${data}」——intent / give card 等只允许教学脚本调用`,
+      });
+    }
+    return;
+  }
+  if (Array.isArray(data)) {
+    data.forEach((value, index) =>
+      scanDebugCommands(file, value, issues, path ? `${path}.${index}` : String(index)),
+    );
+    return;
+  }
+  if (data && typeof data === "object") {
+    for (const [key, value] of Object.entries(data)) {
+      scanDebugCommands(file, value, issues, path ? `${path}.${key}` : key);
+    }
+  }
+}
+
 function parseAll<T>(schema: ZodType<T>, files: SourceFile[], out: T[], issues: ValidationIssue[]): void {
   for (const f of files) {
     const result = schema.safeParse(f.data);
@@ -78,6 +115,19 @@ export function validateContent(input: ContentInput): ValidationResult {
   const relics: RelicJson[] = [];
   const events: EventJson[] = [];
   const classes: ClassJson[] = [];
+
+  // docs/45 Q11：先扫一遍调试指令（正式内容数据不许引用）
+  for (const file of [
+    ...input.cards,
+    ...input.enhancements,
+    ...(input.enemies ?? []),
+    ...(input.acts ?? []),
+    ...(input.relics ?? []),
+    ...(input.events ?? []),
+    ...(input.classes ?? []),
+  ]) {
+    scanDebugCommands(file.file, file.data, issues);
+  }
 
   parseAll(cardSchema, input.cards, cards, issues);
   parseAll(enhancementSchema, input.enhancements, enhancements, issues);

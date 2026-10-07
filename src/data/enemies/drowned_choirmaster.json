@@ -7,7 +7,7 @@
     {
       "intent": {
         "kind": "attack",
-        "value": 12,
+        "value": 11,
         "hits": 2
       },
       "weight": 3,
@@ -38,7 +38,7 @@
         "block": 8,
         "thenIntent": {
           "kind": "attack",
-          "value": 20
+          "value": 18
         }
       },
       "weight": 2,
@@ -51,7 +51,7 @@
     {
       "intent": {
         "kind": "attack",
-        "value": 14
+        "value": 13
       },
       "weight": 3,
       "maxConsecutive": 2,
@@ -81,7 +81,7 @@
         "block": 8,
         "thenIntent": {
           "kind": "attack",
-          "value": 26
+          "value": 23
         }
       },
       "weight": 2,

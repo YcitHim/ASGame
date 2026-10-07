@@ -77,6 +77,29 @@ describe("content-validator（G1）", () => {
     expect(issues.some((i) => i.message.includes("buffId"))).toBe(true);
   });
 
+  it("docs/45 Q11：正式内容数据里出现调试指令串会报错", () => {
+    const input = baseInput();
+    input.enemies = [
+      {
+        file: "src/data/enemies/ghost.json",
+        data: {
+          id: "ghost",
+          i18n: "enemy.ghost",
+          maxHp: 10,
+          intents: [{ intent: { kind: "attack", value: 5 }, weight: 1 }],
+          debugCommand: "intent ghost charge 2 4 10",
+        },
+      },
+    ];
+    input.i18n = { ...input.i18n, "enemy.ghost.name": "幽灵" };
+    const { issues } = validateContent(input);
+    expect(issues.some((i) => i.message.includes("调试指令"))).toBe(true);
+
+    // 正常内容数据里不该出现（真实仓库已由上面那条 "全部通过" 覆盖）
+    const clean = baseInput();
+    expect(validateContent(clean).issues.some((i) => i.message.includes("调试指令"))).toBe(false);
+  });
+
   it("appliesTo 指向不存在的卡牌会报错", () => {
     const input = baseInput();
     input.enhancements = [

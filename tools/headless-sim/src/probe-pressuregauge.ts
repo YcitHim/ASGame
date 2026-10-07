@@ -1,8 +1,9 @@
 /**
- * probe · pressuregauge 阈值扫描（docs/43 §2.2 的复核证据）
+ * probe · pressuregauge 效果值扫描（docs/45 Q5）
  *
- * 在内存里改写 clampCharge 的 value，同一批种子跑 400 局，隔离「阈值」这一个变量。
- * value = 0 → 等同于没有这件遗物（core 里 value > 0 才生效）。
+ * 在内存里把遗物的效果值改成 N，同一批种子跑 400 局，量出它相对「空随身槽」基线的位置。
+ * 兼容两种效果：clampCharge（封顶）与 gainCharge（战斗开始给 N 点）。
+ * 两种口径的结论完全不同——clamp 越高越强、约白装；gainCharge 是通用伤害加成，一点都不能给。
  */
 import type { RelicDefinition } from "../../../src/core/registry/content";
 import { loadNodeContent } from "./load";
@@ -19,14 +20,13 @@ const baseline = (cls: string): number =>
 const def = content.relics.get("pressuregauge");
 if (!def) throw new Error("找不到 pressuregauge");
 
-console.log("[probe] pressuregauge clampCharge 阈值扫描 · 400 局 · normal · 单幕");
+const effectKind = def.effects[0]?.kind ?? "?";
+console.log(`[probe] pressuregauge（${effectKind}）值扫描 · 400 局 · normal · 单幕`);
 for (const cls of ["engineer", "bloodwright", "rustspeaker"]) {
   console.log(`  ${cls} 空随身槽基线 ${(baseline(cls) * 100).toFixed(1)}%`);
 }
-for (const value of [0, 3, 4, 5, 6, 8]) {
-  const effects = def.effects.map((e) =>
-    e.kind === "clampCharge" ? { ...e, value } : e,
-  );
+for (const value of [0, 1, 2, 3, 5, 8]) {
+  const effects = def.effects.map((e) => (e.kind === effectKind ? { ...e, value } : e));
   (content.relics as unknown as Map<string, RelicDefinition>).set("pressuregauge", { ...def, effects });
   const cells: string[] = [];
   for (const cls of ["engineer", "bloodwright", "rustspeaker"]) {

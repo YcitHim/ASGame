@@ -725,7 +725,7 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
       break;
     }
     case "clampCharge": {
-      // 充能封顶（玩家指定）：高于 value 时平衡回 value，不触发 onGainCharge
+      // 充能封顶（压力表）：高于 value 时平衡回 value，不触发 onGainCharge
       const before = draft.player.charge;
       if (value > 0 && before > value) {
         draft.player.charge = value;

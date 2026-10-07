@@ -7,11 +7,9 @@
  *
  * 口径（只认"需要什么资源"，不认"给什么资源"）：
  * - timing onSell      → 需要卖血机制（血械侍僧）
- * - clampCharge        → 需要已有的充能（炉心机士）
- * - spendCharge        → 同上
- * - spendPollution     → 需要已有的污染（锈语者）
- * - transferPollution / consumeCorroding → 同上（蚀锈口径）
- * gainCharge / gainPollution 属于"给资源"，任何职业都能吃到，不算不合。
+ * - clampCharge / spendCharge → 需要已有的充能（炉心机士）
+ * - spendPollution / transferPollution / consumeCorroding → 需要污染/蚀锈机制（锈语者）
+ * - gainCharge / gainPollution 属于"给资源"（谁拿都能用），不算不合。
  */
 import type { ContentDb, RelicDefinition } from "@/core/registry/content";
 

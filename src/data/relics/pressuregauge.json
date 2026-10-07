@@ -5,7 +5,7 @@
   "effects": [
     {
       "kind": "clampCharge",
-      "value": 3
+      "value": 5
     }
   ],
   "once": "turn",

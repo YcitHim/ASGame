@@ -117,7 +117,7 @@ describe("docs/40 转地图与精英池", () => {
     expect(a).not.toBe(b);
   });
 
-  it("applyIntermission：切幕 / 回血 25%（floor）/ 污染清零 / 层进度重置", () => {
+  it("applyIntermission：切幕 / 回血 40%（floor）/ 污染清零 / 层进度重置", () => {
     const cls = { id: "bloodwright", i18n: "class.bloodwright", player: { maxHp: 66, energy: 3 }, startDeck: ["strike"] };
     const run = { ...createRunState(act2ish, cls as never, 1), hp: 20, pollution: 77, layerIndex: 2, picked: [0, 0, 0] };
     const next = applyIntermission(run);
@@ -125,7 +125,7 @@ describe("docs/40 转地图与精英池", () => {
     expect(next.layerIndex).toBe(0);
     expect(next.picked).toEqual([]);
     expect(next.pollution).toBe(0);
-    expect(next.hp).toBe(20 + Math.floor(66 * 0.25));
+    expect(next.hp).toBe(20 + Math.floor(66 * 0.4));
   });
 
   it("actOf / hasNextAct 按幕切换", () => {

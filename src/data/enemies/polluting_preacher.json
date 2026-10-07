@@ -35,13 +35,8 @@
         "value": 2,
         "block": 4,
         "thenIntent": {
-          "kind": "charge",
-          "value": 2,
-          "block": 4,
-          "thenIntent": {
-            "kind": "attack",
-            "value": 7
-          }
+          "kind": "attack",
+          "value": 9
         }
       },
       "weight": 1

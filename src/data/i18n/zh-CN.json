@@ -189,7 +189,7 @@
   "relic.dentedcoil.name": "凹痕线圈",
   "relic.dentedcoil.desc": "战斗开始时，获得 2 点充能。",
   "relic.pressuregauge.name": "压力表",
-  "relic.pressuregauge.desc": "每回合开始时，若充能高于 3，自动平衡到 3。",
+  "relic.pressuregauge.desc": "每回合开始时，若充能高于 5，自动平衡到 5。",
   "relic.blood_pump.flavor": "它比你更心疼你的血。",
   "relic.redtear_ring.flavor": "圈住的不是手指，是最后一点体面。",
   "relic.whetstone.name": "磨刀石",

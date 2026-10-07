@@ -108,7 +108,8 @@ describe("真实内容：蓄力链数值表（docs/18 冻结值）", () => {
     const db = loadGameContent().content;
 
     const expected: Record<string, { release: number[]; block: number[] }> = {
-      polluting_preacher: { release: [11], block: [4, 4] },
+      // docs/45 Q2：污染布道者蓄力 2 段 → 1 段（释放值保持 11）
+      polluting_preacher: { release: [11], block: [4] },
       riveted_heavy: { release: [14], block: [6] },
       rust_warden: { release: [19], block: [8, 8] },
       rust_sentinel: { release: [12], block: [4] },

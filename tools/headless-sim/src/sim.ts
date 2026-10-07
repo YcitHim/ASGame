@@ -53,6 +53,12 @@ export interface SimResult {
   hpAfterElite: number | null;
   /** 通过 Boss 战后的剩余 HP */
   hpAfterBoss: number | null;
+  /** 进 Boss 战前的 HP（docs/45 Q7-6 锈喉死亡构成分析用） */
+  hpAtBoss: number | null;
+  /** 进 Boss 战前的牌组张数 */
+  deckSizeAtBoss: number | null;
+  /** 进 Boss 战前的遗物件数 */
+  relicsAtBoss: number | null;
   /** 本局是否组出「失控线爆发流」（同一张牌同时有 血怒 + 低血沸腾，docs/23 §10 口径 b） */
   bloodrageBoil: boolean;
   /** 本局是否同时持有 血怒 与 低血沸腾（可不同卡）——诊断 AI 会不会凑对（docs/25 §1.6） */
@@ -270,6 +276,9 @@ export function simulateRun(
   let battles = 0;
   let hpAfterElite: number | null = null;
   let hpAfterBoss: number | null = null;
+  let hpAtBoss: number | null = null;
+  let deckSizeAtBoss: number | null = null;
+  let relicsAtBoss: number | null = null;
 
   const finish = (outcome: "win" | "lose"): SimResult => ({
     seed,
@@ -285,6 +294,9 @@ export function simulateRun(
     enhancements,
     hpAfterElite,
     hpAfterBoss,
+    hpAtBoss,
+    deckSizeAtBoss,
+    relicsAtBoss,
     bloodrageBoil: deck.some(
       (c) => c.enhancements.includes("bloodrage") && c.enhancements.includes("bloodboil"),
     ),
@@ -309,6 +321,12 @@ export function simulateRun(
 
     if (isCombatNode(node)) {
       battles += 1;
+      // docs/45 Q7-6：记下进 Boss 战时的血量/牌组规模，用于"锈喉死亡构成"分析
+      if (node.kind === "boss") {
+        hpAtBoss = run.hp;
+        deckSizeAtBoss = deck.length;
+        relicsAtBoss = relics.length;
+      }
       const battle = runBattle(content, {
         battleId: `${act.id}-${node.id}`,
         seed: (run.seed ^ Math.imul(run.layerIndex + 1, 0x9e3779b9)) >>> 0,
@@ -419,6 +437,24 @@ export function simulateRun(
 
     if (run.actIndex + 1 < actList.length) {
       run = applyIntermission(run);
+      // docs/45 Q7 复核发现：真实局幕间还要选一次「圣堂馈赠」（docs/40 §2.3），
+      // 原 sim 只结算 applyIntermission、漏了这一项 → 双幕被系统性低估。补上 AI 的选择：
+      //   残血 → A 回半血；否则能拿本幕强化就拿 C，拿不到就 B 升级一张牌。
+      const nextAct = actList[run.actIndex] ?? act;
+      if (run.hp < run.maxHp * 0.5) {
+        run = setRunHp(run, Math.min(run.maxHp, run.hp + Math.round(run.maxHp * 0.5)));
+      } else {
+        const applied = applyEnhancementChoice(
+          content,
+          deck,
+          rollEnhancementChoices(content, run, run.layerIndex, 3, nextAct.id),
+        );
+        if (applied) enhancements[applied] = (enhancements[applied] ?? 0) + 1;
+        else {
+          const index = deck.findIndex((c) => !c.upgraded);
+          if (index >= 0) deck[index] = { ...deck[index], upgraded: true };
+        }
+      }
       continue;
     }
     break;

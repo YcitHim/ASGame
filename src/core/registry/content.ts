@@ -31,7 +31,7 @@ export interface CardEffect {
     | "gainModifier"
     /** 消耗全部充能（docs/27 §二 C2 / docs/29 §二⑥）：每点充能按 mode 结算，随后清零 */
     | "spendCharge"
-    /** 充能封顶（压力表改版）：超过 value 时平衡回 value */
+    /** 充能封顶（压力表）：超过 value 时平衡回 value */
     | "clampCharge"
     /** 消耗全部污染（docs/38 §二 B-2）：每点污染按 mode 结算，随后清零 */
     | "spendPollution"

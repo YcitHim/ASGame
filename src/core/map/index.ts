@@ -171,9 +171,12 @@ export function hasNextAct(run: RunState, acts: readonly ActDefinition[]): boole
   return run.actIndex + 1 < acts.length;
 }
 
-/** 幕间结算（docs/40 §2.2）：切幕 + 回血 25%（floor，最少 1）+ 污染清零，其余原样保留。 */
+/**
+ * 幕间结算（docs/40 §2.2 / docs/45 Q7）：切幕 + 回血 40%（floor，最少 1）+ 污染清零，其余原样保留。
+ * 25% → 40% 是 docs/45 Q7 第一步授权（双幕实测第一步；圣堂馈赠三选一的「回复 50%」不动）。
+ */
 export function applyIntermission(run: RunState): RunState {
-  const heal = Math.max(1, Math.floor(run.maxHp * 0.25));
+  const heal = Math.max(1, Math.floor(run.maxHp * 0.4));
   return {
     ...run,
     actIndex: run.actIndex + 1,

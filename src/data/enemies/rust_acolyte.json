@@ -6,7 +6,7 @@
     {
       "intent": {
         "kind": "attack",
-        "value": 5
+        "value": 4
       },
       "weight": 1,
       "maxConsecutive": 2

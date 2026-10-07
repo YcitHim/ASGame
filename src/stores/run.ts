@@ -93,6 +93,8 @@ export const useRunStore = defineStore("run", {
     } | null,
     /** E2-A 的强化三选一 */
     eventChoices: null as string[] | null,
+    /** docs/45 Q4：Boss 首战「敌人意图」胶囊标签，一局只破例一次（不持久化） */
+    bossIntentHintShown: false,
   }),
 
   getters: {
@@ -254,6 +256,7 @@ export const useRunStore = defineStore("run", {
       this.enhanceUsedNode = null;
       this.eventResult = null;
       this.eventChoices = null;
+      this.bossIntentHintShown = false;
       this.active = true;
       this.persist();
     },

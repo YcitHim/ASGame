@@ -92,12 +92,26 @@ function applyStepScript(): void {
 
 watch(() => [tutorial.chapterIndex, tutorial.stepIndex] as const, () => applyStepScript());
 
+/** Boss 首战的意图标签：玩家动过一手（进入第 2 回合）就收起，只留一次。 */
+watch(
+  () => store.battle?.turn,
+  (turn) => {
+    if ((turn ?? 1) > 1) bossIntentTag.value = false;
+  },
+);
+
 /** ESC 打开设置（玩家习惯：ESC = 菜单）。设置页自 v1.0.3 起可滚动，能看全。 */
 function onKeydown(event: KeyboardEvent): void {
   if (event.key !== "Escape") return;
   if (store.over) return; // 结算界面上 ESC 不抢焦点，免得手滑关掉结果页
   void router.push("/settings");
 }
+
+/**
+ * docs/45 Q4：Boss 首战给「敌人意图」破例挂一次金色胶囊标签（一局一次）。
+ * 正式玩法不加常驻标签，这是唯一例外——Boss 的意图信息密度陡增，值得。
+ */
+const bossIntentTag = ref(false);
 
 onMounted(() => {
   window.addEventListener("keydown", onKeydown);
@@ -109,6 +123,11 @@ onMounted(() => {
     const expected = `tutorial:${tutorial.chapter.id}`;
     if (!store.battle || store.over || store.runKey !== expected) startTutorialBattle();
     return;
+  }
+  // Boss 首战：意图标签破例一次（一局只一次），第一次行动后自动收起
+  if (run.current?.kind === "boss" && !run.bossIntentHintShown) {
+    run.bossIntentHintShown = true;
+    bossIntentTag.value = true;
   }
   // 新战斗 / 上一场已结算 / 换了职业或开了新局（陈旧战斗）时，都按当前局外卡组重开
   const expectedKey = `${run.run?.classId ?? ""}:${run.run?.seed ?? ""}`;
@@ -490,7 +509,7 @@ function back(): void {
             :class="{
               flip: store.flipUnits.includes(enemy.id),
               broken: store.brokenUnits.includes(enemy.id),
-              'tut-focus': tutorial.focus === 'intent',
+              'tut-focus': tutorial.focus === 'intent' || bossIntentTag,
             }"
             data-tut-label="敌人意图"
           >
@@ -1044,7 +1063,7 @@ function back(): void {
   50% { outline-color: rgba(216, 180, 106, 1); }
 }
 /*
- * 指引标签（甲方要求：能量 / 卡牌 / 诅咒的指引区做清楚一点）：
+ * 指引标签（甲方要求：能量 / 卡牌 / 异常的指引区做清楚一点；docs/45 Q1 统一叫「异常」）：
  * 光有金框新手还是不知道"这是干嘛的"——把区域名直接钉在被高亮的那一块上。
  * 标签锚在自己的区块上，随舞台缩放一起走，不写死在屏幕坐标里。
  */
