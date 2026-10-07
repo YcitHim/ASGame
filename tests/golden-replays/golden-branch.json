@@ -150,11 +150,12 @@
         "targetId": "rust_sentinel"
       }
     ],
-    "eventHash": "712ac6849be999fc5ef664cf191e1fcb5cbd2df87e5438627bd259227eb6c408",
+    "eventHash": "a6cadcb088fc0dddcb12dbfd434b9ae2f1eb5e63389761cfe899e0ecfa28cf36",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
       "BuffApplied",
+      "BlockGained",
       "IntentRevealed",
       "IntentRevealed",
       "CardPlayed",
@@ -190,8 +191,7 @@
       "BlockBroken",
       "DamageDealt",
       "HpLost",
-      "CardExhausted",
-      "TurnEnded"
+      "CardExhausted"
     ],
     "turns": 3,
     "outcome": "win"

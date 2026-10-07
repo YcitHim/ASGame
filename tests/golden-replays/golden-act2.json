@@ -202,12 +202,13 @@
         "targetId": "tidecaller"
       }
     ],
-    "eventHash": "d39730debf6ff68b3b3bed1d7e249b0bb834dc8ade60d854ea820889afb95934",
+    "eventHash": "34fc23b30ac757625ee7c53772777d2a46825904f5b2c02e96e3d0143b7eafc4",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
       "ChargeChanged",
       "ChargeChanged",
+      "BuffApplied",
       "IntentRevealed",
       "IntentRevealed",
       "CardPlayed",
@@ -242,8 +243,7 @@
       "DamageDealt",
       "HpLost",
       "TurnEnded",
-      "ChargeResolved",
-      "DamageDealt"
+      "ChargeResolved"
     ],
     "turns": 5,
     "outcome": "win"

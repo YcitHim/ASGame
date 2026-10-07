@@ -152,18 +152,14 @@
         "actionId": "p10",
         "handIndex": 2,
         "targetId": "rust_throat"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p11",
-        "handIndex": 1,
-        "targetId": "rust_throat"
       }
     ],
-    "eventHash": "5556d45b548541b01f65df0d381bb6b7475518e7a4ab05e81ee53b6adba055a2",
+    "eventHash": "ae50f774c2367ccb41edaaa84047cb7cd7d2ff074ac52b089b35986ae2f16734",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
+      "BuffApplied",
+      "BlockGained",
       "BuffApplied",
       "IntentRevealed",
       "HpLost",
@@ -199,9 +195,7 @@
       "TurnStarted",
       "CardsDrawn",
       "IntentRevealed",
-      "CardPlayed",
-      "DamageDealt",
-      "HpLost"
+      "CardPlayed"
     ],
     "turns": 4,
     "outcome": "win"

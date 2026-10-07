@@ -121,9 +121,12 @@ describe("1.0-A 新遗物效果（真实数据）", () => {
     expect(after.player.pollution).toBe(55);
   });
 
-  it("毒压表：污染 ≥80 时回合开始获得 2 层力量", () => {
-    const high = reduce(battle(["venom_gage"], { pollution: 80 }), { type: "EndTurn", actionId: "e" }).state;
-    expect(high.player.buffs.find((b) => b.id === "strength")?.stacks).toBe(2);
+  it("毒压表：污染 ≥80 时回合开始获得 2 层力量（docs/52 §四：第 1 回合开始就生效）", () => {
+    const started = battle(["venom_gage"], { pollution: 80 });
+    expect(started.player.buffs.find((b) => b.id === "strength")?.stacks).toBe(2);
+    // 第 2 回合再叠 2 层
+    const turn2 = reduce(started, { type: "EndTurn", actionId: "e" }).state;
+    expect(turn2.player.buffs.find((b) => b.id === "strength")?.stacks).toBe(4);
     const low = reduce(battle(["venom_gage"], { pollution: 40 }), { type: "EndTurn", actionId: "e" }).state;
     expect(low.player.buffs.find((b) => b.id === "strength")).toBeUndefined();
   });

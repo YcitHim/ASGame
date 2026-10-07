@@ -83,6 +83,10 @@ function startBattle(draft: Draft, sink: EventSink): void {
     }
   }
   resolveTriggers(draft, sink, "onBattleStart");
+  // docs/52 §四（P0）：第 1 回合**也是一个回合**——「回合开始时触发」理应在首回合生效。
+  // 原先这条链只在 endTurn 里调，玩家要到第 2 回合才吃得到（红泪戒指首回合不给格挡的实锤 bug）。
+  // 时序：洗牌发牌 → 开场状态 → onBattleStart → onTurnStart → 揭示意图 → playerAction。
+  resolveTriggers(draft, sink, "onTurnStart");
   generateIntents(draft, sink);
   draft.phase = "playerAction";
 }

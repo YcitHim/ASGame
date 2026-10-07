@@ -41,8 +41,10 @@ describe("S4.2 遗物触发", () => {
     expect(after.player.buffs.find((b) => b.id === "strength")?.stacks).toBe(2);
   });
 
-  it("onTurnStart（once turn）：每回合开始都触发", () => {
+  it("onTurnStart（once turn）：首回合就触发，之后每回合触发（docs/52 §四 P0）", () => {
     const started = battle(["ring"]);
+    // 第 1 回合也是一个回合：起手就该拿到 3 点格挡（修复前这里是 0）
+    expect(started.player.block).toBe(3);
     const turn2 = reduce(started, { type: "EndTurn", actionId: "e" }).state;
     expect(turn2.player.block).toBe(3);
     const turn3 = reduce(turn2, { type: "EndTurn", actionId: "e2" }).state;

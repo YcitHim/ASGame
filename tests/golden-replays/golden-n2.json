@@ -172,11 +172,12 @@
         "targetId": "riveted_heavy"
       }
     ],
-    "eventHash": "707af9c63b0dc41817220dcceeb4951424a5cd390df7d5222806a0ee2c2a94ec",
+    "eventHash": "d9746e7d6ad8741a331114a3e00fe4223a5926f4115517449cc41e129874df17",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
       "BuffApplied",
+      "BlockGained",
       "IntentRevealed",
       "IntentRevealed",
       "CardPlayed",
@@ -212,8 +213,7 @@
       "BlockBroken",
       "DamageDealt",
       "HpLost",
-      "BlockGained",
-      "TurnStarted"
+      "BlockGained"
     ],
     "turns": 4,
     "outcome": "win"
