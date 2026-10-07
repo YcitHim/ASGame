@@ -105,7 +105,7 @@ describe("systems/save（ADR-008）", () => {
 describe("存档迁移 9 → 11（docs/41 §4.1 / docs/42 §三.0）", () => {
   it("meta 槽补 tips 与按职业的教学字段；进度档不被污染", async () => {
     const { migrate, SCHEMA_VERSION } = await import("@/systems/save");
-    expect(SCHEMA_VERSION).toBe(13);
+    expect(SCHEMA_VERSION).toBe(14);
 
     const meta = migrate({ version: 9, savedAt: 0, data: { clearedClasses: ["bloodwright"], achievements: [] } });
     const metaData = meta?.data as { tips: string[]; tutorialOffered: string[]; tutorialDone: string[] };
@@ -158,7 +158,7 @@ describe("存档迁移 9 → 11（docs/41 §4.1 / docs/42 §三.0）", () => {
 
   it("12 → 13：作废进行中的旧 run（回标题页），meta 全保留（docs/48 §六）", async () => {
     const { migrate, SCHEMA_VERSION } = await import("@/systems/save");
-    expect(SCHEMA_VERSION).toBe(13);
+    expect(SCHEMA_VERSION).toBe(14);
     const progress = migrate({ version: 12, savedAt: 0, data: { run: { layerIndex: 4 }, deck: [] } });
     expect(progress?.version).toBe(SCHEMA_VERSION);
     expect(progress?.data).toBeNull();

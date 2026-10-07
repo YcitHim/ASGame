@@ -45,9 +45,13 @@ describe("EventView 结算信息", () => {
       outcomeIndex: -1,
       i18n: "event.gear_gamble.opt.a.win",
       hpDelta: -8,
+      maxHpDelta: 0,
       pollutionDelta: 0,
       relicIds: ["redtear_ring"],
+      loseRelicIds: [],
       cardIds: ["strike"],
+      removeCard: false,
+      upgradeIndex: -1,
       gainEnhancement: false,
     };
     const wrapper = mount(EventView, { global: { plugins: [pinia, router] } });

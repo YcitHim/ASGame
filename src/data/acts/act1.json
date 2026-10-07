@@ -82,7 +82,12 @@
         "blood_trader",
         "pure_spring",
         "power_station",
-        "dying_pilgrim"
+        "dying_pilgrim",
+        "abandoned_clinic",
+        "blood_pawnshop",
+        "living_wrench",
+        "wandering_sharpener",
+        "rust_wishing_well"
       ]
     },
     {
@@ -216,7 +221,12 @@
         "blood_trader",
         "pure_spring",
         "power_station",
-        "dying_pilgrim"
+        "dying_pilgrim",
+        "abandoned_clinic",
+        "blood_pawnshop",
+        "living_wrench",
+        "wandering_sharpener",
+        "rust_wishing_well"
       ]
     },
     {

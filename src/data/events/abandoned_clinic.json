@@ -1,0 +1,41 @@
+{
+  "id": "abandoned_clinic",
+  "i18n": "event.abandoned_clinic",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.abandoned_clinic.opt.a.result",
+      "effects": [
+        {
+          "kind": "hpPercent",
+          "value": -10
+        },
+        {
+          "kind": "removeCard"
+        }
+      ],
+      "condition": {
+        "kind": "hpPercentAtLeast",
+        "value": 20
+      }
+    },
+    {
+      "id": "b",
+      "i18n": "event.abandoned_clinic.opt.b.result",
+      "effects": [
+        {
+          "kind": "hpPercent",
+          "value": -5
+        },
+        {
+          "kind": "hpPercent",
+          "value": 15
+        }
+      ]
+    },
+    {
+      "id": "c",
+      "i18n": "event.abandoned_clinic.opt.c.result"
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "id": "blood_pawnshop",
+  "i18n": "event.blood_pawnshop",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.blood_pawnshop.opt.a.result",
+      "effects": [
+        {
+          "kind": "loseRelic",
+          "tier": 1
+        },
+        {
+          "kind": "hpPercent",
+          "value": 30
+        }
+      ],
+      "condition": {
+        "kind": "relicCountAtLeast",
+        "value": 2
+      }
+    },
+    {
+      "id": "b",
+      "i18n": "event.blood_pawnshop.opt.b.result",
+      "effects": [
+        {
+          "kind": "hpPercent",
+          "value": -12
+        },
+        {
+          "kind": "gainRelic"
+        }
+      ]
+    },
+    {
+      "id": "c",
+      "i18n": "event.blood_pawnshop.opt.c.result"
+    }
+  ]
+}

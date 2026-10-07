@@ -271,19 +271,51 @@ export interface EncounterEntry {
   readonly weight: number;
 }
 
-/** 随机事件（docs/27 §三 / docs/16 4.4）：纯文本选择，结果只挂钩现有管线。 */
-export type EventEffectKind = "hp" | "pollution" | "gainRelic" | "gainCard" | "gainEnhancement";
+/**
+ * 随机事件效果（docs/27 §三 / docs/16 4.4；docs/54 §三 扩展到 10 种）。
+ *
+ * 新增六种（E1~E5）全部是**局外（run 层）变更**，与战斗结算零交集：
+ * hpPercent 按上限缩放、maxHp 改上限、removeCard 开删牌渠道、upgradeRandom 补升级渠道、
+ * loseRelic 让遗物反向兑血。
+ */
+export type EventEffectKind =
+  | "hp"
+  | "hpPercent"
+  | "maxHp"
+  | "pollution"
+  | "gainRelic"
+  | "loseRelic"
+  | "gainCard"
+  | "removeCard"
+  | "upgradeRandom"
+  | "gainEnhancement";
 
 export interface EventEffect {
   readonly kind: EventEffectKind;
-  /** hp：正=回复、负=失去；pollution：增减量 */
+  /**
+   * hp：正=回复、负=失去（写死点数，军规 2 只给小额的剧情性收支）；
+   * hpPercent：按**最大生命百分比**取整（-15 = 失去 15% 上限，向下取整、最低 1）；
+   * maxHp：±最大生命上限（当前 HP 同额增减）；
+   * pollution：增减量。
+   */
   readonly value?: number;
   /** gainCard：按稀有度抽池（与 pool 二选一） */
   readonly rarity?: CardRarity;
   /** gainCard：显式卡池 */
   readonly pool?: readonly string[];
-  /** gainCard 抽几张（缺省 1） */
+  /** gainCard / loseRelic：抽几件（缺省 1） */
   readonly count?: number;
+  /** loseRelic：目标 tier（缺省 1；只吃掉落件，不吃无 tier 的身份件） */
+  readonly tier?: number;
+}
+
+/** 选项级条件（docs/54 §三 E6）：不满足 → 置灰 + 注明缺什么。 */
+export type EventConditionKind = "hpPercentAtLeast" | "pollutionAtLeast" | "relicCountAtLeast";
+
+export interface EventCondition {
+  readonly kind: EventConditionKind;
+  /** 阈值（hpPercentAtLeast 为百分比点数） */
+  readonly value: number;
 }
 
 /** 随机结果（赌博式事件用）：weight + 结果文案 key + 效果。 */
@@ -302,6 +334,8 @@ export interface EventOption {
   readonly i18n?: string;
   /** 随机结果（与 effects 二选一） */
   readonly outcomes?: readonly EventOutcome[];
+  /** 门槛（docs/54 E6）：不满足时选项置灰，玩家仍看得见代价与收益 */
+  readonly condition?: EventCondition;
 }
 
 export interface EventDefinition {

@@ -5,7 +5,12 @@
  * 局外状态（HP / 污染 / 卡组 / 遗物）由调用方（run store）按返回值写回；
  * 事件 RNG 走独立的 event 流，同种子同结果（ADR-006）。
  */
-import type { ContentDb, EventDefinition, EventEffect } from "../registry/content";
+import type {
+  ContentDb,
+  EventCondition,
+  EventDefinition,
+  EventEffect,
+} from "../registry/content";
 import { Rng, type RngStream } from "../rng";
 
 export interface EventResolution {
@@ -15,9 +20,16 @@ export interface EventResolution {
   /** 结果文案 i18n key */
   readonly i18n: string;
   readonly hpDelta: number;
+  /** 最大生命上限的变化（docs/54 E4）；调用方按「当前 HP 同额」写回 */
+  readonly maxHpDelta: number;
   readonly pollutionDelta: number;
   readonly relicIds: readonly string[];
+  readonly loseRelicIds: readonly string[];
   readonly cardIds: readonly string[];
+  /** 玩家要自选删一张牌（docs/54 E2）：UI 弹出卡组选择，选完再继续 */
+  readonly removeCard: boolean;
+  /** 随机升级命中的卡组下标（docs/54 E3）；-1 = 没有可升级的牌 */
+  readonly upgradeIndex: number;
   /** 是否开启「强化三选一」（E2-A，docs/27 §三） */
   readonly gainEnhancement: boolean;
 }
@@ -29,6 +41,65 @@ export interface EventResolveContext {
   readonly classId?: string;
   /** 已解锁内容 id；解锁式内容未解锁不入池（docs/36 T1） */
   readonly unlocked?: readonly string[];
+  /** 最大生命（hpPercent 的唯一分母，docs/54 E1） */
+  readonly maxHp?: number;
+  /** 卡组里**可升级**的下标（未升级，docs/54 E3）；缺省视为没有可升级的牌 */
+  readonly deckUpgradeable?: readonly number[];
+  /** 当前 HP / 污染（docs/54 E6 条件判定；缺省不做条件判定） */
+  readonly hp?: number;
+  readonly pollution?: number;
+}
+
+/** 选项条件的判定输入（docs/54 E6）：UI 与结算共用同一份口径。 */
+export interface EventConditionContext {
+  readonly hp: number;
+  readonly maxHp: number;
+  readonly pollution: number;
+  readonly relicCount: number;
+}
+
+/**
+ * 选项条件是否满足（docs/54 §三 E6）。
+ * hpPercentAtLeast 用**向下取整**的当前百分比与阈值比——和玩家在顶栏看到的整数一致，
+ * 避免「显示 40% 却判定 39.6% 不达标」这类看不见的边界。
+ */
+export function checkEventCondition(
+  condition: EventCondition | undefined,
+  ctx: EventConditionContext,
+): boolean {
+  if (!condition) return true;
+  switch (condition.kind) {
+    case "hpPercentAtLeast": {
+      const pct = ctx.maxHp > 0 ? Math.floor((ctx.hp / ctx.maxHp) * 100) : 0;
+      return pct >= condition.value;
+    }
+    case "pollutionAtLeast":
+      return ctx.pollution >= condition.value;
+    case "relicCountAtLeast":
+      return ctx.relicCount >= condition.value;
+    default:
+      return true;
+  }
+}
+
+/** 条件当前值（UI 用它把「当前多少」写进置灰提示；与 check 同源）。 */
+export function eventConditionCurrent(condition: EventCondition, ctx: EventConditionContext): number {
+  switch (condition.kind) {
+    case "hpPercentAtLeast":
+      return ctx.maxHp > 0 ? Math.floor((ctx.hp / ctx.maxHp) * 100) : 0;
+    case "pollutionAtLeast":
+      return ctx.pollution;
+    case "relicCountAtLeast":
+      return ctx.relicCount;
+    default:
+      return 0;
+  }
+}
+
+/** 百分比 HP 换算：向下取整、最低 1（docs/54 军规 2）。 */
+export function percentHpDelta(maxHp: number, percent: number): number {
+  const magnitude = Math.max(1, Math.floor((Math.max(0, maxHp) * Math.abs(percent)) / 100));
+  return percent < 0 ? -magnitude : magnitude;
 }
 
 /** 卡池按稀有度权重（仅用于「按稀有度权重」的显式池抽取，program 默认值）。 */
@@ -76,6 +147,18 @@ export function resolveEventOption(
   const option = event.options.find((o) => o.id === optionId);
   if (!option) return null;
 
+  // 条件不满足直接拒绝（docs/54 E6）：store 会先拦一道，core 这里是唯一口径。
+  // 老调用方不传 hp 时不做条件判定（兼容既有测试与 sim）。
+  if (option.condition && ctx.hp !== undefined) {
+    const ok = checkEventCondition(option.condition, {
+      hp: ctx.hp,
+      maxHp: ctx.maxHp ?? 0,
+      pollution: ctx.pollution ?? 0,
+      relicCount: ctx.ownedRelics.length,
+    });
+    if (!ok) return null;
+  }
+
   const rng = new Rng(ctx.seed >>> 0).stream("event");
   let outcomeIndex = -1;
   // 选项的固定代价先算，再叠加随机结果（E1「押 8 点 HP」= 先付筹码，再赌赢/输）
@@ -89,19 +172,56 @@ export function resolveEventOption(
   }
 
   let hpDelta = 0;
+  let maxHpDelta = 0;
   let pollutionDelta = 0;
   const relicIds: string[] = [];
+  const loseRelicIds: string[] = [];
   const cardIds: string[] = [];
+  let removeCard = false;
+  let upgradeIndex = -1;
   let gainEnhancement = false;
+  /** 同一选项里多次 upgradeRandom 不重复点同一张牌 */
+  const upgraded = new Set<number>();
 
   for (const effect of effects) {
     switch (effect.kind) {
       case "hp":
         hpDelta += effect.value ?? 0;
         break;
+      // E1：代价/收益随上限缩放（docs/54 军规 2）
+      case "hpPercent":
+        hpDelta += percentHpDelta(ctx.maxHp ?? 0, effect.value ?? 0);
+        break;
+      // E4：只动上限；当前 HP 的「同额」由调用方写回（applyEventHp 单点实现）
+      case "maxHp":
+        maxHpDelta += effect.value ?? 0;
+        break;
       case "pollution":
         pollutionDelta += effect.value ?? 0;
         break;
+      // E5：失去指定 tier 的随机一件（默认 T1）；只吃掉落件，无 tier 的身份件不动
+      case "loseRelic": {
+        const tier = effect.tier ?? 1;
+        const pool = [...ctx.ownedRelics]
+          .filter((id) => content.relics.get(id)?.tier === tier)
+          .sort();
+        loseRelicIds.push(...takeWeighted(rng, pool, () => 1, effect.count ?? 1));
+        break;
+      }
+      // E2：开删牌渠道；具体删哪张由玩家在 UI 里选（规则在 core，选择在玩家）
+      case "removeCard":
+        removeCard = true;
+        break;
+      // E3：随机升级一张未升级牌；没有可升级的就落空（文案兜底）
+      case "upgradeRandom": {
+        const candidates = (ctx.deckUpgradeable ?? []).filter((i) => !upgraded.has(i));
+        if (candidates.length > 0) {
+          const picked = candidates[rng.nextInt(0, candidates.length - 1)]!;
+          upgradeIndex = picked;
+          upgraded.add(picked);
+        }
+        break;
+      }
       case "gainRelic": {
         const unlocked = ctx.unlocked ?? [];
         const available = (id: string): boolean => {
@@ -150,5 +270,18 @@ export function resolveEventOption(
     }
   }
 
-  return { optionId, outcomeIndex, i18n, hpDelta, pollutionDelta, relicIds, cardIds, gainEnhancement };
+  return {
+    optionId,
+    outcomeIndex,
+    i18n,
+    hpDelta,
+    maxHpDelta,
+    pollutionDelta,
+    relicIds,
+    loseRelicIds,
+    cardIds,
+    removeCard,
+    upgradeIndex,
+    gainEnhancement,
+  };
 }

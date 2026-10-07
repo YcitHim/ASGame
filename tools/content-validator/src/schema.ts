@@ -217,14 +217,38 @@ export const enhancementSchema = z
   })
   .strict();
 
-/** 事件效果（docs/27 §三）：只允许挂钩现有管线。 */
+/**
+ * 事件效果（docs/27 §三；docs/54 §三 扩到 10 种）：只允许挂钩现有管线。
+ * 六种新增全是局外（run 层）变更，不碰战斗结算。
+ */
 const eventEffectSchema = z
   .object({
-    kind: z.enum(["hp", "pollution", "gainRelic", "gainCard", "gainEnhancement"]),
+    kind: z.enum([
+      "hp",
+      "hpPercent",
+      "maxHp",
+      "pollution",
+      "gainRelic",
+      "loseRelic",
+      "gainCard",
+      "removeCard",
+      "upgradeRandom",
+      "gainEnhancement",
+    ]),
     value: z.number().int().optional(),
     rarity: z.enum(CARD_RARITIES).optional(),
     pool: z.array(z.string().regex(ID_PATTERN)).min(1).optional(),
     count: z.number().int().min(1).optional(),
+    /** loseRelic：目标 tier（缺省 1） */
+    tier: z.number().int().min(1).max(3).optional(),
+  })
+  .strict();
+
+/** 选项级条件（docs/54 §三 E6） */
+const eventConditionSchema = z
+  .object({
+    kind: z.enum(["hpPercentAtLeast", "pollutionAtLeast", "relicCountAtLeast"]),
+    value: z.number().min(0),
   })
   .strict();
 
@@ -238,6 +262,7 @@ const eventOptionSchema = z
     effects: z.array(eventEffectSchema).optional(),
     i18n: z.string().optional(),
     outcomes: z.array(eventOutcomeSchema).min(1).optional(),
+    condition: eventConditionSchema.optional(),
   })
   .strict()
   // 允许「纯离开」选项（只有结果文案、无任何数值改动）

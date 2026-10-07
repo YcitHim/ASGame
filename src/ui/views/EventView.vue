@@ -5,6 +5,7 @@ import { t } from "@/data/load";
 import { useRunStore } from "@/stores/run";
 import { useTipsStore } from "@/stores/tips";
 import { useStageFit } from "@/ui/composables/useStageFit";
+import type { EventCondition } from "@/core/registry";
 
 const router = useRouter();
 const run = useRunStore();
@@ -30,6 +31,33 @@ onMounted(() => {
 
 function optionLabel(id: string): string {
   return event.value ? t(`${event.value.i18n}.opt.${id}.label`, id) : id;
+}
+
+/**
+ * 条件不满足的选项（docs/54 E6）：置灰 + 小字注明缺什么。
+ * 「当前 X」由 store 现算（与判定同源），所以玩家一眼能看出还差多少。
+ */
+function conditionNote(condition: EventCondition | undefined): string {
+  if (!condition) return "";
+  const template = t(`event.cond.${condition.kind}`, "条件不足");
+  return template
+    .replace("{v}", String(condition.value))
+    .replace("{c}", String(run.eventConditionCurrent(condition)));
+}
+
+/** 桌上已经选好牌、还没挑要删哪张（docs/54 E2）。 */
+const pendingRemoval = computed(() => result.value?.removeCard === true && run.eventRemovedIndex === null);
+
+/** 被随机磨快的那张牌（E3）：先记下标再改卡组，所以位置仍然对得上。 */
+const upgradedCard = computed(() => {
+  const at = result.value?.upgradeIndex ?? -1;
+  if (at < 0) return "";
+  const card = run.deck[at];
+  return card ? cardName(card.cardId) : "";
+});
+
+function removeCard(index: number): void {
+  run.removeEventCard(index);
 }
 
 function resolve(optionId: string): void {
@@ -91,17 +119,30 @@ function enhancementDesc(id: string): string {
 
         <template v-if="!result">
           <div class="options">
-            <button v-for="opt in event.options" :key="opt.id" class="option" @click="resolve(opt.id)">
+            <button
+              v-for="opt in event.options"
+              :key="opt.id"
+              class="option"
+              :class="{ locked: !run.eventConditionMet(opt.condition) }"
+              :disabled="!run.eventConditionMet(opt.condition)"
+              @click="resolve(opt.id)"
+            >
               <b>{{ optionLabel(opt.id) }}</b>
+              <small v-if="opt.condition && !run.eventConditionMet(opt.condition)" class="cond">
+                {{ conditionNote(opt.condition) }}
+              </small>
             </button>
           </div>
         </template>
 
         <template v-else>
           <p class="result-text">{{ t(result.i18n, "……") }}</p>
-          <p v-if="result.hpDelta || result.pollutionDelta" class="deltas">
+          <p v-if="result.hpDelta || result.maxHpDelta || result.pollutionDelta" class="deltas">
             <span v-if="result.hpDelta" :class="result.hpDelta < 0 ? 'bad' : 'good'">
               HP {{ result.hpDelta > 0 ? "+" : "" }}{{ result.hpDelta }}
+            </span>
+            <span v-if="result.maxHpDelta" :class="result.maxHpDelta < 0 ? 'bad' : 'good'">
+              上限 {{ result.maxHpDelta > 0 ? "+" : "" }}{{ result.maxHpDelta }}
             </span>
             <span v-if="result.pollutionDelta" class="rot">
               污染 {{ result.pollutionDelta > 0 ? "+" : "" }}{{ result.pollutionDelta }}
@@ -115,6 +156,25 @@ function enhancementDesc(id: string): string {
                   <i class="gain-dot" />{{ relicName(id) }}
                 </span>
                 <span class="gain-desc">{{ relicDesc(id) }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-if="result.loseRelicIds.length" class="gains">
+            <b class="gains-label">失去遗物</b>
+            <div class="gain-list">
+              <div v-for="id in result.loseRelicIds" :key="id" class="gain-item lost-item">
+                <span class="gain-name">
+                  <i class="gain-dot" />{{ relicName(id) }}
+                </span>
+                <span class="gain-desc">{{ relicDesc(id) }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-if="upgradedCard" class="gains">
+            <b class="gains-label">磨快了一张牌</b>
+            <div class="gain-list">
+              <div class="gain-item card-item">
+                <span class="gain-name"><i class="gain-dot card" />{{ upgradedCard }}</span>
               </div>
             </div>
           </div>
@@ -158,7 +218,22 @@ function enhancementDesc(id: string): string {
             </div>
           </template>
 
-          <button class="etch-btn cont" @click="toMap">继 续</button>
+          <!-- docs/54 E2：删牌要玩家自己挑，选完才给「继续」 -->
+          <template v-if="pendingRemoval">
+            <h2 class="sub">从卡组里划掉一张</h2>
+            <div class="deck">
+              <button
+                v-for="(card, index) in run.deck"
+                :key="index"
+                class="deck-card targetable"
+                @click="removeCard(index)"
+              >
+                {{ cardName(card.cardId) }}<sup v-if="card.upgraded">+</sup>
+              </button>
+            </div>
+          </template>
+
+          <button v-if="!pendingRemoval" class="etch-btn cont" @click="toMap">继 续</button>
         </template>
       </template>
 
@@ -213,6 +288,16 @@ function enhancementDesc(id: string): string {
 .option.enh { width: 220px; min-width: 0; text-align: left; }
 .option.enh p { margin-top: 8px; font-size: 11px; line-height: 1.6; color: var(--ink-dim); }
 .option.enh.active { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(176, 141, 74, 0.45); }
+/* 条件不满足（docs/54 E6）：置灰但**不隐藏**——玩家要看得见代价与收益，只是现在够不着 */
+.option.locked { opacity: 0.45; cursor: not-allowed; }
+.option.locked:hover { border-color: rgba(110, 88, 54, 0.55); transform: none; }
+.option .cond {
+  display: block;
+  margin-top: 6px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--blood-hi);
+}
 .result-text {
   max-width: 720px;
   text-align: center;
@@ -240,6 +325,9 @@ function enhancementDesc(id: string): string {
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6);
 }
 .gain-item.card-item { border-color: rgba(107, 122, 140, 0.5); }
+/* 失去的遗物：红边、名字划一道——和「获得」在颜色上一眼分得开 */
+.gain-item.lost-item { border-color: rgba(192, 57, 43, 0.55); }
+.lost-item .gain-name { color: var(--blood-hi); text-decoration: line-through; }
 .gain-name {
   display: flex; align-items: center; gap: 7px;
   font-family: var(--serif-title); font-size: 13px; letter-spacing: 0.14em; color: var(--gold);

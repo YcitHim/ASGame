@@ -6,14 +6,39 @@
       "id": "a",
       "effects": [
         {
-          "kind": "hp",
+          "kind": "hpPercent",
           "value": -8
         }
       ],
       "outcomes": [
         {
-          "weight": 1,
+          "weight": 60,
           "i18n": "event.gear_gamble.opt.a.win",
+          "effects": [
+            {
+              "kind": "gainCard"
+            }
+          ]
+        },
+        {
+          "weight": 40,
+          "i18n": "event.gear_gamble.opt.a.lose",
+          "effects": []
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "effects": [
+        {
+          "kind": "hpPercent",
+          "value": -15
+        }
+      ],
+      "outcomes": [
+        {
+          "weight": 50,
+          "i18n": "event.gear_gamble.opt.b.win",
           "effects": [
             {
               "kind": "gainRelic"
@@ -21,20 +46,20 @@
           ]
         },
         {
-          "weight": 1,
-          "i18n": "event.gear_gamble.opt.a.lose",
+          "weight": 50,
+          "i18n": "event.gear_gamble.opt.b.lose",
           "effects": [
             {
-              "kind": "hp",
-              "value": -8
+              "kind": "hpPercent",
+              "value": -10
             }
           ]
         }
       ]
     },
     {
-      "id": "b",
-      "i18n": "event.gear_gamble.opt.b.result"
+      "id": "c",
+      "i18n": "event.gear_gamble.opt.c.result"
     }
   ]
 }

@@ -60,7 +60,9 @@ describe("真实内容装载（data/load）", () => {
     expect(act.layers[7].kinds).not.toContain("elite");
     // 中段层带遭遇池与事件池
     expect(act.layers[1].encounters?.length).toBe(3);
-    expect(act.layers[1].events?.length).toBe(5);
+    // docs/54 §五：act1 事件池 5 → 10（新增 5 件，配比门禁写进 validator）
+    expect(act.layers[1].events?.length).toBe(10);
+    expect(loadGameContent().acts[1].layers[1].events?.length).toBe(9);
   });
 
   // 甲方 2026-10-07：牌库里「压簧」与「支撑」一字不差 —— 加一条护栏，防止再出现同构牌

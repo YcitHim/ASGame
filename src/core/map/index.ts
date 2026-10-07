@@ -9,7 +9,14 @@ import type { ActDefinition, ClassDefinition, EventDefinition, MapLayerSpec, Map
 import type { ContentDb } from "../registry/content";
 import { Rng, type RngStream } from "../rng";
 
-export { resolveEventOption, type EventResolution } from "./event";
+export {
+  checkEventCondition,
+  eventConditionCurrent,
+  percentHpDelta,
+  resolveEventOption,
+  type EventConditionContext,
+  type EventResolution,
+} from "./event";
 
 export { DIFFICULTY_PARAMS, type RunDifficulty } from "../registry/content";
 
@@ -65,6 +72,21 @@ export interface RunState {
   readonly turns: number;
   /** 本局污染峰值（成就：贴线 —— 曾在 99 结束回合） */
   readonly pollutionPeak: number;
+  /**
+   * 本幕已抽过的事件（docs/54 E7：同幕事件不放回抽取，池尽重置）。
+   * 转幕 / 开新局清空——「一局两幕不再连撞同一个事件」而不是「一局不重复」。
+   *
+   * 记的是「**哪一层**抽到了哪个事件」而不是只记 id：结算那一刻 seenEvents 会变，
+   * 若只记 id，同一个节点重算 rollEvent 时会掷出池里另一个事件，
+   * 结算页的标题/正文会当场跳成别的故事（CDP 走查抓到的真 bug）。
+   */
+  readonly seenEvents: readonly SeenEvent[];
+}
+
+/** 某层抽到的事件（docs/54 E7）。 */
+export interface SeenEvent {
+  readonly layer: number;
+  readonly eventId: string;
 }
 
 /** 记录一次血契出牌（成就判定用）。 */
@@ -95,6 +117,19 @@ export function addTurns(run: RunState, turns: number): RunState {
 /** 写回局外 HP（战斗结束时调用）。 */
 export function setRunHp(run: RunState, hp: number): RunState {
   return { ...run, hp: Math.max(0, Math.trunc(hp)) };
+}
+
+/**
+ * 事件结算写回 HP（docs/54 §四）：把固定点数与「上限同额」两笔合成一次写回。
+ *
+ * - `maxHpDelta` 只改上限，**当前 HP 同额增减**（+4 上限就是 +4 当前）；
+ * - 所有结果一律夹在 `[1, maxHp]`：事件不该杀人——旧版允许落到 0，
+ *   而 0 HP 会让下一场战斗的 `startRun` 判定「已阵亡」把整局重开（静默丢进度）。
+ */
+export function applyEventHp(run: RunState, hpDelta: number, maxHpDelta: number): RunState {
+  const maxHp = Math.max(1, run.maxHp + maxHpDelta);
+  const hp = Math.max(1, Math.min(maxHp, run.hp + hpDelta + maxHpDelta));
+  return { ...run, maxHp, hp };
 }
 
 /** 写回局外污染（战斗结束 / 事件结算时调用）。 */
@@ -651,6 +686,8 @@ export function applyIntermission(run: RunState): RunState {
     hp: Math.min(run.maxHp, run.hp + heal),
     pollution: 0,
     deepestAct: Math.max(run.deepestAct, run.actIndex + 2),
+    // 不放回池按「幕」重置（docs/54 E7）
+    seenEvents: [],
   };
 }
 
@@ -692,6 +729,7 @@ export function createRunState(
     backlashTaken: 0,
     turns: 0,
     pollutionPeak: 0,
+    seenEvents: [],
   };
 }
 
@@ -823,11 +861,21 @@ export function rollEncounter(run: RunState, node: MapNode): string[] {
 /**
  * 事件节点抽取（docs/27 §三）：同种子同事件，走独立的 map RNG 流。
  * node.event 写死单个；node.events 为池；都没有则遍历全部事件。
+ *
+ * docs/54 E7：**同幕不放回**——把本幕已经抽过的事件剔出池子；池尽则重置（回到全池），
+ * 保证「一局两幕不连撞同一个事件」而不是「一局不重复」。写死的 node.event 不受影响。
  */
 export function rollEvent(content: ContentDb, run: RunState, node: MapNode): EventDefinition | undefined {
   if (node.event) return content.events.get(node.event);
-  const ids = node.events && node.events.length > 0 ? [...node.events] : [...content.events.keys()].sort();
-  if (ids.length === 0) return undefined;
+  const full = node.events && node.events.length > 0 ? [...node.events] : [...content.events.keys()].sort();
+  if (full.length === 0) return undefined;
+  const seen = run.seenEvents ?? [];
+  // 本层已经抽过 → 原样返回，节点与故事的对应关系一旦确定就不再变
+  const recorded = seen.find((s) => s.layer === run.layerIndex);
+  if (recorded) return content.events.get(recorded.eventId);
+  const used = seen.map((s) => s.eventId);
+  const unseen = full.filter((id) => !used.includes(id));
+  const ids = unseen.length > 0 ? unseen : full;
   const rng = new Rng((run.seed ^ Math.imul(run.layerIndex + 5, 0x27d4eb2f)) >>> 0).stream("map");
   return content.events.get(ids[rng.nextInt(0, ids.length - 1)]);
 }

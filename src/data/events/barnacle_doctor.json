@@ -1,0 +1,40 @@
+{
+  "id": "barnacle_doctor",
+  "i18n": "event.barnacle_doctor",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.barnacle_doctor.opt.a.result",
+      "effects": [
+        {
+          "kind": "hpPercent",
+          "value": -12
+        },
+        {
+          "kind": "removeCard"
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.barnacle_doctor.opt.b.result",
+      "effects": [
+        {
+          "kind": "pollution",
+          "value": 8
+        },
+        {
+          "kind": "hpPercent",
+          "value": 12
+        },
+        {
+          "kind": "upgradeRandom"
+        }
+      ]
+    },
+    {
+      "id": "c",
+      "i18n": "event.barnacle_doctor.opt.c.result"
+    }
+  ]
+}

@@ -9,6 +9,10 @@
         {
           "kind": "gainRelic",
           "count": 1
+        },
+        {
+          "kind": "pollution",
+          "value": 8
         }
       ]
     },

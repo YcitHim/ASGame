@@ -8,7 +8,7 @@
 export const SAVE_NAMESPACE = "rustandblood";
 
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
-export const SCHEMA_VERSION = 13;
+export const SCHEMA_VERSION = 14;
 
 export type SaveSlot = "settings" | "progress" | "replay" | "codex" | "meta";
 
@@ -189,6 +189,16 @@ const migrations: Record<number, (data: unknown) => unknown> = {
     const record = data as Record<string, unknown>;
     if (!("run" in record) && !("deck" in record)) return record;
     return null;
+  },
+  // 13 → 14（docs/54 E7）：RunState 新增 seenEvents（本幕已抽过的事件，不放回池）。
+  // 旧档没有这份记录 → 空数组（这一幕可能再撞一次已见过的事件，下一幕起正常）。
+  13: (data) => {
+    if (typeof data !== "object" || data === null) return data;
+    const record = data as Record<string, unknown>;
+    const run = record["run"];
+    if (typeof run !== "object" || run === null) return record;
+    const runRecord = run as Record<string, unknown>;
+    return { ...record, run: { ...runRecord, seenEvents: runRecord["seenEvents"] ?? [] } };
   },
 };
 

@@ -11,7 +11,10 @@ import {
   addOverload,
   addTurns,
   actOf,
+  applyEventHp,
   applyIntermission,
+  checkEventCondition,
+  eventConditionCurrent,
   hasNextAct,
   advanceNode,
   chooseNode,
@@ -34,10 +37,19 @@ import {
   resolveEventOption,
   setRunHp,
   setRunPollution,
+  type EventConditionContext,
+  type EventResolution,
   type RunDifficulty,
   type RunState,
 } from "@/core/map";
-import type { ActDefinition, CardDefinition, ClassDefinition, EventDefinition, MapNode } from "@/core/registry";
+import type {
+  ActDefinition,
+  CardDefinition,
+  ClassDefinition,
+  EventCondition,
+  EventDefinition,
+  MapNode,
+} from "@/core/registry";
 import { useCodexStore } from "@/stores/codex";
 import { useMetaStore } from "@/stores/meta";
 import { useTipsStore } from "@/stores/tips";
@@ -81,16 +93,12 @@ export const useRunStore = defineStore("run", {
     recastUsedNode: null as number | null,
     enhanceUsedNode: null as number | null,
     /** 事件节点：最近一次结算结果（null = 还没选） */
-    eventResult: null as {
-      optionId: string;
-      outcomeIndex: number;
-      i18n: string;
-      hpDelta: number;
-      pollutionDelta: number;
-      relicIds: readonly string[];
-      cardIds: readonly string[];
-      gainEnhancement: boolean;
-    } | null,
+    eventResult: null as (EventResolution & { gainEnhancement: boolean }) | null,
+    /**
+     * docs/54 E2：事件要求玩家自选删一张牌时，记下已删的下标；
+     * null = 还没选（「继续」按钮在选完之前不出现）。
+     */
+    eventRemovedIndex: null as number | null,
     /** E2-A 的强化三选一 */
     eventChoices: null as string[] | null,
     /** docs/45 Q4：Boss 首战「敌人意图」胶囊标签，一局只破例一次（不持久化） */
@@ -211,6 +219,15 @@ export const useRunStore = defineStore("run", {
       const node = this.current;
       if (!node || node.kind !== "event") return undefined;
       return rollEvent(loadGameContent().content, this.run, node);
+    },
+    /** 选项条件的判定输入（docs/54 E6）：HP 用局外值，遗物数用当前持有数。 */
+    eventConditionContext(): EventConditionContext {
+      return {
+        hp: this.run?.hp ?? 0,
+        maxHp: this.maxHp,
+        pollution: this.pollution,
+        relicCount: this.relics.length,
+      };
     },
     cardDef(): (cardId: string) => CardDefinition | undefined {
       const content = loadGameContent().content;
@@ -525,16 +542,39 @@ export const useRunStore = defineStore("run", {
         classId: this.run.classId,
         // 解锁式内容未解锁不入事件掉落池（docs/36 T1）
         unlocked: this.run.unlocked,
+        // docs/54：百分比 HP 的分母 / 随机升级的候选 / 选项条件
+        maxHp: this.run.maxHp,
+        hp: this.run.hp,
+        pollution: this.run.pollution,
+        deckUpgradeable: this.deck.map((c, i) => (c.upgraded ? -1 : i)).filter((i) => i >= 0),
       });
+      // 条件不满足被 core 拒绝（UI 已置灰，这里是防呆）
       if (!res) return;
-      if (res.hpDelta !== 0) {
-        this.run = setRunHp(this.run, Math.max(0, Math.min(this.maxHp, this.run.hp + res.hpDelta)));
+      // 本幕不放回池（docs/54 E7）：结算即记账（记「哪一层抽到哪个事件」，
+      // 这样本节点的故事被钉死，结算页不会当场跳成别的故事），下一处事件节点不再抽到同一个
+      if (!this.run.seenEvents.some((s) => s.layer === this.run!.layerIndex)) {
+        this.run = {
+          ...this.run,
+          seenEvents: [...this.run.seenEvents, { layer: this.run.layerIndex, eventId: def.id }],
+        };
+      }
+      if (res.hpDelta !== 0 || res.maxHpDelta !== 0) {
+        this.run = applyEventHp(this.run, res.hpDelta, res.maxHpDelta);
       }
       if (res.pollutionDelta !== 0) {
         this.run = setRunPollution(this.run, this.run.pollution + res.pollutionDelta);
       }
       for (const id of res.relicIds) this.addRelic(id);
+      for (const id of res.loseRelicIds) this.removeRelicById(id);
       for (const id of res.cardIds) this.addCard(id);
+      // E3：随机升级（直接改卡组，不复用 upgradeCard —— 那会多存一次档并再弹一次首遇提示）
+      if (res.upgradeIndex >= 0 && this.deck[res.upgradeIndex]) {
+        const at = res.upgradeIndex;
+        this.deck = this.deck.map((c, i) => (i === at ? { ...c, upgraded: true } : c));
+      }
+      // E2：删牌要玩家自己挑；卡组只剩 1 张时无法删，直接当无事发生（不留死按钮）
+      const removeCard = res.removeCard && this.deck.length > 1;
+      this.eventRemovedIndex = removeCard ? null : -1;
       let gainEnhancement = res.gainEnhancement;
       if (gainEnhancement) {
         this.eventChoices = this.enhancementChoices();
@@ -543,13 +583,42 @@ export const useRunStore = defineStore("run", {
           gainEnhancement = false;
         }
       }
-      this.eventResult = { ...res, gainEnhancement };
+      this.eventResult = { ...res, removeCard, gainEnhancement };
       this.persist();
+    },
+
+    /** docs/54 E2：事件里删掉一张牌（选完才能继续）。 */
+    removeEventCard(deckIndex: number): boolean {
+      if (!this.eventResult?.removeCard) return false;
+      if (this.eventRemovedIndex !== null && this.eventRemovedIndex >= 0) return false;
+      if (!this.removeCard(deckIndex)) return false;
+      this.eventRemovedIndex = deckIndex;
+      this.persist();
+      return true;
+    },
+
+    /** 丢掉一件遗物（docs/54 E5）：不在手上则原样返回。 */
+    removeRelicById(relicId: string): boolean {
+      if (!this.relics.includes(relicId)) return false;
+      this.relics = this.relics.filter((id) => id !== relicId);
+      this.persist();
+      return true;
+    },
+
+    /** 选项条件是否满足（docs/54 E6）：UI 用它决定置灰。 */
+    eventConditionMet(condition: EventCondition | undefined): boolean {
+      return checkEventCondition(condition, this.eventConditionContext);
+    },
+
+    /** 条件当前值（UI 写「当前 X」用）。 */
+    eventConditionCurrent(condition: EventCondition): number {
+      return eventConditionCurrent(condition, this.eventConditionContext);
     },
 
     /** 事件结算完毕 → 推进到下一节点。 */
     eventContinue(): void {
       this.eventResult = null;
+      this.eventRemovedIndex = null;
       this.eventChoices = null;
       this.advance();
     },
@@ -700,6 +769,7 @@ export const useRunStore = defineStore("run", {
         deepestAct: saved.run.deepestAct ?? 1,
         deepestLayer: saved.run.deepestLayer ?? saved.run.layerIndex ?? 0,
         legacy: saved.run.legacy ?? false,
+        seenEvents: saved.run.seenEvents ?? [],
       };
       this.deck = saved.deck;
       this.relics = saved.relics ?? [];

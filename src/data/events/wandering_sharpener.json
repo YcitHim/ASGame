@@ -1,0 +1,36 @@
+{
+  "id": "wandering_sharpener",
+  "i18n": "event.wandering_sharpener",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.wandering_sharpener.opt.a.result",
+      "effects": [
+        {
+          "kind": "hpPercent",
+          "value": -6
+        },
+        {
+          "kind": "gainEnhancement"
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.wandering_sharpener.opt.b.result",
+      "effects": [
+        {
+          "kind": "pollution",
+          "value": 8
+        },
+        {
+          "kind": "upgradeRandom"
+        }
+      ]
+    },
+    {
+      "id": "c",
+      "i18n": "event.wandering_sharpener.opt.c.result"
+    }
+  ]
+}

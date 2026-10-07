@@ -1,0 +1,55 @@
+{
+  "id": "rust_wishing_well",
+  "i18n": "event.rust_wishing_well",
+  "options": [
+    {
+      "id": "a",
+      "effects": [
+        {
+          "kind": "hpPercent",
+          "value": -6
+        }
+      ],
+      "outcomes": [
+        {
+          "weight": 70,
+          "i18n": "event.rust_wishing_well.opt.a.win",
+          "effects": [
+            {
+              "kind": "hpPercent",
+              "value": 18
+            }
+          ]
+        },
+        {
+          "weight": 30,
+          "i18n": "event.rust_wishing_well.opt.a.lose",
+          "effects": [
+            {
+              "kind": "hpPercent",
+              "value": -6
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.rust_wishing_well.opt.b.result",
+      "effects": [
+        {
+          "kind": "gainCard",
+          "rarity": "common"
+        },
+        {
+          "kind": "pollution",
+          "value": 6
+        }
+      ]
+    },
+    {
+      "id": "c",
+      "i18n": "event.rust_wishing_well.opt.c.result"
+    }
+  ]
+}

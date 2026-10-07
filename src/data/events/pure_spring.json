@@ -21,8 +21,8 @@
           "value": -70
         },
         {
-          "kind": "hp",
-          "value": -6
+          "kind": "hpPercent",
+          "value": -8
         }
       ]
     },

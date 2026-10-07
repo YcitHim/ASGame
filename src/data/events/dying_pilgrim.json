@@ -7,8 +7,8 @@
       "i18n": "event.dying_pilgrim.opt.a.result",
       "effects": [
         {
-          "kind": "hp",
-          "value": -5
+          "kind": "hpPercent",
+          "value": -6
         },
         {
           "kind": "gainRelic"

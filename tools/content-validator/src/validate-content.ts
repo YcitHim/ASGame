@@ -333,7 +333,7 @@ export function validateContent(input: ContentInput): ValidationResult {
       });
     }
   }
-  // 事件 gainCard 显式池引用
+  // 事件 gainCard 显式池引用 / 新效果取值合法性（docs/54 §三）
   for (const ev of events) {
     for (const opt of ev.options) {
       const lists = [opt.effects ?? [], ...(opt.outcomes ?? []).map((o) => o.effects)];
@@ -343,9 +343,69 @@ export function validateContent(input: ContentInput): ValidationResult {
             issues.push({ file: `event ${ev.id}`, path: "opt.effects.pool", message: `引用了不存在的卡牌 "${id}"` });
           }
         }
+        // E1 / E4：百分比与上限变化必须有非零数值，否则是一条不生效的假效果
+        if ((eff.kind === "hpPercent" || eff.kind === "maxHp") && (eff.value ?? 0) === 0) {
+          issues.push({
+            file: `event ${ev.id}`,
+            path: "opt.effects.value",
+            message: `${eff.kind} 的 value 不能为 0`,
+          });
+        }
+        // E5：默认 T1；写死 tier 时必须落在掉落件区间
+        if (eff.kind === "loseRelic" && eff.tier !== undefined && ![1, 2, 3].includes(eff.tier)) {
+          issues.push({
+            file: `event ${ev.id}`,
+            path: "opt.effects.tier",
+            message: `loseRelic 的 tier 只能是 1/2/3，收到 ${eff.tier}`,
+          });
+        }
       }
     }
   }
+
+  // docs/54 §三 E8：赌局明示赔率——含 outcomes 的选项，label 必须写出每个结果的百分比。
+  // 只做「缺哪个百分比」的单向检查：文案里合法的百分比（如「−8% HP」）不该被误判。
+  for (const ev of events) {
+    for (const opt of ev.options) {
+      const outcomes = opt.outcomes ?? [];
+      if (outcomes.length === 0) continue;
+      const total = outcomes.reduce((sum, o) => sum + Math.max(0, o.weight), 0);
+      if (total <= 0) {
+        issues.push({
+          file: `event ${ev.id}`,
+          path: `opt.${opt.id}.outcomes`,
+          message: "赌局的 weight 之和必须 > 0",
+        });
+        continue;
+      }
+      const label = input.i18n[`${ev.i18n}.opt.${opt.id}.label`];
+      if (label === undefined) continue; // 文案缺失由 i18n 检查报，别重复报
+      const missing = outcomes
+        .map((o) => Math.round((Math.max(0, o.weight) / total) * 100))
+        .filter((pct) => !label.includes(`${pct}%`));
+      if (missing.length > 0) {
+        issues.push({
+          file: `event ${ev.id}`,
+          path: `opt.${opt.id}.label`,
+          message: `赌局选项必须写明赔率（文案缺 ${missing.map((p) => `${p}%`).join(" / ")}）——docs/54 军规 3`,
+        });
+      }
+    }
+  }
+
+  // docs/54 §六：事件池配比——第一幕 ≥8、其余幕 ≥6（同幕不放回，池太浅会很快重置）
+  acts.forEach((act, index) => {
+    const pool = new Set<string>();
+    for (const layer of act.layers) for (const id of layer.events ?? []) pool.add(id);
+    const min = index === 0 ? 8 : 6;
+    if (pool.size > 0 && pool.size < min) {
+      issues.push({
+        file: `act ${act.id}`,
+        path: "layers.events",
+        message: `事件池至少 ${min} 个（docs/54 §六），当前 ${pool.size} 个`,
+      });
+    }
+  });
   // 职业引用：起手卡组 / 起始遗物 / 文案；act 只声明可选职业
   const classIds = new Set(classes.map((c) => c.id));
   for (const cls of classes) {

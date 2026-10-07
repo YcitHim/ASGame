@@ -1,0 +1,37 @@
+{
+  "id": "drowned_market",
+  "i18n": "event.drowned_market",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.drowned_market.opt.a.result",
+      "effects": [
+        {
+          "kind": "pollution",
+          "value": 12
+        },
+        {
+          "kind": "hpPercent",
+          "value": 20
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.drowned_market.opt.b.result",
+      "effects": [
+        {
+          "kind": "hpPercent",
+          "value": -15
+        },
+        {
+          "kind": "gainRelic"
+        }
+      ]
+    },
+    {
+      "id": "c",
+      "i18n": "event.drowned_market.opt.c.result"
+    }
+  ]
+}

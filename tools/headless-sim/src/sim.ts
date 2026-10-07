@@ -20,7 +20,9 @@ import {
   rollEvent,
   rollRelicChoices,
   resolveEventOption,
+  applyEventHp,
   applyIntermission,
+  checkEventCondition,
   relicPool,
   setRunHp,
   setRunPollution,
@@ -135,10 +137,16 @@ function chooseBranchIndex(candidates: readonly { index: number; kind: string }[
   return candidates[0]?.index ?? 0;
 }
 
-/** 事件选项评分（贪心 AI）：优先强化/遗物/卡，HP 越低越避忌付费；赌博按期望值。 */
+/**
+ * 事件选项评分（贪心 AI）：优先强化/遗物/卡，HP 越低越避忌付费；赌博按期望值。
+ *
+ * docs/54：新增效果必须一起进打分表，否则它们全是 0 分——AI 会退化成「总是选第一个」，
+ * 于是新型代价（污染换血之类）被无脑吃下，哨兵数字会假性下滑。
+ */
 function chooseEventOption(
   def: import("../../../src/core/registry").EventDefinition,
   run: RunState,
+  relicCount: number,
 ): string {
   const hpRatio = run.hp / Math.max(1, run.maxHp);
   const scoreEffect = (kind: string, value: number, count = 1): number => {
@@ -149,6 +157,18 @@ function chooseEventOption(
         return 22;
       case "gainCard":
         return 8 * count;
+      // 百分比 HP 先折算成点数，再走同一套「HP 越低越怕付」的折扣
+      case "hpPercent":
+        return ((value * run.maxHp) / 100) * (value < 0 ? (hpRatio < 0.4 ? 0.45 : 0.9) : 0.15);
+      case "maxHp":
+        return value > 0 ? value * 2.5 : value * 2;
+      // 删牌是构筑洁癖的刚需（docs/54 §一 结构性空缺），评分给得比一张普通卡高
+      case "removeCard":
+        return 14;
+      case "upgradeRandom":
+        return 12;
+      case "loseRelic":
+        return -22 * count;
       case "hp":
         return value * (value < 0 ? (hpRatio < 0.4 ? 0.45 : 0.9) : 0.15);
       case "pollution":
@@ -160,6 +180,17 @@ function chooseEventOption(
   let best = def.options[0]?.id ?? "a";
   let bestScore = -Infinity;
   for (const opt of def.options) {
+    // 条件不满足的选项在 UI 上根本点不动，AI 也不该看见它
+    if (
+      !checkEventCondition(opt.condition, {
+        hp: run.hp,
+        maxHp: run.maxHp,
+        pollution: run.pollution,
+        relicCount,
+      })
+    ) {
+      continue;
+    }
     let score = (opt.effects ?? []).reduce((s, e) => s + scoreEffect(e.kind, e.value ?? 0, e.count ?? 1), 0);
     const outcomes = opt.outcomes ?? [];
     if (outcomes.length > 0) {
@@ -401,21 +432,56 @@ export function simulateRun(
     if (node.kind === "event") {
       const def = rollEvent(content, run, node);
       if (def) {
-        const optionId = chooseEventOption(def, run);
+        const optionId = chooseEventOption(def, run, relics.length);
         const seed = (run.seed ^ Math.imul(run.layerIndex + 11, 0x27d4eb2f)) >>> 0;
         const res = resolveEventOption(content, def, optionId, {
           seed,
           ownedRelics: relics,
           classId,
           unlocked: run.unlocked,
+          // docs/54：百分比 HP 的分母 / 条件判定 / 随机升级候选，一处都不能少
+          maxHp: run.maxHp,
+          hp: run.hp,
+          pollution: run.pollution,
+          deckUpgradeable: deck.map((c, i) => (c.upgraded ? -1 : i)).filter((i) => i >= 0),
         });
         if (res) {
-          if (res.hpDelta !== 0) {
-            run = setRunHp(run, Math.max(1, Math.min(run.maxHp, run.hp + res.hpDelta)));
+          if (res.hpDelta !== 0 || res.maxHpDelta !== 0) {
+            run = applyEventHp(run, res.hpDelta, res.maxHpDelta);
           }
           if (res.pollutionDelta !== 0) run = setRunPollution(run, run.pollution + res.pollutionDelta);
           for (const id of res.relicIds) if (!relics.includes(id)) relics.push(id);
+          // 去掉一件（docs/54 E5）：sim 与 store 同口径，只从持有列表里摘
+          for (const id of res.loseRelicIds) {
+            const at = relics.indexOf(id);
+            if (at >= 0) relics.splice(at, 1);
+          }
           for (const id of res.cardIds) deck.push({ cardId: id, upgraded: false, enhancements: [] });
+          // 随机升级（docs/54 E3）
+          if (res.upgradeIndex >= 0 && deck[res.upgradeIndex]) {
+            deck[res.upgradeIndex] = { ...deck[res.upgradeIndex], upgraded: true };
+          }
+          // 自选删牌（docs/54 E2）：sim 用 ai.cardValue 挑最差的一张
+          if (res.removeCard && deck.length > 1) {
+            let worst = 0;
+            let worstValue = Infinity;
+            for (let i = 0; i < deck.length; i += 1) {
+              const cardDef = content.cards.get(deck[i]!.cardId);
+              const value = cardDef ? cardValue(cardDef) : 0;
+              if (value < worstValue) {
+                worstValue = value;
+                worst = i;
+              }
+            }
+            deck.splice(worst, 1);
+          }
+          // 同幕不放回（docs/54 E7）：记账后本节点故事被钉死
+          if (!run.seenEvents.some((seen) => seen.layer === run.layerIndex)) {
+            run = {
+              ...run,
+              seenEvents: [...run.seenEvents, { layer: run.layerIndex, eventId: def.id }],
+            };
+          }
           if (res.gainEnhancement) {
             const applied = applyEnhancementChoice(
               content,
