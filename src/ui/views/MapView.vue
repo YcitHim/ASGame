@@ -63,14 +63,12 @@ const interNeeded = computed(() => run.needsIntermission);
 const reachable = computed(() => new Set(view.value?.reachable ?? []));
 const currentId = computed(() => view.value?.current?.id ?? "");
 
-/* ---------- 布局：10 层为行、层内按 col(0~3) 分列；边用 SVG 细线 ---------- */
-const COL_W = 152;
-const ROW_H = 68;
-const MAP_TOP = 14;
-const COLS = 4;
-/** 列心中点（col 0~3 → −1.5 ~ +1.5）：全图在舞台里左右居中 */
-const CENTER_COL = (COLS - 1) / 2;
-const MAP_W = 880;
+/* ---------- 布局：10 层为行、层内居中排布；边用 SVG 细线 ---------- */
+const COL_W = 140;
+const ROW_H = 54;
+const MAP_TOP = 12;
+/** 最宽一层 4 个节点 = 3 列间距 + 两侧留白 */
+const MAP_W = COL_W * 3 + 120;
 const MAP_H = computed(() => MAP_TOP * 2 + Math.max(1, layers.value.length) * ROW_H);
 const CENTER_X = MAP_W / 2;
 
@@ -79,25 +77,16 @@ const positions = computed(() => {
   // 自下而上（爬塔）：l0 在最底、Boss 在最顶
   const lastLayer = Math.max(0, layers.value.length - 1);
   layers.value.forEach((layer, li) => {
-    for (const node of layer.nodes) {
-      const col = node.col ?? 0;
+    const count = layer.nodes.length;
+    layer.nodes.forEach((node, ni) => {
+      // 每层按"层内序号"居中排布：拓扑的列差约束仍由 col 决定，
+      // 但视觉上每层都对称、脊椎（起点/祭坛/Boss）永远落在一根中轴上
       map.set(node.id, {
-        x: CENTER_X + (col - CENTER_COL) * COL_W,
+        x: CENTER_X + (ni - (count - 1) / 2) * COL_W,
         y: MAP_TOP + (lastLayer - li) * ROW_H + ROW_H / 2,
       });
-    }
+    });
   });
-  // 按实际包围盒水平居中：脊椎列掷在 1 或 2，不居中的话整张图会偏半格
-  let min = Infinity;
-  let max = -Infinity;
-  for (const p of map.values()) {
-    min = Math.min(min, p.x);
-    max = Math.max(max, p.x);
-  }
-  if (min <= max) {
-    const shift = CENTER_X - (min + max) / 2;
-    for (const [id, p] of map) map.set(id, { x: p.x + shift, y: p.y });
-  }
   return map;
 });
 
@@ -311,7 +300,7 @@ function toTitle(): void {
 </template>
 
 <style scoped>
-.map-stage { display: flex; flex-direction: column; align-items: center; padding: 40px 20px 20px; }
+.map-stage { display: flex; flex-direction: column; align-items: center; padding: 40px 20px 34px; }
 .topbar {
   position: absolute; top: 0; left: 0; right: 0; height: 34px; z-index: 30;
   display: flex; align-items: center; justify-content: space-between; padding: 0 18px;
@@ -328,7 +317,7 @@ function toTitle(): void {
 .dev-btn:hover { color: var(--gold); border-color: var(--gold); }
 .dev-hint { font-size: 10px; color: var(--ink-dim); }
 .graph-viewport {
-  width: 100%; max-height: 500px; margin-top: 8px;
+  flex: 1 1 auto; min-height: 0; width: 100%; margin-top: 8px;
   overflow-y: auto; overflow-x: hidden; scrollbar-width: thin;
 }
 .graph-viewport::-webkit-scrollbar { width: 6px; }
@@ -337,7 +326,7 @@ function toTitle(): void {
 .edges { position: absolute; inset: 0; pointer-events: none; }
 .node {
   position: absolute; transform: translate(-50%, -50%);
-  width: 46px; height: 46px; padding: 0; border-radius: 50%;
+  width: 38px; height: 38px; padding: 0; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   border: 1px solid rgba(110, 88, 54, 0.55);
   background: radial-gradient(circle at 34% 28%, rgba(48, 42, 33, 0.96), rgba(13, 11, 9, 0.96));
@@ -364,11 +353,11 @@ function toTitle(): void {
 .node.k-elite .icon { color: #b98ad6; }
 .node.k-boss .icon { color: var(--blood-hi); }
 .node.k-rest .icon { color: #d9a566; }
-.icon { width: 22px; height: 22px; color: var(--gold); }
+.icon { width: 19px; height: 19px; color: var(--gold); }
 .tag {
-  position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%);
-  padding: 1px 5px; border-radius: 3px; background: rgba(12, 10, 8, 0.92);
-  font-size: 9px; letter-spacing: 0.12em; color: var(--ink-dim); white-space: nowrap;
+  position: absolute; top: calc(100% + 2px); left: 50%; transform: translateX(-50%);
+  padding: 1px 4px; border-radius: 3px; background: rgba(12, 10, 8, 0.92);
+  font-size: 8.5px; letter-spacing: 0.1em; color: var(--ink-dim); white-space: nowrap;
   pointer-events: none;
 }
 .victory-overlay {
