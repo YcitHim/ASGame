@@ -8,8 +8,8 @@ import {
   advanceNode,
   chooseNode,
   createRunState,
-  currentLayer,
   currentNode,
+  mapView,
   healRun,
   isCombatNode,
   isRunComplete,
@@ -117,17 +117,21 @@ function applyEnhancementChoice(
   return null;
 }
 
-/** 分支路线评分：低血优先休息，否则优先事件/祭坛/战斗，尽量避开精英。 */
-function chooseBranchIndex(layer: { nodes: readonly { kind: string }[] }, run: RunState): number {
+/**
+ * 路线评分（docs/48 §五.2）：低血优先休息，否则优先事件/祭坛/战斗，尽量避开精英。
+ * 只在【可达】的候选里挑——DAG 里点不到的分支不能选。这不算调 AI 强度，只是让它会认路。
+ */
+function chooseBranchIndex(candidates: readonly { index: number; kind: string }[], run: RunState): number {
   const lowHp = run.hp < run.maxHp * 0.55;
+  // docs/48 §五.2：低血偏篝火；否则偏精英/事件（像一个敢打的普通玩家，而不是一味躲精英）
   const order = lowHp
     ? ["rest", "altar", "event", "battle", "elite"]
-    : ["event", "altar", "battle", "rest", "elite"];
+    : ["elite", "event", "altar", "battle", "rest"];
   for (const kind of order) {
-    const index = layer.nodes.findIndex((n) => n.kind === kind);
-    if (index >= 0) return index;
+    const hit = candidates.find((c) => c.kind === kind);
+    if (hit) return hit.index;
   }
-  return 0;
+  return candidates[0]?.index ?? 0;
 }
 
 /** 事件选项评分（贪心 AI）：优先强化/遗物/卡，HP 越低越避忌付费；赌博按期望值。 */
@@ -310,11 +314,15 @@ export function simulateRun(
   while (true) {
     act = actList[run.actIndex] ?? act;
     while (!isRunComplete(run, act)) {
-      // 分支地图：当前层没选就按策略选一个（路线偏好见 chooseBranchIndex）
-      const layer = currentLayer(run, act);
+      // 树状地图：当前层没选就在【可达候选】里按策略选一个（docs/48 §五.2）
+      const view = mapView(run, act);
+      const layer = view.layers[run.layerIndex];
     if (!layer) break;
     if (run.picked[run.layerIndex] === undefined) {
-      run = chooseNode(run, act, chooseBranchIndex(layer, run));
+      const candidates = layer.nodes
+        .map((n, index) => ({ index, kind: n.kind }))
+        .filter((c) => view.reachable.includes(layer.nodes[c.index]!.id));
+      run = chooseNode(run, act, chooseBranchIndex(candidates, run));
     }
     const node = currentNode(run, act);
     if (!node) break;

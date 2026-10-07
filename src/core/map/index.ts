@@ -114,25 +114,95 @@ export interface MapLayer {
   readonly nodes: readonly MapNode[];
 }
 
+/** 相邻两层的连边（docs/48 §3.1）：只连相邻层，列差 ≤1，边不交叉。 */
+export interface MapEdge {
+  readonly from: string;
+  readonly to: string;
+}
+
+/** 一幕的完整图（节点表 + 边表）：同种子同图。 */
+export interface GeneratedMap {
+  readonly layers: readonly MapLayer[];
+  readonly edges: readonly MapEdge[];
+}
+
 export interface MapView {
   readonly layers: readonly MapLayer[];
+  readonly edges: readonly MapEdge[];
   readonly currentIndex: number;
   readonly current: MapNode | undefined;
   readonly picked: readonly number[];
+  /** 当前节点可走到的下一层节点 id（全图可见模式下的"亮起可点"，docs/48 §4） */
+  readonly reachable: readonly string[];
   readonly finished: boolean;
 }
 
+/** 节点类型权重：本层覆盖优先，缺省用幕的全局权重。 */
+function kindWeights(spec: MapLayerSpec, act: ActDefinition): Readonly<Record<string, number>> {
+  return spec.weights ?? act.weights;
+}
+
 /**
- * 分支地图生成（docs/16 5.4）：同一 seed → 同一地图。
- * width=1 为必经/汇合点；width≥2 时每个候选按 weights 独立抽类型（docs/14 Q17）。
+ * 某层的基础宽度（docs/48 §3.1）：起点 / 祭坛 / Boss 层 = 1；中间层 2~4。
+ * 层数据写 1 的中间层按结构规格抬到最小分支宽度 2。
  */
-export function generateActMap(act: ActDefinition, seed: number): MapLayer[] {
+function baseWidth(spec: MapLayerSpec, layerIdx: number, total: number): number {
+  if (layerIdx === 0 || layerIdx >= total - 2) return 1;
+  return Math.max(2, Math.min(4, Math.trunc(spec.width) || 2));
+}
+
+/**
+ * 层宽规划（docs/48 §3.1）：边「两端列差 ≤1 + 全连通」在数学上要求 **相邻层宽度差 ≤1**。
+ * 两端单点因此必然收敛成菱形（l0=1 → l1=2；l6=1 → l5=2）。
+ * 先取基础宽度，再正向 / 反向各夹一次，保证 |w[i]-w[i+1]| ≤ 1 恒成立——
+ * 生成器因此不会产出「校验不过」的图，§3.3 的重掷分支在结构上不可达（有单测钉死）。
+ */
+function planWidths(act: ActDefinition): number[] {
+  const total = act.layers.length;
+  const widths = act.layers.map((spec, i) => baseWidth(spec, i, total));
+  const clampTo = (i: number, neighbour: number): void => {
+    if (i === 0 || i >= total - 2) return; // 起点 / 祭坛 / Boss 固定单节点
+    widths[i] = Math.max(Math.min(widths[i]!, neighbour + 1), Math.max(2, neighbour - 1));
+  };
+  for (let i = 1; i < total - 2; i += 1) clampTo(i, widths[i - 1]!);
+  for (let i = total - 3; i >= 1; i -= 1) clampTo(i, widths[i + 1]!);
+  return widths;
+}
+
+/** 本层允许的类型；受"同层精英≤1 / 篝火≤1 / l1 不出精英"约束时回落全局五类。 */
+function allowedKinds(spec: MapLayerSpec, layerIdx: number, elites: number, rests: number): NodeKind[] {
+  const ok = (k: NodeKind): boolean => {
+    if (k === "elite" && (elites >= 1 || layerIdx <= 1)) return false;
+    if (k === "rest" && rests >= 1) return false;
+    return true;
+  };
+  const authored = spec.kinds.filter(ok);
+  if (authored.length > 0) return [...authored];
+  return (["battle", "elite", "rest", "altar", "event"] as NodeKind[]).filter(ok);
+}
+
+/** 该层 battle 节点的遭遇池：本层没有就继承本幕最近一层有池的（DAG 新增层不饿死）。 */
+function inheritedPool<T>(act: ActDefinition, layerIdx: number, pick: (spec: MapLayerSpec) => T | undefined): T | undefined {
+  for (let i = layerIdx; i >= 0; i -= 1) {
+    const value = pick(act.layers[i]!);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+/**
+ * 树状地图生成（docs/48 §三）：DAG，同一 seed → 同一图。
+ * - 深度沿用 act.layers（8 层）；l1~l5 每层 2~4 个节点；起点/祭坛/Boss 单节点
+ * - 类型沿用各层 kinds 与 weights（约束：同层精英 ≤1、篝火 ≤1、l1 不出精英）
+ * - 边只连相邻层、列差 ≤1、单调不交叉，且保证连通性
+ */
+export function generateMapGraph(act: ActDefinition, seed: number): GeneratedMap {
   const rng = new Rng((seed ^ 0x5f3759df) >>> 0).stream("map");
-  // 精英池抽取（docs/40 §三）：同一幕同一 Rng 流按层序抽，后一层排除前面已抽中的
   const eliteRng = new Rng((seed ^ 0xe117e3) >>> 0).stream("map");
   const elitesTaken: string[] = [];
-  return act.layers.map((spec, layerIdx) => {
-    const width = Math.max(1, Math.trunc(spec.width));
+  const widths = planWidths(act);
+  const layers: MapLayer[] = act.layers.map((spec, layerIdx) => {
+    const width = widths[layerIdx] ?? 1;
     let elitePick: string | undefined;
     if (spec.elitePool && spec.elitePool.length > 0) {
       const remaining = spec.elitePool.filter((id) => !elitesTaken.includes(id));
@@ -140,21 +210,130 @@ export function generateActMap(act: ActDefinition, seed: number): MapLayer[] {
       elitePick = pool[eliteRng.nextInt(0, pool.length - 1)];
       elitesTaken.push(elitePick);
     }
+    const encounters = spec.encounters ?? inheritedPool(act, layerIdx, (s) => s.encounters);
+    const events = spec.events ?? inheritedPool(act, layerIdx, (s) => s.events);
+    let elites = 0;
+    let rests = 0;
     const nodes: MapNode[] = [];
     for (let i = 0; i < width; i += 1) {
-      const kind = pickKind(rng, spec, act);
+      const allowed = allowedKinds(spec, layerIdx, elites, rests);
+      const weights = kindWeights(spec, act);
+      const entries = allowed
+        .map((k) => [k, Math.max(0, weights[k] ?? 0)] as const)
+        .filter(([, w]) => w > 0);
+      // 层内类型权重全为 0（如精英层的全局权重为 0）时，退化为在允许集合里均匀抽
+      const kind = entries.length > 0 ? rng.weighted(entries) : allowed[rng.nextInt(0, Math.max(0, allowed.length - 1))] ?? "battle";
+      if (kind === "elite") elites += 1;
+      if (kind === "rest") rests += 1;
       nodes.push({
         id: `${kind}_${layerIdx}_${i}`,
         kind,
         i18n: spec.i18n ?? act.nodeI18n?.[kind] ?? `node.${kind}`,
-        ...(spec.encounters && kind === "battle" ? { encounters: spec.encounters } : {}),
-        ...(spec.events && kind === "event" ? { events: spec.events } : {}),
+        ...(encounters && kind === "battle" ? { encounters } : {}),
+        ...(events && kind === "event" ? { events } : {}),
         ...(elitePick && kind === "elite" ? { enemies: [elitePick] } : {}),
-        ...(spec.enemies && (kind === "battle" || kind === "elite" || kind === "boss") ? { enemies: spec.enemies } : {}),
+        // 写死的遭遇只贴给「本层声明过的类型」：被同层约束挤掉后回落生成的其它类型不继承，
+        // 否则 l3 的精英 rust_warden 会漏到同层生成出来的 battle 节点上（docs/48 §3.2）
+        ...(spec.enemies && spec.kinds.includes(kind) && (kind === "battle" || kind === "elite" || kind === "boss")
+          ? { enemies: spec.enemies }
+          : {}),
       });
     }
     return { id: spec.id, nodes };
   });
+  return { layers, edges: buildEdges(layers) };
+}
+
+/**
+ * 层间连边（docs/48 §3.1）：单调对齐保证"列差 ≤1 + 边不交叉 + 全连通"。
+ * 后层比前层多出来的节点从最后一列扇出，少出来的节点汇到最后一列。
+ */
+function buildEdges(layers: readonly MapLayer[]): MapEdge[] {
+  const edges: MapEdge[] = [];
+  for (let i = 0; i + 1 < layers.length; i += 1) {
+    const from = layers[i]!.nodes;
+    const to = layers[i + 1]!.nodes;
+    const m = from.length;
+    const n = to.length;
+    if (m === 0 || n === 0) continue;
+    for (let a = 0; a < m; a += 1) edges.push({ from: from[a]!.id, to: to[Math.min(a, n - 1)]!.id });
+    if (n > m) for (let b = m; b < n; b += 1) edges.push({ from: from[m - 1]!.id, to: to[b]!.id });
+  }
+  return edges;
+}
+
+/**
+ * DAG 结构校验（docs/48 §3.1）：validator 与单测共用的「常驻检查」，空数组 = 合格。
+ * 校验：只连相邻层 / 列差 ≤1 / 边不交叉 / 除起点外每节点 ≥1 入边 /
+ * 除终点外每节点 ≥1 出边 / 同层精英 ≤1、篝火 ≤1 / l1 不出精英。
+ */
+export function checkMapGraph(map: GeneratedMap): string[] {
+  const issues: string[] = [];
+  const layerOf = new Map<string, number>();
+  const colOf = new Map<string, number>();
+  map.layers.forEach((layer, li) =>
+    layer.nodes.forEach((node, ni) => {
+      layerOf.set(node.id, li);
+      colOf.set(node.id, ni);
+    }),
+  );
+  const inDeg = new Map<string, number>();
+  const outDeg = new Map<string, number>();
+  for (const edge of map.edges) {
+    const from = layerOf.get(edge.from);
+    const to = layerOf.get(edge.to);
+    if (from === undefined || to === undefined) {
+      issues.push(`边 ${edge.from}→${edge.to} 引用了不存在的节点`);
+      continue;
+    }
+    if (to - from !== 1) issues.push(`边 ${edge.from}→${edge.to} 跨了非相邻层`);
+    if (Math.abs((colOf.get(edge.from) ?? 0) - (colOf.get(edge.to) ?? 0)) > 1) {
+      issues.push(`边 ${edge.from}→${edge.to} 两端列差 > 1`);
+    }
+    outDeg.set(edge.from, (outDeg.get(edge.from) ?? 0) + 1);
+    inDeg.set(edge.to, (inDeg.get(edge.to) ?? 0) + 1);
+  }
+  // 平面约束：同一对相邻层内，from 靠左的边不允许落到更右的列（否则两线交叉）
+  for (let li = 0; li + 1 < map.layers.length; li += 1) {
+    const segs = map.edges
+      .filter((e) => layerOf.get(e.from) === li)
+      .map((e) => ({ a: colOf.get(e.from) ?? 0, b: colOf.get(e.to) ?? 0 }));
+    for (const x of segs) {
+      for (const y of segs) {
+        if (x.a < y.a && x.b > y.b) {
+          issues.push(`第 ${li}→${li + 1} 层的边交叉（${x.a}→${x.b} 与 ${y.a}→${y.b}）`);
+        }
+      }
+    }
+  }
+  map.layers.forEach((layer, li) => {
+    const elites = layer.nodes.filter((n) => n.kind === "elite").length;
+    const rests = layer.nodes.filter((n) => n.kind === "rest").length;
+    if (elites > 1) issues.push(`第 ${li} 层有 ${elites} 个精英（同层 ≤1）`);
+    if (rests > 1) issues.push(`第 ${li} 层有 ${rests} 个篝火（同层 ≤1）`);
+    if (li === 1 && elites > 0) issues.push("l1 不允许出现精英");
+    for (const node of layer.nodes) {
+      if (li > 0 && !inDeg.has(node.id)) issues.push(`节点 ${node.id} 没有入边`);
+      if (li + 1 < map.layers.length && !outDeg.has(node.id)) issues.push(`节点 ${node.id} 没有出边`);
+    }
+  });
+  return issues;
+}
+
+/** 兼容旧调用：只要层表的走这里（边表另取 generateMapGraph）。 */
+export function generateActMap(act: ActDefinition, seed: number): readonly MapLayer[] {
+  return generateMapGraph(act, seed).layers;
+}
+
+/** 某节点是否与当前所在节点相邻（DAG 里"可点"的判定，docs/48 §4）。 */
+export function isReachable(map: GeneratedMap, run: RunState, nodeId: string): boolean {
+  if (run.layerIndex === 0) return map.layers[0]?.nodes[0]?.id === nodeId;
+  const prevLayer = map.layers[run.layerIndex - 1];
+  // 未记录选择（开发者跳关 / 教学）时按第 0 列兜底，避免图把人堵死
+  const prevIdx = run.picked[run.layerIndex - 1] ?? 0;
+  const prev = prevLayer?.nodes[prevIdx] ?? prevLayer?.nodes[0];
+  if (!prev) return false;
+  return map.edges.some((e) => e.from === prev.id && e.to === nodeId);
 }
 
 /** 当前幕（docs/40 §二）：actIndex 越界时回落到最后一幕。 */
@@ -187,15 +366,6 @@ export function applyIntermission(run: RunState): RunState {
     pollution: 0,
     deepestAct: Math.max(run.deepestAct, run.actIndex + 2),
   };
-}
-
-function pickKind(rng: ReturnType<Rng["stream"]>, spec: MapLayerSpec, act: ActDefinition): NodeKind {
-  const weights = spec.weights ?? act.weights;
-  const entries = spec.kinds
-    .map((k) => [k, Math.max(0, weights[k] ?? 0)] as const)
-    .filter(([, w]) => w > 0);
-  if (entries.length === 0) return spec.kinds[0] ?? "battle";
-  return rng.weighted(entries);
 }
 
 export interface CreateRunOptions {
@@ -240,18 +410,21 @@ export function createRunState(
 }
 
 export function mapView(run: RunState, act: ActDefinition): MapView {
-  const layers = generateActMap(act, run.seed);
+  const map = generateMapGraph(act, run.seed);
+  const layer = map.layers[run.layerIndex];
   return {
-    layers,
+    layers: map.layers,
+    edges: map.edges,
     currentIndex: run.layerIndex,
     current: currentNode(run, act),
     picked: run.picked,
-    finished: run.layerIndex >= layers.length,
+    reachable: (layer?.nodes ?? []).filter((n) => isReachable(map, run, n.id)).map((n) => n.id),
+    finished: run.layerIndex >= map.layers.length,
   };
 }
 
 export function currentLayer(run: RunState, act: ActDefinition): MapLayer | undefined {
-  return generateActMap(act, run.seed)[run.layerIndex];
+  return generateMapGraph(act, run.seed).layers[run.layerIndex];
 }
 
 export function currentNode(run: RunState, act: ActDefinition): MapNode | undefined {
@@ -263,10 +436,21 @@ export function currentNode(run: RunState, act: ActDefinition): MapNode | undefi
   return layer.nodes.length === 1 ? layer.nodes[0] : undefined;
 }
 
-/** 在当前层选定候选（分支二选一）。 */
+/** 当前所在节点 id（未选的必经层也能定位，供图视图描金）。 */
+export function currentNodeId(run: RunState, act: ActDefinition): string | undefined {
+  return currentNode(run, act)?.id;
+}
+
+/**
+ * 在当前层选定候选（DAG：必须是上一层所在节点连得到的那一个，docs/48 §四）。
+ * 非法/不可达直接忽略，保证 UI 点不动就是点不动。
+ */
 export function chooseNode(run: RunState, act: ActDefinition, index: number): RunState {
-  const layer = currentLayer(run, act);
+  const map = generateMapGraph(act, run.seed);
+  const layer = map.layers[run.layerIndex];
   if (!layer || !Number.isInteger(index) || index < 0 || index >= layer.nodes.length) return run;
+  const target = layer.nodes[index];
+  if (!target || !isReachable(map, run, target.id)) return run;
   const picked = [...run.picked];
   picked[run.layerIndex] = index;
   return { ...run, picked };

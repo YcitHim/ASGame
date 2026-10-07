@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>树状地图 · 假设图（docs/48）</title>
+<style>
+  :root {
+    --bg: #12100e;
+    --panel: rgba(24, 21, 18, 0.85);
+    --line: rgba(176, 141, 74, 0.22);
+    --gold: #b08d4a;
+    --gold-hi: #d9b878;
+    --gold-dim: #6e5636;
+    --ink: #e8ddc8;
+    --ink-dim: #8d8270;
+    --blood: #c0392b;
+    --elite: #8e44ad;
+    --node-fill: #1c1915;
+  }
+  body.act2 {
+    --bg: #0b1216;
+    --panel: rgba(14, 24, 30, 0.85);
+    --line: rgba(91, 154, 178, 0.22);
+    --gold: #5b9ab2;
+    --gold-hi: #8fc6dc;
+    --gold-dim: #3a5d6e;
+    --ink: #d8e6ec;
+    --ink-dim: #6f8590;
+    --node-fill: #101a20;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Noto Serif SC", "Songti SC", serif;
+    display: flex; justify-content: center;
+    padding: 24px 12px;
+    transition: background .4s;
+  }
+  .wrap { width: 980px; max-width: 100%; }
+  header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 10px; }
+  h1 { font-size: 20px; letter-spacing: .35em; color: var(--gold-hi); font-weight: 600; }
+  h1 small { font-size: 11px; letter-spacing: .15em; color: var(--ink-dim); margin-left: 12px; }
+  .toggle {
+    font-size: 12px; letter-spacing: .2em; cursor: pointer;
+    border: 1px solid var(--gold-dim); color: var(--ink-dim);
+    padding: 6px 14px; border-radius: 4px; background: transparent;
+  }
+  .toggle:hover { color: var(--gold-hi); border-color: var(--gold); }
+  .stage { border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 8px; }
+  svg { display: block; width: 100%; height: auto; }
+
+  .edge { stroke: var(--line); stroke-width: 1.5; }
+  .edge.traveled { stroke: var(--gold); stroke-width: 2.5; opacity: .9; }
+  .edge.reachable { stroke: var(--gold-hi); stroke-width: 2; stroke-dasharray: 6 5; animation: dash 1.2s linear infinite; }
+  @keyframes dash { to { stroke-dashoffset: -11; } }
+
+  .node circle.body { fill: var(--node-fill); stroke: var(--gold-dim); stroke-width: 1.5; }
+  .node text { fill: var(--ink); font-size: 20px; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+  .node .kind-label { font-size: 9px; fill: var(--ink-dim); letter-spacing: .1em; }
+  .node.traveled circle.body { stroke: var(--gold); fill: #241f18; }
+  body.act2 .node.traveled circle.body { fill: #142530; }
+  .node.current circle.body { stroke: var(--gold-hi); stroke-width: 2.5; }
+  .node.current .halo { fill: none; stroke: var(--gold-hi); stroke-width: 1.5; opacity: .7; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { r: 34; opacity: .7; } 50% { r: 40; opacity: .15; } }
+  .node.reachable circle.body { stroke: var(--gold-hi); stroke-dasharray: 4 3; }
+  .node.elite text.glyph { fill: var(--elite); }
+  .node.boss text.glyph { fill: var(--blood); font-size: 24px; }
+  .node.boss circle.body { stroke: var(--blood); }
+
+  .side-label { font-size: 10px; fill: var(--ink-dim); letter-spacing: .2em; }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; font-size: 11px; color: var(--ink-dim); letter-spacing: .1em; }
+  .legend b { color: var(--ink); font-weight: 400; }
+  .legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+  footer { margin-top: 10px; font-size: 11px; color: var(--ink-dim); letter-spacing: .08em; line-height: 1.8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>锈 蚀 回 廊<small>树状地图 · 假设图 · docs/48 规格</small></h1>
+    <button class="toggle" id="themeBtn">切换：第二幕 · 沉没圣堂（青蓝）</button>
+  </header>
+  <div class="stage"><svg id="map" viewBox="0 0 940 1140"></svg></div>
+  <div class="legend">
+    <span><span class="sw" style="background:var(--gold)"></span><b>描金粗线</b>＝已走的路</span>
+    <span><span class="sw" style="background:var(--gold-hi)"></span><b>呼吸光环</b>＝当前位置（问号事件刚撞完）</span>
+    <span><span class="sw" style="border:1px dashed var(--gold-hi)"></span><b>虚线</b>＝下一步可达</span>
+    <span>其余细线＝存在但未走的路（全图始终可见）</span>
+  </div>
+  <footer>
+    结构按 docs/48 §三：8 层深度 · 中间层 2~4 节点（本图 19 节点）· 边只连相邻层、列差 ≤1、不相交 · 同层精英/篝火 ≤1 · l1 不出精英 · 祭坛→首领固定收尾。<br>
+    节点类型图标沿用游戏内字形：剑=战斗 角=精英 火=休息 砧=祭坛 匣=奖励 ？=事件 颅=首领。本图为结构示意，节点类型分布仅一例，实际由种子按层规格生成。
+  </footer>
+</div>
+
+<script>
+const X = c => 150 + c * 213;          // 列 0~3
+const Y = l => 140 + (7 - l) * 135;    // 层 0(底)~7(顶)
+
+const NODES = [
+  // [id, layer, col, kind, glyph, state]
+  ["n00", 0, 1, "battle", "剑", "traveled"],
+  ["n10", 1, 0, "battle", "剑", ""],
+  ["n11", 1, 1, "event",  "？", "traveled"],
+  ["n12", 1, 2, "battle", "剑", ""],
+  ["n20", 2, 0, "battle", "剑", ""],
+  ["n21", 2, 1, "chest",  "匣", ""],
+  ["n22", 2, 2, "event",  "？", "current"],
+  ["n23", 2, 3, "battle", "剑", ""],
+  ["n30", 3, 0, "elite",  "角", ""],
+  ["n32", 3, 2, "battle", "剑", "reachable"],
+  ["n33", 3, 3, "rest",   "火", "reachable"],
+  ["n41", 4, 1, "event",  "？", ""],
+  ["n42", 4, 2, "battle", "剑", ""],
+  ["n43", 4, 3, "battle", "剑", ""],
+  ["n51", 5, 1, "battle", "剑", ""],
+  ["n52", 5, 2, "elite",  "角", ""],
+  ["n53", 5, 3, "rest",   "火", ""],
+  ["n62", 6, 2, "altar",  "砧", ""],
+  ["n72", 7, 2, "boss",   "颅", ""],
+];
+const EDGES = [
+  ["n00","n10"],["n00","n11"],["n00","n12"],
+  ["n10","n20"],["n10","n21"],["n11","n21"],["n11","n22"],["n12","n22"],["n12","n23"],
+  ["n20","n30"],["n21","n30"],["n22","n32"],["n22","n33"],["n23","n33"],
+  ["n30","n41"],["n32","n41"],["n32","n42"],["n33","n42"],["n33","n43"],
+  ["n41","n51"],["n41","n52"],["n42","n52"],["n42","n53"],["n43","n53"],
+  ["n51","n62"],["n52","n62"],["n53","n62"],
+  ["n62","n72"],
+];
+const TRAVELED_EDGES = new Set(["n00-n11", "n11-n22"]);
+const REACHABLE_EDGES = new Set(["n22-n32", "n22-n33"]);
+const KIND_NAME = { battle:"战斗", elite:"精英", rest:"休息", altar:"祭坛", chest:"奖励", event:"事件", boss:"首领" };
+const LAYER_LABEL = { 0:"起点", 6:"祭坛层", 7:"首领层" };
+
+const byId = Object.fromEntries(NODES.map(n => [n[0], n]));
+const svg = document.getElementById("map");
+const NS = "http://www.w3.org/2000/svg";
+const el = (t, attrs) => { const e = document.createElementNS(NS, t); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+
+// 层标
+for (let l = 0; l <= 7; l++) {
+  const t = el("text", { x: 30, y: Y(l) + 4, class: "side-label" });
+  t.textContent = LAYER_LABEL[l] ?? ("第 " + (l + 1) + " 层");
+  svg.appendChild(t);
+}
+// 边
+for (const [a, b] of EDGES) {
+  const na = byId[a], nb = byId[b];
+  const key = a + "-" + b;
+  const cls = TRAVELED_EDGES.has(key) ? "edge traveled" : REACHABLE_EDGES.has(key) ? "edge reachable" : "edge";
+  svg.appendChild(el("line", { x1: X(na[2]), y1: Y(na[1]), x2: X(nb[2]), y2: Y(nb[1]), class: cls }));
+}
+// 节点
+for (const [id, layer, col, kind, glyph, state] of NODES) {
+  const g = el("g", { class: `node ${kind} ${state}` });
+  const r = kind === "boss" ? 34 : 27;
+  if (state === "current") g.appendChild(el("circle", { class: "halo", cx: X(col), cy: Y(layer), r: 34 }));
+  g.appendChild(el("circle", { class: "body", cx: X(col), cy: Y(layer), r }));
+  const t = el("text", { class: "glyph", x: X(col), y: Y(layer) });
+  t.textContent = glyph;
+  g.appendChild(t);
+  const lbl = el("text", { class: "kind-label", x: X(col), y: Y(layer) + r + 14 });
+  lbl.textContent = KIND_NAME[kind];
+  lbl.setAttribute("text-anchor", "middle");
+  g.appendChild(lbl);
+  svg.appendChild(g);
+}
+// 主题切换
+const btn = document.getElementById("themeBtn");
+let act2 = false;
+btn.onclick = () => {
+  act2 = !act2;
+  document.body.classList.toggle("act2", act2);
+  document.querySelector("h1").firstChild.textContent = act2 ? "沉 没 圣 堂" : "锈 蚀 回 廊";
+  btn.textContent = act2 ? "切换：第一幕 · 锈蚀回廊（锈金）" : "切换：第二幕 · 沉没圣堂（青蓝）";
+};
+</script>
+</body>
+</html>

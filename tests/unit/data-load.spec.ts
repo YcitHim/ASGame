@@ -62,9 +62,16 @@ describe("真实内容装载（data/load）", () => {
     const b = generateActMap(act, 12345);
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
     expect(a).toHaveLength(8);
-    // 分支层数量正确
-    expect(a[1].nodes).toHaveLength(3);
-    expect(a[3].nodes).toHaveLength(1);
+    // docs/48 §3.1：起点 / 祭坛 / Boss 单节点，中间层 2~4
+    expect(a[0].nodes).toHaveLength(1);
+    expect(a[6].nodes).toHaveLength(1);
+    expect(a[7].nodes).toHaveLength(1);
+    for (const idx of [1, 2, 3, 4, 5]) {
+      expect(a[idx].nodes.length, `l${idx}`).toBeGreaterThanOrEqual(2);
+      expect(a[idx].nodes.length, `l${idx}`).toBeLessThanOrEqual(4);
+      expect(a[idx].nodes.filter((n) => n.kind === "elite").length).toBeLessThanOrEqual(1);
+      expect(a[idx].nodes.filter((n) => n.kind === "rest").length).toBeLessThanOrEqual(1);
+    }
     // 分支层节点 id 唯一
     const ids = a.flatMap((l) => l.nodes.map((n) => n.id));
     expect(new Set(ids).size).toBe(ids.length);

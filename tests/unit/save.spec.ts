@@ -48,30 +48,28 @@ describe("systems/save（ADR-008）", () => {
     expect(readSlot("progress", null)).toEqual({ node: 2 });
   });
 
-  it("无信封裸存档按 v0 迁移，不丢弃（docs/23 §2）", () => {
+  it("无信封裸存档按 v0 迁移；进度档在 12→13 作废（docs/48 §六）", () => {
     const raw = { run: { nodeIndex: 3 }, deck: [], relics: [], acquired: [] };
     localStorage.setItem(slotKey("progress"), JSON.stringify(raw));
-    expect(readSlot("progress", null)).toMatchObject({ run: { nodeIndex: 3 }, recastUsedNode: null });
+    // 旧线性 run 无法映射进 DAG → 回标题页：不是格式损坏，是设计裁决
+    expect(readSlot("progress", null)).toBeNull();
   });
 
-  it("v1 进度档迁移到 v2 时补 recastUsedNode；非进度档不被污染", () => {
+  it("v1 进度档在 12→13 作废；非进度档一路升到当前版本不被污染", () => {
     const progress = migrate({ version: 1, data: { run: { nodeIndex: 1 }, deck: [] } });
     expect(progress?.version).toBe(SCHEMA_VERSION);
-    expect((progress?.data as { recastUsedNode?: unknown }).recastUsedNode).toBeNull();
-    expect((progress?.data as { enhanceUsedNode?: unknown }).enhanceUsedNode).toBeNull();
+    expect(progress?.data).toBeNull();
 
     const settings = migrate({ version: 1, data: { masterVolume: 0.5 } });
     expect(settings?.data).toEqual({ masterVolume: 0.5 });
   });
 
-  it("v5 进度档迁移到 v6 时补 unlocked / difficulty / 成就计数；非进度档不被污染", () => {
+  it("v5 进度档在 12→13 作废；meta 槽一路迁到当前版本（不被作废）", () => {
     const progress = migrate({ version: 5, data: { run: { layerIndex: 2, picked: [] }, deck: [] } });
     expect(progress?.version).toBe(SCHEMA_VERSION);
-    expect(progress?.data).toMatchObject({
-      run: { layerIndex: 2, unlocked: [], difficulty: "normal", usedBloodpact: false, overloadCount: 0 },
-    });
+    expect(progress?.data).toBeNull();
     const meta = migrate({ version: 5, data: { clearedClasses: ["bloodwright"], unlocked: [] } });
-    // 一路迁到 v12：meta 槽补 tips、按职业的教学字段与教学断点（docs/41/42/43）
+    // 一路迁到 v13：meta 槽补 tips、按职业的教学字段与教学断点（docs/41/42/43）
     expect(meta?.data).toEqual({
       clearedClasses: ["bloodwright"],
       unlocked: [],
@@ -82,22 +80,20 @@ describe("systems/save（ADR-008）", () => {
     });
   });
 
-  it("v7 进度档迁移到 v8 时补成就统计字段；非进度档不被污染", () => {
+  it("v7 进度档在 12→13 作废；codex 槽原样通过", () => {
     const progress = migrate({ version: 7, data: { run: { layerIndex: 1, picked: [], pollution: 30 }, deck: [] } });
     expect(progress?.version).toBe(SCHEMA_VERSION);
-    expect(progress?.data).toMatchObject({
-      run: { interrupts: 0, backlashTaken: 0, turns: 0, pollutionPeak: 30 },
-    });
+    expect(progress?.data).toBeNull();
     const codex = migrate({ version: 7, data: { cards: [], relics: [], enemies: [] } });
     expect(codex?.data).toEqual({ cards: [], relics: [], enemies: [] });
   });
 
-  it("v8 进度档迁移到 v9：补转地图字段；一幕已通关的档标 legacy", () => {
+  it("v8 进度档（进行中 / 已通关）都在 12→13 作废", () => {
     const mid = migrate({ version: 8, data: { run: { classId: "bloodwright", layerIndex: 3 }, deck: [] } });
     expect(mid?.version).toBe(SCHEMA_VERSION);
-    expect(mid?.data).toMatchObject({ run: { actIndex: 0, deepestAct: 1, deepestLayer: 3, legacy: false } });
+    expect(mid?.data).toBeNull();
     const done = migrate({ version: 8, data: { run: { classId: "bloodwright", layerIndex: 8 }, deck: [] } });
-    expect((done?.data as { run: { legacy?: boolean } }).run.legacy).toBe(true);
+    expect(done?.data).toBeNull();
   });
 
   it("来自未来版本的存档不猜，直接丢弃", () => {
@@ -109,7 +105,7 @@ describe("systems/save（ADR-008）", () => {
 describe("存档迁移 9 → 11（docs/41 §4.1 / docs/42 §三.0）", () => {
   it("meta 槽补 tips 与按职业的教学字段；进度档不被污染", async () => {
     const { migrate, SCHEMA_VERSION } = await import("@/systems/save");
-    expect(SCHEMA_VERSION).toBe(12);
+    expect(SCHEMA_VERSION).toBe(13);
 
     const meta = migrate({ version: 9, savedAt: 0, data: { clearedClasses: ["bloodwright"], achievements: [] } });
     const metaData = meta?.data as { tips: string[]; tutorialOffered: string[]; tutorialDone: string[] };
@@ -118,8 +114,9 @@ describe("存档迁移 9 → 11（docs/41 §4.1 / docs/42 §三.0）", () => {
     expect(metaData.tutorialOffered).toEqual([]);
     expect(metaData.tutorialDone).toEqual([]);
 
+    // 进度档走到 12→13 被作废（docs/48 §六）：不是被 tips 污染，是整个 run 不留
     const progress = migrate({ version: 9, savedAt: 0, data: { run: { actIndex: 1 } } });
-    expect((progress?.data as Record<string, unknown>).tips).toBeUndefined();
+    expect(progress?.data).toBeNull();
 
     // 已有 tips 的存档不被覆盖
     const kept = migrate({ version: 9, savedAt: 0, data: { clearedClasses: [], tips: ["discard"] } });
@@ -150,13 +147,39 @@ describe("存档迁移 9 → 11（docs/41 §4.1 / docs/42 §三.0）", () => {
     expect(data.tutorial).toBeNull();
     expect(data.tutorialOffered).toEqual(["bloodwright"]);
 
-    // 进度档不被污染（教学断点只住在 meta 槽）
+    // 进度档走到 12→13 被作废（教学断点只住在 meta 槽）
     const progress = migrate({ version: 11, savedAt: 0, data: { run: { actIndex: 0 } } });
-    expect((progress?.data as Record<string, unknown>).tutorial).toBeUndefined();
+    expect(progress?.data).toBeNull();
 
     // 已经带着断点的存档不被覆盖
     const kept = migrate({ version: 11, savedAt: 0, data: { achievements: [], tutorial: { classId: "engineer" } } });
     expect((kept?.data as { tutorial: { classId: string } }).tutorial).toEqual({ classId: "engineer" });
+  });
+
+  it("12 → 13：作废进行中的旧 run（回标题页），meta 全保留（docs/48 §六）", async () => {
+    const { migrate, SCHEMA_VERSION } = await import("@/systems/save");
+    expect(SCHEMA_VERSION).toBe(13);
+    const progress = migrate({ version: 12, savedAt: 0, data: { run: { layerIndex: 4 }, deck: [] } });
+    expect(progress?.version).toBe(SCHEMA_VERSION);
+    expect(progress?.data).toBeNull();
+    const meta = migrate({
+      version: 12,
+      savedAt: 0,
+      data: {
+        clearedClasses: ["bloodwright"],
+        achievements: ["immortal"],
+        unlocked: ["x"],
+        tips: ["discard"],
+        tutorial: { classId: "engineer" },
+      },
+    });
+    expect(meta?.data).toEqual({
+      clearedClasses: ["bloodwright"],
+      achievements: ["immortal"],
+      unlocked: ["x"],
+      tips: ["discard"],
+      tutorial: { classId: "engineer" },
+    });
   });
 });
 

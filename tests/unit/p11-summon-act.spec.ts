@@ -103,15 +103,16 @@ describe("docs/40 转地图与精英池", () => {
     weights: { battle: 50, elite: 0, rest: 0, altar: 25, event: 25 },
     layers: [
       { id: "l0", width: 1, kinds: ["battle"], enemies: ["caller"] },
-      { id: "l1", width: 1, kinds: ["elite"], elitePool: ["jailer", "tidecaller"] },
+      { id: "l1", width: 2, kinds: ["battle"], enemies: ["caller"] },
       { id: "l2", width: 1, kinds: ["elite"], elitePool: ["jailer", "tidecaller"] },
+      { id: "l3", width: 1, kinds: ["elite"], elitePool: ["jailer", "tidecaller"] },
     ],
   };
 
   it("同幕双精英池不重复", () => {
     const map = generateActMap(act2ish, 12345);
-    const a = map[1].nodes[0].enemies?.[0];
-    const b = map[2].nodes[0].enemies?.[0];
+    const a = map[2].nodes[0].enemies?.[0];
+    const b = map[3].nodes[0].enemies?.[0];
     expect(a).toBeTruthy();
     expect(b).toBeTruthy();
     expect(a).not.toBe(b);

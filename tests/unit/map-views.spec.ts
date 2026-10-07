@@ -23,15 +23,20 @@ function mountView(component: Parameters<typeof mount>[0], setup?: (run: ReturnT
 }
 
 describe("S5 UI 流程视图挂载", () => {
-  it("MapView：分支地图共 12 个候选节点，当前层可进入", async () => {
+  it("MapView：全图可见，入口层唯一节点可进入", async () => {
     const { wrapper } = mountView(MapView);
     await nextTick();
     const run = useRunStore();
     run.startRun("bloodwright", 1);
     await nextTick();
-    expect(wrapper.findAll(".node")).toHaveLength(12);
-    // 入口层（l0）只有一个必经节点
-    expect(wrapper.findAll(".go")).toHaveLength(1);
+    // docs/48 §3.1：一幕 13~19 个节点（起点/祭坛/Boss 各 1，中间层 2~4）
+    const nodes = wrapper.findAll(".node");
+    expect(nodes.length).toBeGreaterThanOrEqual(13);
+    expect(nodes.length).toBeLessThanOrEqual(19);
+    // 全图可见（docs/48 §4）：节点全部渲染，不做雾隐
+    expect(nodes.length).toBe(run.view!.layers.flatMap((l) => l.nodes).length);
+    // 入口层（l0）只有一个必经节点，也是唯一可进入的
+    expect(wrapper.findAll(".node.reachable")).toHaveLength(1);
     wrapper.unmount();
   });
 

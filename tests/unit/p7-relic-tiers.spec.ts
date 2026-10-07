@@ -120,11 +120,11 @@ describe("1.0-A 新遗物效果（真实数据）", () => {
 });
 
 describe("1.0-A 存档 v6 → v7", () => {
-  it("旧档补 pickedRelic：血械回血泵、炉心回压力表", () => {
+  it("v6 进度档已不再回填 pickedRelic——整档在 12→13 作废（docs/48 §六）", () => {
     const bw = migrate({ version: 6, data: { run: { classId: "bloodwright", layerIndex: 1 }, deck: [] } });
     expect(bw?.version).toBe(SCHEMA_VERSION);
-    expect((bw?.data as { run: { pickedRelic?: string } }).run.pickedRelic).toBe("blood_pump");
+    expect(bw?.data).toBeNull();
     const en = migrate({ version: 6, data: { run: { classId: "engineer", layerIndex: 1 }, deck: [] } });
-    expect((en?.data as { run: { pickedRelic?: string } }).run.pickedRelic).toBe("pressuregauge");
+    expect(en?.data).toBeNull();
   });
 });

@@ -43,8 +43,8 @@ describe("S5 局外进度（runStore）", () => {
     const firstId = run.current!.id;
     run.advance();
     expect(run.run?.layerIndex).toBe(1);
-    // l1 是分支层：3 个候选，未选路时没有 current
-    expect(run.view?.layers[1].nodes).toHaveLength(3);
+    // l1 是分支层（列差 ≤1 的菱形收敛后为 2），未选路时没有 current
+    expect(run.view?.layers[1].nodes).toHaveLength(2);
     expect(run.current).toBeUndefined();
     run.pickNode(1);
     const secondId = run.current!.id;

@@ -8,7 +8,7 @@
 export const SAVE_NAMESPACE = "rustandblood";
 
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
-export const SCHEMA_VERSION = 12;
+export const SCHEMA_VERSION = 13;
 
 export type SaveSlot = "settings" | "progress" | "replay" | "codex" | "meta";
 
@@ -180,6 +180,15 @@ const migrations: Record<number, (data: unknown) => unknown> = {
     const record = data as Record<string, unknown>;
     if (!("achievements" in record) && !("clearedClasses" in record)) return record;
     return { ...record, tutorial: record["tutorial"] ?? null };
+  },
+  // 12 → 13（docs/48 §六）：地图从「每层抽签」改成 DAG，旧线性进度档无法无损映射。
+  // 裁决：**作废进行中的旧 run**（回标题页，progress 档置 null）；
+  // meta（图鉴/成就/解锁/教学）与 settings / codex / replay 原样通过。
+  12: (data) => {
+    if (typeof data !== "object" || data === null) return data;
+    const record = data as Record<string, unknown>;
+    if (!("run" in record) && !("deck" in record)) return record;
+    return null;
   },
 };
 
