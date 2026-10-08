@@ -800,7 +800,17 @@ export const useRunStore = defineStore("run", {
       if (payload) writeSlot("progress", payload);
     },
 
-    /** 读档并恢复"; 无档或损坏返回 false。 */
+    /**
+     * 确保内存里有「进行中的一局」（甲方 2026-10-08 反馈「继续游戏却从第一层开始」的防线）：
+     * 任何 run 视图在 run 未激活时先尝试**读档**；只有读不到才算真的没局。
+     * 视图里**绝不能用 `startRun()` 兜底**——那会用一局新游戏盖掉玩家的进度档。
+     */
+    ensureActive(): boolean {
+      if (this.active && this.run) return true;
+      return this.load();
+    },
+
+    /** 读档并恢复；无档或损坏返回 false。 */
     load(): boolean {
       const saved = readSlot<SavedRun | null>("progress", null);
       if (!saved || !saved.run || !Array.isArray(saved.deck)) return false;

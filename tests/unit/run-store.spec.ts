@@ -34,6 +34,29 @@ describe("S5 局外进度（runStore）", () => {
     expect(run.run?.layerIndex).toBe(0);
   });
 
+  it("ensureActive：内存里没有局时先读档，绝不用新局盖掉进度（甲方 2026-10-08）", () => {
+    const run = useRunStore();
+    run.startRun("engineer", 777);
+    for (let i = 0; i < 3; i += 1) {
+      run.pickNode(0);
+      run.advance();
+    }
+    expect(run.run?.layerIndex).toBe(3);
+    // 模拟刷新 / 直接进 run 视图：新 pinia，内存里没有局
+    setActivePinia(createPinia());
+    const fresh = useRunStore();
+    expect(fresh.active).toBe(false);
+    expect(fresh.ensureActive()).toBe(true);
+    expect(fresh.run?.classId).toBe("engineer");
+    expect(fresh.run?.layerIndex).toBe(3);
+  });
+
+  it("ensureActive：没有存档时返回 false（由调用方决定回标题）", () => {
+    setActivePinia(createPinia());
+    const fresh = useRunStore();
+    expect(fresh.ensureActive()).toBe(false);
+  });
+
   it("分支地图：pickNode 选路 + advance 推进并记录已清", () => {
     const run = useRunStore();
     run.startRun("bloodwright", 1);

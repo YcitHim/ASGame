@@ -23,7 +23,10 @@ const previewIndex = ref<number | null>(null);
 const previewCard = computed(() => (previewIndex.value === null ? null : run.deck[previewIndex.value] ?? null));
 
 onMounted(() => {
-  if (!run.active) void router.replace("/");
+  if (!run.ensureActive()) {
+    void router.replace("/");
+    return;
+  }
 });
 
 const enhancementChoices = computed(() => run.boonEnhancementChoices());

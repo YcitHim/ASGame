@@ -33,7 +33,7 @@ useStageFit(stage);
 onMounted(() => {
   meta.ensureLoaded();
   // 防呆：没有进行中的局 / 非法入口 → 回落职业选择
-  if (!run.active) {
+  if (!run.ensureActive()) {
     void router.replace("/class-select");
     return;
   }

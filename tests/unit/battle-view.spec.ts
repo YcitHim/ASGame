@@ -33,6 +33,9 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
   it("挂载后渲染玩家/敌人/手牌/结束回合，不抛运行时错误", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
+    // BattleView 现在要求「有进行中的一局」（甲方 2026-10-08）：
+    // 否则 /battle 会先读档、读不到就回标题。这些用例测的是战斗 UI，先开一局再挂载。
+    useRunStore().startRun("bloodwright", 1);
     const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
     await nextTick();
     await nextTick();
@@ -52,6 +55,9 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
   it("拖拽卡牌到敌人身上 = 直接出牌", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
+    // BattleView 现在要求「有进行中的一局」（甲方 2026-10-08）：
+    // 否则 /battle 会先读档、读不到就回标题。这些用例测的是战斗 UI，先开一局再挂载。
+    useRunStore().startRun("bloodwright", 1);
     const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
     await nextTick();
     await nextTick();
@@ -94,6 +100,9 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
   it("拖到非合法落点松手 = 取消，绝不替玩家出牌（docs/51 §三）", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
+    // BattleView 现在要求「有进行中的一局」（甲方 2026-10-08）：
+    // 否则 /battle 会先读档、读不到就回标题。这些用例测的是战斗 UI，先开一局再挂载。
+    useRunStore().startRun("bloodwright", 1);
     const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
     await nextTick();
     await nextTick();
@@ -125,6 +134,9 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
   it("拖回手牌区松手 = 取消（手牌区高亮「松手取消」）", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
+    // BattleView 现在要求「有进行中的一局」（甲方 2026-10-08）：
+    // 否则 /battle 会先读档、读不到就回标题。这些用例测的是战斗 UI，先开一局再挂载。
+    useRunStore().startRun("bloodwright", 1);
     const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
     await nextTick();
     await nextTick();
@@ -157,6 +169,7 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
   it("拖动中按 ESC = 取消出牌（不是打开设置）", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
+    useRunStore().startRun("bloodwright", 1);
     await router.push("/battle");
     const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
     await nextTick();
@@ -181,6 +194,9 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
   it("蓄力全程不泛红；红屏只压在释放那一帧（甲方 2026-10-07）", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
+    // BattleView 现在要求「有进行中的一局」（甲方 2026-10-08）：
+    // 否则 /battle 会先读档、读不到就回标题。这些用例测的是战斗 UI，先开一局再挂载。
+    useRunStore().startRun("bloodwright", 1);
     const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
     await nextTick();
     await nextTick();

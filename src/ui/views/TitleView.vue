@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, useTemplateRef } from "vue";
+import { computed, onMounted, ref, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
 import { loadGameContent, t } from "@/data/load";
 import EmberField from "@/ui/components/EmberField.vue";
@@ -8,7 +8,7 @@ import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
 import { useTutorialStore } from "@/stores/tutorial";
 import { APP_RELEASE } from "@/ui/build-info";
-import { hasSlot, readSlot } from "@/systems/save";
+import { readSlot } from "@/systems/save";
 
 const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
@@ -16,12 +16,21 @@ const router = useRouter();
 const run = useRunStore();
 const meta = useMetaStore();
 const tutorial = useTutorialStore();
-/** legacy 档（一幕已通关的旧档）：docs/40 §2.1 不提供继续远征入口。 */
-function isLegacySave(): boolean {
-  const saved = readSlot<{ run?: { legacy?: boolean } } | null>("progress", null);
-  return saved?.run?.legacy === true;
+/**
+ * 进度档：读不出来（迁移作废 / 版本不匹配 / 损坏）返回 null。
+ * 甲方 2026-10-08 反馈「继续按钮点不了」——根因是以前只看 slot 在不在，
+ * 档本身读不出来时按钮仍是亮的，点了什么都不发生。现在改成「能读出来才算能继续」。
+ */
+function loadableProgress(): { run?: { legacy?: boolean } } | null {
+  return readSlot<{ run?: { legacy?: boolean } } | null>("progress", null);
 }
-const canContinue = computed(() => hasSlot("progress") && !isLegacySave());
+const canContinue = computed(() => {
+  const saved = loadableProgress();
+  // legacy 档（一幕已通关的旧档）：docs/40 §2.1 不提供继续远征入口
+  return saved !== null && saved.run !== undefined && saved.run.legacy !== true;
+});
+/** 读档失败时给一句明白话，别让按钮像坏了一样（甲方 2026-10-08）。 */
+const notice = ref("");
 onMounted(() => meta.ensureLoaded());
 
 /**
@@ -74,6 +83,7 @@ function onMenu(key: MenuKey, enabled: boolean): void {
     void router.push("/class-select");
   } else if (key === "continue") {
     if (run.load()) void router.push("/map");
+    else notice.value = "进度档读不出来（可能来自旧版本）——点「开始远征」开新的一局。";
   } else if (key === "tutorial") {
     if (!tutorial.resume()) return;
     // 战斗章直接回战场；结业章没有战斗，才回教学页
@@ -91,6 +101,8 @@ function onMenu(key: MenuKey, enabled: boolean): void {
         <h1 class="title">锈 与 血</h1>
         <p class="subtitle">RUST &amp; BLOOD · 血肉科技的远征</p>
       </header>
+
+      <p v-if="notice" class="save-notice">{{ notice }}</p>
 
       <nav class="menu">
         <button
@@ -176,6 +188,19 @@ function onMenu(key: MenuKey, enabled: boolean): void {
   font-size: 12px;
   letter-spacing: 0.42em;
   color: var(--gold-dim);
+}
+
+/* 读档失败提示（甲方 2026-10-08）：别让「继续远征」看起来像坏了 */
+.save-notice {
+  position: relative;
+  z-index: 2;
+  margin-top: 18px;
+  max-width: 420px;
+  font-size: 11px;
+  line-height: 1.8;
+  letter-spacing: 0.1em;
+  text-align: center;
+  color: var(--blood-hi);
 }
 
 .menu {

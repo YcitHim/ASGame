@@ -18,7 +18,10 @@ const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 
 onMounted(() => {
-  if (!run.active) void router.replace("/");
+  if (!run.ensureActive()) {
+    void router.replace("/");
+    return;
+  }
 });
 
 const TYPE_ORDER: Record<string, number> = { attack: 0, skill: 1, power: 2, status: 3, curse: 4 };

@@ -18,7 +18,9 @@ const notice = ref("");
 const usedHere = computed(() => !run.canEnhanceHere);
 
 onMounted(() => {
-  if (!run.active) run.startRun();
+  // 没有「直接进祭坛」的合法入口：先读档，读不到回标题——
+  // 绝不 startRun() 兜底（会用新游戏盖掉玩家的进度，甲方 2026-10-08）
+  if (!run.ensureActive()) void router.replace("/");
 });
 
 /** 三选一：由 core/map 的 reward 流按节点抽取，再按可附着目标过滤。 */

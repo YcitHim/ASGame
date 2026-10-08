@@ -69,7 +69,8 @@ const rewardCards = computed<RewardCard[]>(() =>
 );
 
 onMounted(() => {
-  if (!run.active) {
+  // 先尝试读档再判「没局」（甲方 2026-10-08）：否则「继续」可能把人弹回标题
+  if (!run.ensureActive()) {
     void router.replace("/");
     return;
   }

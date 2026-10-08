@@ -136,6 +136,12 @@ onMounted(() => {
     if (!store.battle || store.over || store.runKey !== expected) startTutorialBattle();
     return;
   }
+  // 没有「进行中的一局」（直接访问 /battle、旧标签页、刷新）→ 先读档；
+  // 读不到就回标题，**绝不在这里开新局**（甲方反馈：会用新游戏盖掉进度）。
+  if (!run.ensureActive()) {
+    void router.replace("/");
+    return;
+  }
   // Boss 首战：意图标签破例一次（一局只一次），第一次行动后自动收起
   if (run.current?.kind === "boss" && !run.bossIntentHintShown) {
     run.bossIntentHintShown = true;
@@ -626,6 +632,8 @@ function skipTutorial(): void {
 }
 
 function back(): void {
+  // 回标题前先把进度写实（甲方 2026-10-08）：结算页退出不能丢这一局的推进
+  run.persist();
   void router.push("/");
 }
 

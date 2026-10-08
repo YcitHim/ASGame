@@ -38,7 +38,10 @@ const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 
 onMounted(() => {
-  if (!run.active) void router.replace("/");
+  if (!run.ensureActive()) {
+    void router.replace("/");
+    return;
+  }
   // 首遇提示（docs/42 §五）：进地图讲选路；到了 Boss 层提示"别急着敲门"
   tips.triggerUnlessTaught("map_route", taughtByTutorial.value);
   if (run.current?.kind === "boss") tips.trigger("boss_warning");

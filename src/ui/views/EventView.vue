@@ -26,7 +26,10 @@ const offers = computed(() => run.eventChoices ? run.offers(run.eventChoices) : 
 const chosenOffer = computed(() => offers.value.find((o) => o.id === selectedOffer.value) ?? null);
 
 onMounted(() => {
-  if (!run.active) void router.replace("/");
+  if (!run.ensureActive()) {
+    void router.replace("/");
+    return;
+  }
 });
 
 function optionLabel(id: string): string {

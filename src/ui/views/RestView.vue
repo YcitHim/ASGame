@@ -20,7 +20,10 @@ const node = computed(() => run.current);
 const healAmount = computed(() => Math.round(run.maxHp * REST_HEAL_RATIO));
 
 onMounted(() => {
-  if (!run.active) void router.replace("/");
+  if (!run.ensureActive()) {
+    void router.replace("/");
+    return;
+  }
   // 首遇提示（docs/42 §五）：篝火能干什么
   tips.triggerUnlessTaught("rest", tutorial.finished);
 });
