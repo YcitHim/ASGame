@@ -54,4 +54,35 @@ describe("S3.6 调试控制台指令（G4）", () => {
     expect(after.player.hp).toBe(before.player.hp);
     expect(after.piles.hand).toHaveLength(before.piles.hand.length);
   });
+
+  /** 调试台回执（DebugMessage）：测试里统一从事件流里取出来。 */
+  function reply(result: { events: readonly { type: string }[] }): { ok: boolean; message: string } {
+    const evt = result.events.find((e) => e.type === "DebugMessage") as
+      | { ok: boolean; message: string }
+      | undefined;
+    if (!evt) throw new Error("没有 DebugMessage 事件");
+    return evt;
+  }
+
+  it("help：返回指令表（含 cards / give card）", () => {
+    const res = debug(started(), "help");
+    expect(reply(res).ok).toBe(true);
+    expect(reply(res).message).toContain("help");
+    expect(reply(res).message).toContain("cards");
+    expect(reply(res).message).toContain("give card <id>");
+  });
+
+  it("cards：列出卡牌 id，可按关键字过滤", () => {
+    expect(reply(debug(started(), "cards")).message).toMatch(/^\d+ 张：/);
+    expect(reply(debug(started(), "cards bloodbolt")).message).toContain("bloodbolt");
+    expect(reply(debug(started(), "cards zzzz")).ok).toBe(false);
+  });
+
+  it("add card 与 give card 同义", () => {
+    const base = started();
+    const viaAdd = debug(base, "add card bloodbolt").state;
+    expect(viaAdd.piles.hand.some((id) => viaAdd.cardInstances[id].cardId === "bloodbolt")).toBe(true);
+    const bad = debug(base, "add card not_a_card").state;
+    expect(bad.piles.hand).toHaveLength(base.piles.hand.length);
+  });
 });

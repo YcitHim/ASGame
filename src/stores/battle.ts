@@ -139,6 +139,8 @@ export const useBattleStore = defineStore("battle", {
     bigFloaterSeq: 0,
     playing: false,
     message: "",
+    /** 调试台最后一条回执（甲方 2026-10-08）：控制台「执行」后能立刻看到成功/失败 */
+    debugFeedback: "",
     /** 提示所属回合（docs/41 §2.1）：TurnStarted 到达时按回合号清理上一回合的提示 */
     messageTurn: 0,
     /** 提示性质：error = 打牌失败等报错（会定时消散）；info = 「选择目标」等操作引导（不自动消散） */
@@ -305,6 +307,8 @@ export const useBattleStore = defineStore("battle", {
       // 提示生命周期（docs/41 §2.1）：新回合到达 → 上一回合的提示必须消失
       for (const event of result.events) {
         if (event.type === "TurnStarted" && event.turn > this.messageTurn) this.clearMessage();
+        // 调试台回执（甲方 2026-10-08）：只在日志抽屉的控制台里显示，不进中央提示
+        if (event.type === "DebugMessage") this.debugFeedback = event.message;
         // 教学步骤判定与首遇提示走事件流本身（不走动画回调）：
         // 玩家点「跳过」时动画不下发事件，但教程与说明必须照常推进（docs/41 §4.1/§4.3）
         if (event.type === "CardPlayed") {

@@ -9,7 +9,6 @@ import { useRunStore } from "@/stores/run";
 import { useSettingsStore } from "@/stores/settings";
 import { useTipsStore } from "@/stores/tips";
 import { useTutorialStore } from "@/stores/tutorial";
-import { isDebugEnabled } from "@/systems/debug";
 import { useStageFit } from "@/ui/composables/useStageFit";
 import { actCopy } from "@/ui/act-copy";
 import { TUTORIAL_TITLE } from "@/ui/tutorial";
@@ -38,7 +37,6 @@ const { scale: stageScale } = useStageFit(stage);
 const game = loadGameContent();
 const showLog = ref(false);
 const shaking = ref(false);
-const isDev = isDebugEnabled();
 /** 神眼取牌浮层开合（docs/58 §七.2）；只做表现，可用性由 core 判定 */
 const eyeOpen = ref(false);
 
@@ -655,14 +653,6 @@ function quitToTitleKeepRun(): void {
         <div class="r">
           <span v-if="tutorial.active" @click="skipTutorial">跳过教学</span>
           <span @click="showLog = !showLog">{{ showLog ? "收起日志" : "日志" }}</span>
-          <button
-            class="skip-btn"
-            :disabled="!store.playing"
-            :title="store.playing ? '跳过本段动画' : '当前没有动画'"
-            @click="store.skip()"
-          >
-            跳过
-          </button>
           <span @click="store.toggleSpeed()">{{ store.speed }}×</span>
           <span class="deck-entry" @click="router.push('/deck')">卡组</span>
           <span @click="router.push('/settings')">设置</span>
@@ -951,11 +941,11 @@ function quitToTitleKeepRun(): void {
       <!-- 日志抽屉 -->
       <div v-if="showLog" class="log-drawer">
         <BattleLog :entries="logEntries" />
+        <!-- 调试指令台（甲方 2026-10-08）：日志抽屉里常驻，输入 help 看全部指令 -->
         <DebugConsole
-        v-if="isDev || settings.values.developerMode"
-        :feedback="store.message"
-        @command="store.debug($event)"
-      />
+          :feedback="store.debugFeedback || store.message"
+          @command="store.debug($event)"
+        />
       </div>
 
       <!-- 神眼取牌（docs/58 §七.2）：从牌库任选一张入手 -->
@@ -1075,16 +1065,6 @@ function quitToTitleKeepRun(): void {
 .topbar .r span:hover { color: var(--gold); }
 /* 回主菜单：战斗中途唯一出口，给一点可见度，但不喧宾夺主 */
 .topbar .r .menu-entry { color: var(--ink-bone); opacity: 0.9; }
-/* 跳过：原来只有一个 17×10px 的文字，点不中就像"按了没用"（玩家反馈） */
-.skip-btn {
-  padding: 4px 10px; margin: -4px 0;
-  font-size: 12px; letter-spacing: 0.24em; color: var(--ink-dim);
-  border: 1px solid rgba(110, 88, 54, 0.45); border-radius: var(--radius-sm);
-  background: rgba(18, 16, 14, 0.7);
-}
-.skip-btn:hover:not(:disabled) { color: var(--gold); border-color: var(--gold); }
-.skip-btn:disabled { opacity: 0.4; cursor: default; }
-
 /* z-index 12：必须高过 .field-band（10）——两者矩形重叠，
    同层级时"后出现的赢"，敌人状态栏会被玩家面板整块盖住（玩家反馈的 Boss 状态栏看不见）。 */
 .enemy-zone {

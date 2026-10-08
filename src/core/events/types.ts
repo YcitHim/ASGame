@@ -54,6 +54,8 @@ export interface EventPayloadMap {
   CardExhausted: { cardId: string };
   /** 销毁（祭血狂热）：本场战斗移出牌组、进消耗堆，战斗结束随牌组归还 */
   CardDestroyed: { cardId: string };
+  /** 调试台回执（甲方 2026-10-08）：指令成功/失败的一句话，日志抽屉里的控制台读它 */
+  DebugMessage: { ok: boolean; message: string };
   CardRetained: { cardId: string };
   /** 硬性要求：携带修饰层明细（战斗日志与数值排查全靠它）。 */
   DamageDealt: {

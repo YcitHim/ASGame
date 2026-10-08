@@ -5,37 +5,36 @@
  * （保证所有 bug 复现步骤都能用同样的指令描述）。
  */
 import type { DomainEvent } from "@/core/events";
+import { DEBUG_HELP } from "@/core/combat/debug";
 
 export interface DebugCommandSpec {
   readonly command: string;
   readonly description: string;
 }
 
-/** 0.1 指令目录（与 core/combat/debug.ts 一一对应）。 */
-export const DEBUG_COMMANDS: readonly DebugCommandSpec[] = [
-  { command: "noop", description: "空操作" },
-  { command: "set hp <n>", description: "设置玩家 HP" },
-  { command: "set energy <n>", description: "设置能量" },
-  { command: "add buff <id> <stacks> [duration]", description: "施加 Buff" },
-  { command: "give card <id>", description: "把卡加入手牌" },
-  { command: "draw <n>", description: "抽 N 张" },
-  { command: "kill <enemyId>", description: "击杀敌人" },
-  { command: "seed <n>", description: "重设随机种子" },
-];
+/**
+ * 指令目录：**从 core 的 DEBUG_HELP 派生**，不再手抄一份（甲方 2026-10-08）。
+ * 以前两边各写一套，加指令时漏一边就会「执行器认识、控制台不显示」。
+ */
+export const DEBUG_COMMANDS: readonly DebugCommandSpec[] = DEBUG_HELP.map((h) => ({
+  command: h.usage,
+  description: h.desc,
+}));
 
 /** 进度：菜单/商店等占位（S5 接地图）。 */
 export function isDebugEnabled(): boolean {
   return import.meta.env.DEV;
 }
 
-/** 调试面板里给玩家看的快捷指令（取目录前若干条 + 常用）。 */
+/** 调试面板里给玩家看的快捷指令（一键点到底，不用记拼写）。 */
 export const DEBUG_QUICK: readonly string[] = [
-  "set hp 20",
+  "help",
+  "cards blood",
+  "give card bloodbolt",
   "set energy 9",
   "add buff strength 3",
-  "give card bloodbolt",
-  "kill rust_hound",
   "draw 2",
+  "kill rust_hound",
 ];
 
 /** 事件 → 单行调试文本（日志面板兜底用）。 */

@@ -321,9 +321,12 @@ export function reduce(state: BattleState, action: Action): ReduceResult {
       // 祭血狂热（甲方 2026-10-08）：兑现「销毁一张手牌」的待选
       if (draft.phase === "playerAction") destroyFromHand(draft, sink, action.instanceId);
       break;
-    case "DebugCommand":
-      executeDebugCommand(draft, sink, action.command);
+    case "DebugCommand": {
+      // 回执进事件流，控制台才有反馈（以前返回值被丢掉，按了「执行」看不出成功没成功）
+      const result = executeDebugCommand(draft, sink, action.command);
+      sink.emit("DebugMessage", { ok: result.ok, message: result.message });
       break;
+    }
     case "Noop":
       break;
     default:

@@ -21,10 +21,44 @@ export interface DebugResult {
   readonly message: string;
 }
 
+/**
+ * 指令帮助合集的唯一来源（甲方 2026-10-08）：控制台 `help` 直接打印它，
+ * UI 侧的指令目录也从它派生，避免「文档写了一套、执行器只有另一套」。
+ */
+export interface DebugCommandSpec {
+  readonly usage: string;
+  readonly desc: string;
+}
+
+export const DEBUG_HELP: readonly DebugCommandSpec[] = [
+  { usage: "help", desc: "显示这份指令表" },
+  { usage: "cards [关键字]", desc: "列出卡牌 id（可按关键字过滤，如 cards blood）" },
+  { usage: "give card <id>", desc: "把一张卡加入手牌（add card 同义）" },
+  { usage: "draw <n>", desc: "抽 N 张牌" },
+  { usage: "set hp <n>", desc: "设置玩家 HP" },
+  { usage: "set energy <n>", desc: "设置能量" },
+  { usage: "add buff <id> <stacks> [duration]", desc: "给自己挂状态（如 strength / timid）" },
+  { usage: "kill <enemyId>", desc: "击杀指定敌人" },
+  { usage: "intent <enemyId> attack|debuff|charge …", desc: "钉死某只敌人的意图" },
+  { usage: "seed <n>", desc: "重设随机种子" },
+  { usage: "noop", desc: "空操作" },
+];
+
 function int(token: string | undefined): number | null {
   if (token === undefined) return null;
   const n = Number(token);
   return Number.isFinite(n) ? Math.trunc(n) : null;
+}
+
+/** give card / add card 共用：注册过的卡才进手牌，未注册报错（调试台不该静默吞掉拼错的 id）。 */
+function giveCard(draft: Draft, cardId: string | undefined): DebugResult {
+  if (!cardId) return { ok: false, message: "用法：give card <id>（add card <id> 同义）" };
+  if (!draft.content.cards.has(cardId)) return { ok: false, message: `卡牌未注册：${cardId}（用 cards 查 id）` };
+  const index = Object.keys(draft.cardInstances).length + 1;
+  const instanceId = `${cardId}#dbg${index}`;
+  draft.cardInstances[instanceId] = { instanceId, cardId, upgraded: false, enhancements: [] };
+  draft.hand.push(instanceId);
+  return { ok: true, message: `已加入手牌：${cardId}` };
 }
 
 export function executeDebugCommand(draft: Draft, sink: EventSink, command: string): DebugResult {
@@ -34,6 +68,22 @@ export function executeDebugCommand(draft: Draft, sink: EventSink, command: stri
   switch (head) {
     case "noop":
       return { ok: true, message: "noop" };
+
+    case "help": {
+      return { ok: true, message: DEBUG_HELP.map((h) => `${h.usage}\n    ${h.desc}`).join("\n") };
+    }
+
+    case "cards": {
+      // 加卡前先查 id：卡池 100+，玩家/策划记不住拼写
+      const filter = (tokens[1] ?? "").toLowerCase();
+      const ids = [...draft.content.cards.keys()].sort().filter((id) => id.includes(filter));
+      if (ids.length === 0) return { ok: false, message: `没有匹配的卡：${filter || "(空)"}` };
+      const shown = ids.slice(0, 40);
+      return {
+        ok: true,
+        message: `${ids.length} 张：${shown.join(" ")}${ids.length > shown.length ? " …" : ""}`
+      };
+    }
 
     case "set": {
       const what = tokens[1];
@@ -51,7 +101,9 @@ export function executeDebugCommand(draft: Draft, sink: EventSink, command: stri
     }
 
     case "add": {
-      if (tokens[1] !== "buff") return { ok: false, message: "用法：add buff <id> <stacks> [duration]" };
+      // add card <id> 与 give card <id> 同义（甲方 2026-10-08：加卡指令更顺手）
+      if (tokens[1] === "card") return giveCard(draft, tokens[2]);
+      if (tokens[1] !== "buff") return { ok: false, message: "用法：add buff <id> <stacks> [duration] 或 add card <id>" };
       const id = tokens[2] as BuffId | undefined;
       const stacks = int(tokens[3]);
       if (!id || stacks === null) return { ok: false, message: "用法：add buff <id> <stacks> [duration]" };
@@ -63,14 +115,8 @@ export function executeDebugCommand(draft: Draft, sink: EventSink, command: stri
     }
 
     case "give": {
-      if (tokens[1] !== "card" || !tokens[2]) return { ok: false, message: "用法：give card <id>" };
-      const cardId = tokens[2];
-      if (!draft.content.cards.has(cardId)) return { ok: false, message: `卡牌未注册：${cardId}` };
-      const index = Object.keys(draft.cardInstances).length + 1;
-      const instanceId = `${cardId}#dbg${index}`;
-      draft.cardInstances[instanceId] = { instanceId, cardId, upgraded: false, enhancements: [] };
-      draft.hand.push(instanceId);
-      return { ok: true, message: `已加入手牌：${cardId}` };
+      if (tokens[1] !== "card") return { ok: false, message: "用法：give card <id>" };
+      return giveCard(draft, tokens[2]);
     }
 
     case "draw": {
@@ -135,6 +181,6 @@ export function executeDebugCommand(draft: Draft, sink: EventSink, command: stri
     }
 
     default:
-      return { ok: false, message: `未知指令 "${head}"` };
+      return { ok: false, message: `未知指令 "${head}"（输入 help 查看全部指令）` };
   }
 }

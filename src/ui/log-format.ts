@@ -130,6 +130,13 @@ export function describeEvent(event: DomainEvent, names: Record<string, string> 
       return { seq: event.seq, type: event.type, text: `${event.cardId} 被消耗` };
     case "CardRetained":
       return { seq: event.seq, type: event.type, text: `${event.cardId} 保留` };
+    case "CardDestroyed":
+      return { seq: event.seq, type: event.type, text: `${event.cardId} 被销毁` };
+    case "DebugMessage": {
+      // 控制台回执（甲方 2026-10-08）：日志里只留第一行，help 那种多行表不刷屏
+      const first = event.message.split("\n")[0] ?? "";
+      return { seq: event.seq, type: event.type, text: `调试：${first}${event.ok ? "" : "（失败）"}` };
+    }
     default: {
       const fallback = event as DomainEvent;
       return { seq: fallback.seq, type: fallback.type, text: fallback.type };

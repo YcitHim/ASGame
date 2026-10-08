@@ -27,7 +27,7 @@ function submit(): void {
       <button v-for="q in QUICK" :key="q" class="chip" @click="emit('command', q)">{{ q }}</button>
     </div>
     <div class="inputline">
-      <input v-model="input" placeholder="调试指令…" @keydown.enter="submit" />
+      <input v-model="input" placeholder="输入指令，help 查看全部…" @keydown.enter="submit" />
       <button class="go" @click="submit">执行</button>
     </div>
     <div class="feedback">{{ feedback }}</div>
@@ -47,5 +47,8 @@ input {
 }
 input:focus { outline: none; border-color: var(--gold); }
 .go { border: 1px solid var(--gold); color: var(--gold); padding: 2px 10px; font-size: 11px; }
-.feedback { margin-top: 4px; min-height: 14px; color: var(--gold-dim); }
+.feedback {
+  margin-top: 4px; min-height: 14px; max-height: 140px; overflow-y: auto;
+  color: var(--gold-dim); white-space: pre-line;
+}
 </style>
