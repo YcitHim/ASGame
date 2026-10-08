@@ -4,6 +4,8 @@ import { useRouter } from "vue-router";
 import { t } from "@/data/load";
 import { useRunStore } from "@/stores/run";
 import { useStageFit } from "@/ui/composables/useStageFit";
+import CardView from "@/ui/components/CardView.vue";
+import CardUpgradeDialog from "@/ui/components/CardUpgradeDialog.vue";
 
 const router = useRouter();
 const run = useRunStore();
@@ -13,6 +15,12 @@ useStageFit(stage);
 type Step = "copy" | "boon" | "upgrade" | "enhance" | "enhance-target";
 const step = ref<Step>("copy");
 const chosenEnh = ref("");
+/**
+ * 升级预览（甲方 2026-10-08）：点开一张牌先看「原版 vs 升级后」，确认后才真的升级。
+ * 以前这里只列一排卡名，玩家根本不知道升级后是什么数。
+ */
+const previewIndex = ref<number | null>(null);
+const previewCard = computed(() => (previewIndex.value === null ? null : run.deck[previewIndex.value] ?? null));
 
 onMounted(() => {
   if (!run.active) void router.replace("/");
@@ -46,6 +54,11 @@ function pickBoon(kind: "a" | "b" | "c"): void {
 function doUpgrade(index: number): void {
   run.applyBoon("upgrade", index);
   finish();
+}
+/** 对照浮层里点「升级这张」才真正落地；取消只关浮层。 */
+function confirmUpgrade(): void {
+  if (previewIndex.value === null) return;
+  doUpgrade(previewIndex.value);
 }
 function doEnhance(index: number): void {
   run.applyBoon("enhance", index, chosenEnh.value);
@@ -82,10 +95,32 @@ function doEnhance(index: number): void {
 
       <template v-else-if="step === 'upgrade'">
         <h1 class="head">默 记 祷 文</h1>
-        <p class="sub">选择一张牌免费升级</p>
-        <div class="deck">
-          <button v-for="(card, i) in run.deck" :key="i" class="deck-card" :disabled="card.upgraded" @click="doUpgrade(i)">
-            {{ t(`card.${card.cardId}.name`, card.cardId) }}{{ card.upgraded ? "（已升级）" : "" }}
+        <p class="sub">点击卡牌查看升级后的效果 —— 看清再决定升不升</p>
+        <div class="upgrade-grid">
+          <button
+            v-for="(card, i) in run.deck"
+            :key="i"
+            class="upgrade-card"
+            :class="{ upgraded: card.upgraded }"
+            :disabled="card.upgraded"
+            @click="previewIndex = i"
+          >
+            <span class="cap">{{ card.upgraded ? "已升级" : "查看升级" }}</span>
+            <CardView
+              :card-id="card.cardId"
+              :cost="run.cardDef(card.cardId)?.cost ?? 0"
+              :charge-cost="run.cardDef(card.cardId)?.chargeCost ?? 0"
+              :keywords="run.cardDef(card.cardId)?.keywords ?? []"
+              :type="run.cardDef(card.cardId)?.type ?? 'skill'"
+              :rarity="run.cardDef(card.cardId)?.rarity ?? 'common'"
+              :playable="true"
+              :selected="false"
+              :index="0"
+              :hand-count="1"
+              :enhancements="card.enhancements.length"
+              :enhancement-ids="card.enhancements"
+              display
+            />
           </button>
         </div>
       </template>
@@ -117,6 +152,14 @@ function doEnhance(index: number): void {
         </div>
       </template>
     </div>
+
+    <!-- 升级对照（甲方 2026-10-08）：点开一张牌先看原版 vs 升级后，再决定升不升 -->
+    <CardUpgradeDialog
+      v-if="step === 'upgrade' && previewCard"
+      :card-id="previewCard.cardId"
+      @confirm="confirmUpgrade"
+      @cancel="previewIndex = null"
+    />
   </div>
 </template>
 
@@ -139,4 +182,20 @@ function doEnhance(index: number): void {
 .deck { display: flex; flex-wrap: wrap; gap: 8px; width: 720px; justify-content: center; }
 .deck-card { padding: 8px 14px; font-size: 12px; color: var(--ink-bone); border: 1px solid rgba(176, 141, 74, 0.4); border-radius: var(--radius-sm); background: linear-gradient(165deg, #1c1915, #12100e); cursor: pointer; }
 .deck-card:disabled { opacity: 0.35; cursor: not-allowed; }
+/* 升级选择（甲方 2026-10-08）：像图鉴一样摆卡面，点开看升级面 */
+.upgrade-grid {
+  display: flex; flex-wrap: wrap; gap: 14px 16px;
+  justify-content: center;
+  width: 1040px; max-height: 430px;
+  overflow-y: auto;
+  padding: 18px 6px 6px;
+}
+.upgrade-card { position: relative; padding: 0; background: none; border: none; cursor: pointer; }
+.upgrade-card:hover:not(:disabled) { transform: translateY(-4px); }
+.upgrade-card:disabled { opacity: 0.45; cursor: default; }
+.upgrade-card .cap {
+  position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; letter-spacing: 0.2em; color: var(--gold-dim); white-space: nowrap;
+}
+.upgrade-card.upgraded .cap { color: var(--ink-dim); }
 </style>
