@@ -474,6 +474,17 @@ export const useBattleStore = defineStore("battle", {
       this.dispatch({ type: "PickFromDraw", actionId: `eye-${++actionCounter}`, instanceId });
     },
 
+    /**
+     * 祭血狂热「销毁」（甲方 2026-10-08）：从**手牌**选一张，本场战斗移出牌组（进消耗堆），
+     * 战斗结束随牌组归还。合法性由 core 兜底（destroyPending > 0 且牌在手牌里）。
+     */
+    destroyFromHand(instanceId: string): void {
+      if (!this.battle || this.playing || this.over) return;
+      if (this.battle.phase !== "playerAction") return;
+      this.clearMessage();
+      this.dispatch({ type: "DestroyFromHand", actionId: `destroy-${++actionCounter}`, instanceId });
+    },
+
     debug(command: string): string {
       if (!this.battle) return "无战斗";
       const before = this.battle;

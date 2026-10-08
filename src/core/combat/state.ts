@@ -134,6 +134,8 @@ export interface BattleState {
   readonly attackCardsPlayedThisTurn: number;
   /** 本回合神眼是否已用（每回合一次，docs/58 §七.2） */
   readonly eyeUsedThisTurn: boolean;
+  /** 待玩家选择销毁的手牌张数（祭血狂热「销毁」；0 = 无待选） */
+  readonly destroyPending: number;
   /** 延迟结算队列（甲方 2026-10-08）：回合开始逐个递减并结算到期项 */
   readonly delayedEffects: readonly DelayedEffect[];
   /** 事件全局序号计数器 */
@@ -286,6 +288,7 @@ export function createBattleState(config: BattleConfig): BattleState {
     selfHpSpentThisTurn: 0,
     attackCardsPlayedThisTurn: 0,
     eyeUsedThisTurn: false,
+    destroyPending: 0,
     delayedEffects: [],
     eventSeq: 0,
     content,

@@ -291,7 +291,8 @@ export function dealDamage(draft: Draft, sink: EventSink, args: DamageArgs): voi
   });
   if (hpLost > 0) {
     sink.emit("HpLost", { targetId: args.targetId, value: hpLost, reason: "damage" });
-    // 「本回合事件回看」：只记玩家被攻击掉血（血迹自伤 / 污染反噬不算，docs/16 P2.3）
+    // 「本回合事件回看」：记玩家掉血。受击在这里记；卖血（血契自伤）在 loseHp 里记；
+    // 污染反噬不算（docs/16 P2.3 修订，甲方 2026-10-08）
     if (args.targetId === PLAYER_ID) draft.tookDamageThisTurn = true;
     // 嗜血「造伤」口径（docs/58 §四）：玩家来源且真的掉血（未击穿格挡的攻击不算）
     if (args.actorId === PLAYER_ID) draft.dealtDamageThisTurn += hpLost;
@@ -481,6 +482,10 @@ export function loseHp(
   unit.hp -= lost;
   // 嗜血「自伤」口径（docs/58 §四）：只认血契 / 血迹自伤。受击掉血与反噬掉血都不算。
   if (targetId === PLAYER_ID && reason === "bloodpact") draft.selfHpSpentThisTurn += lost;
+  // 但「本回合受过伤害」把卖血也算进去（甲方 2026-10-08 反馈）：
+  // 以前只认受击掉血，导致「先卖血 → 再打以血还血」第二段不触发。
+  // 反噬（污染 / 过载）依旧不算——那是惩罚不是「受伤」。
+  if (targetId === PLAYER_ID && reason === "bloodpact") draft.tookDamageThisTurn = true;
   sink.emit("HpLost", { targetId, value: lost, reason });
   if (unit.hp === 0) killUnit(draft, sink, targetId);
 }
@@ -733,6 +738,22 @@ export function resolveCorroding(draft: Draft, sink: EventSink): void {
  * 神眼选牌（docs/58 §七.2）：从**牌库**任选一张加入手牌，每回合一次。
  * 只做「搬运」，不消耗能量；颠倒诅咒下新入手的牌同样吃到随机费用。
  */
+/**
+ * 祭血狂热「销毁」（甲方 2026-10-08）：从**手牌**选一张，本场战斗移出牌组（进消耗堆），
+ * 战斗结束随牌组归还。合法性由 core 兜底（必须有待选额度、牌必须在手牌里）。
+ */
+export function destroyFromHand(draft: Draft, sink: EventSink, instanceId: string): boolean {
+  if (draft.destroyPending <= 0) return false;
+  const index = draft.hand.indexOf(instanceId);
+  if (index < 0) return false;
+  draft.hand.splice(index, 1);
+  draft.exhaust.push(instanceId);
+  draft.destroyPending -= 1;
+  const instance = draft.cardInstances[instanceId];
+  if (instance) sink.emit("CardDestroyed", { cardId: instance.cardId });
+  return true;
+}
+
 export function pickFromDraw(draft: Draft, sink: EventSink, instanceId: string): boolean {
   if (!traitEyeAvailable(draft)) return false;
   const index = draft.draw.indexOf(instanceId);
@@ -1304,6 +1325,14 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
     case "summon": {
       // 亡语召唤（docs/40 §五-6）：tide_swarm 死亡时生 1 只 tide_mite
       if (effect.enemyId) summonUnit(draft, sink, ctx.actorId, effect.enemyId, effect.count ?? 1);
+      break;
+    }
+    case "destroyHand": {
+      // 祭血狂热「销毁」（甲方 2026-10-08）：从手牌选 value 张，本场战斗移出牌组（进消耗堆），
+      // 战斗结束随牌组归还。需要玩家选择 → 先挂起，由 DestroyFromHand 动作逐张兑现；
+      // 手牌为空则无事发生（不挂起）。回合结束时仍未选则由 endTurn 自动补结算。
+      const want = Math.max(1, Math.trunc(effect.value ?? 1));
+      draft.destroyPending += Math.min(want, draft.hand.length);
       break;
     }
     case "gainModifier":

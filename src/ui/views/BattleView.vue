@@ -204,6 +204,16 @@ function chooseFromDraw(instanceId: string): void {
   store.pickFromDraw(instanceId);
 }
 
+/**
+ * 祭血狂热「销毁」（甲方 2026-10-08）：打出后必须从手牌选一张，本场战斗移出牌组（战后归还）。
+ * 待选额度在 core（`destroyPending`），UI 只在 >0 时弹出强制浮层；选完额度归零自动收起。
+ */
+const destroyPending = computed(() => state.value?.destroyPending ?? 0);
+const handPile = computed(() => state.value?.piles.hand ?? []);
+function chooseDestroy(instanceId: string): void {
+  store.destroyFromHand(instanceId);
+}
+
 // 用掉本回合名额 / 回合切换后，浮层必须收起——否则会停在「已不可选」的旧状态上
 watch(eyeReady, (ready) => {
   if (!ready) eyeOpen.value = false;
@@ -955,6 +965,19 @@ function quitToTitleKeepRun(): void {
         :instances="state.cardInstances"
         @pick="chooseFromDraw"
         @close="eyeOpen = false"
+      />
+
+      <!-- 祭血狂热「销毁」（甲方 2026-10-08）：从手牌选一张，本场战斗移出牌组、战斗结束归还 -->
+      <LibraryPicker
+        v-if="state && destroyPending > 0 && state.phase === 'playerAction'"
+        :instance-ids="handPile"
+        :instances="state.cardInstances"
+        title="销 毁 · 选 牌"
+        sub="从手牌里选一张，本场战斗移出牌组 —— 战斗结束归还。"
+        empty-text="手牌已空 —— 没有可销毁之牌。"
+        :dismissable="false"
+        @pick="chooseDestroy"
+        @close="() => {}"
       />
 
       <!-- 战斗中途回主菜单的确认（避免手滑丢掉这一局的战场） -->

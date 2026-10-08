@@ -10,6 +10,8 @@ export type Action =
   | { readonly type: "EndTurn"; readonly actionId: string }
   /** 畸变神眼（docs/58 §七.2）：从牌库中任选一张牌加入手牌（每回合一次） */
   | { readonly type: "PickFromDraw"; readonly actionId: string; readonly instanceId: string }
+  /** 祭血狂热「销毁」（甲方 2026-10-08）：从手牌中选一张，本场战斗移出（战后归还） */
+  | { readonly type: "DestroyFromHand"; readonly actionId: string; readonly instanceId: string }
   | { readonly type: "SelectReward"; readonly actionId: string; readonly optionIndex: number }
   | { readonly type: "ChooseMapNode"; readonly actionId: string; readonly nodeId: string }
   | { readonly type: "ApplyEnhancement"; readonly actionId: string; readonly deckIndex: number; readonly enhancementId: string }

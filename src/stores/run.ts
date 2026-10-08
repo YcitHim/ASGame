@@ -369,10 +369,17 @@ export const useRunStore = defineStore("run", {
       this.persist();
     },
 
-    /** 首胜随身遗物三选一（甲方 2026-10-07）：取自 T1 起始池。 */
+    /**
+     * 首胜随身遗物三选一（甲方 2026-10-07）：取自 T1 起始池。
+     *
+     * **固定 3 件**，不走 `relicChoices` 的难度裁量：锈蚀难度的「二选一」按 docs/36 T2
+     * 只作用于**精英遗物**；首胜随身遗物若被一并砍成 2 件，界面副标题「从三件里挑一件」
+     * 就与实物不符（甲方 2026-10-07 反馈截图）。
+     */
     companionRelicChoices(): string[] {
-      if (!this.companionDue) return [];
-      return this.relicChoices([1]);
+      if (!this.companionDue || !this.run) return [];
+      const seed = (this.run.seed ^ Math.imul(this.run.layerIndex + 13, 0x9e3779b9)) >>> 0;
+      return rollRelicChoices(loadGameContent().content, this.relics, 3, this.run.unlocked, [1], seed);
     },
 
     /** 取走首胜随身遗物：记进 relics 与 run.pickedRelic（一局只发一次）。 */

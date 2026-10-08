@@ -86,6 +86,8 @@ export interface Draft {
   attackCardsPlayedThisTurn: number;
   /** 本回合神眼是否已用 */
   eyeUsedThisTurn: boolean;
+  /** 待玩家选择销毁的手牌张数（祭血狂热；0 = 无待选） */
+  destroyPending: number;
   /** 延迟结算队列（甲方 2026-10-08）：回合开始递减，归零即结算 */
   delayed: DelayedEffect[];
   player: MutablePlayer;
@@ -125,6 +127,7 @@ export function toDraft(state: BattleState): Draft {
     selfHpSpentThisTurn: state.selfHpSpentThisTurn,
     attackCardsPlayedThisTurn: state.attackCardsPlayedThisTurn,
     eyeUsedThisTurn: state.eyeUsedThisTurn,
+    destroyPending: state.destroyPending,
     delayed: state.delayedEffects.map((d) => ({ ...d })),
     player: {
       id: "player",
@@ -239,6 +242,7 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
     selfHpSpentThisTurn: draft.selfHpSpentThisTurn,
     attackCardsPlayedThisTurn: draft.attackCardsPlayedThisTurn,
     eyeUsedThisTurn: draft.eyeUsedThisTurn,
+    destroyPending: draft.destroyPending,
     delayedEffects: draft.delayed.map((d) => ({ ...d })),
     eventSeq,
     content: draft.content,

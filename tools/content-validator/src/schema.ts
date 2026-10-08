@@ -172,6 +172,14 @@ const effectSchema = z.discriminatedUnion("kind", [
     .strict(),
   z
     .object({
+      kind: z.literal("destroyHand"),
+      /** 销毁几张手牌（缺省 1；上限由 core 夹到手牌张数） */
+      value: z.number().int().min(1),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
       kind: z.literal("gainModifier"),
       valueKind: z.enum(VALUE_KINDS),
       op: z.enum(["add", "mul"]),

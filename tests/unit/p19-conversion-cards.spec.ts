@@ -42,13 +42,15 @@ describe("docs/51 §二 · 资源转换卡", () => {
     expect(up.state.player.hp).toBe(64);
   });
 
-  it("祭血狂热（血械）：卖 3 血抽 2；升级减代价到卖 2 血", () => {
+  it("祭血狂热（血械）：1 费卖 3 血 → 待选销毁一张手牌；升级只减代价", () => {
     const base = play(start("bloodfrenzy"));
     expect(base.state.player.hp).toBe(63);
-    expect(base.state.piles.hand).toHaveLength(6);
+    expect(base.state.player.energy).toBe(2); // 起始 3 − 1 费
+    expect(base.state.destroyPending).toBe(1); // 待玩家选一张手牌销毁
+    expect(base.state.piles.hand).toHaveLength(4); // 起始 5 张，打掉 1
     const up = play(start("bloodfrenzy", { upgraded: true }));
     expect(up.state.player.hp).toBe(64); // 升级 = 减代价（docs/50 惯例）
-    expect(up.state.piles.hand).toHaveLength(6);
+    expect(up.state.destroyPending).toBe(1);
   });
 
   it("回压阀（炉心）：充能不足打不出去；够则恰好扣 2 点", () => {

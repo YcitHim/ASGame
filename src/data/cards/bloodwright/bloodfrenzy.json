@@ -3,23 +3,23 @@
   "class": "bloodwright",
   "type": "skill",
   "rarity": "uncommon",
-  "cost": 2,
+  "cost": 1,
   "keywords": [
     "bloodpact"
   ],
   "bloodCost": 3,
   "effects": [
     {
-      "kind": "draw",
-      "value": 2
+      "kind": "destroyHand",
+      "value": 1
     }
   ],
   "upgraded": {
     "bloodCost": 2,
     "effects": [
       {
-        "kind": "draw",
-        "value": 2
+        "kind": "destroyHand",
+        "value": 1
       }
     ]
   },

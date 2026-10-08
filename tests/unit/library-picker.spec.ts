@@ -51,4 +51,15 @@ describe("docs/58 §七.2 神眼·牌库选牌浮层", () => {
     expect(wrapper.emitted("close")).toHaveLength(2);
     wrapper.unmount();
   });
+
+  it("dismissable=false（祭血狂热「销毁」强制选择）：无取消按钮，点背景不关闭", async () => {
+    const wrapper = mount(LibraryPicker, {
+      props: { instanceIds: ["strike#1"], instances, dismissable: false, title: "销 毁 · 选 牌" },
+    });
+    expect(wrapper.text()).toContain("销 毁 · 选 牌");
+    expect(wrapper.findAll(".eye-actions button")).toHaveLength(0);
+    await wrapper.find(".eye-overlay").trigger("click");
+    expect(wrapper.emitted("close")).toBeUndefined();
+    wrapper.unmount();
+  });
 });

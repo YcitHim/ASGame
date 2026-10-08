@@ -27,6 +27,7 @@ import {
   resolveMending,
   resolveEffects,
   pickFromDraw,
+  destroyFromHand,
   resolveRegeneration,
   resolveTenacity,
   restoreMaxHp,
@@ -129,6 +130,12 @@ function startBattle(draft: Draft, sink: EventSink): void {
 
 /** 回合结束的手牌关键词结算：保留 / 虚无 / 弃置。 */
 function resolveHandAtTurnEnd(draft: Draft, sink: EventSink): void {
+  // 祭血狂热「销毁」若玩家还没选（sim / 超时 / UI 未操作），回合结束按手牌顺序自动销毁，
+  // 保证 destroyPending 不跨回合泄漏（手牌本就要进弃牌堆，销毁只是改成进消耗堆）。
+  while (draft.destroyPending > 0 && draft.hand.length > 0) {
+    destroyFromHand(draft, sink, draft.hand[0]!);
+  }
+  draft.destroyPending = 0;
   const retained: string[] = [];
   for (const instanceId of draft.hand) {
     const def = definitionOf(draft, instanceId);
@@ -309,6 +316,10 @@ export function reduce(state: BattleState, action: Action): ReduceResult {
     case "PickFromDraw":
       // 神眼（docs/58 §七.2）：每回合一次，从牌库任选一张入手
       if (draft.phase === "playerAction") pickFromDraw(draft, sink, action.instanceId);
+      break;
+    case "DestroyFromHand":
+      // 祭血狂热（甲方 2026-10-08）：兑现「销毁一张手牌」的待选
+      if (draft.phase === "playerAction") destroyFromHand(draft, sink, action.instanceId);
       break;
     case "DebugCommand":
       executeDebugCommand(draft, sink, action.command);

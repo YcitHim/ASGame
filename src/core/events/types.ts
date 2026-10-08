@@ -52,6 +52,8 @@ export interface EventPayloadMap {
     bloodPaid: number;
   };
   CardExhausted: { cardId: string };
+  /** 销毁（祭血狂热）：本场战斗移出牌组、进消耗堆，战斗结束随牌组归还 */
+  CardDestroyed: { cardId: string };
   CardRetained: { cardId: string };
   /** 硬性要求：携带修饰层明细（战斗日志与数值排查全靠它）。 */
   DamageDealt: {

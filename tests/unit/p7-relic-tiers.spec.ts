@@ -84,6 +84,16 @@ describe("1.0-A 随身遗物（首胜后发放，甲方 2026-10-07）", () => {
     expect(run.companionDue).toBe(false);
     expect(run.companionRelicChoices()).toEqual([]);
   });
+  it("锈蚀难度：首胜随身遗物仍三选一（二选一只砍精英遗物，docs/36 T2）", () => {
+    window.localStorage.clear();
+    setActivePinia(createPinia());
+    const run = useRunStore();
+    run.startRun("bloodwright", 7, "rust");
+    expect(run.run?.difficulty).toBe("rust");
+    expect(run.companionRelicChoices()).toHaveLength(3);
+    // 对照：精英遗物在锈蚀档仍是二选一（难度裁量没有被一并取消）
+    expect(run.relicChoices([2])).toHaveLength(2);
+  });
 
   it("显式传入仍直接带上（测试 / 开发定点验证）；不在 T1 池的传参不带", () => {
     window.localStorage.clear();

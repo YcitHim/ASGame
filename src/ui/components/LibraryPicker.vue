@@ -14,12 +14,20 @@ import { loadGameContent, t } from "@/data/load";
 import type { CardInstance } from "@/core/combat";
 import CardView from "@/ui/components/CardView.vue";
 
-const props = defineProps<{
+// dismissable 是 Boolean prop：Vue 对未传的 Boolean 默认 false，会误伤「神眼可取消」的旧行为，
+// 所以用 withDefaults 显式给 true，只有祭血狂热的「销毁」强制选择时才传 false。
+const props = withDefaults(defineProps<{
   /** 牌库（抽牌堆）里可选的卡实例 id —— 直接来自核心 state.piles.draw */
   instanceIds: readonly string[];
   /** 实例 id → 卡牌实例（取升级 / 附魔），来自核心 state.cardInstances */
   instances: Readonly<Record<string, CardInstance>>;
-}>();
+  /** 标题 / 副标题 / 空态文案（缺省 = 神眼取牌） */
+  title?: string;
+  sub?: string;
+  emptyText?: string;
+  /** 是否可取消（缺省 true）。祭血狂热的「销毁」是强制选择，传 false 去掉取消与点外关闭 */
+  dismissable?: boolean;
+}>(), { dismissable: true });
 
 const emit = defineEmits<{
   (e: "pick", instanceId: string): void;
@@ -52,11 +60,11 @@ const cards = computed(() =>
 </script>
 
 <template>
-  <div class="eye-overlay" @click.self="emit('close')">
+  <div class="eye-overlay" @click.self="dismissable !== false && emit('close')">
     <div class="eye-panel">
       <header class="eye-hd">
-        <h2 class="eye-title">神 眼 · 取 牌</h2>
-        <p class="eye-sub">从牌库中任选一张入手 —— 本回合一次。</p>
+        <h2 class="eye-title">{{ title ?? "神 眼 · 取 牌" }}</h2>
+        <p class="eye-sub">{{ sub ?? "从牌库中任选一张入手 —— 本回合一次。" }}</p>
       </header>
       <div v-if="cards.length > 0" class="eye-grid">
         <button
@@ -84,8 +92,8 @@ const cards = computed(() =>
           />
         </button>
       </div>
-      <p v-else class="eye-empty">牌库已空 —— 没有可取之牌。</p>
-      <div class="eye-actions">
+      <p v-else class="eye-empty">{{ emptyText ?? "牌库已空 —— 没有可取之牌。" }}</p>
+      <div v-if="dismissable !== false" class="eye-actions">
         <button class="etch-btn ghost" type="button" @click="emit('close')">取消</button>
       </div>
     </div>

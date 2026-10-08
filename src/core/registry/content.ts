@@ -75,7 +75,14 @@ export interface CardEffect {
      */
     | "bankCharge"
     /** 召唤（docs/40 §五）：亡语召唤用（tide_swarm 死亡生虫） */
-    | "summon";
+    | "summon"
+    /**
+     * 销毁手牌（祭血狂热，甲方 2026-10-08）：从手牌中选 `value`（缺省 1）张，
+     * **本场战斗移出**（进消耗堆），战斗结束随牌组归还。需要玩家选择，
+     * 所以结算时挂起（`draft.destroyPending`），由 `DestroyFromHand` 动作兑现；
+     * 回合结束时若仍未选，牌组按手牌顺序自动销毁（保证状态不跨回合泄漏）。
+     */
+    | "destroyHand";
   readonly target?: TargetRef;
   readonly value?: number;
   readonly hits?: number;
