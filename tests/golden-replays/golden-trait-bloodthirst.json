@@ -123,17 +123,17 @@
       {
         "type": "PlayCard",
         "actionId": "p9",
-        "handIndex": 1,
+        "handIndex": 0,
         "targetId": "polluting_preacher"
       },
       {
         "type": "PlayCard",
         "actionId": "p10",
-        "handIndex": 1,
+        "handIndex": 0,
         "targetId": "polluting_preacher"
       }
     ],
-    "eventHash": "e86369c5a662acc046b009f1e1516f5ed40a738023eb4b20f9964b85f146a2b0",
+    "eventHash": "3e0fafb95681a395cc6dc3c4f929e4f647d53302ece64eda25748b6644095720",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -155,12 +155,9 @@
       "DamageDealt",
       "HpLost",
       "UnitDied",
-      "BuffApplied",
       "TurnEnded",
       "PollutionChanged",
-      "HpHealed",
       "TurnStarted",
-      "CardsDrawn",
       "CardsDrawn",
       "IntentRevealed",
       "HpLost",
@@ -174,7 +171,10 @@
       "CardPlayed",
       "DamageDealt",
       "HpLost",
-      "TurnEnded"
+      "TurnEnded",
+      "DamageDealt",
+      "HpLost",
+      "TurnStarted"
     ],
     "turns": 3,
     "outcome": "win"

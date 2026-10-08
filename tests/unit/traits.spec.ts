@@ -249,9 +249,10 @@ describe("docs/58 §四 血械·嗜血", () => {
     expect(r.state.player.buffs.some((b) => b.id === "weak")).toBe(false);
   });
 
-  it("造伤 + 自伤同源 → min(⌊造伤/3⌋, ⌊自伤/3⌋)×2 层再生，且不触惩罚", () => {
+  it("造伤 + 自伤同源 → min(⌊造伤/5⌋, ⌊自伤/5⌋)×2 层再生，且不触惩罚", () => {
     let state = battle(db, ["test_bleed_strike", "test_bleed_strike"], "bloodthirst");
-    // 两张血契攻击：造伤 18、自伤 6 → min(6, 2) = 2 组 → 再生 4 层
+    // 两张血契攻击：造伤 18、自伤 6 → min(3, 1) = 1 组 → 再生 2 层
+    // （甲方 2026-10-08 平衡补丁：门槛 3/3 → 5/5，同一副牌从 4 层降到 2 层）
     state = play(state, "test_bleed_strike").state;
     state = play(state, "test_bleed_strike").state;
     expect(state.dealtDamageThisTurn).toBe(18);
@@ -260,7 +261,29 @@ describe("docs/58 §四 血械·嗜血", () => {
     const r = reduce(state, { type: "EndTurn", actionId: "e" });
     const regen = eventsOfType(r.events, "BuffApplied").filter((e) => e.buffId === "regeneration");
     expect(regen).toHaveLength(1);
+    expect(regen[0]?.stacks).toBe(2);
+    expect(eventsOfType(r.events, "BuffApplied").some((e) => e.buffId === "weak")).toBe(false);
+  });
+
+  it("门槛 5/5：双满 10+10 才是两组 → 4 层再生", () => {
+    let state = battle(db, ["test_bleed_strike", "test_bleed_strike", "test_bleed_strike", "test_bleed_strike"], "bloodthirst");
+    for (let i = 0; i < 4; i += 1) state = play(state, "test_bleed_strike").state;
+    // 4 ×（造伤 9 / 自伤 3）= 造伤 36、自伤 12 → min(7, 2) = 2 组 → 4 层
+    expect(state.dealtDamageThisTurn).toBe(36);
+    expect(state.selfHpSpentThisTurn).toBe(12);
+    const r = reduce(state, { type: "EndTurn", actionId: "e" });
+    const regen = eventsOfType(r.events, "BuffApplied").filter((e) => e.buffId === "regeneration");
     expect(regen[0]?.stacks).toBe(4);
+  });
+
+  it("门槛 5/5：单张 9 造伤 + 3 自伤 不够一组（旧门槛 3/3 会给）→ 无再生", () => {
+    let state = battle(db, ["test_bleed_strike"], "bloodthirst");
+    state = play(state, "test_bleed_strike").state;
+    expect(state.dealtDamageThisTurn).toBe(9);
+    expect(state.selfHpSpentThisTurn).toBe(3);
+    const r = reduce(state, { type: "EndTurn", actionId: "e" });
+    expect(eventsOfType(r.events, "BuffApplied").some((e) => e.buffId === "regeneration")).toBe(false);
+    // 但「造伤/自伤都没满 5」不等于惩罚段：两边都动过，不该吃虚弱
     expect(eventsOfType(r.events, "BuffApplied").some((e) => e.buffId === "weak")).toBe(false);
   });
 

@@ -39,7 +39,8 @@ export const BUFF_DEFINITIONS: Readonly<Record<BuffId, BuffDefinition>> = {
   reverse: { id: "reverse", polarity: "curse", stacking: "stack", decayAt: "none", applyAs: "stacks", maxStacks: 2 },
   // 眩晕（docs/46 §3.5）：不可叠加、持续中重复施加无效（refreshOnly 取较大值 = 恒为 1）。
   stun: { id: "stun", polarity: "curse", stacking: "refreshOnly", decayAt: "none", applyAs: "stacks", maxStacks: 1 },
-  // 灼烧（docs/46 §3.9）：层级型，每层每回合 −1 生命上限，战斗结束恢复。
+  // 灼烧（docs/46 §3.9）：层级型，每层每回合 −1 生命上限，战斗结束恢复；
+// 另带「生命恢复 −50%」（甲方 2026-10-08 补丁，判定在 healUnit 唯一汇点）。
   burn: { id: "burn", polarity: "affliction", stacking: "stack", decayAt: "none", applyAs: "stacks", maxStacks: 5 },
   // 超负荷（docs/58 §六 玻璃大炮，甲方 2026-10-07 修订）：层级型减益，**战斗结束清零、不衰减**。
   // 每层：承载者自己回合开始扣 2 点生命（resolve.tickOverload）+ 受到伤害 +1（attackModifiers 加区）。

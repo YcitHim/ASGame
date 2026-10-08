@@ -435,7 +435,12 @@ export function healUnit(
     }
   }
   const evaluated = evaluateValue("heal", base, modifiers);
-  const healed = Math.min(evaluated.value, unit.maxHp - unit.hp);
+  // 灼烧（甲方 2026-10-08 平衡补丁）：**带有灼烧时生命恢复 −50%**（向下取整）。
+  // 判定放在 healUnit 这个唯一汇点，所以「先判灼烧、再回血」——再生 / 卡牌治疗 /
+  // 回血印记 / 遗物一视同仁，不会漏掉某条来源。
+  const burnStacks = buffStacks(unit.buffs, "burn");
+  const afterBurn = burnStacks > 0 ? Math.floor(evaluated.value * 0.5) : evaluated.value;
+  const healed = Math.min(afterBurn, unit.maxHp - unit.hp);
   if (healed <= 0) return;
   unit.hp += healed;
   sink.emit("HpHealed", { targetId, value: healed, total: unit.hp, reason });

@@ -160,6 +160,31 @@ describe("docs/49 Phase 2a · 灼烧 burn", () => {
     expect(s.player.hp).toBe(18);
   });
 
+  it("带灼烧时生命恢复 −50%（向下取整）：4 层再生只回 2 点", () => {
+    let s = start(["self_burn", "strike"], "idle", 40);
+    s = play(s, "self_burn"); // 2 层灼烧
+    s = reduce(s, { type: "DebugCommand", actionId: "hp", command: "set hp 20" }).state;
+    s = reduce(s, { type: "DebugCommand", actionId: "regen", command: "add buff regeneration 4" }).state;
+    const r = reduce(s, { type: "EndTurn", actionId: "e" });
+    const healed = r.events.filter(
+      (e): e is Extract<(typeof r.events)[number], { type: "HpHealed" }> =>
+        e.type === "HpHealed" && e.targetId === "player",
+    );
+    expect(healed.at(-1)?.value).toBe(2); // 4 → 2
+  });
+
+  it("没有灼烧时回血不打折（对照组）", () => {
+    let s = start(["strike", "strike"], "idle", 40);
+    s = reduce(s, { type: "DebugCommand", actionId: "hp", command: "set hp 20" }).state;
+    s = reduce(s, { type: "DebugCommand", actionId: "regen", command: "add buff regeneration 4" }).state;
+    const r = reduce(s, { type: "EndTurn", actionId: "e" });
+    const healed = r.events.filter(
+      (e): e is Extract<(typeof r.events)[number], { type: "HpHealed" }> =>
+        e.type === "HpHealed" && e.targetId === "player",
+    );
+    expect(healed.at(-1)?.value).toBe(4);
+  });
+
   it("战斗结束时上限恢复、已损失的当前 HP 不补", () => {
     let s = start(["self_burn", "strike"], "idle", 20);
     s = play(s, "self_burn");

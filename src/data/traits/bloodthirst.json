@@ -5,8 +5,8 @@
   "handler": "bloodthirst",
   "params": {
     "punishWeak": 1,
-    "rewardDamage": 3,
-    "rewardSelf": 3,
+    "rewardDamage": 5,
+    "rewardSelf": 5,
     "rewardRegen": 2,
     "lowHpPercent": 30,
     "lowHpHealBonus": 1,
