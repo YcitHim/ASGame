@@ -9,6 +9,7 @@ import { useRunStore } from "@/stores/run";
 import { useSettingsStore } from "@/stores/settings";
 import { useTipsStore } from "@/stores/tips";
 import { useTutorialStore } from "@/stores/tutorial";
+import RelicBar from "@/ui/components/RelicBar.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
 const router = useRouter();
@@ -298,7 +299,8 @@ function toTitle(): void {
         </div>
       </div>
 
-      <div class="relics">遗物：{{ run.relics.map((r) => t(`relic.${r}.name`, r)).join(" · ") || "无" }}</div>
+      <!-- 遗物栏（甲方 2026-10-08）：从底下一行文字挪到左上角，悬停看名字 + 说明 -->
+      <RelicBar :relics="run.relics" />
     </div>
   </div>
 </template>
@@ -384,5 +386,4 @@ function toTitle(): void {
 .victory p.achieve { margin: -14px 0 20px; color: var(--blood-hi); font-size: 11px; letter-spacing: 0.16em; }
 .victory-actions { display: flex; justify-content: center; }
 .victory .etch-btn { padding: 11px 30px; font-size: 13px; }
-.relics { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--ink-dim); letter-spacing: 0.12em; }
 </style>

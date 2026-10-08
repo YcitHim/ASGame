@@ -5,7 +5,9 @@ import { RECAST_HP_COST } from "@/core/map";
 import { t } from "@/data/load";
 import { useRunStore } from "@/stores/run";
 import { useStageFit } from "@/ui/composables/useStageFit";
-import CardView from "@/ui/components/CardView.vue";
+import CardPeek from "@/ui/components/CardPeek.vue";
+import RelicBar from "@/ui/components/RelicBar.vue";
+import { useCardPeek } from "@/ui/composables/useCardPeek";
 
 const router = useRouter();
 const run = useRunStore();
@@ -41,40 +43,12 @@ function isTarget(deckIndex: number): boolean {
 }
 
 /**
- * 悬停预览（甲方 2026-10-08）：附魔 / 重铸的卡组列表只有名字，玩家看不出这张牌到底是什么。
- * 鼠标放到即将附魔（或重铸）的那张牌上时，在旁边浮出它的完整卡面。
- * 用 rect 锚定而不是跟着指针走：列表行高固定，预览不会抖。
+ * 悬停预览（甲方 2026-10-08）：附魔 / 重铸的卡组列表只有名字，玩家看不出这张牌是什么。
+ * 鼠标放到即将操作的牌上，就在整栏左侧浮出完整卡面。
+ * 定位逻辑收在 `useCardPeek` 里，与锻核（战斗奖励 / 幕间馈赠）共用同一份。
  */
-/** 卡面 display 尺寸（CardView .card = 170×240），用**舞台内部**坐标定位。 */
-const PEEK_W = 170;
-const PEEK_H = 240;
-const peek = ref<{ index: number; left: number; top: number } | null>(null);
+const { peek, show: showPeek, hide: hidePeek } = useCardPeek(stage);
 const peekCard = computed(() => (peek.value ? run.deck[peek.value.index] ?? null : null));
-
-/**
- * 悬停预览（甲方 2026-10-08）：鼠标放到即将附魔 / 重铸的那张牌上，旁边浮出完整卡面。
- * 舞台整体带 `transform: scale()`，所以这里换算成**舞台内坐标**再用 absolute 定位——
- * 用 fixed + clientX 会被 scale 二次缩放，位置全歪。
- */
-function showPeek(event: Event, index: number): void {
-  const el = event.currentTarget as HTMLElement | null;
-  const stageEl = stage.value;
-  if (!el || !stageEl) return;
-  const sr = stageEl.getBoundingClientRect();
-  const scale = stageEl.offsetWidth > 0 ? sr.width / stageEl.offsetWidth : 1;
-  const row = el.getBoundingClientRect();
-  // 贴着**整栏**的左侧浮出，而不是贴着这一行——列表行很宽，贴行会把自己的行盖住，
-  // 玩家反而看不到刚选中的附魔槽。/ 重铸栏在最右，同样往左让。
-  const col = (el.closest(".col") as HTMLElement | null)?.getBoundingClientRect() ?? row;
-  const local = (v: number, origin: number) => (v - origin) / scale;
-  const left = Math.max(8, local(col.left, sr.left) - PEEK_W - 14);
-  const centerY = local(row.top, sr.top) + (row.bottom - row.top) / scale / 2;
-  const top = Math.max(8, Math.min(centerY - PEEK_H / 2, stageEl.offsetHeight - PEEK_H - 8));
-  peek.value = { index, left, top };
-}
-function hidePeek(): void {
-  peek.value = null;
-}
 
 function pickOffer(id: string): void {
   if (usedHere.value) {
@@ -214,31 +188,22 @@ function backToMap(): void {
         </section>
       </div>
 
+      <!-- 遗物栏（甲方 2026-10-08）：从底下一行文字挪到左上角，悬停看名字 + 说明 -->
+      <RelicBar :relics="run.relics" />
+
       <div class="bottom">
-        <span class="relics">遗物：{{ run.relics.map((r) => t(`relic.${r}.name`, r)).join(" · ") || "无" }}</span>
         <button class="etch-btn go" @click="continueExpedition">继续远征</button>
       </div>
 
       <!-- 悬停预览（甲方 2026-10-08）：附魔 / 重铸前先把这张牌看清楚 -->
-      <div v-if="peek && peekCard" class="peek" :style="{ left: peek.left + 'px', top: peek.top + 'px' }">
-        <CardView
-          :card-id="peekCard.cardId"
-          :cost="run.cardDef(peekCard.cardId)?.cost ?? 0"
-          :charge-cost="run.cardDef(peekCard.cardId)?.chargeCost ?? 0"
-          :keywords="run.cardDef(peekCard.cardId)?.keywords ?? []"
-          :type="run.cardDef(peekCard.cardId)?.type ?? 'skill'"
-          :rarity="run.cardDef(peekCard.cardId)?.rarity ?? 'common'"
-          :playable="true"
-          :selected="false"
-          :index="0"
-          :hand-count="1"
-          :upgraded="peekCard.upgraded"
-          :enhancements="peekCard.enhancements.length"
-          :enhancement-ids="peekCard.enhancements"
-          show-flavor
-          display
-        />
-      </div>
+      <CardPeek
+        v-if="peek && peekCard"
+        :card-id="peekCard.cardId"
+        :upgraded="peekCard.upgraded"
+        :enhancement-ids="peekCard.enhancements"
+        :left="peek.left"
+        :top="peek.top"
+      />
 
       <div v-if="notice" class="notice">{{ notice }}</div>
     </div>
@@ -519,13 +484,8 @@ function backToMap(): void {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-top: 16px;
-}
-.relics {
-  font-size: 11px;
-  color: var(--ink-dim);
-  letter-spacing: 0.1em;
 }
 .go {
   padding: 10px 26px;
@@ -539,12 +499,5 @@ function backToMap(): void {
   font-size: 11px;
   color: var(--blood-hi);
   letter-spacing: 0.15em;
-}
-/* 悬停预览（甲方 2026-10-08）：舞台内 absolute 定位（避开 scale 二次缩放）、不吃指针事件 */
-.peek {
-  position: absolute;
-  z-index: 60;
-  pointer-events: none;
-  filter: drop-shadow(0 12px 26px rgba(0, 0, 0, 0.72));
 }
 </style>

@@ -9,6 +9,8 @@ import { useTipsStore } from "@/stores/tips";
 import { useTutorialStore } from "@/stores/tutorial";
 import { actCopy } from "@/ui/act-copy";
 import CardView from "@/ui/components/CardView.vue";
+import CardPeek from "@/ui/components/CardPeek.vue";
+import { useCardPeek } from "@/ui/composables/useCardPeek";
 import { useStageFit } from "@/ui/composables/useStageFit";
 import { relicFitNote, relicResourceFit, type RelicFit } from "@/ui/relic-fit";
 
@@ -18,6 +20,13 @@ const tips = useTipsStore();
 const tutorial = useTutorialStore();
 const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
+
+/**
+ * 悬停预览（甲方 2026-10-08）：锻核「选一张牌附着」原先只有卡名，看不清是哪张。
+ * 与锻造祭坛 / 幕间锻核共用 useCardPeek；锚到 .deck 整块，不盖住被悬停的那一行。
+ */
+const { peek: deckPeek, show: showDeckPeek, hide: hideDeckPeek } = useCardPeek(stage, ".deck");
+const peekDeckCard = computed(() => (deckPeek.value ? run.deck[deckPeek.value.index] ?? null : null));
 
 const rewards = ref<string[]>([]);
 const relicOffers = ref<string[]>([]);
@@ -245,7 +254,7 @@ function rarityLabel(rarity: string | undefined): string {
               <span class="pick">{{ selectedOffer === offer.id ? "选 中" : "选 取" }}</span>
             </button>
           </div>
-          <div v-if="selectedOffer" class="deck">
+          <div v-if="selectedOffer" class="deck" @scroll="hideDeckPeek">
             <button
               v-for="(card, index) in run.deck"
               :key="index"
@@ -253,6 +262,10 @@ function rarityLabel(rarity: string | undefined): string {
               :class="{ targetable: isTarget(index) }"
               :disabled="!isTarget(index)"
               @click="attachElite(index)"
+              @mouseenter="showDeckPeek($event, index)"
+              @mouseleave="hideDeckPeek"
+              @focus="showDeckPeek($event, index)"
+              @blur="hideDeckPeek"
             >
               {{ t(`card.${card.cardId}.name`, card.cardId)
               }}<sup v-if="card.enhancements.length">{{ card.enhancements.length }}</sup>
@@ -307,6 +320,16 @@ function rarityLabel(rarity: string | undefined): string {
         <button class="skip" @click="skip">放 弃 奖 励</button>
       </template>
     </div>
+
+    <!-- 锻核选目标时的悬停卡面（甲方 2026-10-08） -->
+    <CardPeek
+      v-if="deckPeek && peekDeckCard"
+      :card-id="peekDeckCard.cardId"
+      :upgraded="peekDeckCard.upgraded"
+      :enhancement-ids="peekDeckCard.enhancements"
+      :left="deckPeek.left"
+      :top="deckPeek.top"
+    />
   </div>
 </template>
 

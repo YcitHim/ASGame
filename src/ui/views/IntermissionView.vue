@@ -6,6 +6,8 @@ import { useRunStore } from "@/stores/run";
 import { useStageFit } from "@/ui/composables/useStageFit";
 import CardView from "@/ui/components/CardView.vue";
 import CardUpgradeDialog from "@/ui/components/CardUpgradeDialog.vue";
+import CardPeek from "@/ui/components/CardPeek.vue";
+import { useCardPeek } from "@/ui/composables/useCardPeek";
 
 const router = useRouter();
 const run = useRunStore();
@@ -19,6 +21,13 @@ const chosenEnh = ref("");
  * 升级预览（甲方 2026-10-08）：点开一张牌先看「原版 vs 升级后」，确认后才真的升级。
  * 以前这里只列一排卡名，玩家根本不知道升级后是什么数。
  */
+/**
+ * 悬停预览（甲方 2026-10-08）：「圣堂锻核」选附着目标原先只有卡名，看不清是哪张。
+ * 与锻造祭坛 / 精英锻核共用 useCardPeek。
+ */
+const { peek: targetPeek, show: showTargetPeek, hide: hideTargetPeek } = useCardPeek(stage, ".deck");
+const peekTargetCard = computed(() => (targetPeek.value ? run.deck[targetPeek.value.index] ?? null : null));
+
 const previewIndex = ref<number | null>(null);
 const previewCard = computed(() => (previewIndex.value === null ? null : run.deck[previewIndex.value] ?? null));
 
@@ -142,19 +151,33 @@ function doEnhance(index: number): void {
       <template v-else>
         <h1 class="head">选 择 附 着 目 标</h1>
         <p class="sub">{{ enhanceName(chosenEnh) }} · 选择一张牌附着</p>
-        <div class="deck">
+        <div class="deck" @scroll="hideTargetPeek">
           <button
             v-for="(card, i) in run.deck"
             :key="i"
             class="deck-card"
             :disabled="!canTarget(i)"
             @click="doEnhance(i)"
+            @mouseenter="showTargetPeek($event, i)"
+            @mouseleave="hideTargetPeek"
+            @focus="showTargetPeek($event, i)"
+            @blur="hideTargetPeek"
           >
             {{ t(`card.${card.cardId}.name`, card.cardId) }}
           </button>
         </div>
       </template>
     </div>
+
+    <!-- 锻核选目标时的悬停卡面（甲方 2026-10-08） -->
+    <CardPeek
+      v-if="targetPeek && peekTargetCard"
+      :card-id="peekTargetCard.cardId"
+      :upgraded="peekTargetCard.upgraded"
+      :enhancement-ids="peekTargetCard.enhancements"
+      :left="targetPeek.left"
+      :top="targetPeek.top"
+    />
 
     <!-- 升级对照（甲方 2026-10-08）：点开一张牌先看原版 vs 升级后，再决定升不升 -->
     <CardUpgradeDialog
