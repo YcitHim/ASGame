@@ -61,6 +61,19 @@ export interface CardEffect {
      * 不是你的筹码。伤害先扣状态再结算，避免力量自己给自己加成（同一批筹码记两次）。
      */
     | "consumeBoons"
+    /**
+     * 凭空生成卡牌加入手牌（嗜血满血奖励，甲方 2026-10-08 修订）：
+     * 从 `pool` 指定的卡池里随机抽 `count` 张，建实例直接进手牌（回合末按常规弃置）。
+     * 走 `trait` RNG 流，不扰动战斗主序列；颠倒诅咒下新入手的牌同样吃随机费用。
+     * 配 `delayTurns` 可改成「N 回合后到手」（超械铁拳的蓄力，甲方 2026-10-08）。
+     */
+    | "gainCard"
+    /**
+     * 充能储蓄（上发条改版，甲方 2026-10-08）：把**当前充能全部扣掉**，
+     * 并在**下回合开始**一次性还回「扣掉的层数 + value」。
+     * 与 `spendCharge` 的区别：那个是当场按每点结算，这个是跨回合存储。
+     */
+    | "bankCharge"
     /** 召唤（docs/40 §五）：亡语召唤用（tide_swarm 死亡生虫） */
     | "summon";
   readonly target?: TargetRef;
@@ -83,6 +96,18 @@ export interface CardEffect {
   readonly count?: number;
   /** 仅 chargeFromEnergy：触发过载时额外抽的牌数 */
   readonly overloadDraw?: number;
+  /** 仅 gainCard：卡池筛选。"bloodCost" = 全池带血契代价的牌；也可直接给一串卡 id */
+  readonly pool?: "bloodCost" | readonly string[];
+  /**
+   * 延迟结算（甲方 2026-10-08）：> 0 时本条效果不立刻生效，改为推入延迟队列，
+   * 到期后在**玩家回合开始**结算。1 = 下回合开始（超械铁拳的「蓄力一回合」）。
+   */
+  readonly delayTurns?: number;
+  /**
+   * 仅 gainCard：生成的卡牌是否**以升级面入场**（甲方 2026-10-08，超械铁拳升级后给升级「铁拳」）。
+   * false / 缺省 = 原版入场。
+   */
+  readonly upgraded?: boolean;
 }
 
 /**
@@ -146,6 +171,16 @@ export interface CardDefinition {
   readonly type: CardType;
   readonly rarity: CardRarity;
   readonly cost: number;
+  /**
+   * X 费（甲方 2026-10-08，红线运转）：`true` 时费用不是 `cost`，而是**打牌前的当前能量**
+   * ——有多少花多少。卡面费用角标显示「X」，结算与 UI 预览同源读 `draft.player.energy`。
+   */
+  readonly costX?: boolean;
+  /**
+   * 衍生物牌（甲方 2026-10-08，铁拳）：只在战斗中由效果凭空生成，**不进任何掉落池**
+   * （奖励三选一 / 事件抽卡都会跳过）。与 rarity 无关，只是「不可获得」的显式标记。
+   */
+  readonly token?: boolean;
   readonly bloodCost?: number;
   /**
    * 打出前需支付的**充能**代价（docs/51 §二 回压阀 / 齿轮过驳）。
@@ -193,6 +228,11 @@ export interface IntentDefinition {
    * 抽中后校验不满足则按 §五-2 重抽，不做成 condition 新类型。
    */
   readonly maxSummons?: number;
+  /**
+   * 吸血比例（docs/60 §四，锈喉二阶段「狂噬」）：命中后按**真实扣除的生命**回血给攻击者。
+   * 0.5 = 回复造成伤害的一半；打在格挡上的部分不计（只算 hpLost）。
+   */
+  readonly lifesteal?: number;
 }
 
 export interface EnemyIntentEntry {
@@ -212,6 +252,11 @@ export interface EnemyIntentEntry {
    * 不满足按召唤同款规则重抽（docs/40 §五.2 先例）。
    */
   readonly playerBuff?: { readonly buffId: BuffId; readonly minStacks: number };
+  /**
+   * 整场一次（docs/60 §七，沉钟唱诗长二阶段「虚化」）：抽中过一次后不再进入候选池。
+   * 判定靠 intentHistory 里的 key，因此**同一条意图跨阶段也只能出现一次**。
+   */
+  readonly once?: boolean;
 }
 
 /** 开场状态（docs/47 §三.4）：战斗开始即挂在敌人自己身上。 */
@@ -238,6 +283,11 @@ export interface RawEnemyDefinition {
   readonly interruptImmune?: boolean;
   /** 眩晕抗性（docs/46 §3.5）：精英 / Boss 首次被眩晕后，本场战斗免疫后续眩晕 */
   readonly stunResistant?: boolean;
+  /**
+   * 转阶段保护（docs/60 §四，锈喉）：把该敌人打进 50% 以下的那一次伤害免伤 99%，
+   * 每场仅一次——防止玩家一回合爆发把它秒掉、跳过二阶段。
+   */
+  readonly phaseGuard?: boolean;
 }
 
 /** 由 JSON 原始对象 + 解析后的显示名构造敌人定义。 */
@@ -252,6 +302,7 @@ export function buildEnemyDefinition(raw: RawEnemyDefinition, name: string): Ene
     ...(raw.onDeath ? { onDeath: raw.onDeath } : {}),
     ...(raw.interruptImmune ? { interruptImmune: true } : {}),
     ...(raw.stunResistant ? { stunResistant: true } : {}),
+    ...(raw.phaseGuard ? { phaseGuard: true } : {}),
   };
 }
 
@@ -270,6 +321,8 @@ export interface EnemyDefinition {
   readonly interruptImmune?: boolean;
   /** 眩晕抗性（docs/46 §3.5）：精英 / Boss 首次被眩晕后，本场战斗免疫后续眩晕 */
   readonly stunResistant?: boolean;
+  /** 转阶段保护（docs/60 §四）：跨过 50% 的那一次伤害免伤 99%，每场一次 */
+  readonly phaseGuard?: boolean;
 }
 
 export interface EnhancementDefinition {

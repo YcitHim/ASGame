@@ -1,13 +1,13 @@
 {
   "id": "rust_warden",
   "i18n": "enemy.rust_warden",
-  "maxHp": 72,
+  "maxHp": 102,
   "stunResistant": true,
   "intents": [
     {
       "intent": {
         "kind": "attack",
-        "value": 11
+        "value": 10
       },
       "weight": 3,
       "maxConsecutive": 1
@@ -28,10 +28,10 @@
         "thenIntent": {
           "kind": "charge",
           "value": 4,
-          "block": 8,
+          "block": 12,
           "thenIntent": {
             "kind": "attack",
-            "value": 11
+            "value": 22
           }
         }
       },
@@ -43,10 +43,10 @@
         "kind": "charge",
         "value": 5,
         "block": 10,
-        "releaseOverride": 16,
+        "releaseOverride": 18,
         "thenIntent": {
           "kind": "attack",
-          "value": 16
+          "value": 18
         }
       },
       "weight": 1,

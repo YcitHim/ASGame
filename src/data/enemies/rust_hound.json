@@ -6,15 +6,15 @@
     {
       "intent": {
         "kind": "attack",
-        "value": 7
+        "value": 5
       },
       "weight": 4,
-      "maxConsecutive": 2
+      "maxConsecutive": 3
     },
     {
       "intent": {
         "kind": "attack",
-        "value": 5,
+        "value": 3,
         "hits": 2
       },
       "weight": 2,
@@ -23,7 +23,7 @@
     {
       "intent": {
         "kind": "defend",
-        "value": 6
+        "value": 8
       },
       "weight": 2,
       "maxConsecutive": 1

@@ -63,6 +63,46 @@ export const BUFF_DEFINITIONS: Readonly<Record<BuffId, BuffDefinition>> = {
     applyAs: "stacksAndTurns",
     defaultDuration: 1,
   },
+  // 特殊防御状态（docs/60 §八.3，甲方 2026-10-08）：**敌人自身**的减伤形态，
+  // 不属于「异常 / 诅咒 / 加持」三分类（polarity 仅作占位，UI 不读它着色）。
+  // 层数 = 剩余回合：`decayAt: "turnEnd"` 在**玩家回合结束**时 −1——
+  // 敌方回合挂上之后正好撑过接下来 3 个完整的玩家回合（甲方口径的「3 回合虚化」）。
+  // 三者都走 `dealDamage` 的同一道门（resolve.wardBlocks / unbreakableCap）。
+  ethereal: {
+    id: "ethereal",
+    polarity: "affliction",
+    stacking: "refreshOnly",
+    decayAt: "turnEnd",
+    applyAs: "turns",
+    maxStacks: 3,
+  },
+  magicimmune: {
+    id: "magicimmune",
+    polarity: "affliction",
+    stacking: "refreshOnly",
+    decayAt: "turnEnd",
+    applyAs: "turns",
+    maxStacks: 3,
+  },
+  unbreakable: {
+    id: "unbreakable",
+    polarity: "affliction",
+    stacking: "refreshOnly",
+    decayAt: "turnEnd",
+    applyAs: "turns",
+    maxStacks: 3,
+  },
+  // 临界硬化（docs/60 §四 锈喉转阶段保护，甲方 2026-10-08 口述修订）：
+  // 跨过 50% 血线后挂上的 99% 减伤，只活本回合——duration 1 + decayAt turnEnd，
+  // 玩家结束回合时正好到期。同属 docs/60 §八.3 特殊防御状态（polarity 仅作占位）。
+  phase_ward: {
+    id: "phase_ward",
+    polarity: "affliction",
+    stacking: "refreshOnly",
+    decayAt: "turnEnd",
+    applyAs: "turns",
+    maxStacks: 1,
+  },
 };
 
 export function buffDefinition(id: BuffId): BuffDefinition {

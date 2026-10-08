@@ -3,7 +3,7 @@
   "class": "neutral",
   "type": "skill",
   "rarity": "uncommon",
-  "cost": 1,
+  "cost": 2,
   "effects": [
     {
       "kind": "applyBuff",

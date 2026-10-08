@@ -7,6 +7,11 @@
     "punishWeak": 1,
     "rewardDamage": 3,
     "rewardSelf": 3,
-    "rewardRegen": 2
+    "rewardRegen": 2,
+    "lowHpPercent": 30,
+    "lowHpHealBonus": 1,
+    "fullHpGrantCard": true,
+    "grantCardCount": 1,
+    "grantCardPool": "bloodCost"
   }
 }

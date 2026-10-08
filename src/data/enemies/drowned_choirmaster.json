@@ -1,7 +1,7 @@
 {
   "id": "drowned_choirmaster",
   "i18n": "enemy.drowned_choirmaster",
-  "maxHp": 150,
+  "maxHp": 300,
   "interruptImmune": true,
   "stunResistant": true,
   "intents": [
@@ -13,11 +13,11 @@
       },
       "weight": 1,
       "maxConsecutive": 1,
-      "everyTurns": 4,
       "condition": {
         "type": "selfHpBelow",
         "percent": 30
-      }
+      },
+      "everyTurns": 4
     },
     {
       "intent": {
@@ -27,11 +27,11 @@
       },
       "weight": 1,
       "maxConsecutive": 1,
-      "everyTurns": 4,
       "condition": {
         "type": "selfHpBelow",
         "percent": 60
-      }
+      },
+      "everyTurns": 4
     },
     {
       "intent": {
@@ -41,11 +41,11 @@
       },
       "weight": 1,
       "maxConsecutive": 1,
-      "everyTurns": 4,
       "condition": {
         "type": "selfHpAtLeast",
         "percent": 60
-      }
+      },
+      "everyTurns": 4
     },
     {
       "intent": {
@@ -79,9 +79,12 @@
         "kind": "charge",
         "value": 4,
         "block": 8,
+        "releaseOverride": 22,
         "thenIntent": {
           "kind": "attack",
-          "value": 18
+          "value": 22,
+          "buffId": "chill",
+          "stacks": 1
         }
       },
       "weight": 2,
@@ -90,6 +93,20 @@
         "type": "selfHpAtLeast",
         "percent": 50
       }
+    },
+    {
+      "intent": {
+        "kind": "selfBuff",
+        "buffId": "ethereal",
+        "stacks": 3
+      },
+      "weight": 1,
+      "maxConsecutive": 1,
+      "condition": {
+        "type": "selfHpBelow",
+        "percent": 50
+      },
+      "once": true
     },
     {
       "intent": {
@@ -110,8 +127,8 @@
         "count": 1,
         "maxSummons": 3
       },
-      "weight": 2,
-      "maxConsecutive": 1,
+      "weight": 4,
+      "maxConsecutive": 2,
       "condition": {
         "type": "selfHpBelow",
         "percent": 50
@@ -122,9 +139,10 @@
         "kind": "charge",
         "value": 5,
         "block": 8,
+        "releaseOverride": 28,
         "thenIntent": {
           "kind": "attack",
-          "value": 23
+          "value": 28
         }
       },
       "weight": 2,

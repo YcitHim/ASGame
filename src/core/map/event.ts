@@ -278,12 +278,13 @@ export function resolveEventOption(
               const card = content.cards.get(id)!;
               return (
                 usableForClass(ctx.classId, card.class) &&
+                card.token !== true &&
                 byUnlock(id) &&
                 (effect.rarity ? card.rarity === effect.rarity : true)
               );
             });
           const neutralFallback = [...content.cards.values()]
-            .filter((c) => c.class === NEUTRAL_CLASS && byUnlock(c.id))
+            .filter((c) => c.class === NEUTRAL_CLASS && c.token !== true && byUnlock(c.id))
             .map((c) => c.id)
             .sort();
           const pool = explicit.length > 0 ? explicit : neutralFallback;
@@ -296,6 +297,8 @@ export function resolveEventOption(
             c.rarity !== "starter" &&
             c.type !== "curse" &&
             c.type !== "status" &&
+            // 衍生物牌不进任何掉落池（甲方 2026-10-08）
+            c.token !== true &&
             (effect.rarity ? c.rarity === effect.rarity : true) &&
             byUnlock(c.id),
         );

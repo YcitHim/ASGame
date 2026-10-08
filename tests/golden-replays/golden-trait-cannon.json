@@ -103,7 +103,7 @@
         "type": "PlayCard",
         "actionId": "p6",
         "handIndex": 2,
-        "targetId": "corroded_swarm"
+        "targetId": "riveted_heavy"
       },
       {
         "type": "PlayCard",
@@ -248,7 +248,7 @@
         "actionId": "e32"
       }
     ],
-    "eventHash": "3c6c4883a302281e91f031b9051754282c73c2d7ed52239d346229606bf500f4",
+    "eventHash": "a60f11dd668bd8bfaf63d30f6346b9ff21c1147aa882c5366d92fd980fc29cbd",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -283,11 +283,11 @@
       "BuffApplied",
       "DamageDealt",
       "HpLost",
+      "UnitDied",
+      "PollutionChanged",
       "CardPlayed",
       "DamageDealt",
       "HpLost",
-      "UnitDied",
-      "PollutionChanged",
       "CardPlayed",
       "ChargeChanged"
     ],

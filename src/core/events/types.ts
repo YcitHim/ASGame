@@ -32,6 +32,8 @@ export interface IntentPayload {
   /** 召唤意图（docs/40 §五）：召唤物定义 id 与数量 */
   readonly enemyId?: string;
   readonly count?: number;
+  /** 吸血比例（docs/60 §四，锈喉「狂噬」）：命中后按真实掉血回血给自己 */
+  readonly lifesteal?: number;
   /** 颠倒（docs/46 §3.8）：意图数值被随机化，UI 只显示「?」 */
   readonly fuzzed?: boolean;
 }
@@ -80,6 +82,11 @@ export interface EventPayloadMap {
   ChargeInterrupted: { enemyId: string; buffId: string; times: number };
   /** 眩晕抗性（docs/46 §3.5）：精英 / Boss 首次被眩晕后，本场战斗免疫后续眩晕 */
   StunResisted: { targetId: string };
+  /**
+   * 转阶段保护（docs/60 §四，甲方 2026-10-08 口述修订）：血线被**跨过** 50% 时触发——
+   * 跨过那一击照常吃满，随后挂上「临界硬化」（99% 减伤），玩家回合结束时消失。
+   */
+  PhaseGuarded: { enemyId: string };
   /** 召唤（docs/40 §五）：敌人召唤出新单位，入场当回合不行动 */
   UnitSummoned: { summonerId: string; enemyId: string; defId: string };
   PollutionChanged: { targetId: string; before: number; after: number; delta: number; critical: boolean };

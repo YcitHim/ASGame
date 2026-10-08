@@ -396,13 +396,13 @@
       {
         "type": "PlayCard",
         "actionId": "p55",
-        "handIndex": 1,
+        "handIndex": 0,
         "targetId": "riveted_heavy"
       },
       {
         "type": "PlayCard",
         "actionId": "p56",
-        "handIndex": 0,
+        "handIndex": 2,
         "targetId": "riveted_heavy"
       },
       {
@@ -412,35 +412,35 @@
       {
         "type": "PlayCard",
         "actionId": "p58",
-        "handIndex": 4,
+        "handIndex": 0,
         "targetId": "riveted_heavy"
       },
       {
         "type": "PlayCard",
         "actionId": "p59",
-        "handIndex": 3,
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p60",
+        "handIndex": 2,
         "targetId": "riveted_heavy"
       },
       {
         "type": "EndTurn",
-        "actionId": "e60"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p61",
-        "handIndex": 3,
-        "targetId": "riveted_heavy"
+        "actionId": "e61"
       },
       {
         "type": "PlayCard",
         "actionId": "p62",
-        "handIndex": 0,
+        "handIndex": 3,
         "targetId": "riveted_heavy"
       },
       {
         "type": "PlayCard",
         "actionId": "p63",
-        "handIndex": 0,
+        "handIndex": 3,
         "targetId": "riveted_heavy"
       },
       {
@@ -456,23 +456,23 @@
       {
         "type": "PlayCard",
         "actionId": "p66",
-        "handIndex": 0,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p67",
-        "handIndex": 1,
+        "handIndex": 2,
         "targetId": "riveted_heavy"
       },
       {
         "type": "EndTurn",
-        "actionId": "e68"
+        "actionId": "e67"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p68",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
       },
       {
         "type": "PlayCard",
         "actionId": "p69",
-        "handIndex": 3,
+        "handIndex": 0,
         "targetId": "riveted_heavy"
       },
       {
@@ -482,14 +482,14 @@
         "targetId": "riveted_heavy"
       },
       {
-        "type": "PlayCard",
-        "actionId": "p71",
-        "handIndex": 1,
-        "targetId": "riveted_heavy"
+        "type": "EndTurn",
+        "actionId": "e71"
       },
       {
-        "type": "EndTurn",
-        "actionId": "e72"
+        "type": "PlayCard",
+        "actionId": "p72",
+        "handIndex": 1,
+        "targetId": "riveted_heavy"
       },
       {
         "type": "PlayCard",
@@ -510,29 +510,29 @@
       {
         "type": "PlayCard",
         "actionId": "p76",
-        "handIndex": 3,
+        "handIndex": 1,
         "targetId": "riveted_heavy"
       },
       {
         "type": "PlayCard",
         "actionId": "p77",
-        "handIndex": 2,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p78",
-        "handIndex": 0,
+        "handIndex": 1,
         "targetId": "riveted_heavy"
       },
       {
         "type": "EndTurn",
-        "actionId": "e79"
+        "actionId": "e78"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p79",
+        "handIndex": 3,
+        "targetId": "riveted_heavy"
       },
       {
         "type": "PlayCard",
         "actionId": "p80",
-        "handIndex": 3,
+        "handIndex": 1,
         "targetId": "riveted_heavy"
       },
       {
@@ -540,9 +540,73 @@
         "actionId": "p81",
         "handIndex": 0,
         "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e82"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p83",
+        "handIndex": 1,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p84",
+        "handIndex": 1,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p85",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e86"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p87",
+        "handIndex": 1,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p88",
+        "handIndex": 3,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p89",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e90"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p91",
+        "handIndex": 1,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p92",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e93"
       }
     ],
-    "eventHash": "a80039169b776295413c343732e5eb74bbc52c17b438d34bdebaab9e7e433519",
+    "eventHash": "e695efb0be6e876fd324e30550a364ea42ad89023c27f6aa27b4baf2c51584e1",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -585,7 +649,7 @@
       "CardPlayed",
       "DamageDealt"
     ],
-    "turns": 23,
-    "outcome": "win"
+    "turns": 26,
+    "outcome": "lose"
   }
 }

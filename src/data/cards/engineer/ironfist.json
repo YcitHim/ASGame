@@ -1,0 +1,26 @@
+{
+  "id": "ironfist",
+  "class": "engineer",
+  "type": "attack",
+  "rarity": "special",
+  "cost": 0,
+  "token": true,
+  "keywords": [
+    "exhaust"
+  ],
+  "effects": [
+    {
+      "kind": "damage",
+      "value": 24
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "damage",
+        "value": 32
+      }
+    ]
+  },
+  "i18n": "card.ironfist"
+}

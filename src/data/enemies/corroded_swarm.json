@@ -1,7 +1,7 @@
 {
   "id": "corroded_swarm",
   "i18n": "enemy.corroded_swarm",
-  "maxHp": 30,
+  "maxHp": 20,
   "onDeath": [
     {
       "kind": "gainPollution",

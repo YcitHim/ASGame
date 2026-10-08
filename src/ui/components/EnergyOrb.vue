@@ -1,5 +1,49 @@
 <script setup lang="ts">
-defineProps<{ energy: number; maxEnergy: number; charge: number; bloodHp: number; maxHp: number }>();
+import { computed } from "vue";
+import { CHARGE_BACKLASH, CHARGE_LIMIT } from "@/core/combat";
+import { getTraitHandler, hasTraitHandler } from "@/core/registry/trait-handler";
+import { loadGameContent } from "@/data/load";
+
+const props = withDefaults(
+  defineProps<{
+    energy: number;
+    maxEnergy: number;
+    charge: number;
+    bloodHp: number;
+    maxHp: number;
+    /** 本局特性（docs/58）：充能口径随特性变化，悬浮说明必须跟着变 */
+    traitId?: string | null;
+  }>(),
+  { traitId: "" },
+);
+
+/**
+ * 充能口径说明：走特性注册表的**能力问询**（铁律 6，不做 id 字符串特判）。
+ * 此前文案写死「各段伤害 +1 / 超 10 过载清零」，在铁皮王八（充能注入格挡管线）
+ * 与玻璃大炮（无上限不过载、转超负荷）下都是错误说明。
+ */
+const chargeTips = computed(() => {
+  const def = props.traitId ? loadGameContent().content.traits.get(props.traitId) : undefined;
+  const handler = def && hasTraitHandler(def.handler) ? getTraitHandler(def.handler) : undefined;
+  const params = def?.params ?? {};
+
+  const target = handler?.chargeTarget?.(params) ?? "attack";
+  const gain =
+    target === "attack"
+      ? "每点使你所有攻击的各段伤害 +1。"
+      : target === "block"
+        ? "充能不加伤：每次获得格挡时，额外 +充能层数。"
+        : "充能不给普通攻击加伤，只在一波打出去时兑现。";
+
+  const overloadOn = handler?.chargeOverload?.(params) ?? true;
+  const step = handler?.overloadPerStep?.(params) ?? null;
+  const cap =
+    !overloadOn && step !== null
+      ? `充能无上限、不过载；超过 ${CHARGE_LIMIT} 后每 ${step} 点转化为 1 层「超负荷」。`
+      : `超过 ${CHARGE_LIMIT} 触发过载：立即受 ${CHARGE_BACKLASH} 点伤害并清零。`;
+
+  return { gain, cap, uncapped: !overloadOn };
+});
 </script>
 
 <template>
@@ -10,9 +54,9 @@ defineProps<{ energy: number; maxEnergy: number; charge: number; bloodHp: number
     <div class="charge-chip" :class="{ zero: charge <= 0 }" tabindex="0">
       <span class="charge-value">充能 +{{ charge }}</span>
       <span class="charge-pop" role="tooltip">
-        <b>充能 · {{ charge }} / 10</b>
-        <em>每点使你所有攻击的各段伤害 +1。</em>
-        <em class="warn">超过 10 触发过载：立即受 5 点伤害并清零。</em>
+        <b>充能 · {{ charge }}{{ chargeTips.uncapped ? "" : ` / ${CHARGE_LIMIT}` }}</b>
+        <em>{{ chargeTips.gain }}</em>
+        <em class="warn">{{ chargeTips.cap }}</em>
       </span>
     </div>
   </div>

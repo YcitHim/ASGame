@@ -6,6 +6,8 @@
  */
 import { defineStore } from "pinia";
 import { createBattleState, pollutionCapFor, reduce, validatePlayCardState, type BattleState } from "@/core/combat";
+import { BUFF_DEFINITIONS } from "@/core/buffs";
+import type { BuffId } from "@/core/registry/ids";
 import { isCombatNode, rollEncounter } from "@/core/map";
 import type { Action } from "@/core/actions";
 import type { DomainEvent } from "@/core/events";
@@ -15,6 +17,7 @@ import { AnimQueue } from "@/ui/anim-queue";
 import { buffMeta } from "@/ui/components/buff-meta";
 import { useCodexStore } from "@/stores/codex";
 import { useRunStore } from "@/stores/run";
+import { useSettingsStore } from "@/stores/settings";
 import { useTipsStore } from "@/stores/tips";
 import { useTutorialStore } from "@/stores/tutorial";
 
@@ -102,10 +105,11 @@ export const MESSAGE_TTL_MS = 2500;
 let messageTimer: ReturnType<typeof setTimeout> | null = null;
 let messageSerial = 0;
 
-/** 玩家侧的负面状态（教学里判断"敌人给我挂了异常"）。 */
-const PLAYER_DEBUFFS = ["vulnerable", "weak", "pollution", "corroding"];
+/** 玩家侧的负面状态（教学里判断"敌人给我挂了异常"）：按状态定义的极性派生，不手写清单——
+ *  手写清单曾经留着已废弃的 "vulnerable"、漏了现役的 "timid"（docs/46 §2.2 合并案）。 */
 function isDebuff(buffId: string): boolean {
-  return PLAYER_DEBUFFS.includes(buffId);
+  const def = BUFF_DEFINITIONS[buffId as BuffId];
+  return def?.polarity === "affliction" || def?.polarity === "curse";
 }
 
 /**
@@ -178,6 +182,9 @@ export const useBattleStore = defineStore("battle", {
           this.playing = false;
         },
       });
+      // 倍速的唯一事实源是设置页（settings.animationSpeed，落盘）：
+      // 此前设置项写了存档却没有消费方，战斗内 1×/2× 又不落盘，两边各说各话。
+      this.speed = useSettingsStore().values.animationSpeed;
       queue.setSpeed(this.speed);
     },
 
@@ -503,6 +510,8 @@ export const useBattleStore = defineStore("battle", {
     toggleSpeed(): void {
       this.speed = this.speed === 1 ? 2 : 1;
       queue.setSpeed(this.speed);
+      // 战斗内的切换同样落盘，与设置页保持同一份事实
+      useSettingsStore().update({ animationSpeed: this.speed });
     },
 
     removeFloater(id: number): void {

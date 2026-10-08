@@ -120,17 +120,15 @@ function takeBossRelic(id: string): void {
 }
 
 /**
- * 首胜三选一里的「机制不合」件（docs/43 §2.4 配套 / docs/50 §三）：
- * 压力表对非炉心、血泵对非血械 = 纯白板。照常出现，但置灰 + 一行标注 + 不可选。
+ * 随身遗物的「机制相性」标注（docs/43 §2.4 / docs/50 §三）：
+ * 压力表对非炉心、血泵对非血械 = 纯白板。**甲方 2026-10-08 裁定：全部可选**——
+ * 置灰与禁用撤掉（那会损伤信任），只保留一行说明，玩家想拿就拿。
  */
 function companionFit(id: string): RelicFit {
   return relicResourceFit(id, run.classId, loadGameContent().content);
 }
 function companionNote(id: string): string {
   return relicFitNote(companionFit(id));
-}
-function isCompanionFit(id: string): boolean {
-  return companionFit(id).ok;
 }
 
 /** 卡牌三选一的首遇提示（docs/42 §五）：教学里讲过三选一，正式局首次再遇不再弹。 */
@@ -140,7 +138,6 @@ function showPickTip(): void {
 
 /** 取走首胜随身遗物 → 回到卡牌三选一。 */
 function takeCompanion(id: string): void {
-  if (!isCompanionFit(id)) return;
   run.takeCompanionRelic(id);
   tips.trigger("relic_pick");
   cardStep.value = "card";
@@ -270,18 +267,11 @@ function rarityLabel(rarity: string | undefined): string {
           <p class="sub">第一场胜利 · 从三件里挑一件带走</p>
         </header>
         <div class="relics">
-          <button
-            v-for="id in companionOffers"
-            :key="id"
-            class="relic"
-            :class="{ unfit: !isCompanionFit(id) }"
-            :disabled="!isCompanionFit(id)"
-            @click="takeCompanion(id)"
-          >
+          <button v-for="id in companionOffers" :key="id" class="relic" @click="takeCompanion(id)">
             <b>{{ t(`relic.${id}.name`, id) }}</b>
             <p>{{ t(`relic.${id}.desc`, "") }}</p>
-            <span v-if="!isCompanionFit(id)" class="unfit-note">{{ companionNote(id) }}</span>
-            <span class="pick">{{ isCompanionFit(id) ? "取 走" : "不 可 选" }}</span>
+            <span v-if="companionNote(id)" class="unfit-note">{{ companionNote(id) }}</span>
+            <span class="pick">取 走</span>
           </button>
         </div>
         <button class="skip" @click="skipCompanion">放 弃</button>
@@ -474,24 +464,16 @@ function rarityLabel(rarity: string | undefined): string {
   line-height: 1.8;
   color: var(--ink-dim);
 }
-/* 机制不合件（docs/43 §2.4 / docs/50 §三）：照常出现，置灰 + 标注 + 不可选 */
-.relic.unfit {
-  opacity: 0.42;
-  filter: grayscale(0.7);
-  cursor: not-allowed;
-}
-.relic.unfit:hover {
-  transform: none;
-  border-color: rgba(110, 88, 54, 0.35);
-}
+/* 机制不合件（docs/43 §2.4）：甲方 2026-10-08 起**只提示、不拦截**——全部可选，
+   一行小字说明它跟本职业机制不搭，玩家自行取舍。 */
 .unfit-note {
   display: block;
   margin-top: 10px;
   font-size: 10px;
   line-height: 1.6;
   letter-spacing: 0.08em;
-  color: var(--blood-hi);
-  opacity: 0.85;
+  color: var(--gold-dim);
+  opacity: 0.9;
 }
 .none {
   color: var(--ink-dim);

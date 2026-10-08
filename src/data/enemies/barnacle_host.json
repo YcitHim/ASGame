@@ -9,8 +9,9 @@
   "intents": [
     {
       "intent": {
-        "kind": "attack",
-        "value": 10
+        "kind": "selfBuff",
+        "buffId": "bramble",
+        "stacks": 1
       },
       "weight": 3,
       "maxConsecutive": 2

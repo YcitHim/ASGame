@@ -4,7 +4,7 @@
  */
 import type { BuffInstance } from "../buffs";
 import type { EnemySetup, IntentPayload } from "../events";
-import type { ContentDb, RunDifficulty } from "../registry/content";
+import type { CardEffect, ContentDb, RunDifficulty } from "../registry/content";
 import { DIFFICULTY_PARAMS, emptyContent } from "../registry/content";
 import type { Modifier } from "../pipeline";
 import { Rng, type RngSnapshot } from "../rng";
@@ -72,6 +72,13 @@ export interface EnemyState {
   readonly interruptsTaken: number;
   /** 眩晕抗性已用掉（docs/46 §3.5：精英/Boss 首次被眩晕后本场免疫后续） */
   readonly stunResisted: boolean;
+  /**
+   * 本回合累计承受的伤害（docs/60 §八.3 不屈）：每回合开始归零，
+   * 「不屈」用它判定「本回合只吃 15% 上限」。
+   */
+  readonly damageTakenThisTurn: number;
+  /** 转阶段保护已用掉（docs/60 §四，每场一次） */
+  readonly phaseGuardUsed: boolean;
   /** 召唤者 id（docs/40 §五）：召唤物在被召唤者死亡时殉爆 */
   readonly summonerId?: string;
   /** 入场回合（docs/40 §五-4）：入场当回合不行动 */
@@ -83,6 +90,19 @@ export interface Piles {
   readonly hand: readonly string[];
   readonly discard: readonly string[];
   readonly exhaust: readonly string[];
+}
+
+/**
+ * 延迟结算的效果（甲方 2026-10-08）：
+ * 带 `delayTurns` 的效果不立刻生效，先存进这个队列，每过一个玩家回合 `turnsLeft` −1，
+ * 归零时在**回合开始**结算（超械铁拳的「蓄力一回合」、上发条的「下回合还充能」）。
+ */
+export interface DelayedEffect {
+  readonly turnsLeft: number;
+  /** 已剔除 delayTurns 的效果本体（防止入队后再次入队） */
+  readonly effect: CardEffect;
+  readonly actorId: string;
+  readonly chosenTargetId: string | null;
 }
 
 export interface BattleState {
@@ -114,6 +134,8 @@ export interface BattleState {
   readonly attackCardsPlayedThisTurn: number;
   /** 本回合神眼是否已用（每回合一次，docs/58 §七.2） */
   readonly eyeUsedThisTurn: boolean;
+  /** 延迟结算队列（甲方 2026-10-08）：回合开始逐个递减并结算到期项 */
+  readonly delayedEffects: readonly DelayedEffect[];
   /** 事件全局序号计数器 */
   readonly eventSeq: number;
   /** 难度档（docs/36 T2）：敌人 HP / 伤害倍率一并从此读 */
@@ -247,6 +269,8 @@ export function createBattleState(config: BattleConfig): BattleState {
         forcedChain: [],
         interruptsTaken: 0,
         stunResisted: false,
+        damageTakenThisTurn: 0,
+        phaseGuardUsed: false,
       };
     }),
     piles: { draw, hand: [], discard: [], exhaust: [] },
@@ -262,6 +286,7 @@ export function createBattleState(config: BattleConfig): BattleState {
     selfHpSpentThisTurn: 0,
     attackCardsPlayedThisTurn: 0,
     eyeUsedThisTurn: false,
+    delayedEffects: [],
     eventSeq: 0,
     content,
   };

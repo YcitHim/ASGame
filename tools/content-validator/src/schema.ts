@@ -75,6 +75,28 @@ const effectSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("gainCharge"), value: z.number(), condition: conditionSchema.optional() }).strict(),
   z
     .object({
+      kind: z.literal("gainCard"),
+      /** "bloodCost" = 全池带血契代价的牌；数组 = 显式卡 id 列表 */
+      pool: z.union([z.literal("bloodCost"), z.array(z.string().regex(ID_PATTERN)).min(1)]).optional(),
+      count: z.number().int().min(1).optional(),
+      value: z.number().int().min(0).optional(),
+      /** 延迟 N 回合入手（甲方 2026-10-08，超械铁拳的「蓄力一回合」） */
+      delayTurns: z.number().int().min(1).optional(),
+      /** 生成物以升级面入场（超械铁拳升级版给升级「铁拳」） */
+      upgraded: z.boolean().optional(),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("bankCharge"),
+      /** 扣掉当前充能后，下回合还回「扣掉的层数 + value」（上发条改版） */
+      value: z.number().int().min(0),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
       kind: z.literal("spendCharge"),
       target: targetSchema.optional(),
       /** 每点充能的结算量 */
@@ -181,6 +203,10 @@ const cardShape = {
   type: z.enum(CARD_TYPES),
   rarity: z.enum(CARD_RARITIES),
   cost: z.number().int().min(0).max(9),
+  /** X 费（甲方 2026-10-08，红线运转）：费用 = 打牌前的当前能量，卡面显示「X」 */
+  costX: z.boolean().optional(),
+  /** 衍生物牌（甲方 2026-10-08，铁拳）：只在战斗中凭空生成，不进任何掉落池 */
+  token: z.boolean().optional(),
   bloodCost: z.number().int().min(0).max(99).optional(),
   /** 固定充能代价（docs/51 §二）：与 bloodCost 同构的一笔资源成本 */
   chargeCost: z.number().int().min(1).max(99).optional(),
@@ -313,6 +339,8 @@ export interface IntentJson {
   enemyId?: string;
   count?: number;
   maxSummons?: number;
+  /** 吸血比例（docs/60 §四 狂噬） */
+  lifesteal?: number;
 }
 
 const intentBaseSchema = z
@@ -329,6 +357,8 @@ const intentBaseSchema = z
     enemyId: z.string().regex(ID_PATTERN).optional(),
     count: z.number().int().min(1).optional(),
     maxSummons: z.number().int().min(1).optional(),
+    /** 吸血比例（docs/60 §四 狂噬）：按真实掉血回血给自己，0 < x ≤ 1 */
+    lifesteal: z.number().gt(0).max(1).optional(),
   })
   .strict();
 
@@ -349,6 +379,8 @@ const enemyIntentSchema = z
       .object({ buffId: z.enum(BUFF_IDS), minStacks: z.number().int().min(1) })
       .strict()
       .optional(),
+    /** 整场一次（docs/60 §七 虚化）：抽中过一次后不再进入候选池 */
+    once: z.boolean().optional(),
   })
   .strict();
 
@@ -363,6 +395,8 @@ export const enemySchema = z
     interruptImmune: z.boolean().optional(),
     /** 眩晕抗性（docs/46 §3.5）：精英 / Boss 首次被眩晕后本场免疫后续 */
     stunResistant: z.boolean().optional(),
+    /** 转阶段保护（docs/60 §四 锈喉）：跨过 50% 的那一次伤害免伤 99%，每场一次 */
+    phaseGuard: z.boolean().optional(),
     /** 开场状态（docs/47 §三.4）：战斗开始即挂在自己身上 */
     startBuffs: z
       .array(z.object({ buffId: z.enum(BUFF_IDS), stacks: z.number().int().min(1) }).strict())

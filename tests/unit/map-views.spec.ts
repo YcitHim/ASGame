@@ -62,36 +62,39 @@ describe("S5 UI 流程视图挂载", () => {
   it("RewardView：第一场胜利先给随身遗物三选一，再给卡牌三选一", async () => {
     const { wrapper } = mountView(RewardView, (run) => run.startRun("bloodwright", 1));
     await nextTick();
-    // 甲方 2026-10-07：随身遗物改成首胜后发放
+    // 甲方 2026-10-07：随身遗物改成首胜后发放；甲方 2026-10-08：全部可选，不再过滤
     expect(wrapper.findAll(".relic")).toHaveLength(3);
-    // docs/50 §三：机制不合的件置灰不可选，跳过它们再点
-    const pickable = wrapper.findAll(".relic:not([disabled])");
-    expect(pickable.length).toBeGreaterThan(0);
-    await pickable[0]!.trigger("click");
+    await wrapper.findAll(".relic")[0]!.trigger("click");
     await nextTick();
     expect(wrapper.findAll(".option")).toHaveLength(3);
     expect(wrapper.find(".skip").exists()).toBe(true);
     wrapper.unmount();
   });
 
-  it("RewardView：机制不合的随身遗物照常出现，但置灰 + 一行标注 + 不可选（docs/50 §三）", async () => {
-    let unfitSeen = 0;
+  it("RewardView：机制不合的随身遗物只标注、不置灰——全部可选（甲方 2026-10-08）", async () => {
+    let noted = 0;
     // 三选一来自随机池，多跑几个种子保证至少撞见一次「炉心件 / 卖血件」
     for (let seed = 1; seed <= 12; seed += 1) {
       const { wrapper } = mountView(RewardView, (run) => run.startRun("rustspeaker", seed));
       await nextTick();
-      const unfit = wrapper.findAll(".relic.unfit");
-      for (const button of unfit) {
-        unfitSeen += 1;
-        // 置灰件必须不可选，并且带一行「本职业无 X 机制」的标注
-        expect(button.attributes("disabled")).toBeDefined();
-        expect(button.find(".unfit-note").text()).toContain("本职业无");
-        expect(button.find(".unfit-note").text()).toContain("机制");
-        expect(button.find(".pick").text()).toContain("不 可 选");
+      const relics = wrapper.findAll(".relic");
+      for (const button of relics) {
+        // 一件都不能被禁用、不能置灰
+        expect(button.attributes("disabled")).toBeUndefined();
+        expect(button.classes()).not.toContain("unfit");
+        if (button.find(".unfit-note").exists()) {
+          noted += 1;
+          expect(button.find(".unfit-note").text()).toContain("本职业无");
+          expect(button.find(".pick").text()).toContain("取 走");
+        }
       }
+      // 点第一件必须走通（不再被拦在「不可选」）
+      await relics[0]!.trigger("click");
+      await nextTick();
+      expect(wrapper.findAll(".option")).toHaveLength(3);
       wrapper.unmount();
     }
-    expect(unfitSeen).toBeGreaterThan(0);
+    expect(noted).toBeGreaterThan(0);
   });
 
   it("RewardView：首胜选随身遗物时不弹「挑一张牌」（提示与当前动作对齐）", async () => {

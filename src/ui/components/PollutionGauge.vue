@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { POLLUTION_CRITICAL } from "@/core/combat";
 
 const props = defineProps<{ value: number }>();
-const critical = computed(() => props.value >= 80);
+// 临界线与 core 同一份常量（此前这里硬编码 80，两份必然漂移）
+const critical = computed(() => props.value >= POLLUTION_CRITICAL);
 const color = computed(() => (critical.value ? "#C0392B" : "var(--rot)"));
+// 超级大畸变下污染可超 100：数字照实显示，但渐变角度必须 clamp，
+// 否则 CSS 百分比 stop 超过 100% 渐变直接画错
+const pct = computed(() => Math.min(100, Math.max(0, props.value)));
 </script>
 
 <template>
@@ -11,11 +16,11 @@ const color = computed(() => (critical.value ? "#C0392B" : "var(--rot)"));
     <div
       class="gauge"
       :class="{ critical }"
-      :style="{ background: `conic-gradient(${color} 0 ${value}%, rgba(94,123,76,.14) ${value}% 100%)` }"
+      :style="{ background: `conic-gradient(${color} 0 ${pct}%, rgba(94,123,76,.14) ${pct}% 100%)` }"
     >
       <div class="gv"><b :style="{ color: critical ? '#F0B4A8' : '#A8C48E' }">{{ value }}</b><span>污 染</span></div>
     </div>
-    <div class="gauge-label">{{ critical ? "临界 — 每回合反噬" : "临界 80 — 安全" }}</div>
+    <div class="gauge-label">{{ critical ? "临界 — 每回合反噬" : `临界 ${POLLUTION_CRITICAL} — 安全` }}</div>
   </div>
 </template>
 

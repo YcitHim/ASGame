@@ -1,7 +1,7 @@
 {
   "id": "rust_throat",
   "i18n": "enemy.rust_throat",
-  "maxHp": 108,
+  "maxHp": 198,
   "intents": [
     {
       "intent": {
@@ -11,11 +11,11 @@
       },
       "weight": 1,
       "maxConsecutive": 1,
-      "everyTurns": 3,
       "condition": {
         "type": "selfHpBelow",
         "percent": 25
-      }
+      },
+      "everyTurns": 3
     },
     {
       "intent": {
@@ -25,17 +25,17 @@
       },
       "weight": 1,
       "maxConsecutive": 1,
-      "everyTurns": 3,
       "condition": {
         "type": "selfHpBelow",
         "percent": 50
-      }
+      },
+      "everyTurns": 3
     },
     {
       "intent": {
         "kind": "attack",
-        "value": 10,
-        "hits": 2
+        "value": 3,
+        "hits": 3
       },
       "weight": 4,
       "maxConsecutive": 2,
@@ -48,7 +48,7 @@
       "intent": {
         "kind": "debuff",
         "buffId": "pollution",
-        "stacks": 22
+        "stacks": 30
       },
       "weight": 2,
       "maxConsecutive": 1,
@@ -61,10 +61,10 @@
       "intent": {
         "kind": "charge",
         "value": 3,
-        "releaseOverride": 16,
+        "releaseOverride": 15,
         "thenIntent": {
           "kind": "attack",
-          "value": 16
+          "value": 15
         }
       },
       "weight": 2,
@@ -107,7 +107,8 @@
     {
       "intent": {
         "kind": "attack",
-        "value": 24
+        "value": 24,
+        "lifesteal": 0.5
       },
       "weight": 2,
       "maxConsecutive": 1,
@@ -135,5 +136,6 @@
     }
   ],
   "interruptImmune": true,
-  "stunResistant": true
+  "stunResistant": true,
+  "phaseGuard": true
 }

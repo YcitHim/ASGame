@@ -273,6 +273,60 @@ describe("docs/58 §四 血械·嗜血", () => {
     expect(eventsOfType(r.events, "BuffApplied").some((e) => e.buffId === "regeneration")).toBe(false);
     expect(eventsOfType(r.events, "BuffApplied").some((e) => e.buffId === "weak")).toBe(false);
   });
+
+  /* ---- 甲方 2026-10-08 职业平衡修订：低血段「回血 +1」/ 满血段「每回合给一张血契牌」 ---- */
+
+  it("低血段：HP < 30% 时，每次回血 +1 点", () => {
+    // 用 tank（只防御不攻击）隔离变量，免得 dummy 打掉的血把 HP 推出低血区
+    const low = battle(db, ["test_guard"], "bloodthirst", {
+      player: { maxHp: 100, energy: 5, hp: 29 },
+      enemies: [{ id: "tank" }],
+    });
+    const withRegen = reduce(low, {
+      type: "DebugCommand",
+      actionId: "r",
+      command: "add buff regeneration 2",
+    }).state;
+    const r = reduce(withRegen, { type: "EndTurn", actionId: "e" });
+    const healed = eventsOfType(r.events, "HpHealed").filter((e) => e.targetId === "player");
+    expect(healed.at(-1)?.value).toBe(3); // 2 层再生 + 低血 1
+  });
+
+  it("低血段：恰好 30% 不算低血，回血不加成", () => {
+    const state = battle(db, ["test_guard"], "bloodthirst", {
+      player: { maxHp: 100, energy: 5, hp: 30 },
+      enemies: [{ id: "tank" }],
+    });
+    const withRegen = reduce(state, {
+      type: "DebugCommand",
+      actionId: "r",
+      command: "add buff regeneration 2",
+    }).state;
+    const r = reduce(withRegen, { type: "EndTurn", actionId: "e" });
+    const healed = eventsOfType(r.events, "HpHealed").filter((e) => e.targetId === "player");
+    expect(healed.at(-1)?.value).toBe(2); // 只有再生本体
+  });
+
+  it("满血段：回合开始额外获得一张血契牌（不占常规抽牌额度）", () => {
+    const full = battle(db, ["test_guard"], "bloodthirst", {
+      player: { maxHp: 100, energy: 5, hp: 100 },
+    });
+    // 常规手牌 1 张（handSize = 牌组长度）+ 额外 1 张；
+    // 测试池里唯一带血契代价的牌是 test_bleed_strike，所以必然是它。
+    expect(full.piles.hand).toHaveLength(2);
+    const extra = full.piles.hand.find((id) => full.cardInstances[id]?.cardId === "test_bleed_strike");
+    expect(extra).toBeDefined();
+  });
+
+  it("满血段：只要掉了一点血，当回合就不再给牌", () => {
+    const hurt = battle(db, ["test_guard"], "bloodthirst", {
+      player: { maxHp: 100, energy: 5, hp: 99 },
+    });
+    expect(hurt.piles.hand).toHaveLength(1);
+    expect(
+      hurt.piles.hand.some((id) => hurt.cardInstances[id]?.cardId === "test_bleed_strike"),
+    ).toBe(false);
+  });
 });
 
 describe("docs/58 §五 炉心·铁皮王八（甲方 2026-10-07 修订）", () => {
@@ -610,12 +664,27 @@ describe("docs/58 §七 锈语者·超级大畸变", () => {
     expect(eyeAvailable(next)).toBe(true);
   });
 
-  it("战斗胜利污染 −50", () => {
-    const state = battle(db, ["test_attack"], "super_mutation", {
-      player: { maxHp: 100, energy: 5, pollution: 120 },
+  it("战斗胜利：污染 ≥180 才扣 50，跌回线下不扣（甲方 2026-10-08 修订）", () => {
+    const below = battle(db, ["test_attack"], "super_mutation", {
+      player: { maxHp: 100, energy: 5, pollution: 179 },
+    });
+    const r1 = reduce(below, { type: "DebugCommand", actionId: "k", command: "kill dummy" });
+    expect(r1.state.phase).toBe("battleEnd");
+    expect(r1.state.player.pollution).toBe(179); // 差 1 点都不给
+
+    const at = battle(db, ["test_attack"], "super_mutation", {
+      player: { maxHp: 100, energy: 5, pollution: 180 },
+    });
+    const r2 = reduce(at, { type: "DebugCommand", actionId: "k", command: "kill dummy" });
+    expect(r2.state.phase).toBe("battleEnd");
+    expect(r2.state.player.pollution).toBe(130); // 踩线即扣 50
+  });
+
+  it("战斗胜利：无特性时污染不因胜利变化（对照组）", () => {
+    const state = battle(db, ["test_attack"], "", {
+      player: { maxHp: 100, energy: 5, pollution: 90 },
     });
     const r = reduce(state, { type: "DebugCommand", actionId: "k", command: "kill dummy" });
-    expect(r.state.phase).toBe("battleEnd");
-    expect(r.state.player.pollution).toBe(70);
+    expect(r.state.player.pollution).toBe(90);
   });
 });

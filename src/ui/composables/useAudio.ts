@@ -56,6 +56,10 @@ export function useAudio(): void {
 
   const onGesture = (): void => {
     if (!unlockAudio()) return;
+    // 解锁成功后这两个监听就没用了：立即移除，不留常驻闭包（也别用 once:true ——
+    // 第一次手势若解锁失败，监听被一并移除就再也没有解锁机会了）
+    window.removeEventListener("pointerdown", onGesture, { capture: true });
+    window.removeEventListener("keydown", onGesture, { capture: true });
     syncBgm();
   };
   window.addEventListener("pointerdown", onGesture, { capture: true });

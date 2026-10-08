@@ -123,13 +123,13 @@
         "type": "PlayCard",
         "actionId": "p9",
         "handIndex": 0,
-        "targetId": "corroded_swarm"
+        "targetId": "riveted_heavy"
       },
       {
         "type": "PlayCard",
         "actionId": "p10",
         "handIndex": 0,
-        "targetId": "corroded_swarm"
+        "targetId": "riveted_heavy"
       },
       {
         "type": "EndTurn",
@@ -139,7 +139,7 @@
         "type": "PlayCard",
         "actionId": "p12",
         "handIndex": 0,
-        "targetId": "corroded_swarm"
+        "targetId": "riveted_heavy"
       },
       {
         "type": "PlayCard",
@@ -154,7 +154,7 @@
       {
         "type": "PlayCard",
         "actionId": "p15",
-        "handIndex": 1,
+        "handIndex": 0,
         "targetId": "riveted_heavy"
       },
       {
@@ -164,39 +164,23 @@
         "targetId": "riveted_heavy"
       },
       {
-        "type": "EndTurn",
-        "actionId": "e17"
+        "type": "PlayCard",
+        "actionId": "p17",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
       },
       {
-        "type": "PlayCard",
-        "actionId": "p18",
-        "handIndex": 4,
-        "targetId": "riveted_heavy"
+        "type": "EndTurn",
+        "actionId": "e18"
       },
       {
         "type": "PlayCard",
         "actionId": "p19",
         "handIndex": 0,
         "targetId": "riveted_heavy"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p20",
-        "handIndex": 0,
-        "targetId": "riveted_heavy"
-      },
-      {
-        "type": "EndTurn",
-        "actionId": "e21"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p22",
-        "handIndex": 1,
-        "targetId": "riveted_heavy"
       }
     ],
-    "eventHash": "2ba227c4b4b2c849cf37060b862748572176f2fbae019f64b4252b4c51235f17",
+    "eventHash": "900d49b32b98ca073e8b24ab5a8f6a70db5c0e6bbf6b428cc54271c317e33b50",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -239,7 +223,7 @@
       "IntentRevealed",
       "CardPlayed"
     ],
-    "turns": 7,
+    "turns": 6,
     "outcome": "win"
   }
 }

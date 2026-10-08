@@ -3,7 +3,8 @@
   "class": "engineer",
   "type": "skill",
   "rarity": "uncommon",
-  "cost": 1,
+  "cost": 0,
+  "costX": true,
   "effects": [
     {
       "kind": "chargeFromEnergy",

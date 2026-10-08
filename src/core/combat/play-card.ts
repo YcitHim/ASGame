@@ -155,8 +155,12 @@ export function effectiveCardWithEnhancements(
   }
 
   return withComputed({
-    // 颠倒（docs/46 §3.8）：本回合该牌的费用被随机覆盖为 0~3；没有颠倒时用卡面费用
-    cost: draft.reverseCosts[instance.instanceId] ?? base.cost,
+    // 颠倒（docs/46 §3.8）：本回合该牌的费用被随机覆盖为 0~3；没有颠倒时用卡面费用。
+    // X 费（甲方 2026-10-08，红线运转）：费用 = 打牌前的当前能量——有多少花多少，
+    // 因此 UI 预览与结算天然同源（两处都走这个函数）。
+    cost:
+      draft.reverseCosts[instance.instanceId] ??
+      (def.costX === true ? Math.max(0, draft.player.energy) : base.cost),
     effects,
     play,
     keywords,

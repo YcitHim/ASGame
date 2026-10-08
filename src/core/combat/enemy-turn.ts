@@ -123,6 +123,8 @@ export function runEnemyTurn(draft: Draft, sink: EventSink): void {
             base: intent.value ?? 0,
             segment: i + 1,
             segments: hits,
+            // 吸血（docs/60 §四，锈喉「狂噬」）：按真实掉血回血，打在格挡上的不算
+            ...(intent.lifesteal !== undefined ? { lifesteal: intent.lifesteal } : {}),
           });
         }
         // 攻击携带的附加减益（docs/47 §四「震慑重击」：命中附加眩晕）

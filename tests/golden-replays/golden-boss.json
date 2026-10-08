@@ -164,9 +164,91 @@
         "actionId": "p12",
         "handIndex": 1,
         "targetId": "rust_throat"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e13"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p14",
+        "handIndex": 3,
+        "targetId": "rust_throat"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p15",
+        "handIndex": 1,
+        "targetId": "rust_throat"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e16"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p17",
+        "handIndex": 4,
+        "targetId": "rust_throat"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p18",
+        "handIndex": 0,
+        "targetId": "rust_throat"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p19",
+        "handIndex": 0,
+        "targetId": "rust_throat"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e20"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p21",
+        "handIndex": 3,
+        "targetId": "rust_throat"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p22",
+        "handIndex": 2,
+        "targetId": "rust_throat"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p23",
+        "handIndex": 1,
+        "targetId": "rust_throat"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e24"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p25",
+        "handIndex": 3,
+        "targetId": "rust_throat"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p26",
+        "handIndex": 0,
+        "targetId": "rust_throat"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p27",
+        "handIndex": 0,
+        "targetId": "rust_throat"
       }
     ],
-    "eventHash": "84059f2b67ef4c2f431aeaa57a264420aa56f3c4d66a6ea8a3dd7a3222b86bfc",
+    "eventHash": "b0e5cd67dc9d4423abea078bf6572f2259710c8aee85dbb1b108854ae15e8e7f",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -209,7 +291,7 @@
       "IntentRevealed",
       "HpLost"
     ],
-    "turns": 4,
+    "turns": 8,
     "outcome": "win"
   }
 }

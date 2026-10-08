@@ -181,11 +181,11 @@ describe("docs/47 §四 §五 · 怪物签名诀落库", () => {
     expect(chaseEntry?.playerBuff?.minStacks).toBe(1);
   });
 
-  it("锈蚀守卫：everyTurns 4 的锈崩重锤（架 10 / 释放 16）", () => {
+  it("锈蚀守卫：everyTurns 4 的锈崩重锤（架 10 / 写死 18）", () => {
     const beatEntry = entries("rust_warden").find((e) => e.everyTurns === 4);
     expect(beatEntry).toBeDefined();
     const chain = buildChargeChain(beatEntry!.intent);
-    expect(chain.releaseValue).toBe(16);
+    expect(chain.releaseValue).toBe(18);
     expect(chain.steps[0]?.block).toBe(10);
   });
 
@@ -200,7 +200,14 @@ describe("docs/47 §四 §五 · 怪物签名诀落库", () => {
     const flailer = def("chain_flailer");
     expect(flailer.maxHp).toBe(96);
     expect(flailer.stunResistant).toBe(true);
-    const release = entries("chain_flailer").map((e) => buildChargeChain(e.intent).steps).flat().find((s) => s.buffId === "stun");
+    // 两套眩晕来源（docs/60 §三）：常态「眩晕锤」+ 18 伤蓄力释放
+    const beats = entries("chain_flailer").filter((e) => e.intent.kind !== "charge");
+    expect(beats.some((e) => e.intent.buffId === "stun" && e.intent.value === 3)).toBe(true);
+    const release = entries("chain_flailer")
+      .filter((e) => e.intent.kind === "charge")
+      .map((e) => buildChargeChain(e.intent).steps)
+      .flat()
+      .find((s) => s.buffId === "stun");
     expect(release).toMatchObject({ kind: "attack", value: 18, buffId: "stun", stacks: 1 });
   });
 

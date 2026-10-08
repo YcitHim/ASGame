@@ -118,6 +118,17 @@ export interface TraitHandler {
   onBattleWin?: (params: Readonly<Record<string, unknown>>, ctx: TraitContext) => readonly CardEffect[];
   /** 玩家回合结束结算（嗜血惩罚 + 奖励） */
   onTurnEnd?: (params: Readonly<Record<string, unknown>>, ctx: TraitContext) => readonly CardEffect[];
+  /**
+   * 玩家**回合开始**结算（含战斗第 1 回合）：返回挂进管线的效果
+   * （嗜血满血奖励「每回合额外给一张血契牌」，甲方 2026-10-08 修订）。
+   */
+  onTurnStart?: (params: Readonly<Record<string, unknown>>, ctx: TraitContext) => readonly CardEffect[];
+  /**
+   * 每次**回血**的额外加成（甲方 2026-10-08 修订 · 嗜血低血段）。
+   * 返回值走 `heal` 修饰管线（加区，sourceId = trait:<id>:heal），0 = 不加成。
+   * 所有回血来源（再生 / 卡牌治疗 / 回血印记 / 遗物）都汇到 healUnit 这一个入口。
+   */
+  healBonus?: (params: Readonly<Record<string, unknown>>, ctx: TraitContext) => number;
   /** 每回合第一张牌免能（触手） */
   firstCardFree?: (params: Readonly<Record<string, unknown>>) => boolean;
   /** 每回合第一张牌结算两次（大鲨臂） */
@@ -170,6 +181,11 @@ function bool(params: Readonly<Record<string, unknown>>, key: string, fallback: 
  * 血械侍僧 · 嗜血（docs/58 §四）
  * 惩罚段：本回合既未造伤、也未自伤 → 力量 −1；力量 ≤0 → 改为 1 层虚弱。
  * 奖励段：min(⌊造伤/3⌋, ⌊自伤/3⌋) × 2 层再生。
+ * 甲方 2026-10-08 职业平衡修订（两条，均为新增段）：
+ *   ① **低血段**：HP < lowHpPercent% 时，**每次回血 +lowHpHealBonus 点**
+ *      （所有回血来源都汇到 healUnit，所以是「所有回血」而不是某一条）；
+ *   ② **满血段**：HP 满时，**每个回合开始**凭空得 1 张血契牌（从全池带血契代价的牌里随机）。
+ *      两条一进一出：满血白拿资源 → 卖血 → 低血回血更快，形成背水循环。
  * ------------------------------------------------------------------ */
 registerTraitHandler({
   id: "bloodthirst",
@@ -196,6 +212,23 @@ registerTraitHandler({
       out.push({ kind: "applyBuff", target: { type: "self" }, buff: "regeneration", stacks: groups * perRegen });
     }
     return out;
+  },
+  /** 满血段（甲方 2026-10-08）：回合开始白给一张血契牌；只要掉了一点血就停供。 */
+  onTurnStart(params, ctx) {
+    if (!bool(params, "fullHpGrantCard", true)) return [];
+    if (ctx.hp < ctx.maxHp) return [];
+    const count = Math.max(1, Math.trunc(num(params, "grantCardCount", 1)));
+    const raw = params["grantCardPool"];
+    const pool: "bloodCost" | readonly string[] =
+      Array.isArray(raw) ? (raw as readonly string[]) : "bloodCost";
+    return [{ kind: "gainCard", pool, count }];
+  },
+  /** 低血段（甲方 2026-10-08）：HP 百分比低于阈值时，每次回血 +N 点。 */
+  healBonus(params, ctx) {
+    const percent = num(params, "lowHpPercent", 30);
+    const bonus = Math.max(0, Math.trunc(num(params, "lowHpHealBonus", 1)));
+    if (percent <= 0 || bonus <= 0 || ctx.maxHp <= 0) return 0;
+    return (ctx.hp / ctx.maxHp) * 100 < percent ? bonus : 0;
   },
 });
 
@@ -264,7 +297,9 @@ registerTraitHandler({
 
 /* ------------------------------------------------------------------ *
  * 锈语者 · 超级大畸变（docs/58 §七）
- * 污染无上限、每满 100 反噬一次不清零；开局阈值快照；胜利污染 −50。
+ * 污染无上限、每满 100 反噬一次不清零；开局阈值快照。
+ * 胜利污染 −50 **带门槛**（甲方 2026-10-08 职业平衡修订）：只有**结算那一刻**的当前污染
+ * ≥ winReliefThreshold（180）才扣——跌回线下就不给，堵住「靠胜利白嫖降压」的漏洞。
  * ------------------------------------------------------------------ */
 registerTraitHandler({
   id: "super_mutation",
@@ -274,7 +309,9 @@ registerTraitHandler({
     if (step <= 0) return null;
     return { step, backlash: Math.max(0, Math.trunc(num(params, "milestoneBacklash", 10))) };
   },
-  onBattleWin(params) {
+  onBattleWin(params, ctx) {
+    const threshold = Math.max(0, Math.trunc(num(params, "winReliefThreshold", 180)));
+    if (ctx.pollution < threshold) return [];
     const relief = Math.max(0, Math.trunc(num(params, "winPollutionRelief", 50)));
     if (relief <= 0) return [];
     return [{ kind: "gainPollution", value: -relief }];

@@ -16,7 +16,7 @@ import { definitionOf, fromDraft, livingEnemies, toDraft, type Draft } from "./d
 import { generateIntents, runEnemyTurn } from "./enemy-turn";
 import { effectiveCard, playCard } from "./play-card";
 import { resetTurnRelics, resolveTriggers } from "./relics";
-import { activeTrait, brambleMaxStacks, traitBrambleFromBlock, traitBrambleFromBlockStep, traitCtx, traitLowChargeEnergy } from "./trait";
+import { activeTrait, brambleMaxStacks, traitBrambleFromBlock, traitBrambleFromBlockStep, traitCtx, traitLowChargeEnergy, traitTurnStartEffects } from "./trait";
 import {
   applyBuffToTarget,
   decayTimedCurses,
@@ -31,6 +31,7 @@ import {
   resolveTenacity,
   restoreMaxHp,
   tickAllBuffs,
+  tickDelayed,
   tickOverload,
 } from "./resolve";
 import type { BattleState } from "./state";
@@ -63,6 +64,21 @@ function rollReverseCosts(draft: Draft): void {
 function grantLowChargeEnergy(draft: Draft): void {
   const bonus = traitLowChargeEnergy(draft);
   if (bonus > 0) draft.player.energy += bonus;
+}
+
+/**
+ * 特性**回合开始**结算（docs/58 §四，甲方 2026-10-08 修订 · 嗜血满血段）：
+ * 现在只有「满血时凭空给一张血契牌」。含战斗第 1 回合。
+ * 调用点固定在「本回合手牌就绪之后、揭示意图之前」——额外牌**不占**常规抽牌额度。
+ */
+function resolveTraitTurnStart(draft: Draft, sink: EventSink): void {
+  const effects = traitTurnStartEffects(draft);
+  if (effects.length === 0) return;
+  resolveEffects(draft, sink, effects, {
+    sourceId: `trait:${draft.traitId ?? "none"}`,
+    actorId: "player",
+    chosenTargetId: null,
+  });
 }
 
 /** 战斗开始：洗牌、固有词条优先入手、发初始手牌、揭示意图。 */
@@ -105,6 +121,8 @@ function startBattle(draft: Draft, sink: EventSink): void {
   // 原先这条链只在 endTurn 里调，玩家要到第 2 回合才吃得到（红泪戒指首回合不给格挡的实锤 bug）。
   // 时序：洗牌发牌 → 开场状态 → onBattleStart → onTurnStart → 揭示意图 → playerAction。
   resolveTriggers(draft, sink, "onTurnStart");
+  // 特性回合开始结算（嗜血满血给牌）：发牌之后就位，不占常规抽牌额度；第 1 回合同样生效。
+  resolveTraitTurnStart(draft, sink);
   generateIntents(draft, sink);
   draft.phase = "playerAction";
 }
@@ -248,6 +266,9 @@ function endTurn(draft: Draft, sink: EventSink): void {
   // 只清玩家自己的格挡（坚韧持有时改为置回维续池）；敌人格挡不在此处清（见上方 enemyAction）
   resolveTenacity(draft.player);
   draft.cardsPlayedThisTurn = 0;
+  // 敌人「本回合累计承受伤害」（docs/60 §八.3 不屈）：新玩家回合开始归零，
+  // 于是它的判定窗口正好是「玩家这一整个回合」。
+  for (const enemy of draft.enemies) enemy.damageTakenThisTurn = 0;
   // 特性本回合计数（docs/58 §四/§七）：新回合全量归零
   draft.attackCardsPlayedThisTurn = 0;
   draft.dealtDamageThisTurn = 0;
@@ -259,6 +280,10 @@ function endTurn(draft: Draft, sink: EventSink): void {
 
   draft.phase = "draw";
   drawCards(draft, sink, Math.max(0, draft.handSize - draft.hand.length));
+  // 延迟队列（甲方 2026-10-08）：常规抽牌之后结算到期项（超械铁拳的「铁拳」入手、上发条还充能）。
+  tickDelayed(draft, sink);
+  // 特性回合开始结算（嗜血满血给牌）：常规抽牌之后再给，所以是真·「额外」一张。
+  resolveTraitTurnStart(draft, sink);
 
   draft.phase = "playerAction";
   rollReverseCosts(draft);

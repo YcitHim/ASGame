@@ -4,6 +4,7 @@
  * DamageDealt 必须展开修饰层明细——数值 bug 全靠这里定位。
  */
 import type { DomainEvent } from "@/core/events";
+import { buffMeta } from "@/ui/components/buff-meta";
 
 export interface LogEntry {
   readonly seq: number;
@@ -70,10 +71,12 @@ export function describeEvent(event: DomainEvent, names: Record<string, string> 
     case "BuffExpired":
       return { seq: event.seq, type: event.type, text: `${unitLabel(event.targetId, names)} ${event.buffId} 结束` };
     case "BuffTicked":
+      // BuffTicked 被蚀锈 / 灼烧 / 超负荷 / 眩晕跳过等多个机制复用，名称必须按 buffId 取，
+      // 写死「蚀锈发作」会让超负荷扣血等场景全部谎报（数值排查全看这个面板）。
       return {
         seq: event.seq,
         type: event.type,
-        text: `${unitLabel(event.targetId, names)} 蚀锈发作，受到 ${event.damage} 点伤害`,
+        text: `${unitLabel(event.targetId, names)} ${buffMeta(event.buffId).name}发作，受到 ${event.damage} 点伤害`,
       };
     case "PollutionChanged":
       return { seq: event.seq, type: event.type, text: `污染 ${event.before} → ${event.after}${event.critical ? "（临界）" : ""}` };
@@ -94,6 +97,13 @@ export function describeEvent(event: DomainEvent, names: Record<string, string> 
         text: event.released
           ? `${unitLabel(event.enemyId, names)} 释放了蓄力重击！`
           : `${unitLabel(event.enemyId, names)} 开始蓄力${event.block > 0 ? `（架起 ${event.block} 点格挡）` : ""}`,
+      };
+    case "PhaseGuarded":
+      // 转阶段保护（docs/60 §四，甲方 2026-10-08 口述修订）：玩家必须能读到「为什么突然打不动了」
+      return {
+        seq: event.seq,
+        type: event.type,
+        text: `${unitLabel(event.enemyId, names)} 血线跌破半数，进入临界硬化（本回合受到的伤害降低 99%）`,
       };
     case "IntentRevealed": {
       const intent = event.intent;

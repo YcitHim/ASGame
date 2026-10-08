@@ -11,7 +11,7 @@ import type { ContentDb } from "../registry/content";
 import type { CardDefinition, RunDifficulty } from "../registry/content";
 import type { IntentPayload } from "../events";
 import type { Modifier } from "../pipeline";
-import type { CardInstance, EnemyState, Phase, BattleState } from "./state";
+import type { CardInstance, DelayedEffect, EnemyState, Phase, BattleState } from "./state";
 import type { EffectWork } from "./work";
 import type { TraitSnapshot } from "../registry/trait-handler";
 
@@ -48,6 +48,10 @@ export interface MutableEnemy extends MutableUnit {
   interruptsTaken: number;
   /** 眩晕抗性已用掉（docs/46 §3.5） */
   stunResisted: boolean;
+  /** 本回合累计承受伤害（docs/60 §八.3 不屈），每回合开始归零 */
+  damageTakenThisTurn: number;
+  /** 转阶段保护已用掉（docs/60 §四） */
+  phaseGuardUsed: boolean;
   summonerId?: string;
   spawnedTurn?: number;
 }
@@ -82,6 +86,8 @@ export interface Draft {
   attackCardsPlayedThisTurn: number;
   /** 本回合神眼是否已用 */
   eyeUsedThisTurn: boolean;
+  /** 延迟结算队列（甲方 2026-10-08）：回合开始递减，归零即结算 */
+  delayed: DelayedEffect[];
   player: MutablePlayer;
   enemies: MutableEnemy[];
   draw: string[];
@@ -119,6 +125,7 @@ export function toDraft(state: BattleState): Draft {
     selfHpSpentThisTurn: state.selfHpSpentThisTurn,
     attackCardsPlayedThisTurn: state.attackCardsPlayedThisTurn,
     eyeUsedThisTurn: state.eyeUsedThisTurn,
+    delayed: state.delayedEffects.map((d) => ({ ...d })),
     player: {
       id: "player",
       hp: state.player.hp,
@@ -151,6 +158,8 @@ export function toDraft(state: BattleState): Draft {
       forcedChain: [...e.forcedChain],
       interruptsTaken: e.interruptsTaken,
       stunResisted: e.stunResisted,
+      damageTakenThisTurn: e.damageTakenThisTurn,
+      phaseGuardUsed: e.phaseGuardUsed,
       ...(e.summonerId !== undefined ? { summonerId: e.summonerId } : {}),
       ...(e.spawnedTurn !== undefined ? { spawnedTurn: e.spawnedTurn } : {}),
     })),
@@ -207,6 +216,8 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
       forcedChain: [...e.forcedChain],
       interruptsTaken: e.interruptsTaken,
       stunResisted: e.stunResisted,
+      damageTakenThisTurn: e.damageTakenThisTurn,
+      phaseGuardUsed: e.phaseGuardUsed,
       ...(e.summonerId !== undefined ? { summonerId: e.summonerId } : {}),
       ...(e.spawnedTurn !== undefined ? { spawnedTurn: e.spawnedTurn } : {}),
     })),
@@ -228,6 +239,7 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
     selfHpSpentThisTurn: draft.selfHpSpentThisTurn,
     attackCardsPlayedThisTurn: draft.attackCardsPlayedThisTurn,
     eyeUsedThisTurn: draft.eyeUsedThisTurn,
+    delayedEffects: draft.delayed.map((d) => ({ ...d })),
     eventSeq,
     content: draft.content,
   };

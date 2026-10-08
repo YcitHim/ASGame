@@ -119,7 +119,7 @@
         "type": "PlayCard",
         "actionId": "p4",
         "handIndex": 4,
-        "targetId": "corroded_swarm"
+        "targetId": "rust_sentinel"
       },
       {
         "type": "EndTurn",
@@ -150,39 +150,11 @@
       {
         "type": "PlayCard",
         "actionId": "p10",
-        "handIndex": 1,
-        "targetId": "rust_sentinel"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p11",
-        "handIndex": 2,
-        "targetId": "rust_sentinel"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p12",
-        "handIndex": 0,
-        "targetId": "rust_sentinel"
-      },
-      {
-        "type": "EndTurn",
-        "actionId": "e13"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p14",
         "handIndex": 4,
-        "targetId": "rust_sentinel"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p15",
-        "handIndex": 0,
         "targetId": "rust_sentinel"
       }
     ],
-    "eventHash": "656b63f71ac6ec8dff9fb5cfa1af03c756f033820dba5fb2de32244dc2716042",
+    "eventHash": "6dc67dea9fbe44beb3d92da6ed3854fb63d378515282cbef482948697492a599",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -200,23 +172,23 @@
       "CardPlayed",
       "DamageDealt",
       "HpLost",
+      "UnitDied",
+      "PollutionChanged",
       "TurnEnded",
       "BuffApplied",
-      "BlockBroken",
-      "DamageDealt",
-      "HpLost",
       "BlockGained",
       "TurnStarted",
       "CardsDrawn",
-      "IntentRevealed",
       "IntentRevealed",
       "HpLost",
       "HpHealed",
       "CardPlayed",
       "DamageDealt",
       "HpLost",
-      "UnitDied",
-      "PollutionChanged",
+      "BuffTriggered",
+      "BlockBroken",
+      "DamageDealt",
+      "HpLost",
       "CardExhausted",
       "TurnEnded",
       "BlockGained",
@@ -225,7 +197,7 @@
       "DeckShuffled",
       "CardsDrawn"
     ],
-    "turns": 5,
+    "turns": 4,
     "outcome": "win"
   }
 }

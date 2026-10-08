@@ -1,12 +1,12 @@
 {
   "id": "polluting_preacher",
   "i18n": "enemy.polluting_preacher",
-  "maxHp": 36,
+  "maxHp": 46,
   "intents": [
     {
       "intent": {
         "kind": "attack",
-        "value": 7
+        "value": 8
       },
       "weight": 3,
       "maxConsecutive": 2
@@ -15,7 +15,7 @@
       "intent": {
         "kind": "debuff",
         "buffId": "weak",
-        "stacks": 1
+        "stacks": 2
       },
       "weight": 2,
       "maxConsecutive": 1
@@ -36,7 +36,7 @@
         "block": 4,
         "thenIntent": {
           "kind": "attack",
-          "value": 9
+          "value": 13
         }
       },
       "weight": 1

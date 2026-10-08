@@ -43,6 +43,7 @@ import {
   type RunDifficulty,
   type RunState,
 } from "@/core/map";
+import { pollutionCapFor } from "@/core/combat";
 import type {
   ActDefinition,
   CardDefinition,
@@ -599,7 +600,13 @@ export const useRunStore = defineStore("run", {
         this.run = applyEventHp(this.run, res.hpDelta, res.maxHpDelta);
       }
       if (res.pollutionDelta !== 0) {
-        this.run = setRunPollution(this.run, this.run.pollution + res.pollutionDelta);
+        // 与战斗结束写回同口径（stores/battle）：超级大畸变的污染无上限，
+        // 事件加/减污染不能用缺省 100 截断，否则两条写入口径不一致、阈值快照随之漂移。
+        this.run = setRunPollution(
+          this.run,
+          this.run.pollution + res.pollutionDelta,
+          pollutionCapFor(loadGameContent().content, this.run.traitId),
+        );
       }
       for (const id of res.relicIds) this.addRelic(id);
       for (const id of res.loseRelicIds) this.removeRelicById(id);

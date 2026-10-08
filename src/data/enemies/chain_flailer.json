@@ -16,7 +16,9 @@
     {
       "intent": {
         "kind": "attack",
-        "value": 12
+        "value": 3,
+        "buffId": "stun",
+        "stacks": 1
       },
       "weight": 2,
       "maxConsecutive": 2

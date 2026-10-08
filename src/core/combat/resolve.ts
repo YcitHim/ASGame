@@ -13,6 +13,7 @@ import { DIFFICULTY_PARAMS, type CardEffect, type ConditionNode, type TargetRef 
 import { evaluateCondition, type ConditionContext } from "../registry/condition";
 import { getTarget } from "../registry/target";
 import { findUnit, livingEnemies, type Draft, type MutableUnit } from "./draft";
+import type { DelayedEffect } from "./state";
 import { resolveTriggers } from "./relics";
 import {
   activeTrait,
@@ -22,6 +23,7 @@ import {
   traitChargeTarget,
   traitCtx,
   traitEyeAvailable,
+  traitHealBonus,
 } from "./trait";
 import type { EffectContext, EffectWork } from "./work";
 
@@ -32,6 +34,11 @@ export const POLLUTION_CRITICAL_DAMAGE = 2;
 export const CHARGE_LIMIT = 10;
 export const CHARGE_BACKLASH = 5;
 export const PLAYER_ID = "player";
+/**
+ * 不屈（docs/60 §八.3）：本回合累计受伤害上限 = 自身 maxHp × 15%（向上取整）。
+ * 常量放这里而不是 data —— 目前无使用者（预留机制），数值一旦分配再迁到敌人 JSON。
+ */
+export const UNBREAKABLE_RATIO = 0.15;
 
 export function conditionContext(draft: Draft): ConditionContext {
   return {
@@ -152,12 +159,58 @@ export interface DamageArgs {
    * 不是"先破盾再打血"——盾一点不动，伤害照落。
    */
   bypassBlock?: boolean;
+  /**
+   * 吸血比例（docs/60 §四，锈喉「狂噬」）：按**真实扣除的生命**回血给 `actorId`。
+   * 只算 hpLost——打在格挡上的那部分不算（甲方口径）。
+   */
+  lifesteal?: number;
+}
+
+/**
+ * 伤害来源卡的类型（虚化 / 魔免的分流依据，docs/60 §八.3）。
+ * 来源不是玩家打出的卡（反伤 / 蚀锈 / 污染等环境伤害）→ undefined，
+ * 虚化视为「非技能牌」挡下、魔免视为「非攻击牌」挡下。
+ */
+function sourceCardType(draft: Draft, sourceId: string): string | undefined {
+  const instance = draft.cardInstances[sourceId];
+  if (!instance) return undefined;
+  return draft.content.cards.get(instance.cardId)?.type;
+}
+
+/**
+ * 特殊防御状态（docs/60 §八.3）：虚化只吃技能牌、魔免只吃攻击牌，其余一律归零。
+ * 状态住在目标的 `buffs` 正规字段里（不是影子副本），因此 UI 有图标、日志可记账。
+ */
+function wardBlocks(draft: Draft, target: MutableUnit, sourceId: string): boolean {
+  const ethereal = buffStacks(target.buffs, "ethereal") > 0;
+  const magicimmune = buffStacks(target.buffs, "magicimmune") > 0;
+  if (!ethereal && !magicimmune) return false;
+  const type = sourceCardType(draft, sourceId);
+  if (ethereal) return type !== "skill";
+  return type !== "attack";
 }
 
 /** 单次伤害：基础值 → 修饰管线 → 格挡吸收 → HP → 死亡检查。 */
 export function dealDamage(draft: Draft, sink: EventSink, args: DamageArgs): void {
   const target = findUnit(draft, args.targetId);
   if (!target || target.hp <= 0) return;
+
+  // 虚化 / 魔免（docs/60 §八.3）：被挡下的攻击不消耗格挡、不诱发荆棘，只留一条 0 伤记录
+  // （给 UI 一个「打不动」的反馈，不然玩家会以为卡住了）。
+  if (wardBlocks(draft, target, args.sourceId)) {
+    sink.emit("DamageDealt", {
+      sourceId: args.sourceId,
+      targetId: args.targetId,
+      base: args.base,
+      layers: [],
+      value: 0,
+      blocked: 0,
+      hpLost: 0,
+      segment: args.segment ?? 1,
+      segments: args.segments ?? 1,
+    });
+    return;
+  }
 
   const auto = args.modifiers ?? attackModifiers(draft, args.actorId, args.targetId);
   const modifiers = args.extraModifiers?.length ? [...auto, ...args.extraModifiers] : auto;
@@ -183,11 +236,47 @@ export function dealDamage(draft: Draft, sink: EventSink, args: DamageArgs): voi
       }
     }
   }
+  const enemy = draft.enemies.find((e) => e.id === args.targetId);
+  if (enemy) {
+    // 临界硬化（docs/60 §四，甲方 2026-10-08 口述修订）：持续中的每一击都减伤 99%。
+    if (buffStacks(target.buffs, "phase_ward") > 0) {
+      const kept = Math.max(1, Math.round(hpLost * 0.01));
+      sink.emit("BuffTriggered", { targetId: enemy.id, buffId: "phase_ward", stacks: 1 });
+      hpLost = kept;
+    }
+    // 不屈（docs/60 §八.3）：本回合累计受伤害上限 = ceil(自身 maxHp × 15%)，超出部分直接不算。
+    if (buffStacks(target.buffs, "unbreakable") > 0) {
+      const cap = Math.ceil(target.maxHp * UNBREAKABLE_RATIO);
+      const room = Math.max(0, cap - enemy.damageTakenThisTurn);
+      if (hpLost > room) {
+        sink.emit("BuffTriggered", { targetId: enemy.id, buffId: "unbreakable", stacks: 1 });
+        hpLost = room;
+      }
+    }
+  }
+  // 转阶段保护的判定基准：本击落下**之前**的血线。
+  const hpBeforeHit = target.hp;
   target.block -= blocked;
   if (blocked > 0 && target.block === 0) {
     sink.emit("BlockBroken", { targetId: args.targetId, value: blocked });
   }
   target.hp = Math.max(0, target.hp - hpLost);
+  if (enemy) enemy.damageTakenThisTurn += hpLost;
+
+  // 转阶段保护（docs/60 §四，甲方 2026-10-08 口述修订）：
+  // 跨过 50% 的那一击**照常吃满**，随后挂上「临界硬化」（phase_ward，99% 减伤），
+  // 玩家回合结束时 buff 消失；每场一次。严格大于/小于：正落 50% 不触发，被直接打死也不挂。
+  if (enemy && target.hp > 0) {
+    const def = draft.content.enemies.get(enemy.defId);
+    if (def?.phaseGuard && !enemy.phaseGuardUsed) {
+      const half = target.maxHp * 0.5;
+      if (hpBeforeHit > half && target.hp < half) {
+        enemy.phaseGuardUsed = true;
+        applyBuffToTarget(draft, sink, enemy.id, "phase_ward", 1);
+        sink.emit("PhaseGuarded", { enemyId: enemy.id });
+      }
+    }
+  }
 
   sink.emit("DamageDealt", {
     sourceId: args.sourceId,
@@ -206,6 +295,12 @@ export function dealDamage(draft: Draft, sink: EventSink, args: DamageArgs): voi
     if (args.targetId === PLAYER_ID) draft.tookDamageThisTurn = true;
     // 嗜血「造伤」口径（docs/58 §四）：玩家来源且真的掉血（未击穿格挡的攻击不算）
     if (args.actorId === PLAYER_ID) draft.dealtDamageThisTurn += hpLost;
+  }
+
+  // 吸血（docs/60 §四，狂噬）：只按真实掉血回血，打在格挡上的不算
+  const lifesteal = args.lifesteal ?? 0;
+  if (lifesteal > 0 && hpLost > 0) {
+    healUnit(draft, sink, args.actorId, Math.floor(hpLost * lifesteal), "card");
   }
 
   // 反伤（荆棘血痂）：受攻击即对攻击者造成固定伤害，逐段触发、走队列中途插入
@@ -323,7 +418,22 @@ export function healUnit(
 ): void {
   const unit = findUnit(draft, targetId);
   if (!unit || unit.hp <= 0) return;
-  const evaluated = evaluateValue("heal", base, []);
+  const modifiers: Modifier[] = [];
+  // 嗜血低血段（docs/58 §四，甲方 2026-10-08 修订）：玩家处于低血时每次回血 +N。
+  // 这是所有回血来源的**唯一汇点**（再生 / 卡牌治疗 / 回血印记 / 遗物），所以判定放这里就够。
+  if (targetId === PLAYER_ID) {
+    const bonus = traitHealBonus(draft);
+    if (bonus > 0) {
+      const trait = activeTrait(draft);
+      modifiers.push({
+        sourceId: `trait:${trait?.def.id ?? "heal"}:heal`,
+        layer: "buff",
+        op: "add",
+        value: bonus,
+      });
+    }
+  }
+  const evaluated = evaluateValue("heal", base, modifiers);
   const healed = Math.min(evaluated.value, unit.maxHp - unit.hp);
   if (healed <= 0) return;
   unit.hp += healed;
@@ -348,7 +458,26 @@ export function loseHp(
           draft.modifiers.filter((m) => m.kind === undefined || m.kind === "backlashTaken"),
         ).value
       : value;
-  const lost = Math.min(unit.hp, backlashMul);
+  const lost0 = Math.min(unit.hp, backlashMul);
+  // 教学安全网（docs/42 §四）同样罩住直接扣血（污染反噬 / 血契 / 过载）——
+  // state.ts 的承诺是「任何伤害都不会把玩家打到 safetyFloor 以下」，不是只罩 dealDamage。
+  let lost = lost0;
+  if (targetId === PLAYER_ID && draft.safetyFloor !== undefined) {
+    const floor = draft.safetyFloor;
+    if (unit.hp - lost < floor) {
+      const capped = Math.max(0, unit.hp - floor);
+      if (capped < lost) {
+        draft.safetySaves += 1;
+        sink.emit("SafetyNet", {
+          targetId,
+          wouldLose: lost,
+          saved: draft.safetySaves,
+          hpLeft: floor,
+        });
+        lost = capped;
+      }
+    }
+  }
   unit.hp -= lost;
   // 嗜血「自伤」口径（docs/58 §四）：只认血契 / 血迹自伤。受击掉血与反噬掉血都不算。
   if (targetId === PLAYER_ID && reason === "bloodpact") draft.selfHpSpentThisTurn += lost;
@@ -732,6 +861,35 @@ export function drawCards(draft: Draft, sink: EventSink, count: number): string[
 }
 
 /**
+ * gainCard 的卡池解析：`"bloodCost"`（缺省）= 全池带血契代价的牌；数组则原样使用。
+ * 结果按 id 排序——卡池遍历顺序被固定，随机结果才随种子稳定复现。
+ */
+function resolveCardPool(draft: Draft, pool: CardEffect["pool"]): readonly string[] {
+  if (Array.isArray(pool)) return pool as readonly string[];
+  const out: string[] = [];
+  for (const def of draft.content.cards.values()) {
+    if ((def.bloodCost ?? 0) > 0) out.push(def.id);
+  }
+  return out.sort();
+}
+
+/**
+ * 凭空建一张卡实例并塞进手牌（嗜血满血奖励 / 超械铁拳的「铁拳」），返回 instanceId。
+ * `upgraded` = true 时直接以升级面入场（超械铁拳升级版给升级「铁拳」，甲方 2026-10-08）。
+ */
+function addCardToHand(draft: Draft, cardId: string, upgraded = false): string {
+  let n = Object.keys(draft.cardInstances).length + 1;
+  let instanceId = `${cardId}#trait${n}`;
+  while (draft.cardInstances[instanceId]) {
+    n += 1;
+    instanceId = `${cardId}#trait${n}`;
+  }
+  draft.cardInstances[instanceId] = { instanceId, cardId, upgraded, enhancements: [] };
+  draft.hand.push(instanceId);
+  return instanceId;
+}
+
+/**
  * 给手上还没有随机费用的牌补掷一个 0~3（颠倒专用）。
  * 回合开始由 reducer 全量重掷，回合内抽牌走这里增量补齐；没有颠倒时什么都不做。
  */
@@ -797,6 +955,8 @@ export function summonUnit(
       forcedChain: [],
       interruptsTaken: 0,
       stunResisted: false,
+      damageTakenThisTurn: 0,
+      phaseGuardUsed: false,
       summonerId,
       spawnedTurn: draft.turn,
     });
@@ -880,6 +1040,18 @@ function hasTargetCondition(node: ConditionNode | undefined): boolean {
 
 function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
   const { effect, ctx, damageIndex, damageTotal } = work;
+  // 延迟结算（甲方 2026-10-08）：带 delayTurns 的效果不立刻生效，改入延迟队列，
+  // 到期后由 tickDelayed 在玩家回合开始重新走一遍完整结算（条件与目标都在那时才求值）。
+  const delayTurns = Math.trunc(effect.delayTurns ?? 0);
+  if (delayTurns > 0) {
+    draft.delayed.push({
+      turnsLeft: delayTurns,
+      effect: { ...effect, delayTurns: 0 },
+      actorId: ctx.actorId,
+      chosenTargetId: ctx.chosenTargetId,
+    });
+    return;
+  }
   // 非目标条件：在这里（执行时）求值——同一张牌的前序效果可能刚刚改过它要读的状态
   if (!work.targetCondition && !evaluateCondition(effect.condition, conditionContext(draft))) return;
   // 目标条件：按每个目标现场求值（docs/38 §二 B-3「疫触」）
@@ -924,6 +1096,46 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
     case "draw":
       drawCards(draft, sink, value);
       break;
+    case "gainCard": {
+      // 嗜血满血奖励（docs/58 §四，甲方 2026-10-08 修订）：从卡池随机抽牌**凭空**加入手牌。
+      // 走独立的 trait 流，不扰动战斗主序列；颠倒诅咒下新入手的牌同样吃随机费用。
+      const pool = resolveCardPool(draft, effect.pool);
+      const count = Math.max(0, Math.trunc(effect.count ?? value));
+      if (pool.length === 0 || count <= 0) break;
+      const rng = draft.rng.stream("trait");
+      const gained: string[] = [];
+      for (let i = 0; i < count; i += 1) {
+        const cardId = pool[rng.nextInt(0, pool.length - 1)];
+        if (cardId === undefined) break;
+        gained.push(addCardToHand(draft, cardId, effect.upgraded === true));
+      }
+      if (gained.length > 0) {
+        rollReverseCostsForNewCards(draft);
+        sink.emit("CardsDrawn", { cardIds: gained });
+      }
+      break;
+    }
+    case "bankCharge": {
+      // 上发条改版（甲方 2026-10-08）：扣掉当前充能，**下回合开始**一次性还回「扣掉的层数 + value」。
+      // 扣减不经 changeCharge → 不触发过载、不派发 onGainCharge；还回时才走 changeCharge（正常派发）。
+      const stored = Math.max(0, draft.player.charge);
+      if (stored > 0) {
+        draft.player.charge = 0;
+        sink.emit("ChargeChanged", {
+          targetId: PLAYER_ID,
+          before: stored,
+          after: 0,
+          delta: -stored,
+        });
+      }
+      draft.delayed.push({
+        turnsLeft: 1,
+        effect: { kind: "gainCharge", value: stored + Math.max(0, value) },
+        actorId: PLAYER_ID,
+        chosenTargetId: null,
+      });
+      break;
+    }
     case "heal":
       for (const t of targetIds) healUnit(draft, sink, t, value, "card");
       break;
@@ -1116,6 +1328,29 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
  * LIFO：执行过程中压入的动作下一次优先结算（"中途插入"）；
  * 重入时只入栈不排空，避免内层提前消费外层挂起动作。
  */
+/**
+ * 延迟队列结算（甲方 2026-10-08）：玩家回合开始时把每项 `turnsLeft` −1，归零的当场结算。
+ * 延迟效果目前全部由玩家打出的牌产生（超械铁拳的「铁拳」、上发条的充能储蓄），
+ * 所以只在玩家回合开始 tick 一次。
+ */
+export function tickDelayed(draft: Draft, sink: EventSink): void {
+  if (draft.delayed.length === 0) return;
+  const due: DelayedEffect[] = [];
+  const rest: DelayedEffect[] = [];
+  for (const item of draft.delayed) {
+    if (item.turnsLeft <= 1) due.push(item);
+    else rest.push({ ...item, turnsLeft: item.turnsLeft - 1 });
+  }
+  draft.delayed = rest;
+  for (const item of due) {
+    resolveEffects(draft, sink, [item.effect], {
+      sourceId: `delayed:${item.effect.kind}`,
+      actorId: item.actorId,
+      chosenTargetId: item.chosenTargetId,
+    });
+  }
+}
+
 export function drainQueue(draft: Draft, sink: EventSink): void {
   if (draft.draining) return;
   draft.draining = true;
@@ -1142,11 +1377,21 @@ export function resolveEffectsInline(
   ctx: EffectContext,
 ): void {
   const boundary = draft.queue.size;
-  enqueueEffects(draft, effects, ctx);
-  while (draft.queue.size > boundary) {
-    const next = draft.queue.pop();
-    if (!next) break;
-    executeWork(draft, sink, next.payload);
+  // 与 drainQueue 同构的护栏：内联结算中若触发 killUnit（其内部无条件调 drainQueue），
+  // draining 已在位会让那次 drain 空转——否则外层挂起的动作（boundary 之下）会被
+  // 提前消费，「外层挂起的动作留在栈上」的契约就破了。保存/恢复而不直接置 false，
+  // 是因为调用方本身可能就处在某次 drain 里。
+  const wasDraining = draft.draining;
+  draft.draining = true;
+  try {
+    enqueueEffects(draft, effects, ctx);
+    while (draft.queue.size > boundary) {
+      const next = draft.queue.pop();
+      if (!next) break;
+      executeWork(draft, sink, next.payload);
+    }
+  } finally {
+    draft.draining = wasDraining;
   }
 }
 

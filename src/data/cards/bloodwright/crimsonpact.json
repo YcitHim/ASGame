@@ -6,7 +6,8 @@
   "cost": 2,
   "bloodCost": 3,
   "keywords": [
-    "bloodpact"
+    "bloodpact",
+    "exhaust"
   ],
   "effects": [
     {

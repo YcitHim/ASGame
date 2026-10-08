@@ -50,12 +50,12 @@ describe("Boss 蓄力 → 大招（策划 Q13 / docs/18）", () => {
     expect(revealed).toHaveLength(1);
   });
 
-  it("锈喉数值：一阶段蓄力接 16，二阶段蓄力接 24（数据校验，含 releaseOverride）", async () => {
+  it("锈喉数值：一阶段蓄力接 15 / 18，二阶段蓄力接 24（数据校验，含 releaseOverride）", async () => {
     const { loadGameContent } = await import("@/data/load");
     const boss = loadGameContent().content.enemies.get("rust_throat");
     expect(boss).toBeDefined();
     const charges = boss!.intents.filter((e) => e.intent.kind === "charge");
-    expect(charges.map((c) => buildChargeChain(c.intent).releaseValue)).toEqual([16, 18, 24]);
+    expect(charges.map((c) => buildChargeChain(c.intent).releaseValue)).toEqual([15, 18, 24]);
     expect(charges.every((c) => c.intent.releaseOverride !== undefined)).toBe(true);
     expect(boss!.intents.some((e) => e.condition?.type === "selfHpBelow")).toBe(true);
   });

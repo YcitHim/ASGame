@@ -838,6 +838,8 @@ export function rollCardRewards(
       c.rarity !== "starter" &&
       c.type !== "curse" &&
       c.type !== "status" &&
+      // 衍生物牌（token，甲方 2026-10-08 铁拳）：只能由效果凭空生成，不进任何掉落池
+      c.token !== true &&
       // 解锁式内容未解锁不入池（docs/36 T1）
       isContentAvailable(c.unlockCondition, c.id, run.unlocked),
   );

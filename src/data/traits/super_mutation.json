@@ -10,6 +10,7 @@
     "tentacleThreshold": 200,
     "scytheThreshold": 300,
     "eyeThreshold": 400,
+    "winReliefThreshold": 180,
     "winPollutionRelief": 50,
     "firstCardFree": true,
     "firstCardDouble": true,

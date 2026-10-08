@@ -4,6 +4,9 @@
   "type": "skill",
   "rarity": "rare",
   "cost": 2,
+  "keywords": [
+    "exhaust"
+  ],
   "effects": [
     {
       "kind": "gainModifier",

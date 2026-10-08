@@ -8,7 +8,7 @@
  *       序列 = mulberry32 状态机。纯整数运算，可快照/恢复。
  */
 
-export const STREAM_NAMES = ["combat", "reward", "map", "event", "ai", "fx", "curse"] as const;
+export const STREAM_NAMES = ["combat", "reward", "map", "event", "ai", "fx", "curse", "trait"] as const;
 export type StreamName = (typeof STREAM_NAMES)[number];
 
 export interface RngStreamSnapshot {
@@ -151,7 +151,14 @@ export class Rng {
 
   static fromSnapshot(rootSeed: number, snapshot: RngSnapshot): Rng {
     const streams = new Map<StreamName, RngStream>();
-    for (const name of STREAM_NAMES) streams.set(name, RngStream.fromSnapshot(snapshot[name]));
+    for (const name of STREAM_NAMES) {
+      // 新增流名时旧存档没有该键：按 rootSeed 现派一条新流（该流此前从未被抽过，确定性不受影响）。
+      const snap = snapshot[name];
+      streams.set(
+        name,
+        snap ? RngStream.fromSnapshot(snap) : new RngStream(name, deriveStreamSeed(rootSeed, name)),
+      );
+    }
     return new Rng(rootSeed, streams);
   }
 }

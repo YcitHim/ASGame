@@ -3,21 +3,21 @@
   "class": "engineer",
   "type": "skill",
   "rarity": "uncommon",
-  "cost": 1,
+  "cost": 2,
   "keywords": [
     "exhaust"
   ],
   "effects": [
     {
-      "kind": "gainCharge",
-      "value": 6
+      "kind": "bankCharge",
+      "value": 1
     }
   ],
   "upgraded": {
     "effects": [
       {
-        "kind": "gainCharge",
-        "value": 8
+        "kind": "bankCharge",
+        "value": 2
       }
     ]
   },

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { I18N, t } from "@/data/load";
+import { I18N, loadGameContent, t } from "@/data/load";
 import { netHpText } from "@/ui/card-value";
 import { hasTip, highlightText, keywordTip, termsIn } from "@/ui/glossary";
 import { computeTipPlacement } from "@/ui/tip-position";
@@ -64,6 +64,13 @@ const netHp = computed(() => netHpText(props.cardId, props.upgraded === true));
 // 直接读 i18n 表：t(key, "") 缺失时会回退成 key 本身，炉心机士卡没有 flavor 会渲染出原始 key
 const flavor = computed(() => I18N[`card.${props.cardId}.flavor`] ?? "");
 const typeLabel = computed(() => TYPE_LABEL[props.type] ?? props.type);
+/**
+ * X 费（甲方 2026-10-08，红线运转）：费用角标显示「X」，实际消耗 = 打牌前的当前能量。
+ * 直接读卡定义（7 个调用点都在传 cardId），省得每处各传一次 prop。
+ */
+const costText = computed(() =>
+  loadGameContent().content.cards.get(props.cardId)?.costX === true ? "X" : String(props.cost),
+);
 const keywordLabels = computed(() => props.keywords.map((k) => KEYWORD_LABEL[k] ?? k));
 /**
  * 附魔（docs/52 §二）：祭坛付过代价，收益必须在卡面上可见。
@@ -156,7 +163,7 @@ function onLeave(): void {
     @pointerenter="onEnter"
     @pointerleave="onLeave"
   >
-    <div class="cost">{{ cost }}</div>
+    <div class="cost">{{ costText }}</div>
     <div v-if="keywordLabels.includes('血契')" class="bloodcost">血契</div>
     <div v-if="chargeCost" class="chargecost" :class="{ lower: keywordLabels.includes('血契') }">
       充能 {{ chargeCost }}

@@ -7,10 +7,16 @@
   "effects": [
     {
       "kind": "damage",
+      "target": {
+        "type": "chosenEnemy"
+      },
       "value": 6
     },
     {
       "kind": "spendCharge",
+      "target": {
+        "type": "chosenEnemy"
+      },
       "value": 2
     }
   ],
@@ -18,10 +24,16 @@
     "effects": [
       {
         "kind": "damage",
+        "target": {
+          "type": "chosenEnemy"
+        },
         "value": 8
       },
       {
         "kind": "spendCharge",
+        "target": {
+          "type": "chosenEnemy"
+        },
         "value": 3
       }
     ]

@@ -843,6 +843,7 @@ function quitToTitleKeepRun(): void {
             :charge="player.charge"
             :blood-hp="player.hp"
             :max-hp="player.maxHp"
+            :trait-id="state?.traitId ?? ''"
           />
         </div>
 

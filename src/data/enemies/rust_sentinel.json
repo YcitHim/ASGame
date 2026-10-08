@@ -1,7 +1,7 @@
 {
   "id": "rust_sentinel",
   "i18n": "enemy.rust_sentinel",
-  "maxHp": 40,
+  "maxHp": 50,
   "intents": [
     {
       "intent": {
@@ -23,10 +23,10 @@
       "intent": {
         "kind": "charge",
         "value": 2,
-        "block": 4,
+        "block": 8,
         "thenIntent": {
           "kind": "attack",
-          "value": 10
+          "value": 16
         }
       },
       "weight": 1

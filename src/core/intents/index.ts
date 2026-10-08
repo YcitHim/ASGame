@@ -28,6 +28,7 @@ export function intentToPayload(intent: IntentDefinition): IntentPayload {
     ...(intent.block !== undefined ? { block: intent.block } : {}),
     ...(intent.enemyId !== undefined ? { enemyId: intent.enemyId } : {}),
     ...(intent.count !== undefined ? { count: intent.count } : {}),
+    ...(intent.lifesteal !== undefined ? { lifesteal: intent.lifesteal } : {}),
   };
 }
 
@@ -105,6 +106,15 @@ function consecutiveOk(entry: EnemyIntentEntry, history: readonly string[]): boo
   return trailingRepeat(history, intentKey(entry.intent)) < max;
 }
 
+/**
+ * 整场一次（docs/60 §七，沉钟唱诗长二阶段的「虚化」）：`once` 的条目抽中过一次后
+ * 永久退出候选池——判定用 intentHistory 里的 key，所以跨阶段也不会再抽到。
+ */
+function onceOk(entry: EnemyIntentEntry, history: readonly string[]): boolean {
+  if (!entry.once) return true;
+  return !history.includes(intentKey(entry.intent));
+}
+
 /** 召唤可用性上下文（docs/40 §五-2/3）：场上总数与某召唤物已有数量。 */
 export interface SummonContext {
   readonly fieldCount: number;
@@ -157,7 +167,7 @@ export function generateIntent(
   const usable = (entry: EnemyIntentEntry): boolean =>
     summonUsable(entry.intent, summon) && playerBuffOk(entry, ctx);
   const passable = (entry: EnemyIntentEntry): boolean =>
-    (!entry.condition || evaluateCondition(entry.condition, ctx)) && usable(entry);
+    (!entry.condition || evaluateCondition(entry.condition, ctx)) && usable(entry) && onceOk(entry, history);
 
   // 节拍技：回合数 %N == 0 的条目按数组序强制顶替（同回合多条取第一条）
   if (turn > 0) {

@@ -1,7 +1,7 @@
 {
   "id": "blister_belly",
   "i18n": "enemy.blister_belly",
-  "maxHp": 44,
+  "maxHp": 48,
   "onDeathSplit": {
     "enemyId": "rust_leech",
     "count": 2

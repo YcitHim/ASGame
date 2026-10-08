@@ -4,6 +4,9 @@
   "type": "power",
   "rarity": "rare",
   "cost": 3,
+  "keywords": [
+    "exhaust"
+  ],
   "power": {
     "timing": "onGainCharge",
     "effects": [

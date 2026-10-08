@@ -1,9 +1,12 @@
 {
   "id": "ironstomach",
-  "class": "rustspeaker",
+  "class": "neutral",
   "type": "power",
   "rarity": "uncommon",
   "cost": 1,
+  "keywords": [
+    "exhaust"
+  ],
   "effects": [
     {
       "kind": "gainModifier",

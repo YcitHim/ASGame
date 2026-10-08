@@ -4,6 +4,8 @@
  * 字形 / 配色 / 数值单位集中在这里；说明文案复用 glossary，
  * 避免「同一条机制两处维护、改一处漏一处」。
  */
+import { BUFF_DEFINITIONS } from "@/core/buffs";
+import type { BuffId } from "@/core/registry/ids";
 import { GLOSSARY } from "@/ui/glossary";
 
 export interface BuffMeta {
@@ -34,6 +36,12 @@ export const BUFF_META: Record<string, BuffMeta> = {
   stun: { name: "眩晕", glyph: "晕", tint: "#3f2f6b", unit: "回合" },
   // 玻璃大炮专属（docs/58 §六.2）：层级型减益，战斗结束清零
   overload: { name: "超负荷", glyph: "荷", tint: "#8c5a1f", unit: "层" },
+  // 特殊防御状态（docs/60 §八.3，甲方 2026-10-08）：敌人自身的减伤形态，层数 = 剩余回合
+  ethereal: { name: "虚化", glyph: "虚", tint: "#3f5a7a", unit: "回合" },
+  magicimmune: { name: "魔免", glyph: "魔", tint: "#5b3a7a", unit: "回合" },
+  unbreakable: { name: "不屈", glyph: "屈", tint: "#54636f", unit: "回合" },
+  // 临界硬化（docs/60 §四 锈喉转阶段保护，甲方 2026-10-08 口述修订）：99% 减伤，本回合结束消失
+  phase_ward: { name: "临界硬化", glyph: "硬", tint: "#7a5a2f", unit: "回合" },
 };
 
 export function buffMeta(id: string): BuffMeta {
@@ -45,8 +53,17 @@ export function buffTip(id: string): string {
   return GLOSSARY[buffMeta(id).name] ?? "";
 }
 
-/** 角标数值：计时型显示剩余回合，其余显示层数。 */
+/**
+ * 角标数值（甲方 2026-10-08 修）：
+ * - **强度型**（层数）→ 层数；
+ * - **stacksAndTurns 型**（再生 / 回血印记：同时有强度与剩余回合）→ **显示强度**。
+ *   此前一律「有 duration 就显示 duration」，于是 6 层再生角标显示成 2（剩余回合），
+ *   跟悬停提示里的「6 层 · 剩余 2 回合」自相矛盾——层数才是玩家要盯的数。
+ * - **纯计时型**（没有独立强度，只有剩余回合）→ 剩余回合。
+ */
 export function buffAmount(buff: { id: string; stacks: number; duration?: number | null }): number {
+  const def = BUFF_DEFINITIONS[buff.id as BuffId];
+  if (def?.applyAs === "stacksAndTurns") return buff.stacks;
   return buff.duration != null ? buff.duration : buff.stacks;
 }
 

@@ -566,7 +566,7 @@
         "actionId": "e88"
       }
     ],
-    "eventHash": "dfc9c86ed81751e756ca75df0517fce509b80a9b503de025426e1819f17ef234",
+    "eventHash": "05e5f3b9f9cc9a69c61c2dfca96cdb5333b1a367d6eb5ff1307767f2d2bcf664",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",

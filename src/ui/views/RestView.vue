@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
 import { t } from "@/data/load";
-import { useRunStore } from "@/stores/run";
+import { useRunStore, REST_HEAL_RATIO } from "@/stores/run";
 import { useTipsStore } from "@/stores/tips";
 import { useTutorialStore } from "@/stores/tutorial";
 import CardView from "@/ui/components/CardView.vue";
@@ -17,7 +17,7 @@ useStageFit(stage);
 
 const mode = ref<"choice" | "upgrade" | "remove">("choice");
 const node = computed(() => run.current);
-const healAmount = computed(() => Math.round(run.maxHp * 0.3));
+const healAmount = computed(() => Math.round(run.maxHp * REST_HEAL_RATIO));
 
 onMounted(() => {
   if (!run.active) void router.replace("/");

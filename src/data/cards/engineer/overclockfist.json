@@ -1,0 +1,39 @@
+{
+  "id": "overclockfist",
+  "class": "engineer",
+  "type": "skill",
+  "rarity": "uncommon",
+  "cost": 3,
+  "effects": [
+    {
+      "kind": "block",
+      "value": 8
+    },
+    {
+      "kind": "gainCard",
+      "pool": [
+        "ironfist"
+      ],
+      "count": 1,
+      "delayTurns": 1
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "block",
+        "value": 12
+      },
+      {
+        "kind": "gainCard",
+        "pool": [
+          "ironfist"
+        ],
+        "count": 1,
+        "delayTurns": 1,
+        "upgraded": true
+      }
+    ]
+  },
+  "i18n": "card.overclockfist"
+}

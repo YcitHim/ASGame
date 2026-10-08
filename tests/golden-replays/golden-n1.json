@@ -136,9 +136,19 @@
         "actionId": "p11",
         "handIndex": 0,
         "targetId": "polluting_preacher"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e12"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p13",
+        "handIndex": 2,
+        "targetId": "polluting_preacher"
       }
     ],
-    "eventHash": "681ae61c1b67fbf9e0e9664a6482fb8634ec69119bd4037fe51649438465cc9e",
+    "eventHash": "8672447282c800254bb1654a5b0c9934bfe720c2ac8266450fcd6bffae297d15",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -181,7 +191,7 @@
       "TurnStarted",
       "DeckShuffled"
     ],
-    "turns": 3,
+    "turns": 4,
     "outcome": "win"
   }
 }

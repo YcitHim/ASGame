@@ -77,7 +77,13 @@ function zodIssues(file: string, error: unknown): ValidationIssue[] {
  * 卡面三面（本体 / 升级 / 能力）任一命中即算——所以升级面加的身份机制也会被抓到。
  */
 interface CardFace {
-  readonly effects: readonly { kind?: string; buff?: string; valueKind?: string; condition?: { type?: string } }[];
+  readonly effects: readonly {
+    kind?: string;
+    buff?: string;
+    valueKind?: string;
+    value?: number;
+    condition?: { type?: string };
+  }[];
   readonly keywords: readonly string[];
   readonly bloodCost: number;
   readonly chargeCost: number;
@@ -115,7 +121,19 @@ const hasCondition = (f: CardFace, types: readonly string[]): boolean =>
   f.effects.some((e) => !!e.condition?.type && types.includes(e.condition.type));
 const hasKind = (f: CardFace, kinds: readonly string[]): boolean =>
   f.effects.some((e) => !!e.kind && kinds.includes(e.kind));
+/**
+ * 污染**正向积累**才算锈语者身份（甲方 2026-10-08 修订）。
+ * 净化类（`gainPollution` 负值）只是把全局污染往下按，任何职业都该能用 → 不构成身份。
+ */
+const hasPositivePollution = (f: CardFace): boolean =>
+  f.effects.some((e) => e.kind === "gainPollution" && (e.value ?? 0) > 0);
 
+/**
+ * 身份指纹（docs/56 §二 表，甲方 2026-10-08 修订两处）：
+ * - 炉心去掉 `buff:stun`——眩晕是通用控制，不构成充能身份（震爆锤因此可中立）；
+ * - 锈语者去掉 `modifier:backlashTaken`——反噬减伤是通用减伤，不构成污染身份（铁胃因此可中立）；
+ * - `gainPollution` 收紧为**正值**——净化类负值不构成污染身份（净化因此可中立）。
+ */
 const IDENTITY_FINGERPRINTS: Record<string, (f: CardFace) => boolean> = {
   bloodwright: (f) =>
     f.keywords.includes("bloodpact") ||
@@ -124,17 +142,33 @@ const IDENTITY_FINGERPRINTS: Record<string, (f: CardFace) => boolean> = {
     hasKind(f, ["heal", "consumeBoons"]) ||
     hasBuff(f, ["mending"]),
   engineer: (f) =>
-    hasKind(f, ["gainCharge", "spendCharge", "chargeFromEnergy", "clampCharge"]) ||
+    hasKind(f, ["gainCharge", "spendCharge", "chargeFromEnergy", "clampCharge", "bankCharge"]) ||
     f.chargeCost > 0 ||
     hasCondition(f, ["chargeAtLeast"]) ||
-    hasBuff(f, ["tenacity", "stun"]) ||
+    hasBuff(f, ["tenacity"]) ||
     f.powerTimings.includes("onGainCharge"),
   rustspeaker: (f) =>
-    hasKind(f, ["gainPollution", "transferPollution", "consumeCorroding", "spendPollution"]) ||
+    hasPositivePollution(f) ||
+    hasKind(f, ["transferPollution", "consumeCorroding", "spendPollution"]) ||
     hasCondition(f, ["pollutionAtLeast", "targetHasBuff"]) ||
     hasBuff(f, ["corroding", "burn", "reverse", "regeneration"]) ||
-    f.powerTimings.includes("onPollutionMax") ||
-    f.effects.some((e) => e.kind === "gainModifier" && e.valueKind === "backlashTaken"),
+    f.powerTimings.includes("onPollutionMax"),
+};
+
+/**
+ * 人工登记的归属覆盖（甲方 2026-10-08 裁定）：指纹扫不出来的个案在此显式登记，
+ * 登记命中时该卡**跳过指纹校验**——既不要求「中立禁纹」，也不要求「职业验纹」。
+ *
+ * 先例：`ui/relic-fit.ts` 的 MANUAL_CLASS_ONLY（docs/43 §2.4「扫不出来的个案报给我人工标注」）。
+ * 现有登记：
+ * - `slagarmor` 炉渣装甲：按指纹属中立（只有 damage + 通用 power:onBlock），甲方裁定归炉心
+ *   （炉渣 = 炉心世界观 + onBlock 与动能电池同构）；
+ * - `overclockfist` 超械铁拳：按指纹属中立（block + 延迟给牌），甲方裁定归炉心
+ *   （炉心「蓄力 → 重拳」的节奏卡，与充能体系同源）。
+ */
+const CARD_CLASS_PINS: Record<string, string> = {
+  slagarmor: "engineer",
+  overclockfist: "engineer",
 };
 
 const DEBUG_COMMAND_PATTERN =
@@ -595,7 +629,7 @@ export function validateContent(input: ContentInput): ValidationResult {
 
   // 1.0 新机制语义（docs/38 §五.3：新机制先进 validator 再进内容）
   const ENEMY_TARGETS = new Set(["chosenEnemy", "randomEnemy", "allEnemies", "lowestHpEnemy", "highestHpEnemy"]);
-  type MechanicEffect = { kind?: string; buff?: string; target?: { type: string }; value?: number };
+  type MechanicEffect = { kind?: string; buff?: string; target?: { type: string }; value?: number; mode?: string };
   const checkMechanics = (file: string, effects: readonly MechanicEffect[] | undefined): void => {
     for (const e of effects ?? []) {
       const target = e.target?.type ?? "self";
@@ -604,6 +638,16 @@ export function validateContent(input: ContentInput): ValidationResult {
       }
       if ((e.kind === "transferPollution" || e.kind === "consumeCorroding") && !ENEMY_TARGETS.has(target)) {
         issues.push({ file, path: "effects", message: `${e.kind} 的目标必须是敌人` });
+      }
+      // 伤害模式的消耗爆发必须**显式**声明敌方目标：引擎对非 damage 效果缺省 target=self，
+      // 漏写会把爆发打到玩家自己身上（2026-10-08 炉心过载/锅炉怒吼自残事故）。
+      if (
+        (e.kind === "spendCharge" || e.kind === "spendPollution") &&
+        (e.mode === undefined || e.mode === "damage") &&
+        (e.value ?? 0) > 0 &&
+        !ENEMY_TARGETS.has(target)
+      ) {
+        issues.push({ file, path: "effects.target", message: `${e.kind}（伤害模式）必须显式声明敌方目标，缺省会打到自己` });
       }
       if (e.kind === "spendPollution" && (e.value ?? 0) <= 0) {
         issues.push({ file, path: "effects", message: "spendPollution 的每点结算量必须 > 0" });
@@ -619,8 +663,21 @@ export function validateContent(input: ContentInput): ValidationResult {
     checkMechanics(`card ${c.id} (power)`, c.power?.effects);
     checkMechanics(`card ${c.id} (power upgraded)`, c.upgraded?.power?.effects);
   }
-  // docs/56 §五 分组铁律的双向守卫：中立禁纹 / 职业验纹
+  // docs/56 §五 分组铁律的双向守卫：中立禁纹 / 职业验纹（衍生物与人工登记件例外）
   for (const c of cards) {
+    // 衍生物牌（token，甲方 2026-10-08 铁拳）：只在战斗中凭空生成、不进任何池，归属规则不适用
+    if (c.token) continue;
+    const pin = CARD_CLASS_PINS[c.id];
+    if (pin) {
+      if (pin !== c.class) {
+        issues.push({
+          file: `card ${c.id}`,
+          path: "class",
+          message: `人工登记归属为 ${pin}，数据却是 ${c.class}——登记已过期，请同步 CARD_CLASS_PINS`,
+        });
+      }
+      continue;
+    }
     const face = cardFace(c as unknown as Parameters<typeof cardFace>[0]);
     if (c.class === "neutral") {
       const hit = (["bloodwright", "engineer", "rustspeaker"] as const).find((cls) =>

@@ -12,12 +12,13 @@ const act = game.acts[0];
 const cls = (id: string) => content.classes.get(id)!;
 
 describe("docs/56 · 卡池分组", () => {
-  it("归属表与文档一致：中立 20 / 血械 20 / 炉心 26 / 锈语者 35", () => {
-    const count = (id: string) => [...content.cards.values()].filter((c) => c.class === id).length;
-    expect(count("neutral")).toBe(20);
+  it("归属表与文档一致（衍生物不计入）：中立 23 / 血械 20 / 炉心 27 / 锈语者 32", () => {
+    const count = (id: string) =>
+      [...content.cards.values()].filter((c) => c.class === id && c.token !== true).length;
+    expect(count("neutral")).toBe(23);
     expect(count("bloodwright")).toBe(20);
-    expect(count("engineer")).toBe(26);
-    expect(count("rustspeaker")).toBe(35);
+    expect(count("engineer")).toBe(27);
+    expect(count("rustspeaker")).toBe(32);
   });
 
   it("中立卡不含身份机制（分组铁律的运行时影子；validator 是机器看守）", () => {

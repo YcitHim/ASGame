@@ -1,6 +1,6 @@
 {
   "id": "corrode",
-  "class": "rustspeaker",
+  "class": "neutral",
   "type": "skill",
   "rarity": "uncommon",
   "cost": 1,
@@ -15,6 +15,7 @@
     }
   ],
   "upgraded": {
+    "cost": 0,
     "effects": [
       {
         "kind": "applyBuff",
@@ -22,11 +23,7 @@
           "type": "chosenEnemy"
         },
         "buff": "timid",
-        "stacks": 1
-      },
-      {
-        "kind": "gainPollution",
-        "value": 5
+        "stacks": 2
       }
     ]
   },

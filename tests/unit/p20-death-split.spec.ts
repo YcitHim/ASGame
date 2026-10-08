@@ -45,18 +45,19 @@ describe("docs/47 M3 · 分裂亡语", () => {
     expect(killed.enemies.filter((e) => e.defId === "tide_mite")).toHaveLength(2);
   });
 
-  it("藤壶硬壳：签名技是给自己上 2 层坚韧（docs/47 §五 selfBuff）", () => {
+  it("藤壶硬壳：签名技是「壳击」（自己上荆棘 1） + 加固外壳（坚韧 2，docs/60 §五）", () => {
     const def = game.content.enemies.get("barnacle_host")!;
-    const selfBuff = def.intents.find((e) => e.intent.kind === "selfBuff");
-    expect(selfBuff?.intent).toMatchObject({ kind: "selfBuff", buffId: "tenacity", stacks: 2 });
+    const selfBuffs = def.intents.filter((e) => e.intent.kind === "selfBuff");
+    expect(selfBuffs.some((e) => e.intent.buffId === "bramble" && e.intent.stacks === 1)).toBe(true);
+    expect(selfBuffs.some((e) => e.intent.buffId === "tenacity" && e.intent.stacks === 2)).toBe(true);
     // 挂在意图上是「要花一回合去加固」，不是开场白给
     expect(def.startBuffs).toBeUndefined();
     expect(buffStacks(start(["barnacle_host"]).enemies[0]!.buffs, "tenacity")).toBe(0);
   });
 
-  it("数值与设计表一致（不动数值，只加机制）", () => {
+  it("数值与设计表一致（docs/60 §二 修订值）", () => {
     const def = (id: string) => game.content.enemies.get(id)!;
-    expect(def("blister_belly").maxHp).toBe(44);
+    expect(def("blister_belly").maxHp).toBe(48);
     expect(def("blister_belly").onDeathSplit).toEqual({ enemyId: "rust_leech", count: 2 });
     expect(def("rust_leech").maxHp).toBe(15);
     expect(def("rust_leech").intents[0]!.intent).toMatchObject({ kind: "attack", value: 3 });

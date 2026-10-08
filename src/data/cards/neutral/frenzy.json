@@ -4,6 +4,9 @@
   "type": "power",
   "rarity": "uncommon",
   "cost": 1,
+  "keywords": [
+    "exhaust"
+  ],
   "effects": [
     {
       "kind": "applyBuff",

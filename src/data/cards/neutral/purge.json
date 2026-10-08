@@ -1,6 +1,6 @@
 {
   "id": "purge",
-  "class": "rustspeaker",
+  "class": "neutral",
   "type": "skill",
   "rarity": "uncommon",
   "cost": 1,

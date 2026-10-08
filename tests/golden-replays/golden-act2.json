@@ -200,9 +200,19 @@
         "actionId": "p20",
         "handIndex": 1,
         "targetId": "tidecaller"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e21"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p22",
+        "handIndex": 3,
+        "targetId": "tidecaller"
       }
     ],
-    "eventHash": "a224079cc5ee175c2bcace1b34506bbc467e0ba71c381ad5966166e437e8176c",
+    "eventHash": "f77edd35db7939ffb4a12aee94997eed7ba757b26873a58f96a132ec27a9162d",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -245,7 +255,7 @@
       "TurnEnded",
       "BuffTicked"
     ],
-    "turns": 5,
+    "turns": 6,
     "outcome": "win"
   }
 }

@@ -7,6 +7,9 @@
   "effects": [
     {
       "kind": "spendCharge",
+      "target": {
+        "type": "chosenEnemy"
+      },
       "value": 3
     }
   ],
@@ -14,6 +17,9 @@
     "effects": [
       {
         "kind": "spendCharge",
+        "target": {
+          "type": "chosenEnemy"
+        },
         "value": 4
       }
     ]

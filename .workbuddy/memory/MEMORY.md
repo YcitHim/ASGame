@@ -17,7 +17,7 @@
 - T1 绝对线 = 任何件不得低于裸装基线 −1.5pp（docs/43）；golden replay 随改随录的老规矩不变。
 
 ## 特性系统（docs/58，2026-10-07 落地）
-- 三职业开局选特性（工程师二选一 + 全职业可「无特性」）；**无特性开局 = 现版玩法，也是 sim 基线对照组**，`traitId=""` 路径必须与现版逐字节等价（7 张老 golden + 嗜血盘 + 畸变盘共 9 张哈希零漂移是验收证据）。
+- 三职业开局选特性（工程师二选一 + 全职业可「无特性」）；**无特性开局 = 现版玩法，也是 sim 基线对照组**，`traitId=""` 路径必须与现版逐字节等价（7 张老 golden + turtle/cannon/畸变盘共 10 张哈希零漂移是验收证据）。
 - **禁止 classId 字符串特判（铁律 6）**：特性一律走 `core/registry/trait-handler.ts` 的**能力问询接口**（chargeTarget / blockModifiers / pollutionUncapped / firstCardFree / firstCardDouble / onTurnEnd / onBattleWin …），引擎问「能力」而不是查「id」。数值全在 `data/traits/*.json` 的 params（调数值不改代码）。
 - **快照型门槛必须在问询入口判定**（`traitSnapshot.tentacle/scythe/eye` 只在战斗开局算一次）。曾在调用点漏判 → 畸变白送首牌免能+双结算，已修并补反向单测。
 - 存档 `SCHEMA_VERSION` 随特性 +1 → 现为 **15**。
@@ -26,6 +26,27 @@
   - 玻璃大炮：充能无上限、不过载，**且不给普通攻击加伤**（`chargeTarget="none"`）；超 10 每 **5** 点 1 层「超负荷」；每层 = 承载者自己回合开始扣 2 血 + 受到的伤害 +1（层数不衰减、战斗结束清零）；**只有身上已有超负荷时**，每回合第一张攻击牌才 = 一波打出去（附加当前充能伤害并清零 + 把自身超负荷**整体转嫁**给目标，AoE 全敌）——**转嫁必须排在伤害结算之前**（`[...spreadEffects, ...effects]`），否则这一击吃不到「目标超负荷 → 受伤 +层数」；没有超负荷则完全不消耗、继续攒。**「蓄势」**：每回合开始（含第 1 回合）充能 <10 时额外 +1 能量，充能 ≥10 即断供。
   - 甲方口述修订的归档规矩：**docs/58 对应小节就地加「甲方 2026-10-07 口述修订」注 + 重写正文，`docs/program/职业特性系统交付（程序侧）.md` 同步 §3.x 与门禁数字**，旧口径不留在正文里当有效条款。
 - **机制状态禁止"影子副本"（血的教训）**：任何玩家能看见 / 日志能记账的机制状态，必须住在 `buffs` / `state` 的正规字段里。铁皮王八的荆棘曾写在影子字段 `state.blockBramble` 上，结果 ①UI 没图标 ②该字段一缺失 `Math.max(0, undefined)` → **NaN** → 反弹伤害把敌人 HP 打成 NaN → `livingEnemies()` 用 `hp > 0` 判活（NaN 恒假）→ **整场战斗当场判空、怪物"直接被秒杀"**。已删字段改真 buff，并加 `Number.isFinite` 护栏 + `tests/unit/finite-state.spec.ts` 常驻回归。
-- **荆棘层数是"累加"还是"每次覆盖"仍待甲方确认**（本轮按「获得」= 累加实现；改覆盖只需 reducer 一处）。累加后 sim 铁皮王八 6.8% → 23.0%。
+- **荆棘口径已裁定为「刷新」（甲方 2026-10-07 四次修订）**：sim 铁皮王八 23.0%（累加）→ 6.8%（刷新）是**口径变更的位移、不是强度结论**（AI「能防就防」在累加下有复利）。
+- **血械嗜血 / 超级大畸变（2026-10-08 五次修订，甲方「职业平衡调整」）**：
+  - 嗜血加两段：**低血段**——HP **<30%** 时**一切回血 +1 点**（加成落在 `healUnit` 单一汇点，走 `heal` 修饰管线，只对玩家、读回血前 HP）；**满血段**——HP 满时**每回合开始额外获得 1 张血契牌**（全池 `bloodCost>0` 的牌随机、凭空进手牌、**不占**常规抽牌额度、走**独立 `trait` RNG 流**）。能力问询 `healBonus` / `onTurnStart` + 新效果 `CardEffect.gainCard`。
+  - 超级大畸变：**胜利扣污染加门槛**——只有**结算那一刻**当前污染 **≥180** 才扣 50（**不是**开局快照；`winReliefThreshold`）。
+  - sim 位移：嗜血 21.0% → **26.0%**；畸变 5.3% → **3.8%**；均 <10pp，只作哨兵。
 - sim：`npm run sim:traits -- N` 出「三职业 × 有无特性」对照；`npm run sim -- N --trait <id>`。sim AI 是卡面启发式、**看不到特性**（不会蓄力兑牌、不会挑时机甩超负荷）→ 工程师两条特性行的数字是 AI 失真，只作哨兵，终审走真人实测。
 - golden 特性盘卡组要点：**AI 打分里格挡只值 0.7×**，所以铁皮王八盘必须是"几乎无攻击牌"的纯格挡卡组才跑得到荆棘；玻璃大炮盘要堆 `grandwindup(+10)`/`chargeup(+3)` 才逼得出超负荷与爆发。
+
+## 卡牌与内容修订（docs/59，2026-10-08 甲方口述）
+- **buff 角标口径**：`buffAmount()` 按 `buffDefinition().applyAs` 判型——`stacksAndTurns` 型（再生 / 回血印记）角标显示**强度 stacks**，其余型仍优先显示 `duration`。曾错拿剩余回合导致「再生 6 层显示 2 层」；`tests/unit/buff-badge.spec.ts` 常驻回归。UI 取 buff 定义从 `@/core/buffs`，`BuffId` 类型从 `@/core/registry/ids` 取。
+- **遗物「全部可选」**（覆盖 docs/50 §三）：奖励/事件里的遗物**不得置灰或禁用**，哪怕对当前角色无作用；只保留一行相性标注（金色小字）。`relic-fit.ts` 判定逻辑保留给标注与 sim 的 N/A 口径用，**不得再用来拦截选择**；测试方向断言「一件都不能被禁用」。
+- **「全场持续」类卡一律带 `exhaust`（防回流牌库污染）**：判定口径 = **机制类别**，不是卡面文字——**凡 `type: power` 的常驻能力卡 + 卡面写「本场」的整场持续型**都加。二轮起共 **12 张**：redlineprotocol / ascensiongear / kineticcell / slagarmor / bloodrust / ironstomach / rustapotheosis / redzone / ninety_nine + **frenzy / crimsonpact / immortality**（后 3 张 `type:power` 但卡面没写「本场」二字，一轮漏网已补）。即时卡（净化 / 腐蚀 / 震爆锤）不加。反向断言：`p4-cards.spec.ts` `P4.3`——**所有非衍生物 power 卡必须在清单内**（防漏网）。语义澄清：纯 `power.timing` 卡重打是空操作，`gainModifier`/力量/再生类重打会**叠加**；口径是「全场持续 = 消耗」，与"重打零收益"无关。
+- **归属调整与 validator 豁免机制**：改籍必须**文件随目录搬**（目录 = 池子）。改籍前先动 `tools/content-validator` 的**身份指纹表**，否则双向守卫（中立禁纹 + 职业验纹）会拦。指纹扫不出来的个案走 **`CARD_CLASS_PINS` 人工登记**（先例 `ui/relic-fit.ts` 的 `MANUAL_CLASS_ONLY`）；登记值与数据 class 不符会报错自曝 = 显式登记而非隐身豁免。**衍生物 `token: true` 跳过指纹校验**。本轮先例：purge / corrode / ironstomach / shockhammer → neutral，slagarmor → engineer（pin）；炉心指纹去 `buff:stun` 补 `bankCharge`、锈语者去 `modifier:backlashTaken`、`gainPollution` 收紧为正值才算。
+- **新引擎字段（docs/59，SCHEMA_VERSION 仍 15，均为战斗内状态）**：
+  - `CardDefinition.costX?: boolean` — X 费，费用 = 打牌前当前能量（`play-card.ts` 的 `effectiveCardWithEnhancements` 覆盖，UI 预览与结算同源）；`CardView` 自查卡定义显示「X」。
+  - `CardDefinition.token?: boolean` — 衍生物，不进任何掉落池（`rollCardRewards` + `map/event.ts` 显式池 / neutralFallback / 无显式池 usable 三处都要过滤）。
+  - `CardEffect.delayTurns?: number` — >0 时入 `BattleState.delayedEffects` 队列，每过玩家回合 −1，归零在回合开始结算（`tickDelayed()`，位于 `drawCards` 之后 → 延迟给的牌是「额外一张」）。
+  - `CardEffect.bankCharge` — 扣光当前充能（直接赋 0，**不经 changeCharge**、不触发过载/onGainCharge），推延迟 `gainCharge`（等量 + value）；充能为 0 时照样还 value。
+  - `CardEffect.gainCard { pool, count, delayTurns?, upgraded? }` — 凭空建实例进手牌，不占常规抽牌额度；`upgraded: true` 让生成物**以升级面入场**（`addCardToHand(draft, cardId, upgraded)`，超械铁拳升级版给 32 伤「铁拳」）。
+- **待甲方确认（docs/59 §十）**：~~腐蚀 2 费被磁化 2 费完全压制~~ —— **三轮已裁定关闭**：走「拉低腐蚀费用」方案，**腐蚀本体 1 费 / 升级面 0 费**，磁化维持 2 费；定位区分为「廉价单点减益（腐蚀，可低费连打）」vs「中费效率件（磁化，2 层胆怯 + 抽 1）」。回归单测 `p4-cards.spec.ts › P4.4`。~~铁拳 exhaust / 腐蚀升级面 / 本场范围 / bankCharge 0→+1~~ 四项二轮已确认全部照做。
+- **三轮数值（2026-10-08 同日·收口）**：**腐蚀 2→1 费（升级面 0 费）**——撤回二轮的 2 费。sim 哨兵 400 局零位移（无人抓腐蚀的卡组进 golden，12 盘哈希不变）。
+- **二轮数值（2026-10-08 同日）**：~~腐蚀 1→2 费~~（**三轮已改回 1 费**）、磁化 1→2 费、上发条 1→2 费；超械铁拳升级面 = 仍 3 费 / 格挡 12 / 给升级「铁拳」（32 伤，本体 24）；ironfist 升级面新增 32 伤。
+- sim 哨兵 400 局：一轮后 炉心 32.8% / 锈语者 4.5% / 铁皮王八 8.5% / 玻璃大炮 5.5% / 嗜血 26.5% / 畸变 3.3%；**二轮涨费+加消耗后几乎持平**（唯一位移 玻璃大炮 5.5%→5.3%），全部 <10pp。
+- **敌人图鉴 docs/60 = 策划修订稿，与代码不同步（2026-10-08）**：甲方直接改了 §二~§八，经确认口径为「**整理进图鉴（全篇同步），不改游戏代码**」；两列数字打架时**以「招式」列为准**（已写进 docs/60 §零）。修订内容：8 处 HP（锈喉 108→198 / 沉钟唱诗长 150→300 / 锈蚀看守 72→102 / 污染布道者 36→46 / 铁锈傀儡 40→50 / 锈疱鼓腹兽 44→48 / 唤潮主祭 100→120 / 蚀肉锈虫群 30→20）、多处招式数值（锈蚀看守 2 环释放 19→**30 成全表最高**）、两处改名（choir_echo → **唱诗班人员**、rust_pilgrim → **锈蚀腐化者**，i18n 未动）、5 个新机制（**虚化 / 魔免 / 不屈** + 锈喉**转阶段免伤 99%** 与**狂噬吸血 50%**、沉钟唱诗长二阶段**虚化 3 回合**）。docs/60 §十一 挂了「待落地」清单；**要实机生效必须实装进 `src/data/enemies/*.json` + 敌人引擎**（虚化/魔免/不屈 需按卡牌 type attack/skill 二分，不屈按单回合 15% maxHp 截断），并按老规矩重录 golden。

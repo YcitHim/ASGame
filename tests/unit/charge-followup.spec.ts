@@ -108,15 +108,16 @@ describe("真实内容：蓄力链数值表（docs/18 冻结值）", () => {
     const db = loadGameContent().content;
 
     const expected: Record<string, { release: number[]; block: number[] }> = {
-      // docs/45 Q2：污染布道者蓄力 2 段 → 1 段（释放值保持 11）
-      polluting_preacher: { release: [11], block: [4] },
-      riveted_heavy: { release: [14], block: [6] },
-      // docs/47 §四.1：守卫新增 everyTurns 4 的「锈崩重锤」（释放 16 / 架 10）
-      rust_warden: { release: [19, 16], block: [8, 8, 10] },
-      rust_sentinel: { release: [12], block: [4] },
-      rust_throat: { release: [16, 18, 24], block: [] },
-      // docs/47 §四.2：新怪的蓄力链（链枷手的释放段附带眩晕，不改变释放值）
-      rust_bell_penitent: { release: [14], block: [8] },
+      // docs/60（甲方 2026-10-08 修订）：全表按新数值重算
+      polluting_preacher: { release: [15], block: [4] },
+      riveted_heavy: { release: [20], block: [6] },
+      // 2 环长蓄力：两环各架 8 / 12，释放 30（全表最高）；
+      // 另一条是 everyTurns 4 的节拍重锤（架 10 / 写死 18）
+      rust_warden: { release: [30, 18], block: [8, 12, 10] },
+      rust_sentinel: { release: [18], block: [8] },
+      rust_throat: { release: [15, 18, 24], block: [] },
+      rust_bell_penitent: { release: [16], block: [8] },
+      // 链枷手的释放段附带眩晕，不改变释放值
       chain_flailer: { release: [18], block: [6] },
     };
 

@@ -98,6 +98,22 @@ const glassCannonDeck: GoldenDeckEntry[] = [
   ...Array.from({ length: 3 }, () => base("pistonjab")),
 ];
 
+/**
+ * 甲方 2026-10-08 炉心新机制盘：三处改动各留一条回归链——
+ * - **超械铁拳** overclockfist：8 格挡 + 蓄力一回合（delayTurns）→ 下回合「铁拳」入手（0 费 24 伤）；
+ * - **上发条** windup：充能储蓄（bankCharge）——扣光当前充能，下回合还回等量 +1；
+ * - **红线运转** redline：X 费（costX）——把当前能量全烧成充能。
+ * 格挡牌留足量，保证盘能正常收尾（AI 不会玩蓄力，属预期）。
+ */
+const chargepackDeck: GoldenDeckEntry[] = [
+  // 上发条（2026-10-08 起 2 费）占绝对多数：它卡面「零收益」，AI 只在能量有余时才打，
+  // 必须靠数量把它挤进手牌，否则会被 3 费的超械铁拳吃光能量（实测如此）。
+  ...Array.from({ length: 8 }, () => base("windup")),
+  base("overclockfist"),
+  base("redline"),
+  ...Array.from({ length: 3 }, () => base("brassguard")),
+];
+
 const battles = [
   recordBattle({
     content,
@@ -107,8 +123,7 @@ const battles = [
     deck: startDeck,
     relics: ["broken_oil", "blood_pump"],
     seed: 20261005,
-  }),
-  recordBattle({
+  }),  recordBattle({
     content,
     id: "golden-n2",
     nodeId: "n2",
@@ -209,6 +224,17 @@ const battles = [
     maxHp: 60, // docs/58 §三 锈语者 66 → 60
     traitId: "super_mutation",
     pollution: 400, // 开局快照：触手 + 大鲨臂 + 神眼三档全开
+  }),
+  // 甲方 2026-10-08 炉心新机制（充能储蓄 / X 费 / 蓄力给牌）：不带特性，纯卡牌回归
+  recordBattle({
+    content,
+    id: "golden-chargepack",
+    nodeId: "n2",
+    enemies: ["corroded_swarm", "riveted_heavy"],
+    deck: chargepackDeck,
+    relics: ["dentedcoil", "pressuregauge"],
+    seed: 20261011,
+    maxHp: 50, // docs/58 §三 炉心 66 → 50
   }),
 ];
 

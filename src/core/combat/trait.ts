@@ -6,7 +6,7 @@
  * 特性本体（参数）在 data/traits/*.json，逻辑在 registry/trait-handler。
  */
 import { buffStacks } from "../buffs";
-import type { ContentDb, TraitDefinition } from "../registry/content";
+import type { CardEffect, ContentDb, TraitDefinition } from "../registry/content";
 import {
   getTraitHandler,
   type TraitContext,
@@ -87,6 +87,27 @@ export function traitLowChargeEnergy(draft: Draft): number {
   const trait = activeTrait(draft);
   if (!trait) return 0;
   return Math.max(0, trait.handler.lowChargeEnergy?.(trait.def.params, traitCtx(draft)) ?? 0);
+}
+
+/**
+ * 每次**回血**的特性加成（嗜血低血段，甲方 2026-10-08 修订）：无特性 / 不在低血 → 0。
+ * 施加点在 `healUnit`——再生 / 卡牌治疗 / 回血印记 / 遗物回血全部汇到那一个入口，
+ * 所以「低血时所有回血 +N」只需要在这一处判定。
+ */
+export function traitHealBonus(draft: Draft): number {
+  const trait = activeTrait(draft);
+  if (!trait) return 0;
+  return Math.max(0, trait.handler.healBonus?.(trait.def.params, traitCtx(draft)) ?? 0);
+}
+
+/**
+ * 玩家**回合开始**由特性注入的效果（嗜血满血段「每回合额外给一张血契牌」，甲方 2026-10-08 修订）。
+ * 无特性 / 不满足条件 → 空数组。含战斗第 1 回合（startBattle 与 turnStart 各调一次）。
+ */
+export function traitTurnStartEffects(draft: Draft): readonly CardEffect[] {
+  const trait = activeTrait(draft);
+  if (!trait) return [];
+  return trait.handler.onTurnStart?.(trait.def.params, traitCtx(draft)) ?? [];
 }
 
 /**

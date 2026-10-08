@@ -13,7 +13,7 @@
     {
       "intent": {
         "kind": "attack",
-        "value": 9
+        "value": 8
       },
       "weight": 2,
       "maxConsecutive": 2
@@ -41,10 +41,10 @@
         "kind": "charge",
         "value": 3,
         "block": 8,
-        "releaseOverride": 14,
+        "releaseOverride": 16,
         "thenIntent": {
           "kind": "attack",
-          "value": 14
+          "value": 16
         }
       },
       "weight": 1,
