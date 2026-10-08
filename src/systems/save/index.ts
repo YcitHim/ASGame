@@ -8,7 +8,7 @@
 export const SAVE_NAMESPACE = "rustandblood";
 
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
-export const SCHEMA_VERSION = 15;
+export const SCHEMA_VERSION = 16;
 
 export type SaveSlot = "settings" | "progress" | "replay" | "codex" | "meta";
 
@@ -209,6 +209,16 @@ const migrations: Record<number, (data: unknown) => unknown> = {
     if (typeof run !== "object" || run === null) return record;
     const runRecord = run as Record<string, unknown>;
     return { ...record, run: { ...runRecord, traitId: runRecord["traitId"] ?? "" } };
+  },
+  // 15 → 16（甲方 2026-10-08）：RunState 新增 startedAt（通关用时的起算点）。
+  // 旧档没有开局时间戳 → 0 = 不计时（用时显示「—」，不编一个假的）。
+  15: (data) => {
+    if (typeof data !== "object" || data === null) return data;
+    const record = data as Record<string, unknown>;
+    const run = record["run"];
+    if (typeof run !== "object" || run === null) return record;
+    const runRecord = run as Record<string, unknown>;
+    return { ...record, run: { ...runRecord, startedAt: runRecord["startedAt"] ?? 0 } };
   },
 };
 

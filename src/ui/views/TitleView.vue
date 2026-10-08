@@ -7,7 +7,7 @@ import { useStageFit } from "@/ui/composables/useStageFit";
 import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
 import { useTutorialStore } from "@/stores/tutorial";
-import { APP_RELEASE, SEAL_DATE } from "@/ui/build-info";
+import { APP_RELEASE } from "@/ui/build-info";
 import { hasSlot, readSlot } from "@/systems/save";
 
 const stage = useTemplateRef<HTMLElement>("stage");
@@ -40,6 +40,15 @@ const recordRows = computed(() =>
 const showRustRecord = computed(
   () => meta.rustUnlocked || recordRows.value.some((r) => r.rust.minTurns !== null || r.rust.maxHp !== null),
 );
+
+/** 通关用时（ms）→ `m:ss`；没有计时（旧档 / 未通关）显示「—」。 */
+function fmtDuration(ms: number | null | undefined): string {
+  if (ms == null || ms <= 0) return t("title.record.empty", "—");
+  const total = Math.floor(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
 
 type MenuKey = "tutorial" | "expedition" | "continue" | "codex" | "settings";
 
@@ -108,6 +117,7 @@ function onMenu(key: MenuKey, enabled: boolean): void {
                 {{ row.normal.minTurns ?? t("title.record.empty", "—") }}
                 · {{ t("title.record.hp", "最高余血") }}
                 {{ row.normal.maxHp ?? t("title.record.empty", "—") }}
+                · {{ t("title.record.time", "完成用时") }} {{ fmtDuration(row.normal.millis) }}
               </span>
               <span v-if="showRustRecord" class="rline rust">
                 <em class="rdiff rust">{{ t("title.record.rust", "锈蚀") }}</em>
@@ -115,15 +125,16 @@ function onMenu(key: MenuKey, enabled: boolean): void {
                 {{ row.rust.minTurns ?? t("title.record.empty", "—") }}
                 · {{ t("title.record.hp", "最高余血") }}
                 {{ row.rust.maxHp ?? t("title.record.empty", "—") }}
+                · {{ t("title.record.time", "完成用时") }} {{ fmtDuration(row.rust.millis) }}
               </span>
             </span>
           </div>
         </div>
       </section>
 
+      <!-- 底栏只留版本号（甲方 2026-10-08）：文档路径与封版日期移到版本总结里，不占标题页 -->
       <footer class="foot">
-        <span>{{ APP_RELEASE }} 封版 · {{ SEAL_DATE }}</span>
-        <span class="dim">docs/program/{{ APP_RELEASE }}版本总结.md · 效果图 docs/mockups/battle-screen.html</span>
+        <span>v{{ APP_RELEASE }}</span>
       </footer>
     </div>
   </div>
@@ -181,37 +192,47 @@ function onMenu(key: MenuKey, enabled: boolean): void {
   padding: 13px 22px;
   font-size: 15px;
 }
+/* 远征纪事挪到右侧（甲方 2026-10-08）：底部留白还给品牌与菜单，纪事做成侧栏面板 */
 .records {
-  position: relative;
+  position: absolute;
+  top: 50%;
+  right: 44px;
+  transform: translateY(-50%);
   z-index: 2;
-  margin-top: 26px;
-  text-align: center;
+  width: 272px;
+  padding: 14px 16px 16px;
+  text-align: left;
+  border: 1px solid rgba(110, 88, 54, 0.35);
+  border-radius: var(--radius-sm);
+  background: rgba(14, 12, 10, 0.55);
 }
 .records h2 {
   font-family: var(--serif-title);
   font-size: 12px;
-  letter-spacing: 0.42em;
+  letter-spacing: 0.32em;
   color: var(--gold-dim);
   font-weight: 400;
+  text-align: center;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(110, 88, 54, 0.3);
 }
 .record-rows {
-  margin-top: 10px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 9px;
 }
 .record {
   display: flex;
-  gap: 16px;
-  justify-content: center;
+  flex-direction: column;
+  gap: 2px;
   font-size: 11px;
   color: var(--ink-dim);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
 }
 .record .rname {
-  width: 88px;
-  text-align: right;
   color: var(--ink-bone);
+  letter-spacing: 0.14em;
 }
 .rlines {
   display: flex;

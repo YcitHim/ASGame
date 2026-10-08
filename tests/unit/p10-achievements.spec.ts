@@ -134,6 +134,14 @@ describe("1.0-C 成就墙", () => {
     meta.updateRecord("engineer", 12, 8);
     expect(meta.recordOf("engineer", "normal")).toEqual({ minTurns: 12, maxHp: 8 });
     expect(meta.recordOf("engineer", "rust")).toEqual({ minTurns: null, maxHp: null });
+    // 完成用时（甲方 2026-10-08）：与另两项一样取最优，缺省不带就不写这个键
+    expect(meta.recordOf("engineer").millis).toBeUndefined();
+    meta.updateRecord("engineer", 12, 8, "normal", 1_500_000);
+    expect(meta.recordOf("engineer").millis).toBe(1_500_000);
+    meta.updateRecord("engineer", 15, 5, "normal", 900_000); // 更短 → 覆盖
+    expect(meta.recordOf("engineer").millis).toBe(900_000);
+    meta.updateRecord("engineer", 18, 9, "normal", 2_000_000); // 更长 → 不覆盖
+    expect(meta.recordOf("engineer").millis).toBe(900_000);
   });
 
   it("旧档迁移：职业名纪录键补成 :normal，成绩不丢", async () => {

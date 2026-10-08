@@ -105,7 +105,7 @@ describe("systems/save（ADR-008）", () => {
 describe("存档迁移 9 → 11（docs/41 §4.1 / docs/42 §三.0）", () => {
   it("meta 槽补 tips 与按职业的教学字段；进度档不被污染", async () => {
     const { migrate, SCHEMA_VERSION } = await import("@/systems/save");
-    expect(SCHEMA_VERSION).toBe(15);
+    expect(SCHEMA_VERSION).toBe(16);
 
     const meta = migrate({ version: 9, savedAt: 0, data: { clearedClasses: ["bloodwright"], achievements: [] } });
     const metaData = meta?.data as { tips: string[]; tutorialOffered: string[]; tutorialDone: string[] };
@@ -158,7 +158,7 @@ describe("存档迁移 9 → 11（docs/41 §4.1 / docs/42 §三.0）", () => {
 
   it("12 → 13：作废进行中的旧 run（回标题页），meta 全保留（docs/48 §六）", async () => {
     const { migrate, SCHEMA_VERSION } = await import("@/systems/save");
-    expect(SCHEMA_VERSION).toBe(15);
+    expect(SCHEMA_VERSION).toBe(16);
     const progress = migrate({ version: 12, savedAt: 0, data: { run: { layerIndex: 4 }, deck: [] } });
     expect(progress?.version).toBe(SCHEMA_VERSION);
     expect(progress?.data).toBeNull();
@@ -180,6 +180,23 @@ describe("存档迁移 9 → 11（docs/41 §4.1 / docs/42 §三.0）", () => {
       tips: ["discard"],
       tutorial: { classId: "engineer" },
     });
+  });
+});
+
+describe("存档迁移 15 → 16（甲方 2026-10-08：通关用时起算点）", () => {
+  it("进度档补 startedAt=0；已有时间戳不覆盖；meta 槽不受影响", async () => {
+    const { migrate, SCHEMA_VERSION } = await import("@/systems/save");
+    expect(SCHEMA_VERSION).toBe(16);
+    const progress = migrate({ version: 15, savedAt: 0, data: { run: { traitId: "bloodthirst" }, deck: [] } });
+    const data = progress?.data as { run: { startedAt: number; traitId: string } };
+    expect(data.run.startedAt).toBe(0); // 旧档没有开局时间 → 用时显示「—」，不编造
+    expect(data.run.traitId).toBe("bloodthirst");
+
+    const kept = migrate({ version: 15, savedAt: 0, data: { run: { startedAt: 1234 } } });
+    expect((kept?.data as { run: { startedAt: number } }).run.startedAt).toBe(1234);
+
+    const meta = migrate({ version: 15, savedAt: 0, data: { clearedClasses: [], records: { x: 1 } } });
+    expect((meta?.data as { records: unknown }).records).toEqual({ x: 1 });
   });
 });
 

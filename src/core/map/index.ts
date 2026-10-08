@@ -81,6 +81,11 @@ export interface RunState {
   /** 本局污染峰值（成就：贴线 —— 曾在 99 结束回合） */
   readonly pollutionPeak: number;
   /**
+   * 本局真实开始时间（epoch ms，甲方 2026-10-08：排行榜要记「通关用时」）。
+   * core 不许用 Date.now（G3），由 store 在开局时注入；0 = 未知（旧档 / 测试）。
+   */
+  readonly startedAt: number;
+  /**
    * 本幕已抽过的事件（docs/54 E7：同幕事件不放回抽取，池尽重置）。
    * 转幕 / 开新局清空——「一局两幕不再连撞同一个事件」而不是「一局不重复」。
    *
@@ -708,6 +713,8 @@ export interface CreateRunOptions {
   readonly companionRelic?: string;
   /** 职业特性（docs/58 §二）；缺省空串 = 无特性开局 */
   readonly traitId?: string;
+  /** 开局时间戳（epoch ms）：core 不读挂钟，由 store 传进来算「通关用时」 */
+  readonly startedAt?: number;
 }
 
 export function createRunState(
@@ -740,6 +747,7 @@ export function createRunState(
     backlashTaken: 0,
     turns: 0,
     pollutionPeak: 0,
+    startedAt: opts.startedAt ?? 0,
     seenEvents: [],
   };
 }

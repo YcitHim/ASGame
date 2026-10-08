@@ -289,6 +289,8 @@ export const useRunStore = defineStore("run", {
         difficulty,
         companionRelic: companion,
         traitId: chosenTrait,
+        // 通关用时从这里起算（甲方 2026-10-08）；core 不读挂钟，由 store 注入
+        startedAt: Date.now(),
       });
       const startLayer = Math.max(0, opts.layerIndex ?? 0);
       if (startActIndex > 0 || startLayer > 0) {
@@ -364,6 +366,8 @@ export const useRunStore = defineStore("run", {
           difficulty: this.run.difficulty,
           codexComplete,
           hpLeft: this.run.hp,
+          // 通关用时（甲方 2026-10-08）：开局时间戳缺失（旧档 / 定点验证）时不计
+          durationMs: this.run.startedAt > 0 ? Date.now() - this.run.startedAt : undefined,
         });
       }
       this.persist();
@@ -818,6 +822,8 @@ export const useRunStore = defineStore("run", {
         backlashTaken: saved.run.backlashTaken ?? 0,
         turns: saved.run.turns ?? 0,
         pollutionPeak: saved.run.pollutionPeak ?? saved.run.pollution ?? 0,
+        // 旧档没有开局时间戳 → 0（用时显示「—」，不编一个假的）
+        startedAt: saved.run.startedAt ?? 0,
         actIndex: saved.run.actIndex ?? 0,
         deepestAct: saved.run.deepestAct ?? 1,
         deepestLayer: saved.run.deepestLayer ?? saved.run.layerIndex ?? 0,

@@ -598,6 +598,7 @@
   "title.record.rust": "锈蚀",
   "title.record.turns": "最少回合",
   "title.record.hp": "最高余血",
+  "title.record.time": "完成用时",
   "title.record.empty": "尚无记录",
   "act.sunken_sanctum": "第二幕 · 沉没圣堂",
   "enemy.drowned_crawler.name": "溺锈爬行者",

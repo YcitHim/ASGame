@@ -56,6 +56,11 @@ export interface RunRecord {
   minTurns: number | null;
   /** 最高剩余 HP 通关 */
   maxHp: number | null;
+  /**
+   * 最短通关用时（ms，甲方 2026-10-08）：与上面两项一样是「独立最好值」。
+   * 可选——旧档没有这一项，且定点验证 / 测试不带用时，缺省就不写这个键。
+   */
+  millis?: number | null;
 }
 
 /**
@@ -106,6 +111,8 @@ export interface RunAchievements {
   readonly codexComplete?: boolean;
   /** 通关时剩余 HP（最佳纪录用） */
   readonly hpLeft?: number;
+  /** 通关用时（ms，甲方 2026-10-08；缺省 = 不计时） */
+  readonly durationMs?: number;
   /** 是否胜利（只有胜利才记成就与纪录） */
   readonly won?: boolean;
 }
@@ -290,13 +297,27 @@ export const useMetaStore = defineStore("meta", {
       this.persist();
     },
     /** 更新某职业 + 难度的最佳纪录（只在更优时写入）。difficulty 缺省 = 普通档。 */
-    updateRecord(classId: string, turns: number, hpLeft: number, difficulty: string = "normal"): void {
+    updateRecord(
+      classId: string,
+      turns: number,
+      hpLeft: number,
+      difficulty: string = "normal",
+      durationMs?: number,
+    ): void {
       this.ensureLoaded();
       const key = recordKey(classId, difficulty);
       const prev = this.records[key] ?? { minTurns: null, maxHp: null };
+      // 用时与另两项一样取最优：没带用时就不动它（旧调用点 / 测试不受影响）
+      const bestMillis =
+        durationMs == null
+          ? prev.millis
+          : prev.millis == null
+            ? durationMs
+            : Math.min(prev.millis, durationMs);
       const next: RunRecord = {
         minTurns: prev.minTurns == null ? turns : Math.min(prev.minTurns, turns),
         maxHp: prev.maxHp == null ? hpLeft : Math.max(prev.maxHp, hpLeft),
+        ...(bestMillis != null ? { millis: bestMillis } : {}),
       };
       this.records = { ...this.records, [key]: next };
       this.persist();
@@ -331,7 +352,7 @@ export const useMetaStore = defineStore("meta", {
         if (ach.codexComplete) achieved.push("codex_all");
         this.lastAchievements = this.achieve(achieved);
         if (ach.turns !== undefined && ach.hpLeft !== undefined) {
-          this.updateRecord(ach.classId, ach.turns, ach.hpLeft, ach.difficulty);
+          this.updateRecord(ach.classId, ach.turns, ach.hpLeft, ach.difficulty, ach.durationMs);
         }
       } else {
         this.lastAchievements = [];
