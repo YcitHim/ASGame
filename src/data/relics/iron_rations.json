@@ -4,14 +4,11 @@
   "timing": "onBattleStart",
   "effects": [
     {
-      "kind": "heal",
-      "target": {
-        "type": "self"
-      },
+      "kind": "draw",
       "value": 2
     },
     {
-      "kind": "draw",
+      "kind": "discard",
       "value": 1
     }
   ],

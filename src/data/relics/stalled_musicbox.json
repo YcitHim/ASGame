@@ -1,0 +1,22 @@
+{
+  "id": "stalled_musicbox",
+  "i18n": "relic.stalled_musicbox",
+  "timing": "onTurnStart",
+  "effects": [
+    {
+      "kind": "draw",
+      "value": 1,
+      "condition": {
+        "type": "playedNoCardsLastTurn"
+      }
+    },
+    {
+      "kind": "gainEnergy",
+      "value": 1,
+      "condition": {
+        "type": "playedNoCardsLastTurn"
+      }
+    }
+  ],
+  "tier": 2
+}

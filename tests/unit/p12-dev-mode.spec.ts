@@ -37,7 +37,7 @@ describe("开发者模式", () => {
     expect(meta.isContentUnlocked("ember_core")).toBe(false);
     settings.update({ developerMode: true });
     expect(meta.isUnlocked("both_classes_clear")).toBe(true);
-    expect(meta.isContentUnlocked("ember_core")).toBe(true);
+    expect(meta.isContentUnlocked("double_pendulum")).toBe(true);
     expect(meta.rustUnlocked).toBe(true);
   });
 

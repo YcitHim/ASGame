@@ -44,6 +44,7 @@ import {
   type RunState,
 } from "@/core/map";
 import { pollutionCapFor } from "@/core/combat";
+import { relicBattleWinGrowth, relicRelicGainHeal } from "@/core/combat/relic-runtime";
 import type {
   ActDefinition,
   CardDefinition,
@@ -63,6 +64,18 @@ import { clearSlot, readSlot, writeSlot } from "@/systems/save";
 export { MAX_ENHANCEMENT_SLOTS };
 /** 休息点回复比例（最大 HP 的 30%） */
 export const REST_HEAL_RATIO = 0.3;
+
+/**
+ * 本地日期 → `YYYY-MM-DD`（甲方 2026-10-08「完成时间改为日期」）。
+ * 用本地时间而非 UTC：玩家眼里的「今天」就是本机日历日。
+ */
+export function localDateString(ms: number): string {
+  const d = new Date(ms);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
 export interface RunCard {
   readonly cardId: string;
@@ -366,8 +379,10 @@ export const useRunStore = defineStore("run", {
           difficulty: this.run.difficulty,
           codexComplete,
           hpLeft: this.run.hp,
-          // 通关用时（甲方 2026-10-08）：开局时间戳缺失（旧档 / 定点验证）时不计
-          durationMs: this.run.startedAt > 0 ? Date.now() - this.run.startedAt : undefined,
+          // 完成日期（甲方 2026-10-08「完成时间改为日期」）：取通关当天本地日期
+          date: localDateString(Date.now()),
+          // 本局所选特性（docs/58）：纪录按职业×难度×特性分开记
+          traitId: this.run.traitId,
         });
       }
       this.persist();
@@ -683,7 +698,30 @@ export const useRunStore = defineStore("run", {
       const exists = loadGameContent().content.relics.has(relicId);
       if (!exists) return;
       this.relics = [...this.relics, relicId];
+      // 寻锈杖（docs/64 §四.2）：「每当你获得一件遗物，回 N HP」——含获得自身这一刻。
+      // run 层回血，战斗外获得（事件 / 商店 / 奖励）同样生效。
+      if (this.run) {
+        const heal = relicRelicGainHeal(loadGameContent().content, this.relics);
+        if (heal > 0) this.run = healRun(this.run, this.run.maxHp, heal);
+      }
       this.persist();
+    },
+
+    /**
+     * 战斗胜利的遗物局外成长（docs/64 §四.4 朝圣者之铃）：
+     * maxHp 成长与回血都发生在局外写回之后——先抬上限，再按新上限回血。
+     * 由 battle store 在 BattleEnded win 写回后调用。
+     */
+    applyBattleWinRelicGrowth(): void {
+      if (!this.run) return;
+      const growth = relicBattleWinGrowth(loadGameContent().content, this.relics);
+      if (growth.maxHpDelta > 0) {
+        this.run = { ...this.run, maxHp: this.run.maxHp + growth.maxHpDelta };
+      }
+      if (growth.heal > 0) {
+        this.run = healRun(this.run, this.run.maxHp, growth.heal);
+      }
+      if (growth.maxHpDelta > 0 || growth.heal > 0) this.persist();
     },
 
     canApply(enhancementId: string, deckIndex: number): boolean {

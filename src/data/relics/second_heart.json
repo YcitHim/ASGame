@@ -1,0 +1,12 @@
+{
+  "id": "second_heart",
+  "i18n": "relic.second_heart",
+  "timing": "onBattleStart",
+  "handler": "cheat_death",
+  "params": {
+    "hpLeft": 1,
+    "draw": 2,
+    "cleanse": true
+  },
+  "tier": 3
+}

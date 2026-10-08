@@ -127,7 +127,7 @@
         "type": "PlayCard",
         "actionId": "p7",
         "handIndex": 1,
-        "targetId": "bell_warden"
+        "targetId": "tidecaller"
       },
       {
         "type": "EndTurn",
@@ -137,18 +137,18 @@
         "type": "PlayCard",
         "actionId": "p9",
         "handIndex": 0,
-        "targetId": "bell_warden"
+        "targetId": "tidecaller"
       },
       {
         "type": "PlayCard",
         "actionId": "p10",
-        "handIndex": 0,
+        "handIndex": 2,
         "targetId": "tidecaller"
       },
       {
         "type": "PlayCard",
         "actionId": "p11",
-        "handIndex": 1,
+        "handIndex": 0,
         "targetId": "tidecaller"
       },
       {
@@ -192,27 +192,11 @@
       {
         "type": "PlayCard",
         "actionId": "p19",
-        "handIndex": 0,
-        "targetId": "tidecaller"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p20",
         "handIndex": 1,
-        "targetId": "tidecaller"
-      },
-      {
-        "type": "EndTurn",
-        "actionId": "e21"
-      },
-      {
-        "type": "PlayCard",
-        "actionId": "p22",
-        "handIndex": 3,
         "targetId": "tidecaller"
       }
     ],
-    "eventHash": "f77edd35db7939ffb4a12aee94997eed7ba757b26873a58f96a132ec27a9162d",
+    "eventHash": "d48f857465dc073dd3f2c09944d0b5293082c5ba9659a0b137f7d56f634d6fb4",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -227,6 +211,8 @@
       "DamageDealt",
       "HpLost",
       "CardPlayed",
+      "DamageDealt",
+      "HpLost",
       "DamageDealt",
       "HpLost",
       "CardPlayed",
@@ -248,14 +234,12 @@
       "CardPlayed",
       "DamageDealt",
       "HpLost",
+      "UnitDied",
       "BuffApplied",
       "CardPlayed",
-      "DamageDealt",
-      "HpLost",
-      "TurnEnded",
-      "BuffTicked"
+      "BlockBroken"
     ],
-    "turns": 6,
+    "turns": 5,
     "outcome": "win"
   }
 }

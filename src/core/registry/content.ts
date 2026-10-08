@@ -82,7 +82,17 @@ export interface CardEffect {
      * 所以结算时挂起（`draft.destroyPending`），由 `DestroyFromHand` 动作兑现；
      * 回合结束时若仍未选，牌组按手牌顺序自动销毁（保证状态不跨回合泄漏）。
      */
-    | "destroyHand";
+    | "destroyHand"
+    /**
+     * 随机弃手牌（docs/64 铁口粮）：从手牌随机弃 value（缺省 1）张进弃牌堆。
+     * 走独立的 relic RNG 流，不扰动战斗主序列。
+     */
+    | "discard"
+    /**
+     * 充能减半（docs/64 熔炉之心）：当前充能向下取整减半，直接赋值（不经 changeCharge、
+     * 不触发过载 / onGainCharge——与 bankCharge 的扣减同口径）。
+     */
+    | "halveCharge";
   readonly target?: TargetRef;
   readonly value?: number;
   readonly hits?: number;
@@ -507,7 +517,9 @@ export type TriggerTiming =
   /** 获得充能时（docs/29 §二⑥「飞升齿轮」） */
   | "onGainCharge"
   /** 污染即将触顶（docs/38 §二 B-3「九十九」）：在反噬判定前派发，效果可把污染压回 99 */
-  | "onPollutionMax";
+  | "onPollutionMax"
+  /** 战斗胜利结算（docs/64 泛黄照片）：敌人清空后、BattleEnded 之前派发，回血会写回 run */
+  | "onBattleWin";
 
 /** 遗物分级（docs/37 §一.2 / docs/38 §一）：1 起始池，2 常规池，3 稀有池。 */
 export type RelicTier = 1 | 2 | 3;
@@ -516,7 +528,11 @@ export interface RelicDefinition {
   readonly id: string;
   readonly i18n: string;
   readonly timing: TriggerTiming;
-  readonly effects: readonly CardEffect[];
+  /**
+   * 数据驱动效果（按 timing 派发）。规则件（docs/64 §三）可以没有 effects、
+   * 只挂 handler + params——机制逻辑在 relic-handler.ts，引擎问「能力」不查 id。
+   */
+  readonly effects?: readonly CardEffect[];
   /** 触发次数限制：battle = 整场一次；turn = 每回合一次；缺省 = 每次时机都触发 */
   readonly once?: "battle" | "turn";
   /**
@@ -526,6 +542,9 @@ export interface RelicDefinition {
   readonly tier?: RelicTier;
   /** 入池解锁条件（docs/36 T1）：缺省 / "none" = 默认可用；其余由 meta 层判定 */
   readonly unlockCondition?: string;
+  /** 规则 handler（docs/64 §三）：与 trait-handler 同构，JSON 只传参 */
+  readonly handler?: string;
+  readonly params?: Readonly<Record<string, unknown>>;
 }
 
 export interface ContentDb {

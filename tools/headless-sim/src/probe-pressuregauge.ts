@@ -20,13 +20,13 @@ const baseline = (cls: string): number =>
 const def = content.relics.get("pressuregauge");
 if (!def) throw new Error("找不到 pressuregauge");
 
-const effectKind = def.effects[0]?.kind ?? "?";
+const effectKind = def.effects?.[0]?.kind ?? "?";
 console.log(`[probe] pressuregauge（${effectKind}）值扫描 · 400 局 · normal · 单幕`);
 for (const cls of ["engineer", "bloodwright", "rustspeaker"]) {
   console.log(`  ${cls} 空随身槽基线 ${(baseline(cls) * 100).toFixed(1)}%`);
 }
 for (const value of [0, 1, 2, 3, 5, 8]) {
-  const effects = def.effects.map((e) => (e.kind === effectKind ? { ...e, value } : e));
+  const effects = (def.effects ?? []).map((e) => (e.kind === effectKind ? { ...e, value } : e));
   (content.relics as unknown as Map<string, RelicDefinition>).set("pressuregauge", { ...def, effects });
   const cells: string[] = [];
   for (const cls of ["engineer", "bloodwright", "rustspeaker"]) {

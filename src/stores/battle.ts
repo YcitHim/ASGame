@@ -307,6 +307,9 @@ export const useBattleStore = defineStore("battle", {
           pollutionCapFor(loadGameContent().content, runStore.run?.traitId),
         );
         runStore.noteTurns(result.state.turn);
+        // 朝圣者之铃（docs/64 §四.4）：胜利后的 maxHp 成长与回血在写回**之后**结算
+        // （battleEnd 时玩家 HP > 0 即胜；第二颗心脏复活后继续打，赢了照样触发）
+        if (result.state.player.hp > 0) runStore.applyBattleWinRelicGrowth();
       }
       // 提示生命周期（docs/41 §2.1）：新回合到达 → 上一回合的提示必须消失
       for (const event of result.events) {

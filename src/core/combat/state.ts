@@ -132,10 +132,22 @@ export interface BattleState {
   readonly selfHpSpentThisTurn: number;
   /** 本回合已打出的攻击牌数（玻璃大炮首张攻击牌判定） */
   readonly attackCardsPlayedThisTurn: number;
+  /** 本回合累计花费的能量（docs/64 商人算盘「每花费 5 能量回 1」，甲方 2026-10-08 口述） */
+  readonly energySpentThisTurn: number;
   /** 本回合神眼是否已用（每回合一次，docs/58 §七.2） */
   readonly eyeUsedThisTurn: boolean;
   /** 待玩家选择销毁的手牌张数（祭血狂热「销毁」；0 = 无待选） */
   readonly destroyPending: number;
+  /**
+   * 回合结束那一刻的手牌为空快照（docs/64 空腹铃铛 / 唱诗班终曲）：
+   * endTurn 在弃牌**之前**捕获——onTurnEnd 触发时手牌已按关键词弃置，
+   * 没有这份快照「打光手牌」就永远无法判定。
+   */
+  readonly handEmptyAtTurnEnd: boolean;
+  /** 上一回合打出的牌数（docs/64 停摆八音盒）；-1 = 无上回合（战斗第 1 回合） */
+  readonly prevTurnCardsPlayed: number;
+  /** 遗物 handler 的本回合触发计数（docs/64 §三）：key = `${relicId}:${hook}`，回合开始清零 */
+  readonly relicFiresThisTurn: Readonly<Record<string, number>>;
   /** 延迟结算队列（甲方 2026-10-08）：回合开始逐个递减并结算到期项 */
   readonly delayedEffects: readonly DelayedEffect[];
   /** 事件全局序号计数器 */
@@ -287,8 +299,12 @@ export function createBattleState(config: BattleConfig): BattleState {
     dealtDamageThisTurn: 0,
     selfHpSpentThisTurn: 0,
     attackCardsPlayedThisTurn: 0,
+    energySpentThisTurn: 0,
     eyeUsedThisTurn: false,
     destroyPending: 0,
+    handEmptyAtTurnEnd: false,
+    prevTurnCardsPlayed: -1,
+    relicFiresThisTurn: {},
     delayedEffects: [],
     eventSeq: 0,
     content,

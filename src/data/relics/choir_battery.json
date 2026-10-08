@@ -1,19 +1,15 @@
 {
   "id": "choir_battery",
   "i18n": "relic.choir_battery",
-  "timing": "onTurnStart",
+  "timing": "onTurnEnd",
   "effects": [
     {
-      "kind": "gainCharge",
-      "value": 1
-    },
-    {
-      "kind": "applyBuff",
-      "target": {
-        "type": "self"
-      },
-      "buff": "strength",
-      "stacks": 1
+      "kind": "draw",
+      "value": 2,
+      "delayTurns": 1,
+      "condition": {
+        "type": "handEmptyAtTurnEnd"
+      }
     }
   ],
   "once": "turn",

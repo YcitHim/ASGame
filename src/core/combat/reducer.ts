@@ -9,18 +9,20 @@
 import type { Action } from "../actions";
 import type { DomainEvent } from "../events";
 import { EventSink } from "../events";
-import { buffStacks, hasBuff } from "../buffs";
+import { buffStacks, buffDefinition, hasBuff } from "../buffs";
 import { isInnate, turnEndDestination } from "../keywords";
 import { executeDebugCommand } from "./debug";
 import { definitionOf, fromDraft, livingEnemies, toDraft, type Draft } from "./draft";
 import { generateIntents, runEnemyTurn } from "./enemy-turn";
 import { effectiveCard, playCard } from "./play-card";
 import { resetTurnRelics, resolveTriggers } from "./relics";
+import { relicCheatDeath, relicHpToBlockOnStart, relicKeepBlock } from "./relic-runtime";
 import { activeTrait, brambleMaxStacks, traitBrambleFromBlock, traitBrambleFromBlockStep, traitCtx, traitLowChargeEnergy, traitTurnStartEffects } from "./trait";
 import {
   applyBuffToTarget,
   decayTimedCurses,
   drawCards,
+  gainBlock,
   resolveCorroding,
   resolveCurses,
   resolvePollutionCritical,
@@ -118,6 +120,17 @@ function startBattle(draft: Draft, sink: EventSink): void {
     }
   }
   resolveTriggers(draft, sink, "onBattleStart");
+  // 夜春蛋苯（甲方 2026-10-08 口述 · T3 规则件）：战斗开始把 HP 按 ratio 转化为格挡，
+  // 只留 hpLeft 点；格挡跨回合保留由同一 handler 的 keepBlock 承担（回合开始问询）。
+  // 转换点放在 onBattleStart 派发之后——先让压力表/铁口粮等开局件结算完，再「换壳」。
+  const conversion = relicHpToBlockOnStart(draft);
+  if (conversion && draft.player.hp > conversion.hpLeft) {
+    const converted = draft.player.hp - conversion.hpLeft;
+    const block = Math.floor(draft.player.hp * conversion.ratio);
+    draft.player.hp = conversion.hpLeft;
+    sink.emit("HpLost", { targetId: "player", value: converted, reason: "relic" });
+    if (block > 0) gainBlock(draft, sink, "player", block);
+  }
   // docs/52 §四（P0）：第 1 回合**也是一个回合**——「回合开始时触发」理应在首回合生效。
   // 原先这条链只在 endTurn 里调，玩家要到第 2 回合才吃得到（红泪戒指首回合不给格挡的实锤 bug）。
   // 时序：洗牌发牌 → 开场状态 → onBattleStart → onTurnStart → 揭示意图 → playerAction。
@@ -162,6 +175,33 @@ function resolveHandAtTurnEnd(draft: Draft, sink: EventSink): void {
 function checkBattleEnd(draft: Draft, sink: EventSink): boolean {
   if (draft.phase === "battleEnd") return true;
   if (draft.player.hp <= 0) {
+    // 第二颗心脏（docs/64 §四.4）：每场战斗第一次 HP 归零 → 剩 hpLeft、清减益、抽牌。
+    // 卖血 / 污染反噬 / 受击致死一视同仁；每场一次（记入 triggeredThisBattle）。
+    const cheat = relicCheatDeath(draft);
+    if (cheat) {
+      draft.player.triggeredThisBattle.push(cheat.relicId);
+      draft.player.hp = cheat.rule.hpLeft;
+      if (cheat.rule.cleanse) {
+        // 清「异常 + 诅咒」两分类的减益；污染是资源不是减益（镜像 buff 保留），加持保留
+        const kept = draft.player.buffs.filter((b) => {
+          if (b.id === "pollution") return true;
+          const polarity = buffDefinition(b.id).polarity;
+          return polarity !== "affliction" && polarity !== "curse";
+        });
+        for (const b of draft.player.buffs) {
+          if (!kept.includes(b)) sink.emit("BuffExpired", { targetId: "player", buffId: b.id });
+        }
+        draft.player.buffs = kept;
+      }
+      if (cheat.rule.draw > 0) drawCards(draft, sink, cheat.rule.draw);
+      sink.emit("HpHealed", {
+        targetId: "player",
+        value: cheat.rule.hpLeft,
+        total: draft.player.hp,
+        reason: "relic",
+      });
+      return false;
+    }
     draft.phase = "battleEnd";
     restoreMaxHp(draft);
     sink.emit("BattleEnded", { result: "lose", rewardsSeed: 0 });
@@ -184,6 +224,9 @@ function checkBattleEnd(draft: Draft, sink: EventSink): boolean {
         });
       }
     }
+    // 遗物胜利结算（docs/64 泛黄照片「每场战斗胜利后回血」）：与特性同点，
+    // 回血落在 BattleEnded 之前 → 战斗结束写回 run 的就是奶过的值。
+    resolveTriggers(draft, sink, "onBattleWin");
     const rewardsSeed = draft.rng.stream("reward").nextInt(0, 0xffffffff);
     sink.emit("BattleEnded", { result: "win", rewardsSeed });
     return true;
@@ -200,6 +243,10 @@ function endTurn(draft: Draft, sink: EventSink): void {
     draft.player.buffs = draft.player.buffs.filter((b) => b.id !== "stun");
     sink.emit("BuffExpired", { targetId: "player", buffId: "stun" });
   }
+  // 「回合结束那一刻手牌是否为空」快照（docs/64 空腹铃铛 / 唱诗班终曲）：
+  // 必须在弃牌结算**之前**捕获——onTurnEnd 触发时手牌已按关键词弃置/保留，
+  // 没有这份快照「打光手牌」就永远无法判定（handIsEmpty 在那时恒为真）。
+  draft.handEmptyAtTurnEnd = draft.hand.length === 0;
   resolveHandAtTurnEnd(draft, sink);
   resolveTriggers(draft, sink, "onTurnEnd");
   // 特性回合末结算（docs/58 §四 嗜血惩罚 + 奖励）：读的是**本回合**累计造伤 / 自伤
@@ -260,6 +307,17 @@ function endTurn(draft: Draft, sink: EventSink): void {
   draft.phase = "turnStart";
   draft.turn += 1;
   tickAllBuffs(draft, sink, "turnStart");
+  // 先清格挡、再回血（docs/64 脏绷带交互修正）：原先顺序是 再生回血 → 清格挡，
+  // 绷带「回血 +2 格挡」会在同一个回合开始被立即清掉，等于白给。
+  // 提前清格挡对所有现版内容零观测差异（这段窗口里没有任何结算读 player.block），
+  // 只让「回合开始的回血 → 格挡」活得到本回合。
+  const keepRuleEarly = relicKeepBlock(draft);
+  if (keepRuleEarly) {
+    draft.player.block = Math.min(keepRuleEarly.cap, Math.floor(Math.max(0, draft.player.block) * keepRuleEarly.ratio));
+    draft.player.enduringBlock = 0;
+  } else {
+    resolveTenacity(draft.player);
+  }
   resolveRegeneration(draft, sink);
   resolveMending(draft, sink);
   resolvePollutionCritical(draft, sink);
@@ -270,9 +328,10 @@ function endTurn(draft: Draft, sink: EventSink): void {
   draft.player.energy = draft.player.maxEnergy;
   // 玻璃大炮「蓄势」（docs/58 §六.4）：新回合开始时再判一次（充能 <10 → +1 能量）
   grantLowChargeEnergy(draft);
-  // 只清玩家自己的格挡（坚韧持有时改为置回维续池）；敌人格挡不在此处清（见上方 enemyAction）
-  resolveTenacity(draft.player);
+  // 「上一回合出牌数」快照（docs/64 停摆八音盒）：清零前结转；战斗第 1 回合保持 -1
+  draft.prevTurnCardsPlayed = draft.cardsPlayedThisTurn;
   draft.cardsPlayedThisTurn = 0;
+  draft.energySpentThisTurn = 0;
   // 敌人「本回合累计承受伤害」（docs/60 §八.3 不屈）：新玩家回合开始归零，
   // 于是它的判定窗口正好是「玩家这一整个回合」。
   for (const enemy of draft.enemies) enemy.damageTakenThisTurn = 0;

@@ -4,6 +4,7 @@ export * from "./resolve";
 export * from "./play-card";
 export * from "./enemy-turn";
 export * from "./relics";
+export * from "./relic-runtime";
 export * from "./trait";
 export * from "./debug";
 export * from "./reducer";

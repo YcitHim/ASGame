@@ -1,0 +1,20 @@
+{
+  "id": "rust_gullet",
+  "i18n": "relic.rust_gullet",
+  "timing": "onTurnEnd",
+  "effects": [
+    {
+      "kind": "heal",
+      "target": {
+        "type": "self"
+      },
+      "value": 2,
+      "condition": {
+        "type": "attacksPlayedThisTurn",
+        "n": 3
+      }
+    }
+  ],
+  "once": "turn",
+  "tier": 2
+}

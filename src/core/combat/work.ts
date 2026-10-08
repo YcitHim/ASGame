@@ -19,6 +19,11 @@ export interface EffectContext {
   /** 该动作由触发器（遗物/卡牌能力）产生：其 gainCharge 不再派发 onGainCharge（防自触发） */
   readonly fromTrigger?: boolean;
   /**
+   * 该动作来自哪个触发时机（docs/64）：onBlock 派发只在「来源不是 onBlock 自己」时进行——
+   * 第三捧灰/空腹铃铛给的格挡照样触发隔热砖，但隔热砖自己的 +1 不会无限自循环。
+   */
+  readonly triggerTiming?: string;
+  /**
    * 打出这张牌**之前**的能量（红线运转 chargeFromEnergy 读它）。
    * 玩家看到的是能量球上那个数，所以取付掉费用前的值；触发器场景缺省，回落到当前能量。
    */

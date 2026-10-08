@@ -708,7 +708,7 @@ export function validateContent(input: ContentInput): ValidationResult {
       issues.push({ file: `enhancement ${e.id}`, path: "actScope", message: `actScope "${e.actScope}" 不是已定义的幕` });
     }
   }
-  for (const r of relics) checkMechanics(`relic ${r.id}`, r.effects);
+  for (const r of relics) checkMechanics(`relic ${r.id}`, r.effects ?? []);
   for (const e of enemies) checkMechanics(`enemy ${e.id}`, e.onDeath);
 
   // i18n key 存在（docs/04 §4）

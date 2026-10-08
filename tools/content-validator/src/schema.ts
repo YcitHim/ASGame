@@ -11,6 +11,7 @@ import {
   ENHANCEMENT_HANDLER_IDS,
   ENHANCEMENT_TIERS,
   KEYWORD_IDS,
+  RELIC_HANDLER_IDS,
   TARGET_IDS,
   TRAIT_HANDLER_IDS,
 } from "../../../src/core/registry/ids";
@@ -51,7 +52,7 @@ const effectSchema = z.discriminatedUnion("kind", [
       condition: conditionSchema.optional(),
     })
     .strict(),
-  z.object({ kind: z.literal("draw"), value: z.number().int().min(0), condition: conditionSchema.optional() }).strict(),
+  z.object({ kind: z.literal("draw"), value: z.number().int().min(0), delayTurns: z.number().int().min(1).optional(), condition: conditionSchema.optional() }).strict(),
   z
     .object({
       kind: z.literal("heal"),
@@ -175,6 +176,21 @@ const effectSchema = z.discriminatedUnion("kind", [
       kind: z.literal("destroyHand"),
       /** 销毁几张手牌（缺省 1；上限由 core 夹到手牌张数） */
       value: z.number().int().min(1),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      /** 随机弃手牌（docs/64 铁口粮）：缺省 1 张 */
+      kind: z.literal("discard"),
+      value: z.number().int().min(1),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
+  z
+    .object({
+      /** 充能减半（docs/64 熔炉之心）：向下取整，不经 changeCharge */
+      kind: z.literal("halveCharge"),
       condition: conditionSchema.optional(),
     })
     .strict(),
@@ -498,13 +514,20 @@ export const relicSchema = z
   .object({
     id: idSchema,
     i18n: z.string(),
-    timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell", "onBlock", "onGainCharge", "onPollutionMax"]),
-    effects: z.array(effectSchema).min(1),
+    timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell", "onBlock", "onGainCharge", "onPollutionMax", "onBattleWin"]),
+    /** 数据驱动效果；规则件（docs/64 §三）可以只挂 handler 而没有 effects */
+    effects: z.array(effectSchema).min(1).optional(),
     once: z.enum(["battle", "turn"]).optional(),
     /** 掉落池分级（docs/38 §一）：缺省 = 身份件，不入池 */
     tier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
     unlockCondition: z.string().optional(),
+    /** 规则 handler（docs/64 §三）：机制逻辑在 relic-handler.ts，JSON 只传参 */
+    handler: z.enum(RELIC_HANDLER_IDS).optional(),
+    params: z.record(z.string(), z.unknown()).optional(),
   })
-  .strict();
+  .strict()
+  .refine((r) => (r.effects && r.effects.length > 0) || r.handler !== undefined, {
+    message: "遗物必须至少有 effects 或 handler 之一（docs/64 §三）",
+  });
 
 export type RelicJson = z.infer<typeof relicSchema>;

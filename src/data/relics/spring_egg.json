@@ -1,0 +1,12 @@
+{
+  "id": "spring_egg",
+  "i18n": "relic.spring_egg",
+  "timing": "onBattleStart",
+  "handler": "hp_to_block",
+  "params": {
+    "ratio": 1.2,
+    "hpLeft": 1,
+    "keepCap": 999
+  },
+  "tier": 3
+}

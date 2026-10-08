@@ -84,10 +84,18 @@ export interface Draft {
   selfHpSpentThisTurn: number;
   /** 本回合已打出的攻击牌数（玻璃大炮首张攻击牌） */
   attackCardsPlayedThisTurn: number;
+  /** 本回合累计花费的能量（docs/64 商人算盘） */
+  energySpentThisTurn: number;
   /** 本回合神眼是否已用 */
   eyeUsedThisTurn: boolean;
   /** 待玩家选择销毁的手牌张数（祭血狂热；0 = 无待选） */
   destroyPending: number;
+  /** 回合结束那一刻的手牌为空快照（docs/64）：endTurn 在弃牌前捕获 */
+  handEmptyAtTurnEnd: boolean;
+  /** 上一回合打出的牌数（docs/64 停摆八音盒）；-1 = 战斗第 1 回合 */
+  prevTurnCardsPlayed: number;
+  /** 遗物 handler 本回合触发计数（docs/64 §三）：key = `${relicId}:${hook}` */
+  relicFiresThisTurn: Record<string, number>;
   /** 延迟结算队列（甲方 2026-10-08）：回合开始递减，归零即结算 */
   delayed: DelayedEffect[];
   player: MutablePlayer;
@@ -126,8 +134,12 @@ export function toDraft(state: BattleState): Draft {
     dealtDamageThisTurn: state.dealtDamageThisTurn,
     selfHpSpentThisTurn: state.selfHpSpentThisTurn,
     attackCardsPlayedThisTurn: state.attackCardsPlayedThisTurn,
+    energySpentThisTurn: state.energySpentThisTurn,
     eyeUsedThisTurn: state.eyeUsedThisTurn,
     destroyPending: state.destroyPending,
+    handEmptyAtTurnEnd: state.handEmptyAtTurnEnd,
+    prevTurnCardsPlayed: state.prevTurnCardsPlayed,
+    relicFiresThisTurn: { ...state.relicFiresThisTurn },
     delayed: state.delayedEffects.map((d) => ({ ...d })),
     player: {
       id: "player",
@@ -241,8 +253,12 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
     dealtDamageThisTurn: draft.dealtDamageThisTurn,
     selfHpSpentThisTurn: draft.selfHpSpentThisTurn,
     attackCardsPlayedThisTurn: draft.attackCardsPlayedThisTurn,
+    energySpentThisTurn: draft.energySpentThisTurn,
     eyeUsedThisTurn: draft.eyeUsedThisTurn,
     destroyPending: draft.destroyPending,
+    handEmptyAtTurnEnd: draft.handEmptyAtTurnEnd,
+    prevTurnCardsPlayed: draft.prevTurnCardsPlayed,
+    relicFiresThisTurn: { ...draft.relicFiresThisTurn },
     delayedEffects: draft.delayed.map((d) => ({ ...d })),
     eventSeq,
     content: draft.content,

@@ -9,6 +9,17 @@
         "type": "self"
       },
       "value": 1
+    },
+    {
+      "kind": "heal",
+      "target": {
+        "type": "self"
+      },
+      "value": 1,
+      "condition": {
+        "type": "hpAtMost",
+        "n": 10
+      }
     }
   ],
   "tier": 1

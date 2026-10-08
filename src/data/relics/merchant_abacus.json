@@ -1,0 +1,11 @@
+{
+  "id": "merchant_abacus",
+  "i18n": "relic.merchant_abacus",
+  "timing": "onBattleStart",
+  "handler": "energy_spent_refund",
+  "params": {
+    "spend": 5,
+    "gain": 1
+  },
+  "tier": 2
+}

@@ -134,25 +134,53 @@ describe("1.0-C 成就墙", () => {
     meta.updateRecord("engineer", 12, 8);
     expect(meta.recordOf("engineer", "normal")).toEqual({ minTurns: 12, maxHp: 8 });
     expect(meta.recordOf("engineer", "rust")).toEqual({ minTurns: null, maxHp: null });
-    // 完成用时（甲方 2026-10-08）：与另两项一样取最优，缺省不带就不写这个键
-    expect(meta.recordOf("engineer").millis).toBeUndefined();
-    meta.updateRecord("engineer", 12, 8, "normal", 1_500_000);
-    expect(meta.recordOf("engineer").millis).toBe(1_500_000);
-    meta.updateRecord("engineer", 15, 5, "normal", 900_000); // 更短 → 覆盖
-    expect(meta.recordOf("engineer").millis).toBe(900_000);
-    meta.updateRecord("engineer", 18, 9, "normal", 2_000_000); // 更长 → 不覆盖
-    expect(meta.recordOf("engineer").millis).toBe(900_000);
+    // 完成日期（甲方 2026-10-08「完成时间改为日期」）：与另两项一样跟「刷新」走，
+    // 缺省不带就不写这个键
+    expect(meta.recordOf("engineer").date).toBeUndefined();
+    // 首刷（更优）：写入日期
+    meta.updateRecord("engineer", 10, 20, "normal", "2026-10-01");
+    expect(meta.recordOf("engineer").date).toBe("2026-10-01");
+    // 更差的一次：不刷新 → 日期保持原样
+    meta.updateRecord("engineer", 15, 5, "normal", "2026-10-02");
+    expect(meta.recordOf("engineer").date).toBe("2026-10-01");
+    // 回合更少（刷新）→ 日期更新
+    meta.updateRecord("engineer", 8, 5, "normal", "2026-10-03");
+    expect(meta.recordOf("engineer").date).toBe("2026-10-03");
   });
 
-  it("旧档迁移：职业名纪录键补成 :normal，成绩不丢", async () => {
+  it("相同职业不同特性分别记一栏，互不覆盖（甲方 2026-10-08）", () => {
+    const meta = setup();
+    meta.updateRecord("engineer", 20, 30, "normal", "2026-10-01", "ironhide_turtle");
+    meta.updateRecord("engineer", 35, 10, "normal", "2026-10-02", "glass_cannon");
+    meta.updateRecord("engineer", 28, 22, "normal", "2026-10-03", ""); // 无特性
+    expect(meta.recordOf("engineer", "normal", "ironhide_turtle").minTurns).toBe(20);
+    expect(meta.recordOf("engineer", "normal", "glass_cannon").minTurns).toBe(35);
+    expect(meta.recordOf("engineer", "normal", "").minTurns).toBe(28);
+    // 不带 traitId → 取全特性里最好的一条（回合最少）
+    expect(meta.recordOf("engineer", "normal").minTurns).toBe(20);
+    // 分特性榜：三档各一条；无特性档对外统一给空串
+    const rows = meta.recordsByTrait("engineer", "normal");
+    expect(rows.map((r) => r.traitId).sort()).toEqual(["", "glass_cannon", "ironhide_turtle"]);
+  });
+
+  it("旧档迁移：职业名 / 职业:难度 两种旧键都补成三段式，成绩不丢", async () => {
     window.localStorage.clear();
     setActivePinia(createPinia());
     const { writeSlot } = await import("@/systems/save");
-    // 旧格式：records 的键只有职业名（分难度之前写下的档）
-    writeSlot("meta", { records: { bloodwright: { minTurns: 24, maxHp: 18 } } });
+    // 旧格式①：只有职业名（分难度之前）；旧格式②：职业:难度（特性系统之前）
+    writeSlot("meta", {
+      records: {
+        bloodwright: { minTurns: 24, maxHp: 18 },
+        "engineer:rust": { minTurns: 30, maxHp: 12 },
+      },
+    });
     const meta = useMetaStore();
     meta.ensureLoaded();
-    expect(meta.recordOf("bloodwright", "normal")).toEqual({ minTurns: 24, maxHp: 18 });
+    // 两种旧键都归到「无特性」档
+    expect(meta.recordOf("bloodwright", "normal", "").minTurns).toBe(24);
+    expect(meta.recordOf("engineer", "rust", "").minTurns).toBe(30);
+    // 总览口径也读得到
+    expect(meta.recordOf("bloodwright", "normal").minTurns).toBe(24);
     expect(meta.recordOf("bloodwright", "rust")).toEqual({ minTurns: null, maxHp: null });
   });
 });

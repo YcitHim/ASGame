@@ -1,0 +1,11 @@
+{
+  "id": "mirror_plate",
+  "i18n": "relic.mirror_plate",
+  "timing": "onBattleStart",
+  "handler": "keep_block",
+  "params": {
+    "ratio": 0.5,
+    "cap": 8
+  },
+  "tier": 3
+}

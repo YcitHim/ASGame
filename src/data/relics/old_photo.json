@@ -1,16 +1,15 @@
 {
   "id": "old_photo",
   "i18n": "relic.old_photo",
-  "timing": "onBattleStart",
+  "timing": "onBattleWin",
   "effects": [
     {
       "kind": "heal",
       "target": {
         "type": "self"
       },
-      "value": 4
+      "value": 3
     }
   ],
-  "once": "battle",
   "tier": 1
 }

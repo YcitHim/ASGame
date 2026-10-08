@@ -8,13 +8,19 @@
       "target": {
         "type": "allEnemies"
       },
-      "value": 3,
+      "value": 5,
       "condition": {
         "type": "chargeAtLeast",
-        "n": 8
+        "n": 5
+      }
+    },
+    {
+      "kind": "halveCharge",
+      "condition": {
+        "type": "chargeAtLeast",
+        "n": 5
       }
     }
   ],
-  "once": "turn",
   "tier": 3
 }

@@ -38,6 +38,14 @@ export const CONDITION_IDS = [
   "tookDamageThisTurn",
   /** 目标敌人身上的 Buff（docs/38 §二 B-3「疫触」）：逐目标判定，不在入栈时快照 */
   "targetHasBuff",
+  /** 本回合打出的**攻击牌**数 ≥ n（docs/64 饥锈胃袋） */
+  "attacksPlayedThisTurn",
+  /** 回合结束那一刻手牌为空（docs/64 空腹铃铛 / 唱诗班终曲）：读结束回合时捕获的快照 */
+  "handEmptyAtTurnEnd",
+  /** 上一回合一张牌都没打（docs/64 停摆八音盒）：第 1 回合恒为假 */
+  "playedNoCardsLastTurn",
+  /** 当前 HP ≤ n 点（绝对值，docs/64 血泵心脏二段「压血线」） */
+  "hpAtMost",
 ] as const;
 
 /** 目标选择器 */
@@ -131,6 +139,25 @@ export const TRAIT_IDS = ["bloodthirst", "ironhide_turtle", "glass_cannon", "sup
 /** 特性逻辑 handler（ADR-005）：JSON 只传参，机制逻辑在 trait-handler.ts（纯 TS、可单测）。 */
 export const TRAIT_HANDLER_IDS = ["bloodthirst", "ironhide_turtle", "glass_cannon", "super_mutation"] as const;
 /**
+ * 遗物规则 handler（docs/64 §三，与 trait-handler 同构）：
+ * JSON 只声明 handler / params，机制逻辑在 relic-handler.ts；引擎问「能力」不查 relicId。
+ */
+export const RELIC_HANDLER_IDS = [
+  "heal_grants_block",
+  "kill_heal",
+  "exhaust_draw",
+  "on_hit_apply_buff",
+  "energy_spent_refund",
+  "hp_to_block",
+  "first_card_double",
+  "first_attack_bonus",
+  "keep_block",
+  "cheat_death",
+  "pollution_overflow_relief",
+  "battle_win_growth",
+  "relic_gain_heal",
+] as const;
+/**
  * 卡牌归属池（docs/56 §二）：三职业 + 中立。
  * 归属只看「身份指纹」（机制），不看风味——打击/防御这种谁都能用的卡不该占着血械的池子。
  */
@@ -147,6 +174,7 @@ export type CardType = (typeof CARD_TYPES)[number];
 export type CardRarity = (typeof CARD_RARITIES)[number];
 export type TraitId = (typeof TRAIT_IDS)[number];
 export type TraitHandlerId = (typeof TRAIT_HANDLER_IDS)[number];
+export type RelicHandlerId = (typeof RELIC_HANDLER_IDS)[number];
 
 export type RegistryKind =
   | "keyword"
@@ -156,7 +184,8 @@ export type RegistryKind =
   | "cardHandler"
   | "enhancementHandler"
   | "trait"
-  | "traitHandler";
+  | "traitHandler"
+  | "relicHandler";
 
 const REGISTRY: Record<RegistryKind, readonly string[]> = {
   keyword: KEYWORD_IDS,
@@ -167,6 +196,7 @@ const REGISTRY: Record<RegistryKind, readonly string[]> = {
   enhancementHandler: ENHANCEMENT_HANDLER_IDS,
   trait: TRAIT_IDS,
   traitHandler: TRAIT_HANDLER_IDS,
+  relicHandler: RELIC_HANDLER_IDS,
 };
 
 export function isRegistered(kind: RegistryKind, id: string): boolean {

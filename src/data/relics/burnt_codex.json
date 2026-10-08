@@ -1,0 +1,11 @@
+{
+  "id": "burnt_codex",
+  "i18n": "relic.burnt_codex",
+  "timing": "onBattleStart",
+  "handler": "exhaust_draw",
+  "params": {
+    "draw": 1,
+    "perTurn": 2
+  },
+  "tier": 3
+}

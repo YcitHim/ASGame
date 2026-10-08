@@ -1,0 +1,19 @@
+{
+  "id": "hollow_bell",
+  "i18n": "relic.hollow_bell",
+  "timing": "onTurnEnd",
+  "effects": [
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 3,
+      "condition": {
+        "type": "handEmptyAtTurnEnd"
+      }
+    }
+  ],
+  "once": "turn",
+  "tier": 1
+}

@@ -4,7 +4,7 @@
   "timing": "onPlay",
   "effects": [
     {
-      "kind": "draw",
+      "kind": "gainEnergy",
       "value": 1,
       "condition": {
         "type": "cardsPlayedThisTurn",

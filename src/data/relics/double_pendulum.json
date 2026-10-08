@@ -1,0 +1,8 @@
+{
+  "id": "double_pendulum",
+  "i18n": "relic.double_pendulum",
+  "timing": "onBattleStart",
+  "handler": "first_card_double",
+  "tier": 3,
+  "unlockCondition": "engineer_first_clear"
+}

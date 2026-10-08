@@ -1,0 +1,12 @@
+{
+  "id": "acid_coil",
+  "i18n": "relic.acid_coil",
+  "timing": "onBattleStart",
+  "handler": "on_hit_apply_buff",
+  "params": {
+    "buff": "corroding",
+    "stacks": 1,
+    "perTurn": 3
+  },
+  "tier": 2
+}

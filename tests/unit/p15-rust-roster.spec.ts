@@ -251,10 +251,10 @@ describe("docs/47 §四 §五 · 怪物签名诀落库", () => {
     expect(beats[2]?.condition).toEqual({ type: "selfHpAtLeast", percent: 60 });
   });
 
-  it("act1 精英池扩到 3 只，锈蛾入中后段遭遇池", () => {
+  it("act1 精英池扩到 4 只（+ 熔锻巨像），锈蛾入中后段遭遇池", () => {
     const act1 = game.acts[0]!;
     for (const i of [2, 3, 4, 5, 6]) {
-      expect(act1.layers[i]!.elitePool).toEqual(["rust_warden", "rust_bell_penitent", "chain_flailer"]);
+      expect(act1.layers[i]!.elitePool).toEqual(["rust_warden", "rust_bell_penitent", "chain_flailer", "forge_colossus"]);
     }
     const mothPools = act1.layers.filter((l) => (l.encounters ?? []).some((enc) => enc.enemies.includes("rust_moth")));
     expect(mothPools.length).toBeGreaterThanOrEqual(2);

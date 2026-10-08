@@ -1,0 +1,112 @@
+{
+  "id": "mirror_judge",
+  "i18n": "enemy.mirror_judge",
+  "maxHp": 132,
+  "stunResistant": true,
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 9
+      },
+      "weight": 3,
+      "maxConsecutive": 2,
+      "condition": {
+        "type": "selfHpAtLeast",
+        "percent": 50
+      }
+    },
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 5,
+        "hits": 2
+      },
+      "weight": 2,
+      "maxConsecutive": 1,
+      "condition": {
+        "type": "selfHpAtLeast",
+        "percent": 50
+      }
+    },
+    {
+      "intent": {
+        "kind": "defend",
+        "value": 12
+      },
+      "weight": 2,
+      "maxConsecutive": 1,
+      "condition": {
+        "type": "selfHpAtLeast",
+        "percent": 50
+      }
+    },
+    {
+      "intent": {
+        "kind": "selfBuff",
+        "buffId": "magicimmune",
+        "stacks": 1
+      },
+      "weight": 2,
+      "maxConsecutive": 1,
+      "condition": {
+        "type": "selfHpAtLeast",
+        "percent": 50
+      }
+    },
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 12
+      },
+      "weight": 3,
+      "maxConsecutive": 2,
+      "condition": {
+        "type": "selfHpBelow",
+        "percent": 50
+      }
+    },
+    {
+      "intent": {
+        "kind": "defend",
+        "value": 14
+      },
+      "weight": 2,
+      "maxConsecutive": 1,
+      "condition": {
+        "type": "selfHpBelow",
+        "percent": 50
+      }
+    },
+    {
+      "intent": {
+        "kind": "selfBuff",
+        "buffId": "unbreakable",
+        "stacks": 1
+      },
+      "weight": 2,
+      "maxConsecutive": 1,
+      "condition": {
+        "type": "selfHpBelow",
+        "percent": 50
+      }
+    },
+    {
+      "intent": {
+        "kind": "charge",
+        "value": 7,
+        "block": 10,
+        "thenIntent": {
+          "kind": "attack",
+          "value": 14
+        }
+      },
+      "weight": 2,
+      "maxConsecutive": 1,
+      "condition": {
+        "type": "selfHpBelow",
+        "percent": 50
+      }
+    }
+  ]
+}

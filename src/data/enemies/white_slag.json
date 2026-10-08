@@ -1,0 +1,60 @@
+{
+  "id": "white_slag",
+  "i18n": "enemy.white_slag",
+  "maxHp": 60,
+  "startBuffs": [
+    {
+      "buffId": "strength",
+      "stacks": 2
+    }
+  ],
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 6
+      },
+      "weight": 4,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 4,
+        "hits": 2
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "defend",
+        "value": 9
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "charge",
+        "value": 6,
+        "block": 6,
+        "thenIntent": {
+          "kind": "attack",
+          "value": 10
+        }
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "selfBuff",
+        "buffId": "burn",
+        "stacks": 1
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    }
+  ]
+}

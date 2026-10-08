@@ -1,0 +1,10 @@
+{
+  "id": "death_mask",
+  "i18n": "relic.death_mask",
+  "timing": "onBattleStart",
+  "handler": "kill_heal",
+  "params": {
+    "heal": 3
+  },
+  "tier": 2
+}

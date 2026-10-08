@@ -105,7 +105,7 @@ describe("systems/save（ADR-008）", () => {
 describe("存档迁移 9 → 11（docs/41 §4.1 / docs/42 §三.0）", () => {
   it("meta 槽补 tips 与按职业的教学字段；进度档不被污染", async () => {
     const { migrate, SCHEMA_VERSION } = await import("@/systems/save");
-    expect(SCHEMA_VERSION).toBe(16);
+    expect(SCHEMA_VERSION).toBe(17);
 
     const meta = migrate({ version: 9, savedAt: 0, data: { clearedClasses: ["bloodwright"], achievements: [] } });
     const metaData = meta?.data as { tips: string[]; tutorialOffered: string[]; tutorialDone: string[] };
@@ -158,7 +158,7 @@ describe("存档迁移 9 → 11（docs/41 §4.1 / docs/42 §三.0）", () => {
 
   it("12 → 13：作废进行中的旧 run（回标题页），meta 全保留（docs/48 §六）", async () => {
     const { migrate, SCHEMA_VERSION } = await import("@/systems/save");
-    expect(SCHEMA_VERSION).toBe(16);
+    expect(SCHEMA_VERSION).toBe(17);
     const progress = migrate({ version: 12, savedAt: 0, data: { run: { layerIndex: 4 }, deck: [] } });
     expect(progress?.version).toBe(SCHEMA_VERSION);
     expect(progress?.data).toBeNull();
@@ -186,7 +186,7 @@ describe("存档迁移 9 → 11（docs/41 §4.1 / docs/42 §三.0）", () => {
 describe("存档迁移 15 → 16（甲方 2026-10-08：通关用时起算点）", () => {
   it("进度档补 startedAt=0；已有时间戳不覆盖；meta 槽不受影响", async () => {
     const { migrate, SCHEMA_VERSION } = await import("@/systems/save");
-    expect(SCHEMA_VERSION).toBe(16);
+    expect(SCHEMA_VERSION).toBe(17);
     const progress = migrate({ version: 15, savedAt: 0, data: { run: { traitId: "bloodthirst" }, deck: [] } });
     const data = progress?.data as { run: { startedAt: number; traitId: string } };
     expect(data.run.startedAt).toBe(0); // 旧档没有开局时间 → 用时显示「—」，不编造
@@ -197,6 +197,36 @@ describe("存档迁移 15 → 16（甲方 2026-10-08：通关用时起算点）"
 
     const meta = migrate({ version: 15, savedAt: 0, data: { clearedClasses: [], records: { x: 1 } } });
     expect((meta?.data as { records: unknown }).records).toEqual({ x: 1 });
+  });
+});
+
+describe("存档迁移 16 → 17（甲方 2026-10-08：完成时间改为日期 + 每职业×特性分栏）", () => {
+  it("records 摘掉 millis、补 date；非对象项原样通过；进度档不受影响", async () => {
+    const { migrate, SCHEMA_VERSION } = await import("@/systems/save");
+    expect(SCHEMA_VERSION).toBe(17);
+
+    const meta = migrate({
+      version: 16,
+      savedAt: 0,
+      data: {
+        clearedClasses: ["engineer"],
+        records: {
+          "bloodwright:normal": { minTurns: 20, maxHp: 30, millis: 900_000 },
+          x: 1,
+        },
+      },
+    });
+    const records = (meta?.data as { records: Record<string, unknown> }).records;
+    const rec = records["bloodwright:normal"] as { minTurns: number; maxHp: number; millis?: number; date: unknown };
+    expect(rec.minTurns).toBe(20);
+    expect(rec.maxHp).toBe(30);
+    expect(rec.millis).toBeUndefined(); // 用时已作废
+    expect(rec.date).toBeNull(); // 旧档没有日期 → null（不编造）
+    expect(records["x"]).toBe(1); // 非对象项原样通过
+
+    // 进度档（带 run）不被 records 迁移触碰
+    const progress = migrate({ version: 16, savedAt: 0, data: { run: { layerIndex: 2 }, deck: [] } });
+    expect((progress?.data as { run: { layerIndex: number } }).run.layerIndex).toBe(2);
   });
 });
 

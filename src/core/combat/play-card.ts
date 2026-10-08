@@ -20,6 +20,7 @@ import { livingEnemies, toDraft, type Draft } from "./draft";
 import { resolveTriggers } from "./relics";
 import { enqueueEffects, drainQueue, loseHp, resolveEffects } from "./resolve";
 import { traitFirstAttackBonus, traitFirstCardDouble, traitFirstCardFree, traitEyeAvailable, traitSpreadsOverload } from "./trait";
+import { fireRelicHandlers, relicFirstAttackBonus, relicFirstCardDouble } from "./relic-runtime";
 import type { CardInstance, BattleState } from "./state";
 
 export interface EffectiveCard {
@@ -270,6 +271,8 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
   // 红线运转要读「玩家眼里那个能量值」= 付掉本牌费用**之前**的能量
   const energyAtPlay = draft.player.energy;
   draft.player.energy -= cost;
+  // 本回合累计花费（docs/64 商人算盘「每花费 5 能量回 1」）：免能（触手）与 0 费牌不计
+  if (cost > 0) draft.energySpentThisTurn += cost;
   if (bloodPaid > 0) {
     loseHp(draft, sink, "player", bloodPaid, "bloodpact");
     resolveTriggers(draft, sink, "onSell");
@@ -295,12 +298,15 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
     bloodPaid,
   });
 
-  // —— 特性出牌期结算（docs/58 §六/§七）——
+  // —— 特性 / 遗物的出牌期结算（docs/58 §六/§七 + docs/64 §三）——
   // 未出牌计数仍停留在本张之前，正是"第一张"的判定窗口。
   const isAttack = def.type === "attack";
   const isFirstAttack = isAttack && draft.attackCardsPlayedThisTurn === 0;
-  const doubleResolve = traitFirstCardDouble(draft);
+  // 双结算：畸变大鲨臂（特性）与双重钟摆（遗物）OR 合并——同一回合只多结算一次，不叠成三次
+  const doubleResolve = traitFirstCardDouble(draft) || relicFirstCardDouble(draft);
   const firstAttackBonus = isFirstAttack ? traitFirstAttackBonus(draft) : 0;
+  // 磨刀石（docs/64 §四.2）：每场战斗第一张攻击牌 +N，每场一次（施加后记入 triggeredThisBattle）
+  const relicFA = isFirstAttack ? relicFirstAttackBonus(draft) : null;
   if (firstAttackBonus > 0) {
     // 一波打出去（docs/58 §六.3）：附加等同当前充能的伤害，随后充能归零。
     // 消耗不经 changeCharge → 不触发过载、不派发 onGainCharge（沿用现有「消耗不过载」口径）。
@@ -316,6 +322,8 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
   draft.cardsPlayedThisTurn += 1;
   if (isAttack) draft.attackCardsPlayedThisTurn += 1;
   resolveTriggers(draft, sink, "onPlay");
+  // 遗物出牌钩子（docs/64 商人算盘「能量回流」）：与数据派发同点（计数自增之后）
+  fireRelicHandlers(draft, sink, "onPlay");
 
   const effects = effective.play
     ? getCardHandler(effective.play.handler)(effective.play.params, { chosenTargetId: targetId })
@@ -361,6 +369,8 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
     // 卡牌能力 onHit：与强化 onHit 同构，多段攻击每段独立触发。
     // 修复「飞锈」等 onHit 能力永不派发的问题（resolveTriggers 原本无 onHit 派发点）。
     resolveTriggers(draft, sink, "onHit", { inline: true, targetId: hitTargetId });
+    // 遗物命中钩子（docs/64 酸洗线圈）：与卡牌能力 onHit 同点、同目标
+    fireRelicHandlers(draft, sink, "onHit", { targetId: hitTargetId });
   };
 
   // 转嫁效果排在卡面效果**之前**入队（enqueueEffects 倒序压栈 → 弹出即书写顺序）：
@@ -371,18 +381,26 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
     chosenTargetId: targetId,
     onHit,
     energyAtPlay,
-    attackModifiers:
-      firstAttackBonus > 0
-        ? [
-            ...effective.attackModifiers,
-            {
-              sourceId: `trait:${draft.traitId ?? ""}:firstAttackCharge`,
-              layer: "buff" as const,
-              op: "add" as const,
-              value: firstAttackBonus,
-            },
-          ]
-        : effective.attackModifiers,
+    attackModifiers: (() => {
+      const mods = [...effective.attackModifiers];
+      if (firstAttackBonus > 0) {
+        mods.push({
+          sourceId: `trait:${draft.traitId ?? ""}:firstAttackCharge`,
+          layer: "buff" as const,
+          op: "add" as const,
+          value: firstAttackBonus,
+        });
+      }
+      if (relicFA) {
+        mods.push({
+          sourceId: `relic:${relicFA.relicId}:firstAttack`,
+          layer: "buff" as const,
+          op: "add" as const,
+          value: relicFA.bonus,
+        });
+      }
+      return mods;
+    })(),
     blockModifiers: effective.blockModifiers,
   });
 
@@ -404,10 +422,15 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
     draft.player.powers.push(instance.instanceId);
   }
 
+  // 磨刀石每场一次：加伤已随本牌结算，记入整场触发册（docs/64 §三）
+  if (relicFA) draft.player.triggeredThisBattle.push(relicFA.relicId);
+
   const destination = afterPlayDestination(effective);
   if (destination === "exhaust") {
     draft.exhaust.push(removed);
     sink.emit("CardExhausted", { cardId: instance.cardId });
+    // 燔祭之书（docs/64 §四.4）：「打出」消耗牌才派发——回合末手牌被消耗不算打出
+    fireRelicHandlers(draft, sink, "onExhaust");
   } else {
     draft.discard.push(removed);
   }

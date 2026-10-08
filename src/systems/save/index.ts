@@ -8,7 +8,7 @@
 export const SAVE_NAMESPACE = "rustandblood";
 
 /** 存档 schema 版本：任何字段变更都要 +1 并补一个 migration。 */
-export const SCHEMA_VERSION = 16;
+export const SCHEMA_VERSION = 17;
 
 export type SaveSlot = "settings" | "progress" | "replay" | "codex" | "meta";
 
@@ -219,6 +219,28 @@ const migrations: Record<number, (data: unknown) => unknown> = {
     if (typeof run !== "object" || run === null) return record;
     const runRecord = run as Record<string, unknown>;
     return { ...record, run: { ...runRecord, startedAt: runRecord["startedAt"] ?? 0 } };
+  },
+  // 16 → 17（甲方 2026-10-08「完成时间改为日期」+「每职业×特性分别记」）：
+  //  - RunRecord.millis（完成用时 ms）作废，改为 date（ISO YYYY-MM-DD）——摘掉旧 millis 键；
+  //  - 纪录键升级为三段式 `职业:难度:特性`——此处只做**形状**迁移（每项补 date: null 且删 millis），
+  //    键名的三段式归一化放在 stores/meta 的 ensureLoaded 里（对无信封 / 老格式更稳）。
+  //  - 只碰 meta 槽（带 records / achievements 的那个），进度档 / 设置 / 图鉴原样通过。
+  16: (data) => {
+    if (typeof data !== "object" || data === null) return data;
+    const record = data as Record<string, unknown>;
+    const records = record["records"];
+    if (typeof records !== "object" || records === null) return record;
+    const next: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(records as Record<string, unknown>)) {
+      if (typeof value !== "object" || value === null) {
+        next[key] = value;
+        continue;
+      }
+      const rec = value as Record<string, unknown>;
+      const { millis: _drop, ...rest } = rec;
+      next[key] = { ...rest, date: rest["date"] ?? null };
+    }
+    return { ...record, records: next };
   },
 };
 

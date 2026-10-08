@@ -2,20 +2,11 @@
   "id": "pilgrim_bell",
   "i18n": "relic.pilgrim_bell",
   "timing": "onBattleStart",
-  "effects": [
-    {
-      "kind": "heal",
-      "target": {
-        "type": "self"
-      },
-      "value": 8
-    },
-    {
-      "kind": "draw",
-      "value": 1
-    }
-  ],
-  "once": "battle",
+  "handler": "battle_win_growth",
+  "params": {
+    "maxHpDelta": 3,
+    "heal": 3
+  },
   "tier": 3,
   "unlockCondition": "three_classes_clear"
 }

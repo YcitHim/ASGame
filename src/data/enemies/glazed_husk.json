@@ -1,0 +1,42 @@
+{
+  "id": "glazed_husk",
+  "i18n": "enemy.glazed_husk",
+  "maxHp": 34,
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 5
+      },
+      "weight": 4,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 3,
+        "hits": 2
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "defend",
+        "value": 7
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "selfBuff",
+        "buffId": "magicimmune",
+        "stacks": 1
+      },
+      "weight": 1,
+      "maxConsecutive": 1,
+      "everyTurns": 3
+    }
+  ]
+}

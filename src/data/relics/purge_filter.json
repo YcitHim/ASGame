@@ -2,12 +2,10 @@
   "id": "purge_filter",
   "i18n": "relic.purge_filter",
   "timing": "onBattleStart",
-  "effects": [
-    {
-      "kind": "gainPollution",
-      "value": -15
-    }
-  ],
-  "once": "battle",
+  "handler": "pollution_overflow_relief",
+  "params": {
+    "backlashMult": 0.5,
+    "fallTo": 50
+  },
   "tier": 2
 }

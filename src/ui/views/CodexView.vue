@@ -8,6 +8,7 @@ import { useCodexStore } from "@/stores/codex";
 import { ACHIEVEMENT_IDS, useMetaStore } from "@/stores/meta";
 import { useSettingsStore } from "@/stores/settings";
 import CardView from "@/ui/components/CardView.vue";
+import RelicCard from "@/ui/components/RelicCard.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
 const router = useRouter();
@@ -49,9 +50,6 @@ const relicGroups = computed<{ tier: number; label: string; items: RelicDefiniti
 function relicKnown(r: RelicDefinition): boolean {
   if (devMode.value) return true;
   return codex.relicSeen(r.id) && isContentAvailable(r.unlockCondition, r.id, meta.unlocked);
-}
-function relicFlavor(id: string): string {
-  return t(`relic.${id}.flavor`, "");
 }
 /** 成就是否算"已达成"（开发者模式下全部展开，方便查文案）。 */
 function achShown(id: string): boolean {
@@ -200,14 +198,18 @@ function back(): void {
         </template>
 
         <template v-else-if="tab === 'relic'">
-          <div class="rows">
+          <div class="relic-groups">
             <template v-for="group in relicGroups" :key="group.tier">
               <h4 class="tier-head">{{ group.label }} · {{ group.items.length }}</h4>
-              <article v-for="r in group.items" :key="r.id" class="row" :class="{ locked: !relicKnown(r) }">
-                <h3>{{ relicKnown(r) ? t(`relic.${r.id}.name`, r.id) : "？？？" }}</h3>
-                <p>{{ relicKnown(r) ? t(`relic.${r.id}.desc`, "") : "尚未记述。" }}</p>
-                <p v-if="relicKnown(r) && relicFlavor(r.id)" class="flavor">{{ relicFlavor(r.id) }}</p>
-              </article>
+              <div class="relic-grid">
+                <template v-for="r in group.items" :key="r.id">
+                  <RelicCard v-if="relicKnown(r)" :relic-id="r.id" />
+                  <article v-else class="row locked">
+                    <h3>？？？</h3>
+                    <p>尚未记述。</p>
+                  </article>
+                </template>
+              </div>
             </template>
           </div>
         </template>
@@ -387,4 +389,13 @@ function back(): void {
   letter-spacing: 0.24em; color: var(--gold-dim); font-weight: 400;
 }
 .row p.flavor { color: var(--gold-dim); font-style: italic; }
+
+/* 遗物图鉴（甲方 2026-10-08「完善遗物系统」）：按池分组的四列卡面网格 */
+.relic-groups { display: flex; flex-direction: column; gap: 14px; width: 1080px; margin: 0 auto; }
+.relic-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.relic-grid .row { padding: 14px 16px; }
 </style>

@@ -20,7 +20,7 @@ describe("docs/40 act2 数据", () => {
   it("act2 十层：精英池挂 l2~l6、l1/l7 无精英、Boss 沉钟唱诗长（docs/48 §3.1）", () => {
     expect(act2.layers).toHaveLength(10);
     for (const i of [2, 3, 4, 5, 6]) {
-      expect(act2.layers[i].elitePool).toEqual(["sanctum_jailer", "tidecaller"]);
+      expect(act2.layers[i].elitePool).toEqual(["sanctum_jailer", "tidecaller", "mirror_judge"]);
     }
     expect(act2.layers[1].kinds).not.toContain("elite");
     expect(act2.layers[7].kinds).not.toContain("elite");

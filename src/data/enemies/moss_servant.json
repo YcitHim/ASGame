@@ -1,0 +1,42 @@
+{
+  "id": "moss_servant",
+  "i18n": "enemy.moss_servant",
+  "maxHp": 58,
+  "intents": [
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 6
+      },
+      "weight": 3,
+      "maxConsecutive": 2
+    },
+    {
+      "intent": {
+        "kind": "attack",
+        "value": 3,
+        "hits": 3
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "defend",
+        "value": 10
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    },
+    {
+      "intent": {
+        "kind": "selfBuff",
+        "buffId": "regeneration",
+        "stacks": 3,
+        "duration": 3
+      },
+      "weight": 2,
+      "maxConsecutive": 1
+    }
+  ]
+}

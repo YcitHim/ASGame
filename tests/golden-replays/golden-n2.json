@@ -604,9 +604,75 @@
       {
         "type": "EndTurn",
         "actionId": "e93"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p94",
+        "handIndex": 4,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p95",
+        "handIndex": 0,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p96",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e97"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p98",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p99",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p100",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e101"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p102",
+        "handIndex": 4,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p103",
+        "handIndex": 3,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "PlayCard",
+        "actionId": "p104",
+        "handIndex": 2,
+        "targetId": "riveted_heavy"
+      },
+      {
+        "type": "EndTurn",
+        "actionId": "e105"
       }
     ],
-    "eventHash": "e695efb0be6e876fd324e30550a364ea42ad89023c27f6aa27b4baf2c51584e1",
+    "eventHash": "fb24f06648b765e47fac863c1273095fb4df833aaaca6133bde22685c447d8d4",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -649,7 +715,7 @@
       "CardPlayed",
       "DamageDealt"
     ],
-    "turns": 26,
+    "turns": 29,
     "outcome": "lose"
   }
 }

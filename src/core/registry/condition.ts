@@ -27,6 +27,12 @@ export interface ConditionContext {
   readonly handSize: number;
   /** 本回合（含刚结束的敌方回合）是否受过攻击伤害；缺省 false */
   readonly tookDamageThisTurn?: boolean;
+  /** 本回合打出的攻击牌数（docs/64）；缺省 0 */
+  readonly attackCardsPlayedThisTurn?: number;
+  /** 回合结束那一刻手牌为空的快照（docs/64 空腹铃铛/唱诗班终曲）；缺省 false */
+  readonly handEmptyAtTurnEnd?: boolean;
+  /** 上一回合打出的牌数（docs/64 停摆八音盒）；-1 = 无上回合（战斗第 1 回合） */
+  readonly prevTurnCardsPlayed?: number;
   /** 主体侧：敌人意图用；缺省时回落到玩家字段，卡牌条件不受影响 */
   readonly self?: SelfContext;
   /** 逐目标条件（docs/38 §二 B-3）：伤害效果按每个目标求值时注入 */
@@ -100,6 +106,14 @@ registerCondition("cardsPlayedThisTurn", (ctx, p) => ctx.cardsPlayedThisTurn >= 
 registerCondition("handIsEmpty", (ctx) => ctx.handSize === 0);
 /** 本回合事件回看（docs/16 P2.3）：「以血还血」的额外伤害条件。 */
 registerCondition("tookDamageThisTurn", (ctx) => ctx.tookDamageThisTurn === true);
+/** 本回合打出的攻击牌数 ≥ n（docs/64 饥锈胃袋「连打节奏」）。 */
+registerCondition("attacksPlayedThisTurn", (ctx, p) => (ctx.attackCardsPlayedThisTurn ?? 0) >= num(p, "n", 1));
+/** 回合结束那一刻手牌为空（docs/64）：读 endTurn 捕获的快照，不是当前的 handSize（那时手牌已弃）。 */
+registerCondition("handEmptyAtTurnEnd", (ctx) => ctx.handEmptyAtTurnEnd === true);
+/** 上一回合一张牌都没打（docs/64 停摆八音盒「空过止损」）；战斗第 1 回合（-1）恒为假。 */
+registerCondition("playedNoCardsLastTurn", (ctx) => ctx.prevTurnCardsPlayed === 0);
+/** 当前 HP ≤ n 点（绝对值，docs/64 血泵心脏二段「卖血时 HP ≤10 回 2」）。 */
+registerCondition("hpAtMost", (ctx, p) => ctx.hp <= num(p, "n", 0));
 
 /** 递归求值：and / or / not 内建。 */
 export function evaluateCondition(node: ConditionNode | undefined, ctx: ConditionContext): boolean {

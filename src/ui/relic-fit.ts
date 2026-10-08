@@ -41,7 +41,7 @@ export function requiredResource(def: RelicDefinition): ResourceKey | null {
   if (manual === RESOURCE_OWNERS.blood.classId) return "blood";
   if (manual === RESOURCE_OWNERS.pollution.classId) return "pollution";
   if (def.timing === "onSell") return "blood";
-  for (const effect of def.effects) {
+  for (const effect of def.effects ?? []) {
     switch (effect.kind) {
       case "clampCharge":
       case "spendCharge":

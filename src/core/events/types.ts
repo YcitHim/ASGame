@@ -52,6 +52,8 @@ export interface EventPayloadMap {
     bloodPaid: number;
   };
   CardExhausted: { cardId: string };
+  /** 铁口粮（docs/64）：遗物效果把手牌随机弃进弃牌堆 */
+  CardDiscarded: { cardId: string };
   /** 销毁（祭血狂热）：本场战斗移出牌组、进消耗堆，战斗结束随牌组归还 */
   CardDestroyed: { cardId: string };
   /** 调试台回执（甲方 2026-10-08）：指令成功/失败的一句话，日志抽屉里的控制台读它 */
@@ -74,7 +76,7 @@ export interface EventPayloadMap {
   HpLost: {
     targetId: string;
     value: number;
-    reason: "damage" | "bloodpact" | "pollution" | "backlash" | "burn" | "overload";
+    reason: "damage" | "bloodpact" | "pollution" | "backlash" | "burn" | "overload" | "relic";
   };
   HpHealed: { targetId: string; value: number; total: number; reason: "regen" | "card" | "relic" };
   BuffApplied: { targetId: string; buffId: string; stacks: number; duration: number | null };

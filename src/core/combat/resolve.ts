@@ -15,6 +15,7 @@ import { getTarget } from "../registry/target";
 import { findUnit, livingEnemies, type Draft, type MutableUnit } from "./draft";
 import type { DelayedEffect } from "./state";
 import { resolveTriggers } from "./relics";
+import { fireRelicHandlers, relicPollutionOverflow } from "./relic-runtime";
 import {
   activeTrait,
   effectiveBrambleStacks,
@@ -50,6 +51,9 @@ export function conditionContext(draft: Draft): ConditionContext {
     cardsPlayedThisTurn: draft.cardsPlayedThisTurn,
     handSize: draft.hand.length,
     tookDamageThisTurn: draft.tookDamageThisTurn,
+    attackCardsPlayedThisTurn: draft.attackCardsPlayedThisTurn,
+    handEmptyAtTurnEnd: draft.handEmptyAtTurnEnd,
+    prevTurnCardsPlayed: draft.prevTurnCardsPlayed,
     // 卡牌条件默认读玩家；意图表会用 enemyConditionContext 覆盖 self
     self: { hp: draft.player.hp, maxHp: draft.player.maxHp, buffs: draft.player.buffs },
   };
@@ -444,6 +448,10 @@ export function healUnit(
   if (healed <= 0) return;
   unit.hp += healed;
   sink.emit("HpHealed", { targetId, value: healed, total: unit.hp, reason });
+  // 遗物「每当你回血」（docs/64 脏绷带）：挂在 healUnit 这个唯一汇点上，
+  // 再生 / 卡牌治疗 / 回血印记 / 遗物回血一视同仁。handler 给的是格挡等不回血的效果，
+  // 不会自我递归（若未来出现回血 handler，须先加重入护栏再上线）。
+  if (targetId === PLAYER_ID) fireRelicHandlers(draft, sink, "onHeal", { healAmount: healed });
 }
 
 export function loseHp(
@@ -608,16 +616,21 @@ export function changePollution(draft: Draft, sink: EventSink, delta: number): v
     // 效果可把污染压回上限之下（例如 99），从而改写这次反噬。
     resolveTriggers(draft, sink, "onPollutionMax", { inline: true });
     if (draft.player.pollution < POLLUTION_MAX) return;
-    draft.player.pollution = 0;
-    draft.player.buffs = setPollutionMirror(draft.player.buffs, 0);
+    // 泄压阀（docs/64 §四.3）：触顶反噬参数化——反噬减半，污染回落到 50 而非清零，
+    // 把污染从「躲着走」的资源变成「可以踩着红线跳舞」的资源。
+    const overflow = relicPollutionOverflow(draft);
+    const fallTo = overflow ? Math.min(POLLUTION_MAX - 1, Math.max(0, overflow.fallTo)) : 0;
+    const backlash = overflow ? Math.round(POLLUTION_BACKLASH * overflow.backlashMult) : POLLUTION_BACKLASH;
+    draft.player.pollution = fallTo;
+    draft.player.buffs = setPollutionMirror(draft.player.buffs, fallTo);
     sink.emit("PollutionChanged", {
       targetId: PLAYER_ID,
       before: after,
-      after: 0,
-      delta: -after,
-      critical: false,
+      after: fallTo,
+      delta: fallTo - after,
+      critical: fallTo >= POLLUTION_CRITICAL,
     });
-    loseHp(draft, sink, PLAYER_ID, POLLUTION_BACKLASH, "pollution");
+    if (backlash > 0) loseHp(draft, sink, PLAYER_ID, backlash, "pollution");
   }
 }
 
@@ -1015,6 +1028,9 @@ export function killUnit(draft: Draft, sink: EventSink, unitId: string): number 
   // 分裂物自身不带 onDeathSplit，所以不会再分裂（validator 也拦链式分裂）。
   const split = def?.onDeathSplit;
   if (split && enemy) summonUnit(draft, sink, unitId, split.enemyId, split.count);
+  // 遗物「每当一名敌人死亡」（docs/64 死亡面具）：与强化 onKill 同点——
+  // 死亡清理 + 亡语之后。玩家死亡不派发（那不是「敌人死亡」）。
+  if (enemy) fireRelicHandlers(draft, sink, "onKill");
   return cleared;
 }
 
@@ -1115,13 +1131,30 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
         const before = findUnit(draft, t)?.block ?? 0;
         gainBlock(draft, sink, t, value, ctx.blockModifiers);
         const after = findUnit(draft, t)?.block ?? 0;
-        // 获得格挡触发（docs/29 §一②）：只在真的拿到格挡时派发，避免 0 值刷触发
-        if (t === PLAYER_ID && after > before) resolveTriggers(draft, sink, "onBlock");
+        // 获得格挡触发（docs/29 §一②）：只在真的拿到格挡时派发，避免 0 值刷触发。
+        // 防自循环口径（docs/64 隔热砖）：来源是 onBlock 自己的格挡不再派发（与飞升齿轮同款护栏），
+        // 但其他时机（第三捧灰/空腹铃铛/卡牌）给的格挡照样触发——化学保留、循环切断。
+        if (t === PLAYER_ID && after > before && ctx.triggerTiming !== "onBlock") resolveTriggers(draft, sink, "onBlock");
       }
       break;
     case "draw":
       drawCards(draft, sink, value);
       break;
+    case "discard": {
+      // 铁口粮（docs/64 §四.3）：从手牌随机弃 value 张进弃牌堆。
+      // 走独立的 relic 流，不扰动战斗主序列；程序侧实现口径 = 随机弃
+      // （自选弃牌需要 UI 待选机制，留作后续升级项，见 docs/64 §八 批 2 备注）。
+      const count = Math.max(0, Math.trunc(value || 1));
+      const rng = draft.rng.stream("relic");
+      for (let i = 0; i < count && draft.hand.length > 0; i += 1) {
+        const index = rng.nextInt(0, draft.hand.length - 1);
+        const [removed] = draft.hand.splice(index, 1);
+        if (removed === undefined) break;
+        draft.discard.push(removed);
+        sink.emit("CardDiscarded", { cardId: draft.cardInstances[removed]?.cardId ?? removed });
+      }
+      break;
+    }
     case "gainCard": {
       // 嗜血满血奖励（docs/58 §四，甲方 2026-10-08 修订）：从卡池随机抽牌**凭空**加入手牌。
       // 走独立的 trait 流，不扰动战斗主序列；颠倒诅咒下新入手的牌同样吃随机费用。
@@ -1138,6 +1171,22 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
       if (gained.length > 0) {
         rollReverseCostsForNewCards(draft);
         sink.emit("CardsDrawn", { cardIds: gained });
+      }
+      break;
+    }
+    case "halveCharge": {
+      // 熔炉之心（docs/64 §四.4）：充能向下取整减半——「憋爆 vs 留伤」的泄压阀。
+      // 直接赋值（不经 changeCharge）：这不是「消耗充能结算」，不触发过载 / onGainCharge。
+      const before = draft.player.charge;
+      const halved = Math.floor(before / 2);
+      if (halved !== before) {
+        draft.player.charge = halved;
+        sink.emit("ChargeChanged", {
+          targetId: PLAYER_ID,
+          before,
+          after: halved,
+          delta: halved - before,
+        });
       }
       break;
     }

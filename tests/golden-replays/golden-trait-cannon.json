@@ -248,7 +248,7 @@
         "actionId": "e32"
       }
     ],
-    "eventHash": "a60f11dd668bd8bfaf63d30f6346b9ff21c1147aa882c5366d92fd980fc29cbd",
+    "eventHash": "f1d885a4eb9ebb418599ec431894484524cf6f7cf77e82605b5be3f849d8d9b2",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -263,10 +263,10 @@
       "HpLost",
       "CardPlayed",
       "ChargeChanged",
+      "BuffApplied",
       "CardExhausted",
       "CardPlayed",
       "ChargeChanged",
-      "BuffApplied",
       "TurnEnded",
       "PollutionChanged",
       "BuffApplied",

@@ -22,9 +22,10 @@ describe("真实内容装载（data/load）", () => {
   it("卡牌 / 敌人 / 关卡 / 文案全部可用，敌人名按 i18n 解析", () => {
     const game = loadGameContent();
     expect(game.content.cards.size).toBeGreaterThanOrEqual(30);
-    // docs/47 M1/M2 4 只 + M3 3 只（鼓腹兽 / 藤壶寄居者 / 锈蛆）
-    expect(game.content.enemies.size).toBe(25);
-    expect(game.content.relics.size).toBe(25);
+    // docs/47 M1/M2 4 只 + M3 3 只（鼓腹兽 / 藤壶寄居者 / 锈蛆）；
+    // 后续批次继续加敌人（如 2026-10-08 第二幕扩充），故用下界断言，别写死。
+    expect(game.content.enemies.size).toBeGreaterThanOrEqual(25);
+    expect(game.content.relics.size).toBe(35);
     expect(game.content.classes.size).toBe(3);
     // 两幕：锈蚀回廊 + 沉没圣堂（docs/40）
     expect(game.acts).toHaveLength(2);
@@ -54,12 +55,12 @@ describe("真实内容装载（data/load）", () => {
     // 精英池挂 l2~l6；l1 / l7 不出精英（docs/48 §3.2）
     // docs/47 §四.2：act1 精英池扩到 3 只，精英节点不再撞衫
     for (const i of [2, 3, 4, 5, 6]) {
-      expect(act.layers[i].elitePool).toEqual(["rust_warden", "rust_bell_penitent", "chain_flailer"]);
+      expect(act.layers[i].elitePool).toEqual(["rust_warden", "rust_bell_penitent", "chain_flailer", "forge_colossus"]);
     }
     expect(act.layers[1].kinds).not.toContain("elite");
     expect(act.layers[7].kinds).not.toContain("elite");
-    // 中段层带遭遇池与事件池
-    expect(act.layers[1].encounters?.length).toBe(3);
+    // 中段层带遭遇池与事件池（遭遇池 3 → 4：新增釉壳残躯，见 docs/62 后续批次）
+    expect(act.layers[1].encounters?.length).toBe(4);
     // docs/54 §五：act1 事件池 5 → 10（新增 5 件，配比门禁写进 validator）
     expect(act.layers[1].events?.length).toBe(10);
     expect(loadGameContent().acts[1].layers[1].events?.length).toBe(9);

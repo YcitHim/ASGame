@@ -42,6 +42,13 @@
             "rust_hound"
           ],
           "weight": 3
+        },
+        {
+          "enemies": [
+            "glazed_husk",
+            "rust_hound"
+          ],
+          "weight": 2
         }
       ]
     },
@@ -75,6 +82,13 @@
             "rust_hound"
           ],
           "weight": 3
+        },
+        {
+          "enemies": [
+            "glazed_husk",
+            "rust_hound"
+          ],
+          "weight": 2
         }
       ],
       "events": [
@@ -102,7 +116,8 @@
       "elitePool": [
         "rust_warden",
         "rust_bell_penitent",
-        "chain_flailer"
+        "chain_flailer",
+        "forge_colossus"
       ],
       "encounters": [
         {
@@ -132,6 +147,20 @@
             "corroded_swarm"
           ],
           "weight": 2
+        },
+        {
+          "enemies": [
+            "caisson_pile",
+            "polluting_preacher"
+          ],
+          "weight": 2
+        },
+        {
+          "enemies": [
+            "glazed_husk",
+            "rust_moth"
+          ],
+          "weight": 2
         }
       ]
     },
@@ -147,7 +176,8 @@
       "elitePool": [
         "rust_warden",
         "rust_bell_penitent",
-        "chain_flailer"
+        "chain_flailer",
+        "forge_colossus"
       ]
     },
     {
@@ -162,7 +192,8 @@
       "elitePool": [
         "rust_warden",
         "rust_bell_penitent",
-        "chain_flailer"
+        "chain_flailer",
+        "forge_colossus"
       ]
     },
     {
@@ -177,7 +208,8 @@
       "elitePool": [
         "rust_warden",
         "rust_bell_penitent",
-        "chain_flailer"
+        "chain_flailer",
+        "forge_colossus"
       ],
       "encounters": [
         {
@@ -214,6 +246,20 @@
             "corroded_swarm"
           ],
           "weight": 3
+        },
+        {
+          "enemies": [
+            "caisson_pile",
+            "blister_belly"
+          ],
+          "weight": 2
+        },
+        {
+          "enemies": [
+            "glazed_husk",
+            "corroded_swarm"
+          ],
+          "weight": 2
         }
       ],
       "events": [
@@ -241,7 +287,8 @@
       "elitePool": [
         "rust_warden",
         "rust_bell_penitent",
-        "chain_flailer"
+        "chain_flailer",
+        "forge_colossus"
       ]
     },
     {

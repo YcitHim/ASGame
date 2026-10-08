@@ -14,6 +14,17 @@
         "type": "pollutionAtLeast",
         "n": 80
       }
+    },
+    {
+      "kind": "block",
+      "target": {
+        "type": "self"
+      },
+      "value": 3,
+      "condition": {
+        "type": "pollutionBelow",
+        "n": 30
+      }
     }
   ],
   "once": "turn",

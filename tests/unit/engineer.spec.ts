@@ -92,14 +92,14 @@ describe("docs/29 §二⑥ 炉心机士卡牌", () => {
     expect(dealt(play(charged.state, "coreoverload").events)).toEqual([12]);
   });
 
-  it("压力表（重做）：战斗开始时 +2 充能，clamp 彻底移除（docs/45 Q5 原裁 / docs/49 §3.1）", () => {
+  it("压力表（docs/64 挪池 T2 并加强）：战斗开始时 +3 充能，clamp 彻底移除（docs/45 Q5 原裁 / docs/49 §3.1）", () => {
     const s = battle(["charge4", "charge4"], ["pressuregauge"]);
-    expect(s.player.charge).toBe(2);
+    expect(s.player.charge).toBe(3);
     const after = play(s, "charge4").state;
-    expect(after.player.charge).toBe(6);
+    expect(after.player.charge).toBe(7);
     // 旧 clamp 行为必须彻底消失：回合开始不再把充能压回 5
     const next = reduce(after, { type: "EndTurn", actionId: "e" }).state;
-    expect(next.player.charge).toBe(6);
+    expect(next.player.charge).toBe(7);
   });
 
   it("减重可作用于炉心攻击牌（活塞冲拳）", () => {

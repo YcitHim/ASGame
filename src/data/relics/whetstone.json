@@ -2,16 +2,9 @@
   "id": "whetstone",
   "i18n": "relic.whetstone",
   "timing": "onBattleStart",
-  "effects": [
-    {
-      "kind": "applyBuff",
-      "target": {
-        "type": "self"
-      },
-      "buff": "strength",
-      "stacks": 1
-    }
-  ],
-  "once": "battle",
+  "handler": "first_attack_bonus",
+  "params": {
+    "bonus": 4
+  },
   "tier": 1
 }

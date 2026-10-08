@@ -69,30 +69,30 @@ describe("docs/36 T1 · 解锁式内容入池", () => {
     expect(openIds.has("bloodrust")).toBe(false);
   });
 
-  it("炉心余烬锁定时不进遗物池，解锁后进池（T3 Boss 池）", () => {
-    expect(rollRelicChoices(game.content, [], 5, [], [3]).includes("ember_core")).toBe(false);
-    expect(rollRelicChoices(game.content, [], 5, ["ember_core"], [3]).includes("ember_core")).toBe(true);
+  it("双重钟摆锁定时不进遗物池，解锁后进池（T3 Boss 池；docs/64 接替炉心余烬的解锁位）", () => {
+    expect(rollRelicChoices(game.content, [], 8, [], [3]).includes("double_pendulum")).toBe(false);
+    expect(rollRelicChoices(game.content, [], 8, ["double_pendulum"], [3]).includes("double_pendulum")).toBe(true);
   });
 
-  it("事件掉落只取 T1+T2 池：T3 稀有件（炉心余烬）即便解锁也不出事件", () => {
+  it("事件掉落只取 T1+T2 池：T3 稀有件（双重钟摆）即便解锁也不出事件", () => {
     const event = {
       id: "test_event",
       i18n: "event.test",
       options: [{ id: "a", i18n: "event.test.a", effects: [{ kind: "gainRelic", count: 30 }] }],
     } as unknown as EventDefinition;
     const locked = resolveEventOption(game.content, event, "a", { seed: 7, ownedRelics: [], unlocked: [] });
-    expect(locked?.relicIds.includes("ember_core")).toBe(false);
+    expect(locked?.relicIds.includes("double_pendulum")).toBe(false);
     const open = resolveEventOption(game.content, event, "a", {
       seed: 7,
       ownedRelics: [],
-      unlocked: ["ember_core"],
+      unlocked: ["double_pendulum"],
     });
     // 解锁也不进事件池——tier 3 只走 Boss 遗物槽（docs/38 §一 A-1）
-    expect(open?.relicIds.includes("ember_core")).toBe(false);
+    expect(open?.relicIds.includes("double_pendulum")).toBe(false);
     expect(open?.relicIds.length).toBeGreaterThan(0);
   });
 
-  it("evaluateRun：首通解锁血锈光环；炉心首通解锁余烬；无血契通关解锁不朽", () => {
+  it("evaluateRun：首通解锁血锈光环；炉心首通解锁双重钟摆；无血契通关解锁不朽", () => {
     setup();
     const meta = useMetaStore();
     meta.markCleared("bloodwright");
@@ -101,7 +101,7 @@ describe("docs/36 T1 · 解锁式内容入池", () => {
     expect(gained).not.toContain("immortality");
     meta.markCleared("engineer");
     const second = meta.evaluateRun({ classId: "engineer", usedBloodpact: false, overloadCount: 3 });
-    expect(second).toContain("ember_core");
+    expect(second).toContain("double_pendulum");
     expect(second).toContain("immortality");
     expect(second).toContain("redlineprotocol");
   });

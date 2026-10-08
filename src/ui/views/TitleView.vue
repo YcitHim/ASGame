@@ -3,6 +3,7 @@ import { computed, onMounted, ref, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
 import { loadGameContent, t } from "@/data/load";
 import EmberField from "@/ui/components/EmberField.vue";
+import LeaderboardModal from "@/ui/components/LeaderboardModal.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
 import { useMetaStore } from "@/stores/meta";
 import { useRunStore } from "@/stores/run";
@@ -34,32 +35,21 @@ const notice = ref("");
 onMounted(() => meta.ensureLoaded());
 
 /**
- * 远征纪事（docs/38 §三 C-3 / 甲方 2026-10-08）：每职业**分难度**记最佳纪录——
- * 普通与锈蚀各一栏，两个榜互不覆盖。
+ * 远征榜（docs/38 §三 C-3 / 甲方 2026-10-08）：
+ * 原先嵌在标题页右侧的窄侧栏，现在收进「排行榜」按钮背后的弹窗里
+ * （LeaderboardModal）：分难度页签 + 每职业×特性分档记最佳。
+ * 这里只留一个「有没有成绩」的判断，用来决定按钮的措辞（有榜可看 / 尚无纪录）。
  */
-const recordRows = computed(() =>
-  [...loadGameContent().content.classes.keys()].map((id) => ({
-    id,
-    name: t(`class.${id}.name`, id),
-    normal: meta.recordOf(id, "normal"),
-    rust: meta.recordOf(id, "rust"),
-  })),
-);
-/** 锈蚀栏：难度解锁后常驻；未解锁时只要有旧记录也照常显示（不藏玩家自己的成绩）。 */
-const showRustRecord = computed(
-  () => meta.rustUnlocked || recordRows.value.some((r) => r.rust.minTurns !== null || r.rust.maxHp !== null),
+const hasAnyRecord = computed(() =>
+  [...loadGameContent().content.classes.keys()].some(
+    (id) =>
+      meta.recordsByTrait(id, "normal").length > 0 || meta.recordsByTrait(id, "rust").length > 0,
+  ),
 );
 
-/** 通关用时（ms）→ `m:ss`；没有计时（旧档 / 未通关）显示「—」。 */
-function fmtDuration(ms: number | null | undefined): string {
-  if (ms == null || ms <= 0) return t("title.record.empty", "—");
-  const total = Math.floor(ms / 1000);
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
+const leaderboardOpen = ref(false);
 
-type MenuKey = "tutorial" | "expedition" | "continue" | "codex" | "settings";
+type MenuKey = "tutorial" | "expedition" | "continue" | "leaderboard" | "codex" | "settings";
 
 /** 没走完的「第一班岗」（docs/43 Q2）：断点续做，直接回到那一步，不绕教学页。 */
 const canResumeTutorial = computed(() => meta.tutorial !== null);
@@ -70,6 +60,7 @@ const menu = computed<{ key: MenuKey; label: string; enabled: boolean }[]>(() =>
     : []),
   { key: "expedition", label: "开始远征", enabled: true },
   { key: "continue", label: "继续远征", enabled: canContinue.value },
+  { key: "leaderboard", label: "排行榜", enabled: true },
   { key: "codex", label: "图鉴", enabled: true },
   { key: "settings", label: "设置", enabled: true },
 ]);
@@ -78,6 +69,7 @@ function onMenu(key: MenuKey, enabled: boolean): void {
   if (!enabled) return;
   if (key === "settings") void router.push("/settings");
   else if (key === "codex") void router.push("/codex");
+  else if (key === "leaderboard") leaderboardOpen.value = true;
   else if (key === "expedition") {
     // 0.5：先走职业选择页，再进图（docs/16 5.3）
     void router.push("/class-select");
@@ -117,38 +109,18 @@ function onMenu(key: MenuKey, enabled: boolean): void {
         </button>
       </nav>
 
-      <section v-if="recordRows.length" class="records">
-        <h2>{{ t("title.records", "远征纪事") }}</h2>
-        <div class="record-rows">
-          <div v-for="row in recordRows" :key="row.id" class="record">
-            <span class="rname">{{ row.name }}</span>
-            <span class="rlines">
-              <span class="rline">
-                <em class="rdiff">{{ t("title.record.normal", "普通") }}</em>
-                {{ t("title.record.turns", "最少回合") }}
-                {{ row.normal.minTurns ?? t("title.record.empty", "—") }}
-                · {{ t("title.record.hp", "最高余血") }}
-                {{ row.normal.maxHp ?? t("title.record.empty", "—") }}
-                · {{ t("title.record.time", "完成用时") }} {{ fmtDuration(row.normal.millis) }}
-              </span>
-              <span v-if="showRustRecord" class="rline rust">
-                <em class="rdiff rust">{{ t("title.record.rust", "锈蚀") }}</em>
-                {{ t("title.record.turns", "最少回合") }}
-                {{ row.rust.minTurns ?? t("title.record.empty", "—") }}
-                · {{ t("title.record.hp", "最高余血") }}
-                {{ row.rust.maxHp ?? t("title.record.empty", "—") }}
-                · {{ t("title.record.time", "完成用时") }} {{ fmtDuration(row.rust.millis) }}
-              </span>
-            </span>
-          </div>
-        </div>
-      </section>
+      <!-- 远征榜（甲方 2026-10-08）：收进弹窗，标题页只留一个按钮入口 -->
+      <p v-if="hasAnyRecord" class="lb-teaser">
+        {{ t("title.record.teaser", "榜上有名——按「排行榜」查看你的远征纪录") }}
+      </p>
 
       <!-- 底栏只留版本号（甲方 2026-10-08）：文档路径与封版日期移到版本总结里，不占标题页 -->
       <footer class="foot">
         <span>v{{ APP_RELEASE }}</span>
       </footer>
     </div>
+
+    <LeaderboardModal v-if="leaderboardOpen" @close="leaderboardOpen = false" />
   </div>
 </template>
 
@@ -217,67 +189,14 @@ function onMenu(key: MenuKey, enabled: boolean): void {
   padding: 13px 22px;
   font-size: 15px;
 }
-/* 远征纪事挪到右侧（甲方 2026-10-08）：底部留白还给品牌与菜单，纪事做成侧栏面板 */
-.records {
-  position: absolute;
-  top: 50%;
-  right: 44px;
-  transform: translateY(-50%);
+/* 榜上有名的提示（甲方 2026-10-08）：有成绩时给一句轻提示，入口就是「排行榜」按钮 */
+.lb-teaser {
+  position: relative;
   z-index: 2;
-  width: 272px;
-  padding: 14px 16px 16px;
-  text-align: left;
-  border: 1px solid rgba(110, 88, 54, 0.35);
-  border-radius: var(--radius-sm);
-  background: rgba(14, 12, 10, 0.55);
-}
-.records h2 {
-  font-family: var(--serif-title);
-  font-size: 12px;
-  letter-spacing: 0.32em;
-  color: var(--gold-dim);
-  font-weight: 400;
-  text-align: center;
-  padding-bottom: 8px;
-  margin-bottom: 10px;
-  border-bottom: 1px solid rgba(110, 88, 54, 0.3);
-}
-.record-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-}
-.record {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  margin-top: 34px;
   font-size: 11px;
-  color: var(--ink-dim);
-  letter-spacing: 0.08em;
-}
-.record .rname {
-  color: var(--ink-bone);
-  letter-spacing: 0.14em;
-}
-.rlines {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  text-align: left;
-}
-.record .rline {
-  font-family: var(--serif-num);
-}
-.record .rline.rust {
-  color: rgba(154, 144, 129, 0.75);
-}
-.record .rdiff {
-  margin-right: 6px;
-  font-style: normal;
+  letter-spacing: 0.16em;
   color: var(--gold-dim);
-}
-.record .rdiff.rust {
-  color: var(--blood-hi);
   opacity: 0.85;
 }
 

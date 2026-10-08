@@ -42,11 +42,12 @@ function battle(relicIds: readonly string[], opts: { pollution?: number; enemies
 
 describe("1.0-A 遗物分级与掉落池", () => {
   it("T1/T2/T3 池规模与身份件隔离", () => {
-    expect(relicPool(game.content, 1)).toHaveLength(8);
-    expect(relicPool(game.content, 2)).toHaveLength(9);
-    // T3 共 5 件，其中 2 件带解锁条件（炉心余烬 / 朝圣者之铃），未解锁时不入池
-    expect(relicPool(game.content, 3)).toHaveLength(3);
-    expect(relicPool(game.content, 3, ["ember_core", "pilgrim_bell"])).toHaveLength(5);
+    // docs/64 重置 + 甲方 2026-10-08 补装：T1 10 件 / T2 13 件 / T3 9 件（含 2 件解锁件）
+    expect(relicPool(game.content, 1)).toHaveLength(10);
+    expect(relicPool(game.content, 2)).toHaveLength(13);
+    // T3 共 9 件，其中 2 件带解锁条件（双重钟摆 / 朝圣者之铃），未解锁时不入池
+    expect(relicPool(game.content, 3)).toHaveLength(7);
+    expect(relicPool(game.content, 3, ["double_pendulum", "pilgrim_bell"])).toHaveLength(9);
     const all = [...relicPool(game.content, 1), ...relicPool(game.content, 2), ...relicPool(game.content, 3)];
     expect(all).not.toContain("broken_oil");
     expect(all).not.toContain("dentedcoil");
@@ -61,8 +62,8 @@ describe("1.0-A 遗物分级与掉落池", () => {
   });
 
   it("解锁式 T3 未解锁不入池", () => {
-    expect(rollRelicChoices(game.content, [], 5, [], [3])).not.toContain("ember_core");
-    expect(rollRelicChoices(game.content, [], 5, ["ember_core"], [3])).toContain("ember_core");
+    expect(rollRelicChoices(game.content, [], 8, [], [3])).not.toContain("double_pendulum");
+    expect(rollRelicChoices(game.content, [], 8, ["double_pendulum"], [3])).toContain("double_pendulum");
   });
 });
 
@@ -109,13 +110,13 @@ describe("1.0-A 随身遗物（首胜后发放，甲方 2026-10-07）", () => {
 });
 
 describe("1.0-A 新遗物效果（真实数据）", () => {
-  it("回声号角：开战全体敌人 1 层胆怯（docs/46 §2.2，层级型）", () => {
-    const state = battle(["echo_horn"], { enemies: ["rust_hound", "corroded_swarm"] });
-    for (const e of state.enemies) {
-      const timid = e.buffs.find((b) => b.id === "timid");
-      expect(timid?.stacks).toBe(1);
-      expect(timid?.duration).toBeNull();
-    }
+  it("黄铜哨子：开战血量最高的敌人 1 层虚弱（docs/64 §四.2；回声号角已在重置中移除）", () => {
+    const state = battle(["brass_whistle"], { enemies: ["rust_hound", "corroded_swarm"] });
+    // rust_hound（46 HP）> corroded_swarm（20 HP）→ 虚弱只挂在血牛身上
+    const tank = state.enemies.find((e) => e.defId === "rust_hound");
+    const small = state.enemies.find((e) => e.defId === "corroded_swarm");
+    expect(tank?.buffs.find((b) => b.id === "weak")?.stacks).toBe(1);
+    expect(small?.buffs.find((b) => b.id === "weak")).toBeUndefined();
   });
 
   it("第三捧灰：本回合未受伤时回合结束获得 2 格挡（撑过敌方回合，下回合开始清零）", () => {

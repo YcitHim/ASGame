@@ -2,15 +2,10 @@
   "id": "bandage",
   "i18n": "relic.bandage",
   "timing": "onBattleStart",
-  "effects": [
-    {
-      "kind": "block",
-      "target": {
-        "type": "self"
-      },
-      "value": 4
-    }
-  ],
-  "once": "battle",
+  "handler": "heal_grants_block",
+  "params": {
+    "block": 2,
+    "perTurn": 3
+  },
   "tier": 1
 }

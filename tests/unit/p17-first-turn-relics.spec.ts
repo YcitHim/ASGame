@@ -36,10 +36,11 @@ describe("docs/52 §四 · 回合开始遗物在首回合就生效", () => {
     expect(buffStacks(start("rust_charm").player.buffs, "strength")).toBe(1);
   });
 
-  it("唱诗班电池：第 1 回合就获得 1 点充能与 1 层力量", () => {
+  it("唱诗班终曲（docs/64 翻新）：空手回合结束时，下回合开始额外抽 2 张", () => {
+    // 旧「唱诗班电池：开局 1 充能 + 1 力量」已在 docs/64 重置中翻新，此处改为验证新机制
     const state = start("choir_battery");
-    expect(state.player.charge).toBe(1);
-    expect(buffStacks(state.player.buffs, "strength")).toBe(1);
+    expect(state.player.charge).toBe(0);
+    expect(buffStacks(state.player.buffs, "strength")).toBe(0);
   });
 
   it("锈念珠：污染 ≥50 时第 1 回合就获得 2 点格挡", () => {
