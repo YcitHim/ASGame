@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef } from "vue";
 import { useRouter } from "vue-router";
-import { t } from "@/data/load";
 import { useRunStore, REST_HEAL_RATIO } from "@/stores/run";
 import { useTipsStore } from "@/stores/tips";
 import { useTutorialStore } from "@/stores/tutorial";
 import CardView from "@/ui/components/CardView.vue";
+import CardUpgradeDialog from "@/ui/components/CardUpgradeDialog.vue";
 import { useStageFit } from "@/ui/composables/useStageFit";
 
 const router = useRouter();
@@ -34,17 +34,12 @@ function heal(): void {
   void router.push("/map");
 }
 
-function enhTitle(ids: readonly string[]): string {
-  return ids.map((id) => t(`enh.${id}.name`, id)).join(" · ");
-}
-
-/** 升级预览用费用：已升级看当前，未升级看升级后的费用（部分卡升级会改费）。 */
-function previewCost(card: { cardId: string; upgraded: boolean }): number {
-  const def = run.cardDef(card.cardId);
-  if (!def) return 0;
-  if (card.upgraded) return def.cost;
-  return def.upgraded?.cost ?? def.cost;
-}
+/**
+ * 升级对照（甲方 2026-10-08）：卡组先按**原版**摆出来，点开一张才弹「原版 vs 升级后」，
+ * 看清了再按「升级这张」——和幕间「默记祷文」共用同一个 CardUpgradeDialog。
+ */
+const previewIndex = ref<number | null>(null);
+const previewCard = computed(() => (previewIndex.value === null ? null : run.deck[previewIndex.value] ?? null));
 
 function chooseUpgrade(): void {
   mode.value = "upgrade";
@@ -68,8 +63,10 @@ function doUpgrade(index: number): void {
   void router.push("/map");
 }
 
-function cardName(id: string): string {
-  return t(`card.${id}.name`, id);
+/** 对照浮层里点「升级这张」才真正落地。 */
+function confirmUpgrade(): void {
+  if (previewIndex.value === null) return;
+  doUpgrade(previewIndex.value);
 }
 </script>
 
@@ -97,7 +94,7 @@ function cardName(id: string): string {
       </template>
 
       <template v-else-if="mode === 'upgrade'">
-        <p class="sub">卡面为「升级后」属性 —— 看清再决定升不升</p>
+        <p class="sub">点击卡牌查看升级后的效果 —— 看清再决定升不升</p>
         <div class="upgrade-grid">
           <button
             v-for="(card, index) in run.deck"
@@ -105,12 +102,12 @@ function cardName(id: string): string {
             class="upgrade-card"
             :class="{ upgraded: card.upgraded }"
             :disabled="card.upgraded"
-            @click="doUpgrade(index)"
+            @click="previewIndex = index"
           >
-            <span class="cap">{{ card.upgraded ? "已升级" : "升级后" }}</span>
+            <span class="cap">{{ card.upgraded ? "已升级" : "查看升级" }}</span>
             <CardView
               :card-id="card.cardId"
-              :cost="previewCost(card)"
+              :cost="run.cardDef(card.cardId)?.cost ?? 0"
               :charge-cost="run.cardDef(card.cardId)?.chargeCost ?? 0"
               :keywords="run.cardDef(card.cardId)?.keywords ?? []"
               :type="run.cardDef(card.cardId)?.type ?? 'skill'"
@@ -119,7 +116,7 @@ function cardName(id: string): string {
               :selected="false"
               :index="0"
               :hand-count="1"
-              :upgraded="true"
+              :upgraded="card.upgraded"
               :enhancements="card.enhancements.length"
               :enhancement-ids="card.enhancements"
               display
@@ -129,23 +126,44 @@ function cardName(id: string): string {
       </template>
 
       <template v-else>
-        <p class="sub">选择一张卡移除（卡组至少保留 1 张）</p>
-        <div class="deck">
+        <p class="sub">点击卡牌将其移出卡组 —— 卡面看清了再点（卡组至少保留 1 张）</p>
+        <div class="upgrade-grid">
           <button
             v-for="(card, index) in run.deck"
             :key="index"
-            class="deck-card"
+            class="upgrade-card"
             :disabled="run.deck.length <= 1"
             @click="doRemove(index)"
           >
-            {{ cardName(card.cardId) }}
-            <sup v-if="card.enhancements.length" class="enh-chip" :title="enhTitle(card.enhancements)">{{
-              card.enhancements.length
-            }}</sup>
+            <span class="cap">剔 除</span>
+            <CardView
+              :card-id="card.cardId"
+              :cost="run.cardDef(card.cardId)?.cost ?? 0"
+              :charge-cost="run.cardDef(card.cardId)?.chargeCost ?? 0"
+              :keywords="run.cardDef(card.cardId)?.keywords ?? []"
+              :type="run.cardDef(card.cardId)?.type ?? 'skill'"
+              :rarity="run.cardDef(card.cardId)?.rarity ?? 'common'"
+              :playable="true"
+              :selected="false"
+              :index="0"
+              :hand-count="1"
+              :upgraded="card.upgraded"
+              :enhancements="card.enhancements.length"
+              :enhancement-ids="card.enhancements"
+              display
+            />
           </button>
         </div>
       </template>
     </div>
+
+    <!-- 升级对照（甲方 2026-10-08）：点开一张牌先看原版 vs 升级后，确认才升 -->
+    <CardUpgradeDialog
+      v-if="mode === 'upgrade' && previewCard"
+      :card-id="previewCard.cardId"
+      @confirm="confirmUpgrade"
+      @cancel="previewIndex = null"
+    />
   </div>
 </template>
 
@@ -164,12 +182,6 @@ function cardName(id: string): string {
 .choice b { font-family: var(--serif-title); font-size: 18px; letter-spacing: 0.24em; color: var(--ink-bone); font-weight: 400; }
 .choice p { margin-top: 10px; font-size: 12px; color: var(--ink-dim); }
 .choice em { color: var(--blood-hi); font-style: normal; }
-.deck { display: flex; flex-wrap: wrap; gap: 8px; width: 640px; justify-content: center; margin-top: 10px; }
-.deck-card {
-  padding: 8px 14px; font-size: 12px; letter-spacing: 0.1em;
-  border: 1px solid rgba(110, 88, 54, 0.5); border-radius: var(--radius-sm); color: var(--ink-bone);
-}
-.deck-card:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
 .upgrade-grid {
   display: flex; flex-wrap: wrap; gap: 14px 16px;
   justify-content: center;
@@ -187,11 +199,4 @@ function cardName(id: string): string {
   font-size: 10px; letter-spacing: 0.2em; color: var(--gold-dim); white-space: nowrap;
 }
 .upgrade-card.upgraded .cap { color: var(--ink-dim); }
-.enh-chip {
-  margin-left: 6px; padding: 0 5px;
-  font-size: 10px; color: var(--gold);
-  border: 1px solid rgba(176, 141, 74, 0.5); border-radius: 999px;
-  vertical-align: super;
-}
-.deck-card:disabled { opacity: 0.4; cursor: not-allowed; }
 </style>
