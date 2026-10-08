@@ -24,13 +24,21 @@ function isLegacySave(): boolean {
 const canContinue = computed(() => hasSlot("progress") && !isLegacySave());
 onMounted(() => meta.ensureLoaded());
 
-/** 远征纪事（docs/38 §三 C-3）：每职业最少回合 / 最高余血。 */
+/**
+ * 远征纪事（docs/38 §三 C-3 / 甲方 2026-10-08）：每职业**分难度**记最佳纪录——
+ * 普通与锈蚀各一栏，两个榜互不覆盖。
+ */
 const recordRows = computed(() =>
   [...loadGameContent().content.classes.keys()].map((id) => ({
     id,
     name: t(`class.${id}.name`, id),
-    rec: meta.recordOf(id),
+    normal: meta.recordOf(id, "normal"),
+    rust: meta.recordOf(id, "rust"),
   })),
+);
+/** 锈蚀栏：难度解锁后常驻；未解锁时只要有旧记录也照常显示（不藏玩家自己的成绩）。 */
+const showRustRecord = computed(
+  () => meta.rustUnlocked || recordRows.value.some((r) => r.rust.minTurns !== null || r.rust.maxHp !== null),
 );
 
 type MenuKey = "tutorial" | "expedition" | "continue" | "codex" | "settings";
@@ -93,13 +101,21 @@ function onMenu(key: MenuKey, enabled: boolean): void {
         <div class="record-rows">
           <div v-for="row in recordRows" :key="row.id" class="record">
             <span class="rname">{{ row.name }}</span>
-            <span class="rval">
-              {{ t("title.record.turns", "最少回合") }}
-              {{ row.rec.minTurns ?? t("title.record.empty", "—") }}
-            </span>
-            <span class="rval">
-              {{ t("title.record.hp", "最高余血") }}
-              {{ row.rec.maxHp ?? t("title.record.empty", "—") }}
+            <span class="rlines">
+              <span class="rline">
+                <em class="rdiff">{{ t("title.record.normal", "普通") }}</em>
+                {{ t("title.record.turns", "最少回合") }}
+                {{ row.normal.minTurns ?? t("title.record.empty", "—") }}
+                · {{ t("title.record.hp", "最高余血") }}
+                {{ row.normal.maxHp ?? t("title.record.empty", "—") }}
+              </span>
+              <span v-if="showRustRecord" class="rline rust">
+                <em class="rdiff rust">{{ t("title.record.rust", "锈蚀") }}</em>
+                {{ t("title.record.turns", "最少回合") }}
+                {{ row.rust.minTurns ?? t("title.record.empty", "—") }}
+                · {{ t("title.record.hp", "最高余血") }}
+                {{ row.rust.maxHp ?? t("title.record.empty", "—") }}
+              </span>
             </span>
           </div>
         </div>
@@ -197,10 +213,26 @@ function onMenu(key: MenuKey, enabled: boolean): void {
   text-align: right;
   color: var(--ink-bone);
 }
-.record .rval {
-  width: 116px;
+.rlines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   text-align: left;
+}
+.record .rline {
   font-family: var(--serif-num);
+}
+.record .rline.rust {
+  color: rgba(154, 144, 129, 0.75);
+}
+.record .rdiff {
+  margin-right: 6px;
+  font-style: normal;
+  color: var(--gold-dim);
+}
+.record .rdiff.rust {
+  color: var(--blood-hi);
+  opacity: 0.85;
 }
 
 .foot {

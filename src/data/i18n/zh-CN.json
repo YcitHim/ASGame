@@ -594,6 +594,8 @@
   "meta.achieve": "已铭刻：{name}",
   "codex.tab.achievement": "成就",
   "title.records": "远征纪事",
+  "title.record.normal": "普通",
+  "title.record.rust": "锈蚀",
   "title.record.turns": "最少回合",
   "title.record.hp": "最高余血",
   "title.record.empty": "尚无记录",

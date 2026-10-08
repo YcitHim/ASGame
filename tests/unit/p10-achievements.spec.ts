@@ -118,6 +118,35 @@ describe("1.0-C 成就墙", () => {
     meta.updateRecord("bloodwright", 40, 35);
     expect(meta.recordOf("bloodwright")).toEqual({ minTurns: 22, maxHp: 35 });
   });
+
+  it("普通 / 锈蚀分难度各记一栏，互不覆盖（甲方 2026-10-08）", () => {
+    const meta = setup();
+    meta.updateRecord("bloodwright", 20, 30, "normal");
+    meta.updateRecord("bloodwright", 35, 10, "rust");
+    expect(meta.recordOf("bloodwright", "normal")).toEqual({ minTurns: 20, maxHp: 30 });
+    expect(meta.recordOf("bloodwright", "rust")).toEqual({ minTurns: 35, maxHp: 10 });
+    // 锈蚀打得更好只覆盖锈蚀榜，普通榜不动
+    meta.updateRecord("bloodwright", 18, 40, "rust");
+    expect(meta.recordOf("bloodwright", "rust")).toEqual({ minTurns: 18, maxHp: 40 });
+    expect(meta.recordOf("bloodwright", "normal")).toEqual({ minTurns: 20, maxHp: 30 });
+    // 缺省难度 = 普通档（旧调用点不吃惊）
+    expect(meta.recordOf("engineer")).toEqual({ minTurns: null, maxHp: null });
+    meta.updateRecord("engineer", 12, 8);
+    expect(meta.recordOf("engineer", "normal")).toEqual({ minTurns: 12, maxHp: 8 });
+    expect(meta.recordOf("engineer", "rust")).toEqual({ minTurns: null, maxHp: null });
+  });
+
+  it("旧档迁移：职业名纪录键补成 :normal，成绩不丢", async () => {
+    window.localStorage.clear();
+    setActivePinia(createPinia());
+    const { writeSlot } = await import("@/systems/save");
+    // 旧格式：records 的键只有职业名（分难度之前写下的档）
+    writeSlot("meta", { records: { bloodwright: { minTurns: 24, maxHp: 18 } } });
+    const meta = useMetaStore();
+    meta.ensureLoaded();
+    expect(meta.recordOf("bloodwright", "normal")).toEqual({ minTurns: 24, maxHp: 18 });
+    expect(meta.recordOf("bloodwright", "rust")).toEqual({ minTurns: null, maxHp: null });
+  });
 });
 
 describe("1.0-C 局内计数", () => {

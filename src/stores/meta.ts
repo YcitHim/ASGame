@@ -58,6 +58,14 @@ export interface RunRecord {
   maxHp: number | null;
 }
 
+/**
+ * 纪录键 = 职业 + 难度（甲方 2026-10-08）：普通与锈蚀**分开记两个榜**，互不覆盖。
+ * 旧档只有职业键（那时还没分难度），`ensureLoaded` 迁移时按「普通」补齐。
+ */
+export function recordKey(classId: string, difficulty: string | undefined): string {
+  return `${classId}:${difficulty === "rust" ? "rust" : "normal"}`;
+}
+
 interface MetaState {
   clearedClasses: string[];
   unlocked: string[];
@@ -141,8 +149,8 @@ export const useMetaStore = defineStore("meta", {
     /** 锈蚀难度是否解锁（通关一次）。 */
     rustUnlocked: (state) => devMode() || state.clearedClasses.length > 0,
     isAchieved: (state) => (id: string) => state.achievements.includes(id),
-    recordOf: (state) => (classId: string) =>
-      state.records[classId] ?? { minTurns: null, maxHp: null },
+    recordOf: (state) => (classId: string, difficulty: string = "normal") =>
+      state.records[recordKey(classId, difficulty)] ?? { minTurns: null, maxHp: null },
   },
   actions: {
     ensureLoaded(): void {
@@ -152,7 +160,13 @@ export const useMetaStore = defineStore("meta", {
         this.clearedClasses = saved.clearedClasses ?? [];
         this.unlocked = saved.unlocked ?? [];
         this.achievements = saved.achievements ?? [];
-        this.records = saved.records ?? {};
+        // 迁移（甲方 2026-10-08）：旧纪录键只有职业名 → 归一化补上「:normal」，
+        // 否则分难度后旧的最好成绩会凭空消失。
+        const migrated: Record<string, RunRecord> = {};
+        for (const [key, rec] of Object.entries(saved.records ?? {})) {
+          migrated[key.includes(":") ? key : `${key}:normal`] = rec;
+        }
+        this.records = migrated;
         this.stats = { interrupts: saved.stats?.interrupts ?? 0 };
         this.tips = saved.tips ?? [];
         this.tutorialOffered = Array.isArray(saved.tutorialOffered) ? saved.tutorialOffered : [];
@@ -275,15 +289,16 @@ export const useMetaStore = defineStore("meta", {
       this.stats = { ...this.stats, interrupts: this.stats.interrupts + Math.max(0, n) };
       this.persist();
     },
-    /** 更新某职业最佳纪录（只在更优时写入）。 */
-    updateRecord(classId: string, turns: number, hpLeft: number): void {
+    /** 更新某职业 + 难度的最佳纪录（只在更优时写入）。difficulty 缺省 = 普通档。 */
+    updateRecord(classId: string, turns: number, hpLeft: number, difficulty: string = "normal"): void {
       this.ensureLoaded();
-      const prev = this.records[classId] ?? { minTurns: null, maxHp: null };
+      const key = recordKey(classId, difficulty);
+      const prev = this.records[key] ?? { minTurns: null, maxHp: null };
       const next: RunRecord = {
         minTurns: prev.minTurns == null ? turns : Math.min(prev.minTurns, turns),
         maxHp: prev.maxHp == null ? hpLeft : Math.max(prev.maxHp, hpLeft),
       };
-      this.records = { ...this.records, [classId]: next };
+      this.records = { ...this.records, [key]: next };
       this.persist();
     },
     /**
@@ -316,7 +331,7 @@ export const useMetaStore = defineStore("meta", {
         if (ach.codexComplete) achieved.push("codex_all");
         this.lastAchievements = this.achieve(achieved);
         if (ach.turns !== undefined && ach.hpLeft !== undefined) {
-          this.updateRecord(ach.classId, ach.turns, ach.hpLeft);
+          this.updateRecord(ach.classId, ach.turns, ach.hpLeft, ach.difficulty);
         }
       } else {
         this.lastAchievements = [];
