@@ -220,6 +220,15 @@ const effectSchema = z.discriminatedUnion("kind", [
       condition: conditionSchema.optional(),
     })
     .strict(),
+  z
+    .object({
+      /** 销毁全部手牌（电表倒转，甲方 2026-10-09）：每张换 chargePer 充能 / blockPer 格挡 */
+      kind: z.literal("destroyHandAll"),
+      chargePer: z.number().int().min(0).optional(),
+      blockPer: z.number().int().min(0).optional(),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
 ]);
 
 const playSchema = z

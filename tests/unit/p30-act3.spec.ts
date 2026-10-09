@@ -62,9 +62,9 @@ describe("docs/66 §四 · 第三幕 10 层定稿", () => {
     const raw = game.content.enemies.get("rust_hound")!.maxHp;
     expect(battle("rust_hound").enemies[0]!.maxHp).toBe(raw);
     expect(battle("rust_hound", { hp: 1.15, damage: 1.1 }).enemies[0]!.maxHp).toBe(Math.round(raw * 1.15));
-    // 倍率与难度相乘：normal = 1.1，rust = 1.1（难度）× 1.1（幕内）
+    // 倍率与难度相乘：normal = 1.1，rust = 1.15（难度，甲方 2026-10-09 上调）× 1.1（幕内）
     expect(battle("rust_hound", { hp: 1, damage: 1.1 }).enemyDamageMul).toBeCloseTo(1.1, 5);
-    expect(battle("rust_hound", { hp: 1, damage: 1.1 }, "rust").enemyDamageMul).toBeCloseTo(1.21, 5);
+    expect(battle("rust_hound", { hp: 1, damage: 1.1 }, "rust").enemyDamageMul).toBeCloseTo(1.265, 5);
     expect(battle("rust_hound").enemyDamageMul).toBe(1);
   });
 

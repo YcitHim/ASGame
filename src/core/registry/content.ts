@@ -106,7 +106,12 @@ export interface CardEffect {
      * 概率分支（docs/64 §九.4 备选池「赌徒齿轮」）：按 options 的 weight 掷一次，
      * 只结算命中分支的 effects。掷点走独立的 relic RNG 流——同种子同结果。
      */
-    | "chance";
+    | "chance"
+    /**
+     * 销毁**全部**手牌（电表倒转，甲方 2026-10-09）：不进「玩家选 N 张」的挂起流程，
+     * 打出即全清；每张销毁按 `chargePer` / `blockPer` 换资源（升级版才有格挡）。
+     */
+    | "destroyHandAll";
   readonly target?: TargetRef;
   readonly value?: number;
   readonly hits?: number;
@@ -141,6 +146,10 @@ export interface CardEffect {
   readonly upgraded?: boolean;
   /** 仅 chance：加权分支（weight 为相对概率） */
   readonly options?: readonly ChanceBranch[];
+  /** 仅 destroyHandAll：每销毁 1 张牌获得的充能 */
+  readonly chargePer?: number;
+  /** 仅 destroyHandAll：每销毁 1 张牌获得的格挡（电表倒转升级版） */
+  readonly blockPer?: number;
 }
 
 /**
@@ -377,7 +386,8 @@ export const DIFFICULTY_PARAMS: Record<
   { enemyHpMul: number; enemyDamageMul: number; relicChoices: number }
 > = {
   normal: { enemyHpMul: 1, enemyDamageMul: 1, relicChoices: 3 },
-  rust: { enemyHpMul: 1.2, enemyDamageMul: 1.1, relicChoices: 2 },
+  // 甲方 2026-10-09：锈蚀难度整体上调——敌人生命 +30%、攻击 +15%（原 1.2 / 1.1）
+  rust: { enemyHpMul: 1.3, enemyDamageMul: 1.15, relicChoices: 2 },
 };
 
 /** 地图节点类型（0.1 用到的子集 + event 预留）。 */

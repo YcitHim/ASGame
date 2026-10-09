@@ -1,0 +1,23 @@
+{
+  "id": "meter_reversal",
+  "class": "engineer",
+  "type": "skill",
+  "rarity": "rare",
+  "cost": 3,
+  "effects": [
+    {
+      "kind": "destroyHandAll",
+      "chargePer": 3
+    }
+  ],
+  "upgraded": {
+    "effects": [
+      {
+        "kind": "destroyHandAll",
+        "chargePer": 3,
+        "blockPer": 2
+      }
+    ]
+  },
+  "i18n": "card.meter_reversal"
+}

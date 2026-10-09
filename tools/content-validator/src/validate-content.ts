@@ -142,7 +142,8 @@ const IDENTITY_FINGERPRINTS: Record<string, (f: CardFace) => boolean> = {
     hasKind(f, ["heal", "consumeBoons"]) ||
     hasBuff(f, ["mending"]),
   engineer: (f) =>
-    hasKind(f, ["gainCharge", "spendCharge", "chargeFromEnergy", "clampCharge", "bankCharge"]) ||
+    // destroyHandAll（电表倒转）也是充能件：每销毁 1 张换 3 充能，身份同样是「充能的搬运」
+    hasKind(f, ["gainCharge", "spendCharge", "chargeFromEnergy", "clampCharge", "bankCharge", "destroyHandAll"]) ||
     f.chargeCost > 0 ||
     hasCondition(f, ["chargeAtLeast"]) ||
     hasBuff(f, ["tenacity"]) ||

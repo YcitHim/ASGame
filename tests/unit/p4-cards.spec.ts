@@ -230,6 +230,8 @@ describe("P4.3 「全场持续」类卡一律消耗", () => {
     "crimsonpact",
     "immortality",
     "frenzy",
+    // 甲方 2026-10-09：炉心本场能力牌「能量释放」（每个回合开始 +1 充能）
+    "energy_release",
   ];
 
   it("全部带 exhaust 关键词", () => {

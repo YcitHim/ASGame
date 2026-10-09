@@ -1427,6 +1427,25 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
       if (effect.enemyId) summonUnit(draft, sink, ctx.actorId, effect.enemyId, effect.count ?? 1);
       break;
     }
+    case "destroyHandAll": {
+      // 电表倒转（甲方 2026-10-09）：打出即销毁手上全部牌，每张换 chargePer 充能 / blockPer 格挡。
+      // 与 destroyHand 的区别：那个是「玩家选 N 张」（挂起 destroyPending），这个是「全清」，
+      // 所以在这里直接结算——不挂起、不让玩家选，牌少了收益就少，是这张牌的代价本身。
+      const count = draft.hand.length;
+      if (count > 0) {
+        for (const id of [...draft.hand]) {
+          draft.hand.splice(draft.hand.indexOf(id), 1);
+          draft.exhaust.push(id);
+          const instance = draft.cardInstances[id];
+          if (instance) sink.emit("CardDestroyed", { cardId: instance.cardId });
+        }
+      }
+      const chargePer = Math.max(0, Math.trunc(effect.chargePer ?? 0));
+      const blockPer = Math.max(0, Math.trunc(effect.blockPer ?? 0));
+      if (count > 0 && chargePer > 0) changeCharge(draft, sink, count * chargePer);
+      if (count > 0 && blockPer > 0) gainBlock(draft, sink, PLAYER_ID, count * blockPer, work.ctx.blockModifiers);
+      break;
+    }
     case "destroyHand": {
       // 祭血狂热「销毁」（甲方 2026-10-08）：从手牌选 value 张，本场战斗移出牌组（进消耗堆），
       // 战斗结束随牌组归还。需要玩家选择 → 先挂起，由 DestroyFromHand 动作逐张兑现；

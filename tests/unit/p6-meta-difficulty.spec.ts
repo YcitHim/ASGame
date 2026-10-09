@@ -108,7 +108,7 @@ describe("docs/36 T1 · 解锁式内容入池", () => {
 });
 
 describe("docs/36 T2 · 锈蚀难度", () => {
-  it("锈蚀难度敌人 HP ×1.2", () => {
+  it("锈蚀难度敌人 HP ×1.3（甲方 2026-10-09 上调，原 1.2）", () => {
     const normal = createBattleState({
       battleId: "n", seed: 1, player: { maxHp: 66, energy: 3 }, enemies: [{ id: "rust_hound" }],
       deck: ["strike"], content: game.content, difficulty: "normal",
@@ -117,11 +117,11 @@ describe("docs/36 T2 · 锈蚀难度", () => {
       battleId: "r", seed: 1, player: { maxHp: 66, energy: 3 }, enemies: [{ id: "rust_hound" }],
       deck: ["strike"], content: game.content, difficulty: "rust",
     });
-    expect(rust.enemies[0].maxHp).toBe(Math.max(1, Math.round(normal.enemies[0].maxHp * 1.2)));
+    expect(rust.enemies[0].maxHp).toBe(Math.max(1, Math.round(normal.enemies[0].maxHp * 1.3)));
     expect(rust.enemies[0].maxHp).toBeGreaterThan(normal.enemies[0].maxHp);
   });
 
-  it("锈蚀难度敌人伤害 ×1.1（同一意图打玩家）", () => {
+  it("锈蚀难度敌人伤害 ×1.15（甲方 2026-10-09 上调，原 1.1；同一意图打玩家）", () => {
     const damage = (difficulty: "normal" | "rust"): number => {
       let state = createBattleState({
         battleId: "d", seed: 4242, player: { maxHp: 200, energy: 3 }, enemies: [{ id: "rust_hound" }],

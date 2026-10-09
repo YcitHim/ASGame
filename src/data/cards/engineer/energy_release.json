@@ -1,0 +1,31 @@
+{
+  "id": "energy_release",
+  "class": "engineer",
+  "type": "power",
+  "rarity": "rare",
+  "cost": 3,
+  "keywords": [
+    "exhaust"
+  ],
+  "power": {
+    "timing": "onTurnStart",
+    "effects": [
+      {
+        "kind": "gainCharge",
+        "value": 1
+      }
+    ]
+  },
+  "upgraded": {
+    "power": {
+      "timing": "onTurnStart",
+      "effects": [
+        {
+          "kind": "gainCharge",
+          "value": 2
+        }
+      ]
+    }
+  },
+  "i18n": "card.energy_release"
+}
