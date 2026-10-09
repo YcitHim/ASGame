@@ -38,6 +38,17 @@ onMounted(() => {
   }
 });
 
+/**
+ * 幕间文案按「即将进入的幕」取（docs/66 §4.4）：一→二幕是「圣堂馈赠」，二→三幕是「锻炉馈赠」。
+ * 幕间在 applyBoon 之前展示，此时 run.act 还是**刚打完的那一幕**，所以目标是 actIndex + 1。
+ */
+const nextAct = computed(() => run.acts[Math.min((run.run?.actIndex ?? 0) + 1, run.acts.length - 1)]);
+const copyKey = computed(() => `intermission.${run.act?.id ?? "act1"}_to_${nextAct.value?.id ?? "act2"}`);
+const boonStage = computed(() => nextAct.value?.id ?? "act2");
+function boonKey(suffix: string): string {
+  return `intermission.boon.${boonStage.value}.${suffix}`;
+}
+
 const enhancementChoices = computed(() => run.boonEnhancementChoices());
 /** C 项可附着目标：任一卡能装下所选项（全满槽 → 该项置灰，docs/40 §2.3） */
 const enhanceUsable = computed(() => enhancementChoices.value.length > 0);
@@ -82,25 +93,25 @@ function doEnhance(index: number): void {
   <div class="viewport">
     <div ref="stage" class="stage inter-stage">
       <template v-if="step === 'copy'">
-        <h1 class="head">{{ t("intermission.act1_to_act2.title", "回 廊 已 尽") }}</h1>
-        <p class="body">{{ t("intermission.act1_to_act2.body", "") }}</p>
+        <h1 class="head">{{ t(copyKey + ".title", "回 廊 已 尽") }}</h1>
+        <p class="body">{{ t(copyKey + ".body", "") }}</p>
         <button class="etch-btn" @click="step = 'boon'">继 续 下 潜</button>
       </template>
 
       <template v-else-if="step === 'boon'">
-        <h1 class="head">{{ t("intermission.boon.title", "圣 堂 馈 赠") }}</h1>
+        <h1 class="head">{{ t(boonKey("title"), "圣 堂 馈 赠") }}</h1>
         <div class="boons">
           <button class="boon" @click="pickBoon('a')">
-            <b>圣水洗礼</b>
-            <span>回复一半生命</span>
+            <b>{{ t(boonKey("a.name"), "圣水洗礼") }}</b>
+            <span>{{ t(boonKey("a.desc"), "回复一半生命") }}</span>
           </button>
           <button class="boon" @click="pickBoon('b')">
-            <b>默记祷文</b>
-            <span>免费升级一张牌</span>
+            <b>{{ t(boonKey("b.name"), "默记祷文") }}</b>
+            <span>{{ t(boonKey("b.desc"), "免费升级一张牌") }}</span>
           </button>
           <button class="boon" :disabled="!enhanceUsable" @click="pickBoon('c')">
-            <b>圣堂锻核</b>
-            <span>{{ enhanceUsable ? "获得一枚圣堂强化" : "强化槽全满" }}</span>
+            <b>{{ t(boonKey("c.name"), "圣堂锻核") }}</b>
+            <span>{{ enhanceUsable ? t(boonKey("c.desc"), "获得一枚圣堂强化") : "强化槽全满" }}</span>
           </button>
         </div>
       </template>

@@ -27,6 +27,15 @@ export type ConditionNode =
   | { readonly type: "not"; readonly of: ConditionNode }
   | { readonly type: ConditionId } & Record<string, unknown>;
 
+/**
+ * 概率分支（docs/64 §九.4 备选池「赌徒齿轮」）：`weight` 是**相对概率**（不是百分比），
+ * 命中分支的 effects 照常入栈。走独立的 relic RNG 流，不扰动战斗主序列。
+ */
+export interface ChanceBranch {
+  readonly weight: number;
+  readonly effects: readonly CardEffect[];
+}
+
 export interface CardEffect {
   readonly kind:
     | "damage"
@@ -92,7 +101,12 @@ export interface CardEffect {
      * 充能减半（docs/64 熔炉之心）：当前充能向下取整减半，直接赋值（不经 changeCharge、
      * 不触发过载 / onGainCharge——与 bankCharge 的扣减同口径）。
      */
-    | "halveCharge";
+    | "halveCharge"
+    /**
+     * 概率分支（docs/64 §九.4 备选池「赌徒齿轮」）：按 options 的 weight 掷一次，
+     * 只结算命中分支的 effects。掷点走独立的 relic RNG 流——同种子同结果。
+     */
+    | "chance";
   readonly target?: TargetRef;
   readonly value?: number;
   readonly hits?: number;
@@ -125,6 +139,8 @@ export interface CardEffect {
    * false / 缺省 = 原版入场。
    */
   readonly upgraded?: boolean;
+  /** 仅 chance：加权分支（weight 为相对概率） */
+  readonly options?: readonly ChanceBranch[];
 }
 
 /**
@@ -407,6 +423,11 @@ export interface EventEffect {
   readonly pool?: readonly string[];
   /** gainCard / loseRelic：抽几件（缺省 1） */
   readonly count?: number;
+  /**
+   * gainRelic / loseRelic：限定遗物分级（docs/66 批 3「炉渣商人」）。
+   * 缺省 = 现有口径（gainRelic 走 T1+T2 混合池，loseRelic 走可典当池）。
+   */
+  readonly tier?: 1 | 2 | 3;
 }
 
 /**
@@ -450,6 +471,17 @@ export interface EventDefinition {
 }
 
 /**
+ * 幕内敌人属性倍率（docs/65 §二 / docs/66 §4.1）：第三幕「决战圈」用。
+ *
+ * 与难度倍率（docs/36 T2）**相乘**，作用在 enemy setup 级：hp 改开局最大生命，
+ * damage 改敌人打出的伤害。缺省不写 = ×1，行为与现版完全一致。
+ */
+export interface StatMult {
+  readonly hp: number;
+  readonly damage: number;
+}
+
+/**
  * 分支地图的「层模板」（docs/16 5.4 / docs/14 Q17）。
  * 运行时由 generateActMap 按种子实例化成 MapLayer[]：
  * width=1 为必经/汇合点，width≥2 为该层二选一的分支候选。
@@ -470,6 +502,19 @@ export interface MapLayerSpec {
   readonly enemies?: readonly string[];
   /** 精英池（docs/40 §三）：elite 层按种子池抽，同幕双精英不重复 */
   readonly elitePool?: readonly string[];
+  /**
+   * 骨架层（docs/66 §3.2 的**门禁兼容实装**）：该层**必现**一个指定稀有节点。
+   *
+   * 与 docs/48 三条冻结门禁并存——不固定整层类型（kinds 照旧混合）、不改宽度（仍由种子掷 2~4）、
+   * 不越「同层同类 ≤1 / 全图精英 2~4 / 篝火 1~3」：pin 只做**占位**，其余名额照旧随机。
+   *
+   * ⚠️ 语义边界：这是「**必现**可读」不是「**必经**不可绕」——pin 层仍是 2~4 节点，
+   * 玩家可能从旁边的普通节点绕过去。真·必经（单节点层）与 docs/48 门禁数学冲突，
+   * 需要甲方先放宽门禁才有得谈（docs/66「❗门禁冲突」）。
+   */
+  readonly pin?: "elite" | "rest";
+  /** 本层敌人属性倍率（docs/66 §4.1：三幕 l7 满档）；缺省继承幕的 statMult */
+  readonly statMult?: StatMult;
   /** 节点文案覆盖（缺省用 node.<kind>） */
   readonly i18n?: string;
 }
@@ -489,7 +534,31 @@ export interface MapNode {
   readonly events?: readonly string[];
   /** 事件节点：写死单个事件 id */
   readonly event?: string;
+  /** 实例化自层模板的敌人属性倍率（docs/66 §4.1）；缺省无倍率 */
+  readonly statMult?: StatMult;
 }
+
+/**
+ * 幕级战斗规则（docs/66 §三.1 / §4.2，甲方 2026-10-08）。
+ *
+ * 只声明「哪条规则、参数多少」——真正的逻辑住在 `core/combat/act-rules.ts`
+ * （与遗物 handler / 特性 handler 同构的护栏：**禁 id 特判，引擎问行为不查字符串**）。
+ * 规则在战斗内生效、**不进存档**（`BattleConfig.actRules` → `Draft.actRules`，战斗结束即弃）。
+ *
+ * 目前两条（后续新增须在此登记）：
+ *  - `mourning`（溺亡挽歌，act2）：每有一名敌人死亡，玩家获得 1 层蚀锈；
+ *  - `forgeHeat`（锻炉高温，act3）：第 `fromTurn` 回合起，玩家回合开始给**双方**各 1 层灼烧。
+ */
+export interface ActRule {
+  /** 规则 id（引擎按此分派；未知 id 在 validator 层报错） */
+  readonly id: ActRuleId;
+  /** 规则参数（如 forgeHeat 的 fromTurn）；缺省用引擎内置默认 */
+  readonly params?: Readonly<Record<string, number>>;
+}
+
+/** 幕规则 id 白名单（新增规则必须同时改这里 + `core/combat/act-rules.ts`）。 */
+export const ACT_RULE_IDS = ["mourning", "forgeHeat"] as const;
+export type ActRuleId = (typeof ACT_RULE_IDS)[number];
 
 export interface ActDefinition {
   readonly id: string;
@@ -500,6 +569,16 @@ export interface ActDefinition {
   readonly weights: Readonly<Record<string, number>>;
   /** 本幕节点文案（按 kind，docs/40 §三补）：缺省用通用 node.<kind> */
   readonly nodeI18n?: Readonly<Record<string, string>>;
+  /**
+   * 幕级战斗规则（docs/66）：本幕所有战斗都生效的额外规则层。
+   * 缺省 = 无幕规则（第一幕保持「入门期不给额外变量」）。
+   */
+  readonly rules?: readonly ActRule[];
+  /**
+   * 本幕敌人属性倍率的**兜底**（docs/66 §4.1）：层模板没写 statMult 时用这一档。
+   * 第三幕「决战圈」= HP ×1.15 / 伤害 ×1.1；前两幕缺省不写（×1）。
+   */
+  readonly statMult?: StatMult;
   /** 分支地图层模板（docs/16 5.4）：顺序即推进顺序，层内候选按种子生成 */
   readonly layers: readonly MapLayerSpec[];
 }
@@ -519,7 +598,12 @@ export type TriggerTiming =
   /** 污染即将触顶（docs/38 §二 B-3「九十九」）：在反噬判定前派发，效果可把污染压回 99 */
   | "onPollutionMax"
   /** 战斗胜利结算（docs/64 泛黄照片）：敌人清空后、BattleEnded 之前派发，回血会写回 run */
-  | "onBattleWin";
+  | "onBattleWin"
+  /**
+   * 每当你**打出**一张消耗牌时（docs/66 批 3「余烬引线」）。
+   * 与遗物的同名钩子同点派发（回合末手牌被消耗不算「打出」）——强化与遗物共用这一时机。
+   */
+  | "onExhaust";
 
 /** 遗物分级（docs/37 §一.2 / docs/38 §一）：1 起始池，2 常规池，3 稀有池。 */
 export type RelicTier = 1 | 2 | 3;

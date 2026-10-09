@@ -1,0 +1,32 @@
+{
+  "id": "loaded_gear",
+  "i18n": "relic.loaded_gear",
+  "timing": "onBattleStart",
+  "once": "battle",
+  "tier": 2,
+  "effects": [
+    {
+      "kind": "chance",
+      "options": [
+        {
+          "weight": 50,
+          "effects": [
+            {
+              "kind": "gainEnergy",
+              "value": 3
+            }
+          ]
+        },
+        {
+          "weight": 50,
+          "effects": [
+            {
+              "kind": "gainPollution",
+              "value": 8
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

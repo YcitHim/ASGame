@@ -228,7 +228,11 @@ export function resolveEventOption(
         break;
       // E5：从「可典当池」随机抽取（docs/55 Q1：T1/T2 − 身份件）
       case "loseRelic": {
-        const pool = loseableRelicPool(content, ctx.ownedRelics, ctx.identityRelics ?? []);
+        // tier 可选（docs/66 批 3「炉渣商人」只要 T1）：这是**额外的池子收窄**，
+        // 不改变「身份件不可典当」的底线——先取可典当池，再按 tier 过滤。
+        const pool = loseableRelicPool(content, ctx.ownedRelics, ctx.identityRelics ?? []).filter(
+          (id) => effect.tier === undefined || content.relics.get(id)?.tier === effect.tier,
+        );
         loseRelicIds.push(...takeWeighted(rng, pool, () => 1, effect.count ?? 1));
         break;
       }
@@ -252,9 +256,10 @@ export function resolveEventOption(
           const cond = content.relics.get(id)?.unlockCondition;
           return !cond || cond === "none" || unlocked.includes(id);
         };
-        // 事件遗物 = T1+T2 混合池（docs/38 §一 A-1）；身份件（无 tier）不入池
+        // 事件遗物 = T1+T2 混合池（docs/38 §一 A-1）；身份件（无 tier）不入池。
+        // 写了 tier 时池子收窄到该档（docs/66 批 3「炉渣商人」给 T2）——仍然排除身份件。
         const pool = [...content.relics.values()]
-          .filter((r) => r.tier === 1 || r.tier === 2)
+          .filter((r) => (effect.tier === undefined ? r.tier === 1 || r.tier === 2 : r.tier === effect.tier))
           .map((r) => r.id)
           .filter((id) => !ctx.ownedRelics.includes(id) && available(id))
           .sort();

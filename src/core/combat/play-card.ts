@@ -19,7 +19,14 @@ import type { EventSink } from "../events/event-sink";
 import { livingEnemies, toDraft, type Draft } from "./draft";
 import { resolveTriggers } from "./relics";
 import { enqueueEffects, drainQueue, loseHp, resolveEffects } from "./resolve";
-import { traitFirstAttackBonus, traitFirstCardDouble, traitFirstCardFree, traitEyeAvailable, traitSpreadsOverload } from "./trait";
+import {
+  traitBurstHealPerStack,
+  traitFirstAttackBonus,
+  traitFirstCardDouble,
+  traitFirstCardFree,
+  traitEyeAvailable,
+  traitSpreadsOverload,
+} from "./trait";
 import { fireRelicHandlers, relicFirstAttackBonus, relicFirstCardDouble } from "./relic-runtime";
 import type { CardInstance, BattleState } from "./state";
 
@@ -345,6 +352,12 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
         buff: "overload",
         stacks,
       });
+      // A2（docs/67 §2.1）：爆发 = 泄压——按转嫁出去的层数回血。
+      // 攒了一路的毒连本带利甩给对面，自己喘一口气；爽点与续航合一。
+      const healPer = traitBurstHealPerStack(draft);
+      if (healPer > 0) {
+        spreadEffects.push({ kind: "heal", target: { type: "self" }, value: stacks * healPer });
+      }
     }
   }
 
@@ -431,6 +444,8 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
     sink.emit("CardExhausted", { cardId: instance.cardId });
     // 燔祭之书（docs/64 §四.4）：「打出」消耗牌才派发——回合末手牌被消耗不算打出
     fireRelicHandlers(draft, sink, "onExhaust");
+    // 卡牌能力 / 强化注入的 onExhaust（docs/66 批 3 余烬引线）：与遗物同点、同口径
+    resolveTriggers(draft, sink, "onExhaust");
   } else {
     draft.discard.push(removed);
   }

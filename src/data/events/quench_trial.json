@@ -1,0 +1,30 @@
+{
+  "id": "quench_trial",
+  "i18n": "event.quench_trial",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.quench_trial.opt.a.result",
+      "effects": [
+        {
+          "kind": "hpPercent",
+          "value": -12
+        },
+        {
+          "kind": "upgradeRandom"
+        },
+        {
+          "kind": "gainEnhancement"
+        }
+      ],
+      "condition": {
+        "kind": "hpPercentAtLeast",
+        "value": 25
+      }
+    },
+    {
+      "id": "b",
+      "i18n": "event.quench_trial.opt.b.result"
+    }
+  ]
+}

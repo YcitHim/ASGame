@@ -1,0 +1,11 @@
+{
+  "id": "quench_watch",
+  "i18n": "relic.quench_watch",
+  "timing": "onBattleStart",
+  "once": "battle",
+  "tier": 3,
+  "handler": "first_hit_strength",
+  "params": {
+    "stacks": 2
+  }
+}

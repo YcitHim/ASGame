@@ -4,7 +4,7 @@
  */
 import type { BuffInstance } from "../buffs";
 import type { EnemySetup, IntentPayload } from "../events";
-import type { CardEffect, ContentDb, RunDifficulty } from "../registry/content";
+import type { ActRule, CardEffect, ContentDb, RunDifficulty, StatMult } from "../registry/content";
 import { DIFFICULTY_PARAMS, emptyContent } from "../registry/content";
 import type { Modifier } from "../pipeline";
 import { Rng, type RngSnapshot } from "../rng";
@@ -155,6 +155,11 @@ export interface BattleState {
   /** 难度档（docs/36 T2）：敌人 HP / 伤害倍率一并从此读 */
   readonly difficulty: RunDifficulty;
   /**
+   * 敌人造伤倍率的**最终值** = 难度倍率 × 幕内 statMult.damage（docs/66 §4.1）。
+   * 存在状态里而不是每次重算，是为了让「三幕比二幕更疼」这条在回放/单测里可断言。
+   */
+  readonly enemyDamageMul: number;
+  /**
    * 玩家 HP 安全下限（docs/42 §四 教学免死）：非 undefined 时，玩家受到的任何伤害都不会把
    * HP 打到低于该值；用于教学，"教学关都能死"是口碑杀手。默认 undefined = 关闭。
    */
@@ -163,6 +168,11 @@ export interface BattleState {
   readonly safetySaves: number;
   /** 静态内容目录（不参与回放序列化） */
   readonly content: ContentDb;
+  /**
+   * 本场生效的幕级规则（docs/66）：静态数据，随 content 一起不入回放序列化。
+   * 缺省 = 无幕规则（第一幕）。规则逻辑见 `act-rules.ts` + `resolve.ts` 的派发点。
+   */
+  readonly actRules: readonly ActRule[];
 }
 
 /** 卡组条目：字符串 = 未升级无强化；对象 = 携带升级/强化（Roguelike 卡组实例）。 */
@@ -188,6 +198,16 @@ export interface BattleConfig {
   readonly safetyFloor?: number;
   /** 职业特性 id（docs/58 §二）：缺省 / 空串 = 无特性开局 */
   readonly traitId?: string;
+  /**
+   * 本场生效的幕级规则（docs/66）：由 store 从当前 ActDefinition 传入。
+   * 只活在战斗内（不进存档、不入回放序列化）——缺省 = 无幕规则。
+   */
+  readonly actRules?: readonly ActRule[];
+  /**
+   * 幕内敌人属性倍率（docs/66 §4.1）：与难度倍率**相乘**，作用在 enemy setup 级。
+   * 缺省 = 无倍率（前两幕行为完全不变）。
+   */
+  readonly enemyStatMult?: StatMult;
 }
 
 export const DEFAULT_HAND_SIZE = 5;
@@ -205,7 +225,9 @@ export function createBattleState(config: BattleConfig): BattleState {
   const idCounts = new Map<string, number>();
   const difficulty = config.difficulty ?? "normal";
   /** 锈蚀难度：敌人 HP 上浮（伤害倍率在 attackModifiers 里生效，docs/36 T2） */
-  const enemyHpMul = DIFFICULTY_PARAMS[difficulty].enemyHpMul;
+  const enemyHpMul = DIFFICULTY_PARAMS[difficulty].enemyHpMul * (config.enemyStatMult?.hp ?? 1);
+  /** 幕内 statMult 与难度倍率相乘（docs/66 §4.1）：三幕的「决战圈」加压 */
+  const enemyDamageMul = DIFFICULTY_PARAMS[difficulty].enemyDamageMul * (config.enemyStatMult?.damage ?? 1);
 
   // 职业特性（docs/58 §二）：开局绑定本局，战斗里只做能力问询（无 classId 特判）。
   // 无特性 / 未注册 = null，行为与现版完全一致（sim 基线对照）。
@@ -236,6 +258,7 @@ export function createBattleState(config: BattleConfig): BattleState {
     battleId: config.battleId,
     rootSeed: config.seed >>> 0,
     difficulty,
+    enemyDamageMul,
     ...(config.safetyFloor !== undefined ? { safetyFloor: config.safetyFloor } : {}),
     safetySaves: 0,
     rng: new Rng(config.seed).snapshot(),
@@ -308,5 +331,6 @@ export function createBattleState(config: BattleConfig): BattleState {
     delayedEffects: [],
     eventSeq: 0,
     content,
+    actRules: config.actRules ?? [],
   };
 }

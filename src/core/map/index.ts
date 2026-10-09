@@ -280,12 +280,30 @@ function draftMap(act: ActDefinition, rng: RngStream): GeneratedMap {
   // 这样「改节点配比」不会把整张图重新掷一遍，混比实验才有可比的同批地图。
   const eliteCount = ELITE_RANGE[0] + rng.nextInt(0, ELITE_RANGE[1] - ELITE_RANGE[0]);
   const restCount = REST_RANGE[0] + rng.nextInt(0, REST_RANGE[1] - REST_RANGE[0]);
-  const eliteLayers = rng.shuffle(eliteLayerIndexes(total)).slice(0, eliteCount);
+  // 骨架层（docs/66 §3.2 门禁兼容实装）：pin 层先占位、其余名额照旧随机，于是
+  // 「全图精英 2~4 / 篝火 1~3 / 同层同类 ≤1」三条冻结门禁全部仍然成立。
+  //  - pin=elite 的层：从随机精英池里剔除（避免同层第二个精英），也不吃篝火（压力峰保持纯）
+  //  - pin=rest 的层：不吃篝火随机（避免同层第二个篝火，喘息点唯一），但**允许**随机精英落进来——
+  //    这是刻意的：精英层位方差门禁要求 ≥5 种取值，若把 pin=rest 的层也从精英池剔除，
+  //    两个固定精英层 + 只剩 2 层随机，签名只有 1+2+1=4 种，直接跌破门禁。
+  const pinnedElite = mids.filter((l) => act.layers[l]?.pin === "elite");
+  const pinnedRest = mids.filter((l) => act.layers[l]?.pin === "rest");
+  const eliteLayers = [
+    ...pinnedElite,
+    ...rng
+      .shuffle(eliteLayerIndexes(total).filter((l) => !pinnedElite.includes(l)))
+      .slice(0, Math.max(0, eliteCount - pinnedElite.length)),
+  ];
   for (const l of eliteLayers) {
     const node = rng.pick(raw[l]!);
     if (node.kind === "battle") node.kind = "elite";
   }
-  const restLayers = rng.shuffle(mids).slice(0, restCount);
+  const restLayers = [
+    ...pinnedRest,
+    ...rng
+      .shuffle(mids.filter((l) => !pinnedRest.includes(l) && !pinnedElite.includes(l)))
+      .slice(0, Math.max(0, restCount - pinnedRest.length)),
+  ];
   for (const l of restLayers) {
     const cand = raw[l]!.filter((n) => n.kind === "battle");
     if (cand.length > 0) rng.pick(cand).kind = "rest";
@@ -323,6 +341,8 @@ function makeNode(
     // 写死的遭遇只给单节点必经层（l0 / Boss）；分支层写死遭遇由 validator 拦
     enemies = spec.enemies;
   }
+  // 敌人属性倍率（docs/66 §4.1）：层模板优先，缺省用幕的兜底档
+  const statMult = spec.statMult ?? act.statMult;
   return {
     id: `${kind}_${layerIdx}_${index}`,
     kind,
@@ -331,6 +351,7 @@ function makeNode(
     ...(encounters && kind === "battle" ? { encounters } : {}),
     ...(events && kind === "event" ? { events } : {}),
     ...(enemies ? { enemies } : {}),
+    ...(statMult ? { statMult } : {}),
   };
 }
 
@@ -388,8 +409,14 @@ function fallbackKind(li: number, i: number, total: number, elites: readonly num
 function fallbackMap(act: ActDefinition): GeneratedMap {
   const total = act.layers.length;
   const mids = midLayerIndexes(total);
-  const eliteLayers = eliteLayerIndexes(total).slice(0, 2);
-  const restLayer = mids[0];
+  // 骨架层也要在兜底图里兑现（docs/66 §3.2）：pin 层先占位，再按默认配比补齐。
+  const pinnedElite = mids.filter((l) => act.layers[l]?.pin === "elite");
+  const pinnedRest = mids.filter((l) => act.layers[l]?.pin === "rest");
+  const eliteLayers = [
+    ...pinnedElite,
+    ...eliteLayerIndexes(total).filter((i) => !pinnedElite.includes(i)),
+  ].slice(0, Math.max(2, pinnedElite.length));
+  const restLayer = pinnedRest[0] ?? mids[0];
   const elitesTaken: string[] = [];
   const layers: MapLayer[] = act.layers.map((spec, li) => {
     const isEnd = li === 0 || li >= total - 2;
@@ -409,6 +436,7 @@ function fallbackMap(act: ActDefinition): GeneratedMap {
       }
       const encounters = spec.encounters ?? inheritedPool(act, li, (s) => s.encounters);
       const events = spec.events ?? inheritedPool(act, li, (s) => s.events);
+      const statMult = spec.statMult ?? act.statMult;
       return {
         id: `${kind}_${li}_${i}`,
         kind,
@@ -417,6 +445,7 @@ function fallbackMap(act: ActDefinition): GeneratedMap {
         ...(encounters && kind === "battle" ? { encounters } : {}),
         ...(events && kind === "event" ? { events } : {}),
         ...(enemies ? { enemies } : {}),
+        ...(statMult ? { statMult } : {}),
       };
     });
     return { id: spec.id, nodes };

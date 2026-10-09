@@ -383,6 +383,8 @@ export const useRunStore = defineStore("run", {
           date: localDateString(Date.now()),
           // 本局所选特性（docs/58）：纪录按职业×难度×特性分开记
           traitId: this.run.traitId,
+          // 真结局（docs/65 §5.2 / docs/66 §4.4）：打到没有下一幕为止才算——不写死幕数
+          finale: !hasNextAct(this.run, this.acts),
         });
       }
       this.persist();
@@ -488,7 +490,10 @@ export const useRunStore = defineStore("run", {
     boonEnhancementChoices(): string[] {
       if (!this.run) return [];
       const content = loadGameContent().content;
-      const actId = this.act?.id;
+      // 目标幕 = **即将进入的幕**（docs/66 §4.4）：幕间在 applyBoon 之前展示，this.act 还是刚打完的幕。
+      // 以前直接取 this.act，于是「圣堂锻核 / 锻炉锻核」实际发的是通用池——与卡面文案不符。
+      const nextIndex = Math.min(this.run.actIndex + 1, this.acts.length - 1);
+      const actId = this.acts[nextIndex]?.id ?? this.act?.id;
       const scoped = [...content.enhancements.values()].filter((e) => e.actScope === actId);
       const owned = new Set(this.acquired);
       const usableScoped = scoped.filter(

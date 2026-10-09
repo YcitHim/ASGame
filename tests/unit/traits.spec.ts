@@ -355,13 +355,13 @@ describe("docs/58 §四 血械·嗜血", () => {
 describe("docs/58 §五 炉心·铁皮王八（甲方 2026-10-07 修订）", () => {
   const db = makeContent([TRAIT.ironhide]);
 
-  it("充能改道：攻击不再吃充能加伤", () => {
+  it("混合充能（docs/67 §2.2 T1）：攻击分到 ⌊充能/2⌋ 加伤，格挡仍吃满", () => {
     let state = battle(db, ["test_charge3", "test_attack"], "ironhide_turtle");
     state = play(state, "test_charge3").state;
     expect(state.player.charge).toBe(3);
     const r = play(state, "test_attack");
     const dmg = eventsOfType(r.events, "DamageDealt").find((e) => e.targetId === "dummy");
-    expect(dmg?.hpLost).toBe(7); // 7 基础，不含充能
+    expect(dmg?.hpLost).toBe(8); // 7 基础 + ⌊3/2⌋ = 1
   });
 
   it("充能改道：获得格挡 +充能层数", () => {
@@ -372,7 +372,7 @@ describe("docs/58 §五 炉心·铁皮王八（甲方 2026-10-07 修订）", () 
     expect(block?.value).toBe(8); // 基础 5 + 充能 3
   });
 
-  it("回合结束判定格挡：每 8 点折算 1 层荆棘，且写成真状态（UI 才有图标）", () => {
+  it("回合结束判定格挡：每 10 点折算 1 层荆棘（docs/67 §2.2 N2），且写成真状态（UI 才有图标）", () => {
     let state = battle(db, ["test_big_guard"], "ironhide_turtle");
     state = play(state, "test_big_guard").state;
     expect(state.player.block).toBe(24);
@@ -382,32 +382,32 @@ describe("docs/58 §五 炉心·铁皮王八（甲方 2026-10-07 修订）", () 
 
     const r = reduce(state, { type: "EndTurn", actionId: "e" });
     const bramble = r.state.player.buffs.find((b) => b.id === "bramble");
-    expect(bramble?.stacks).toBe(3); // ⌊24 / 8⌋
+    expect(bramble?.stacks).toBe(2); // ⌊24 / 10⌋
     // 荆棘是真 buff：有 BuffApplied 事件 → BuffRow 会渲染「荆」图标
     expect(eventsOfType(r.events, "BuffApplied").some((e) => e.buffId === "bramble")).toBe(true);
     expect(r.state.player.block).toBe(0); // 新回合格挡已清零，但荆棘层数不回收
     const d = toDraft(r.state);
-    expect(effectiveBrambleStacks(d, d.player)).toBe(3);
+    expect(effectiveBrambleStacks(d, d.player)).toBe(2);
 
-    // 敌方回合攻击 → 真实反弹 3 层 × 3 = 9
+    // 敌方回合攻击 → 真实反弹 2 层 × 3 = 6
     const thorn = eventsOfType(r.events, "DamageDealt").find(
       (e) => e.sourceId === "player" && e.targetId === "dummy",
     );
-    expect(thorn?.value).toBe(9);
+    expect(thorn?.value).toBe(6);
   });
 
   it("荆棘每回合**刷新**：同格挡不再涨层，不打格挡则下一次判定清零（甲方 2026-10-07 三次修订）", () => {
     let state = battle(db, ["test_big_guard"], "ironhide_turtle");
 
-    // 第 1 回合：24 格挡 → ⌊24/8⌋ = 3 层
+    // 第 1 回合：24 格挡 → ⌊24/10⌋ = 2 层
     state = play(state, "test_big_guard").state;
     state = reduce(state, { type: "EndTurn", actionId: "e1" }).state;
-    expect(state.player.buffs.find((b) => b.id === "bramble")?.stacks).toBe(3);
+    expect(state.player.buffs.find((b) => b.id === "bramble")?.stacks).toBe(2);
 
-    // 第 2 回合：还是 24 格挡 → 覆盖后仍是 3 层（旧版会累加成 6）
+    // 第 2 回合：还是 24 格挡 → 覆盖后仍是 2 层（旧版会累加成 4）
     state = play(state, "test_big_guard").state;
     state = reduce(state, { type: "EndTurn", actionId: "e2" }).state;
-    expect(state.player.buffs.find((b) => b.id === "bramble")?.stacks).toBe(3);
+    expect(state.player.buffs.find((b) => b.id === "bramble")?.stacks).toBe(2);
 
     // 第 3 回合：一张格挡牌都不打（本回合格挡 = 0）→ 判定即把荆棘清零
     const r = reduce(state, { type: "EndTurn", actionId: "e3" });
@@ -415,13 +415,13 @@ describe("docs/58 §五 炉心·铁皮王八（甲方 2026-10-07 修订）", () 
     expect(eventsOfType(r.events, "BuffExpired").some((e) => e.buffId === "bramble")).toBe(true);
   });
 
-  it("荆棘折算按**本回合**格挡：足 8 点才 1 层，不足 8 点 → 0 层", () => {
-    // 一次 5 点格挡 = 不足 8 → 无荆棘
+  it("荆棘折算按**本回合**格挡：足 10 点才 1 层，不足 10 点 → 0 层", () => {
+    // 一次 5 点格挡 = 不足 10 → 无荆棘
     let small = battle(db, ["test_guard"], "ironhide_turtle");
     small = reduce(play(small, "test_guard").state, { type: "EndTurn", actionId: "e" }).state;
     expect(small.player.buffs.some((b) => b.id === "bramble")).toBe(false);
 
-    // 三张 5 点格挡 = 15 点 → ⌊15/8⌋ = 1 层
+    // 三张 5 点格挡 = 15 点 → ⌊15/10⌋ = 1 层
     let mid = battle(db, ["test_guard", "test_guard", "test_guard"], "ironhide_turtle");
     mid = play(mid, "test_guard").state;
     mid = play(mid, "test_guard").state;
@@ -431,12 +431,12 @@ describe("docs/58 §五 炉心·铁皮王八（甲方 2026-10-07 修订）", () 
     expect(mid.player.buffs.find((b) => b.id === "bramble")?.stacks).toBe(1);
   });
 
-  it("荆棘上限对该特性开放至 10（对照组 5），卡牌荆棘与折算层数一起封顶", () => {
+  it("荆棘上限该特性开放至 7（docs/67 §2.2 N1；对照组 5），卡牌荆棘与折算层数一起封顶", () => {
     const state = battle(db, ["test_guard"], "ironhide_turtle");
     const d = toDraft(state);
-    expect(brambleMaxStacks(d)).toBe(10);
+    expect(brambleMaxStacks(d)).toBe(7);
     d.player.buffs = [{ id: "bramble", stacks: 12, duration: null }];
-    expect(effectiveBrambleStacks(d, d.player)).toBe(10);
+    expect(effectiveBrambleStacks(d, d.player)).toBe(7);
     d.player.buffs = [{ id: "bramble", stacks: 6, duration: null }];
     expect(effectiveBrambleStacks(d, d.player)).toBe(6);
   });
@@ -510,19 +510,19 @@ describe("docs/58 §六 炉心·玻璃大炮（甲方 2026-10-07 二次修订）
     expect(dmg?.hpLost).toBe(8); // 7 基础 + 1（敌方超负荷受伤 +1）
   });
 
-  it("承载者回合开始每层扣 2 点生命：玩家侧", () => {
+  it("承载者回合开始每层扣 1 点生命（docs/67 §2.1 B2）：玩家侧", () => {
     let state = battle(db, ["test_charge16", "test_guard"], "glass_cannon");
     state = play(state, "test_charge16").state; // 1 层超负荷
     const r = reduce(state, { type: "EndTurn", actionId: "e" });
     const overload = eventsOfType(r.events, "HpLost").filter((e) => e.reason === "overload");
     expect(overload).toHaveLength(1);
-    expect(overload[0]?.value).toBe(2); // 1 层 × 2
+    expect(overload[0]?.value).toBe(1); // 1 层 × 1
     // 同一时刻敌方打过来：玩家扛超负荷 → 受击伤害也 +1（5 → 6）
     const hit = eventsOfType(r.events, "HpLost").filter((e) => e.reason === "damage");
     expect(hit.reduce((s, e) => s + e.value, 0)).toBe(6);
   });
 
-  it("承载者回合开始每层扣 2 点生命：敌方侧", () => {
+  it("承载者回合开始每层扣 1 点生命（docs/67 §2.1 B2）：敌方侧", () => {
     let state = battle(db, ["test_charge16", "test_attack"], "glass_cannon");
     state = play(state, "test_charge16").state;
     state = play(state, "test_attack").state; // 转嫁 1 层给 dummy
@@ -531,16 +531,23 @@ describe("docs/58 §六 炉心·玻璃大炮（甲方 2026-10-07 二次修订）
       (e) => e.reason === "overload" && e.targetId === "dummy",
     );
     expect(overload).toHaveLength(1);
-    expect(overload[0]?.value).toBe(2);
+    expect(overload[0]?.value).toBe(1);
   });
 
   it("一波打出去：**先转嫁超负荷、再结算伤害**（转嫁到手的「受伤 +1」算进这一击）", () => {
     let state = battle(db, ["test_charge16", "test_attack", "test_attack"], "glass_cannon");
     state = play(state, "test_charge16").state; // 充能 16 → 自身 1 层超负荷
+    // 压低 HP：满血时 A2 的回血会被上限吃掉、连事件都不发，看不到效果
+    const hpBefore = state.player.maxHp - 20;
+    state = { ...state, player: { ...state.player, hp: hpBefore } };
     const first = play(state, "test_attack");
     const firstDmg = eventsOfType(first.events, "DamageDealt").find((e) => e.targetId === "dummy");
-    // 7 基础 + 16 充能爆发 + 1（转嫁过去的超负荷：每层受伤 +1）= 24
-    expect(firstDmg?.hpLost).toBe(24);
+    // docs/67 §2.1 A1：7 基础 + 16 充能爆发 + 1 层 × 5（burstPerStack）+ 1（转嫁过去的超负荷受伤 +1）= 29
+    expect(firstDmg?.hpLost).toBe(29);
+    // A2：爆发 = 泄压——按转嫁的 1 层 × burstHealPerStack 5 回血
+    const burstHeal = eventsOfType(first.events, "HpHealed").reduce((s, e) => s + e.value, 0);
+    expect(burstHeal).toBe(5);
+    expect(first.state.player.hp).toBe(hpBefore + 5);
     // 转嫁必须发生在伤害之前：事件流里 BuffExpired(先) 先于 DamageDealt(后)
     const order = first.events.map((e) => e.type);
     expect(order.indexOf("BuffExpired")).toBeLessThan(order.indexOf("DamageDealt"));

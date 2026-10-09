@@ -58,7 +58,7 @@ describe("1.0-C 成就墙", () => {
     expect(meta.lastAchievements).toHaveLength(0);
   });
 
-  it("14 条成就全部可达（含教学「引路人」「三朝守夜」），且都有 i18n 文案", async () => {
+  it("15 条成就全部可达（含教学「引路人」「三朝守夜」与真结局），且都有 i18n 文案", async () => {
     const meta = setup();
     // 每个职业通关各结算一次（真实流程同款），最后用锈语者补齐统计类成就
     for (const id of ["bloodwright", "engineer", "rustspeaker"]) {
@@ -77,6 +77,8 @@ describe("1.0-C 成就墙", () => {
       codexComplete: true,
       turns: 120,
       hpLeft: 30,
+      // 真结局（docs/66 §4.4）：打完最后一幕才算
+      finale: true,
     });
     // 「引路人」「三朝守夜」来自教学完成，不属于远征结算（docs/41 §4.3 / docs/43 Q6）
     meta.markTutorialDone("bloodwright");

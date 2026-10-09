@@ -25,11 +25,12 @@ describe("真实内容装载（data/load）", () => {
     // docs/47 M1/M2 4 只 + M3 3 只（鼓腹兽 / 藤壶寄居者 / 锈蛆）；
     // 后续批次继续加敌人（如 2026-10-08 第二幕扩充），故用下界断言，别写死。
     expect(game.content.enemies.size).toBeGreaterThanOrEqual(25);
-    expect(game.content.relics.size).toBe(35);
+    expect(game.content.relics.size).toBe(37);
     expect(game.content.classes.size).toBe(3);
-    // 两幕：锈蚀回廊 + 沉没圣堂（docs/40）
-    expect(game.acts).toHaveLength(2);
+    // 三幕：锈蚀回廊 + 沉没圣堂 + 锈心锻炉（docs/66 §四 10 层定稿）
+    expect(game.acts).toHaveLength(3);
     expect(game.acts[1].id).toBe("act2");
+    expect(game.acts[2].id).toBe("act3");
     expect(game.content.enemies.get("rust_hound")?.name).toBe("锈蚀猎犬");
     expect(game.content.enemies.get("rust_throat")?.name).toBe("锈喉");
     expect(game.content.enemies.get("rust_bell_penitent")?.name).toBe("锈钟忏悔者");

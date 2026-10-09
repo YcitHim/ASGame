@@ -1,0 +1,35 @@
+{
+  "id": "ash_oracle",
+  "i18n": "event.ash_oracle",
+  "options": [
+    {
+      "id": "a",
+      "outcomes": [
+        {
+          "weight": 55,
+          "i18n": "event.ash_oracle.opt.a.win",
+          "effects": [
+            {
+              "kind": "hpPercent",
+              "value": 15
+            }
+          ]
+        },
+        {
+          "weight": 45,
+          "i18n": "event.ash_oracle.opt.a.lose",
+          "effects": [
+            {
+              "kind": "hpPercent",
+              "value": -10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.ash_oracle.opt.b.result"
+    }
+  ]
+}

@@ -12,6 +12,7 @@ import { EventSink } from "../events";
 import { buffStacks, buffDefinition, hasBuff } from "../buffs";
 import { isInnate, turnEndDestination } from "../keywords";
 import { executeDebugCommand } from "./debug";
+import { FORGE_HEAT_STACKS_PER_TURN, forgeHeatActive } from "./act-rules";
 import { definitionOf, fromDraft, livingEnemies, toDraft, type Draft } from "./draft";
 import { generateIntents, runEnemyTurn } from "./enemy-turn";
 import { effectiveCard, playCard } from "./play-card";
@@ -36,6 +37,7 @@ import {
   tickAllBuffs,
   tickDelayed,
   tickOverload,
+  PLAYER_ID,
 } from "./resolve";
 import type { BattleState } from "./state";
 
@@ -323,6 +325,17 @@ function endTurn(draft: Draft, sink: EventSink): void {
   resolvePollutionCritical(draft, sink);
   // 超负荷（docs/58 §六.2）：承载者在**自己回合开始**扣血——玩家侧即此处
   tickOverload(draft, sink, ["player"]);
+  // 幕规则「锻炉高温」（docs/66 §4.2，act3）：到起始回合后，玩家回合开始给**双方**各挂灼烧。
+  // 挂载点选在 resolveCurses 之前——本回合新挂的层数**立即**参与上限削减，
+  // 玩家的读招是「第 5 回合起，每次我的回合开始，双方都掉 1 点生命上限」，无延迟歧义。
+  // 只在玩家回合开始挂（不放在敌人回合开始），否则一个完整轮次会挂两次。
+  if (forgeHeatActive(draft.actRules, draft.turn)) {
+    applyBuffToTarget(draft, sink, PLAYER_ID, "burn", FORGE_HEAT_STACKS_PER_TURN);
+    for (const enemy of draft.enemies) {
+      if (enemy.hp <= 0) continue;
+      applyBuffToTarget(draft, sink, enemy.id, "burn", FORGE_HEAT_STACKS_PER_TURN);
+    }
+  }
   // 诅咒结算（docs/46 §3.7/3.8/3.9）：灼烧扣上限 + 冰缓/颠倒按回合递减
   resolveCurses(draft, sink);
   draft.player.energy = draft.player.maxEnergy;

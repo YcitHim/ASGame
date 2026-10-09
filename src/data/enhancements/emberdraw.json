@@ -1,0 +1,33 @@
+{
+  "id": "emberdraw",
+  "tier": 1,
+  "appliesTo": [
+    "ascensiongear",
+    "bloodflail",
+    "bloodrust",
+    "crimsonpact",
+    "exsanguinate",
+    "frenzy",
+    "grandwindup",
+    "immortality",
+    "ironfist",
+    "ironstomach",
+    "kineticcell",
+    "lastbreath",
+    "ninety_nine",
+    "plaguechant",
+    "purge",
+    "redlineprotocol",
+    "redzone",
+    "rustapotheosis",
+    "slagarmor",
+    "windup"
+  ],
+  "handler": "emberdraw",
+  "params": {
+    "costDelta": -1,
+    "drawOnExhaust": 1
+  },
+  "i18n": "enh.emberdraw",
+  "actScope": "act3"
+}

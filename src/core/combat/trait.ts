@@ -181,6 +181,12 @@ export function traitEyeAvailable(draft: Draft): boolean {
   return !!(trait && (trait.handler.drawFromLibrary?.(trait.def.params) ?? false));
 }
 
+/** 爆发回血系数（docs/67 §2.1 A2，玻璃大炮）：按转嫁的超负荷层数回血；无特性 = 0。 */
+export function traitBurstHealPerStack(draft: Draft): number {
+  const trait = activeTrait(draft);
+  return Math.max(0, trait?.handler.burstHealPerStack?.(trait.def.params) ?? 0);
+}
+
 /** 本回合第一张攻击牌的充能加伤（玻璃大炮）；非首张 / 无特性 = 0。 */
 export function traitFirstAttackBonus(draft: Draft): number {
   const trait = activeTrait(draft);

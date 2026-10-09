@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import type { Action } from "../../../src/core/actions";
 import type { DomainEvent } from "../../../src/core/events";
 import { createBattleState, reduce } from "../../../src/core/combat";
+import type { ActRule, StatMult } from "../../../src/core/registry/content";
 import type { ContentDb } from "../../../src/core/registry";
 import { choosePlay, chooseTarget } from "./ai";
 
@@ -29,6 +30,10 @@ export interface GoldenBattle {
   traitId?: string;
   /** 开局污染（docs/58 §七.2 畸变阈值快照用） */
   pollution?: number;
+  /** 幕级规则（docs/66）：缺省 = 无幕规则（一/二幕老盘不受影响） */
+  actRules?: ActRule[];
+  /** 幕内敌人属性倍率（docs/66 §4.1）：缺省 = ×1 */
+  enemyStatMult?: StatMult;
   actions: Action[];
   /** 事件流哈希（重放必须一致） */
   eventHash: string;
@@ -64,6 +69,10 @@ export interface RecordBattleArgs {
   traitId?: string;
   /** 开局污染（docs/58 §七.2） */
   pollution?: number;
+  /** 幕级规则（docs/66 §三.1）：三幕回归盘要用锻炉高温 */
+  actRules?: readonly ActRule[];
+  /** 幕内敌人属性倍率（docs/66 §4.1）：三幕回归盘要锁住 statMult 通道 */
+  enemyStatMult?: StatMult;
 }
 
 export function recordBattle(args: RecordBattleArgs): GoldenBattle {
@@ -83,6 +92,8 @@ export function recordBattle(args: RecordBattleArgs): GoldenBattle {
     relics: [...args.relics],
     content: args.content,
     traitId,
+    actRules: args.actRules ?? [],
+    ...(args.enemyStatMult ? { enemyStatMult: args.enemyStatMult } : {}),
   });
 
   const actions: Action[] = [start];
@@ -119,6 +130,8 @@ export function recordBattle(args: RecordBattleArgs): GoldenBattle {
     player: { maxHp, energy },
     ...(traitId ? { traitId } : {}),
     ...(pollution > 0 ? { pollution } : {}),
+    ...(args.actRules && args.actRules.length > 0 ? { actRules: [...args.actRules] } : {}),
+    ...(args.enemyStatMult ? { enemyStatMult: args.enemyStatMult } : {}),
     actions,
     eventHash: hashEvents(events),
     eventTypes: events.map((e) => e.type).slice(0, 40),
@@ -140,6 +153,8 @@ export function replayBattle(file: GoldenFile, content: ContentDb): { hash: stri
     relics: b.relics,
     content,
     traitId: b.traitId ?? "",
+    actRules: b.actRules ?? [],
+    ...(b.enemyStatMult ? { enemyStatMult: b.enemyStatMult } : {}),
   });
   const events: DomainEvent[] = [];
   for (const action of b.actions) {

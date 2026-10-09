@@ -9,13 +9,14 @@ import type { EventSink } from "../events/event-sink";
 import { evaluateValue, type Modifier } from "../pipeline";
 import { getEnhancementHandler } from "../registry/enhancement-handler";
 import type { BuffId } from "../registry/ids";
-import { DIFFICULTY_PARAMS, type CardEffect, type ConditionNode, type TargetRef } from "../registry/content";
+import type { CardEffect, ConditionNode, TargetRef } from "../registry/content";
 import { evaluateCondition, type ConditionContext } from "../registry/condition";
 import { getTarget } from "../registry/target";
 import { findUnit, livingEnemies, type Draft, type MutableUnit } from "./draft";
 import type { DelayedEffect } from "./state";
 import { resolveTriggers } from "./relics";
 import { fireRelicHandlers, relicPollutionOverflow } from "./relic-runtime";
+import { mourningStacks } from "./act-rules";
 import {
   activeTrait,
   effectiveBrambleStacks,
@@ -88,8 +89,20 @@ export function attackModifiers(draft: Draft, actorId: string, targetId: string)
   if (strength > 0) mods.push({ sourceId: "strength", layer: "buff", op: "add", value: strength });
 
   // 充能加伤（docs/58 §五.1）：铁皮王八把这条注入改道到格挡管线，这里按特性问询。
-  if (actorId === PLAYER_ID && draft.player.charge > 0 && traitChargeTarget(draft) === "attack") {
-    mods.push({ sourceId: "charge", layer: "buff", op: "add", value: draft.player.charge });
+  if (actorId === PLAYER_ID && draft.player.charge > 0) {
+    const chargeTarget = traitChargeTarget(draft);
+    if (chargeTarget === "attack") {
+      mods.push({ sourceId: "charge", layer: "buff", op: "add", value: draft.player.charge });
+    } else if (chargeTarget === "block") {
+      // 混合充能（docs/67 §2.2 T1）：充能仍全量注格挡，但攻击牌分到 floor(充能 / N)。
+      // 治的是「只防不打、等敌人撞死在荆棘上」——那是又强又墨迹的同一个根因。
+      const hybridTrait = activeTrait(draft);
+      const divisor = hybridTrait?.handler.hybridChargeAttackDivisor?.(hybridTrait.def.params) ?? null;
+      if (divisor !== null && divisor > 0) {
+        const bonus = Math.floor(draft.player.charge / divisor);
+        if (bonus > 0) mods.push({ sourceId: "charge:hybrid", layer: "buff", op: "add", value: bonus });
+      }
+    }
   }
 
   // 特性攻击修饰（常驻项）：走 buff 层，DamageDealt.layers 里可追溯（sourceId = trait:<id>:<kind>）
@@ -124,7 +137,9 @@ export function attackModifiers(draft: Draft, actorId: string, targetId: string)
     if (buffStacks(actor, "chill") > 0) {
       mods.push({ sourceId: "chill", layer: "buff", op: "mul", value: 0.8 });
     }
-    const mul = DIFFICULTY_PARAMS[draft.difficulty].enemyDamageMul;
+    // 最终倍率 = 难度 × 幕内 statMult（docs/66 §4.1）：在 createBattleState 里一次算好存在状态上，
+    // 这里只读——「三幕比二幕更疼」因此可以被回放 / 单测直接断言。
+    const mul = draft.enemyDamageMul;
     if (mul !== 1) mods.push({ sourceId: "difficulty", layer: "buff", op: "mul", value: mul });
   }
   return mods;
@@ -297,7 +312,12 @@ export function dealDamage(draft: Draft, sink: EventSink, args: DamageArgs): voi
     sink.emit("HpLost", { targetId: args.targetId, value: hpLost, reason: "damage" });
     // 「本回合事件回看」：记玩家掉血。受击在这里记；卖血（血契自伤）在 loseHp 里记；
     // 污染反噬不算（docs/16 P2.3 修订，甲方 2026-10-08）
-    if (args.targetId === PLAYER_ID) draft.tookDamageThisTurn = true;
+    if (args.targetId === PLAYER_ID) {
+      draft.tookDamageThisTurn = true;
+      // 淬火怀表（docs/64 §九.4）：玩家**真的掉 HP** 才算受击（被格挡挡下的不算），
+      // 每场一次的保证由遗物数据里的 once: "battle" 承担。
+      fireRelicHandlers(draft, sink, "onDamaged");
+    }
     // 嗜血「造伤」口径（docs/58 §四）：玩家来源且真的掉血（未击穿格挡的攻击不算）
     if (args.actorId === PLAYER_ID) draft.dealtDamageThisTurn += hpLost;
   }
@@ -1031,6 +1051,13 @@ export function killUnit(draft: Draft, sink: EventSink, unitId: string): number 
   // 遗物「每当一名敌人死亡」（docs/64 死亡面具）：与强化 onKill 同点——
   // 死亡清理 + 亡语之后。玩家死亡不派发（那不是「敌人死亡」）。
   if (enemy) fireRelicHandlers(draft, sink, "onKill");
+  // 幕规则「溺亡挽歌」（docs/66 §三.1，act2）：敌人死亡给玩家挂蚀锈。
+  // 位置在**亡语 / 遗物之后**——先让「杀死它带来的收益」结算完，再让代价落地；
+  // 召唤物死亡也挂（enemy 存在即在册，含分裂物与 summonUnit 生成的单位）。
+  if (enemy) {
+    const mourning = mourningStacks(draft.actRules);
+    if (mourning > 0) applyBuffToTarget(draft, sink, PLAYER_ID, "corroding", mourning);
+  }
   return cleared;
 }
 
@@ -1224,6 +1251,25 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
     case "gainEnergy":
       draft.player.energy += value;
       break;
+    case "chance": {
+      // 赌徒齿轮（docs/64 §九.4 备选池）：按权重掷一次，把命中分支的效果照常入栈。
+      // 独立 relic 流：同种子同结果，且不扰动战斗主序列。
+      const branches = effect.options ?? [];
+      const total = branches.reduce((sum, b) => sum + Math.max(0, b.weight), 0);
+      if (branches.length === 0 || total <= 0) break;
+      const rng = draft.rng.stream("relic");
+      let roll = rng.nextFloat() * total;
+      let picked = branches[branches.length - 1]!;
+      for (const b of branches) {
+        roll -= Math.max(0, b.weight);
+        if (roll < 0) {
+          picked = b;
+          break;
+        }
+      }
+      if (picked.effects.length > 0) enqueueEffects(draft, picked.effects, work.ctx);
+      break;
+    }
     case "gainPollution":
       changePollution(draft, sink, value);
       break;

@@ -8,7 +8,7 @@
  */
 import { splitValues, type ModifierOp, type ValueKind } from "../pipeline";
 import type { BuffInstance } from "../buffs";
-import type { CardDefinition, CardEffect, CardPlayHandler } from "./content";
+import type { CardDefinition, CardEffect, CardPlayHandler, CardPower } from "./content";
 import { evaluateCondition, type ConditionContext } from "./condition";
 import type { BuffId, EnhancementHandlerId, KeywordId } from "./ids";
 
@@ -62,6 +62,14 @@ export interface EnhancementHandler {
     params: Readonly<Record<string, unknown>>,
     ctx: EnhancementContext,
   ) => readonly CardEffect[];
+  /**
+   * 强化给这张牌**注入一个常驻能力**（docs/66 批 3「炉渣镀层 / 余烬引线」）。
+   *
+   * 与 `modifyCard` 的区别：那个改的是「打出那一刻的卡面」，这个是「打出之后挂在本实例上的常驻触发」——
+   * 走与卡牌自身 `power` 完全相同的派发管线（`powersOf` 汇总，谁都不查 id）。
+   * 只收 params（不收 ctx）：能力是**定义**不是**判定**，需要用 ctx 的件请走 modifyCard。
+   */
+  power?: (params: Readonly<Record<string, unknown>>) => CardPower | undefined;
 }
 
 const registry = new Map<EnhancementHandlerId, EnhancementHandler>();
@@ -260,5 +268,69 @@ registerEnhancementHandler({
     const discount = Math.trunc(asNumber(params["discount"], 1));
     if (discount === 0) return undefined;
     return { modifiers: [{ kind: "hpCost", op: "add", value: -discount }] };
+  },
+});
+
+/* ---------------- docs/66 批 3 · 第三幕「锈心锻炉」专属强化 ---------------- */
+
+/**
+ * 幕专属 T1「炉心余温」：该牌伤害 +bonus；若是**蓄力释放牌**则改用 releaseBonus。
+ *
+ * ⚠️ 口径（程序侧 2026-10-08）：判定看 effects 里有没有 `spendCharge`，
+ * **不是**看 `chargeCost`——实测 chargeCost>0 的两张牌（背压阀 / 齿轮传动）都是技能牌、
+ * 不造成伤害，按它判 +4 永远挂在打不出伤害的牌上。
+ */
+registerEnhancementHandler({
+  id: "forgeheart",
+  modifyCard(input, params) {
+    const bonus = Math.trunc(asNumber(params["bonus"], 2));
+    const releaseBonus = Math.trunc(asNumber(params["releaseBonus"], 4));
+    const isRelease = input.effects.some((e) => e.kind === "spendCharge");
+    const value = isRelease ? releaseBonus : bonus;
+    if (value === 0) return undefined;
+    return { modifiers: [{ kind: "attackDamage", op: "add", value }] };
+  },
+});
+
+/**
+ * 幕专属 T1「炉渣镀层」：该牌格挡 +bonus；打出后**本回合首次获得格挡**再 +riderBlock。
+ * rider 用常驻能力表达（`onBlock` + `once: "turn"`）——「本回合第一次加盾」与引擎语义完全同构。
+ */
+registerEnhancementHandler({
+  id: "slagplate",
+  modifyCard(_input, params) {
+    const bonus = Math.trunc(asNumber(params["bonus"], 3));
+    if (bonus === 0) return undefined;
+    return { modifiers: [{ kind: "block", op: "add", value: bonus }] };
+  },
+  power(params) {
+    const rider = Math.trunc(asNumber(params["riderBlock"], 1));
+    if (rider <= 0) return undefined;
+    return {
+      timing: "onBlock",
+      once: "turn",
+      effects: [{ kind: "block", target: { type: "self" }, value: rider }],
+    };
+  },
+});
+
+/**
+ * 幕专属 T1「余烬引线」：该牌费用 +costDelta（负数即减费）；**打出消耗牌时**抽 draw（每回合 1 次）。
+ * 走新登记的 `onExhaust` 时机——与遗物同名钩子同点，强化与遗物共用一条派发。
+ */
+registerEnhancementHandler({
+  id: "emberdraw",
+  modifyCard(_input, params) {
+    const delta = Math.trunc(asNumber(params["costDelta"], -1));
+    if (delta === 0) return undefined;
+    return { modifiers: [{ kind: "cardCost", op: "add", value: delta }] };
+  },
+  power(params) {
+    const draw = Math.max(1, Math.trunc(asNumber(params["drawOnExhaust"], 1)));
+    return {
+      timing: "onExhaust",
+      once: "turn",
+      effects: [{ kind: "draw", value: draw }],
+    };
   },
 });

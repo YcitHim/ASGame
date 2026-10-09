@@ -1,0 +1,24 @@
+{
+  "id": "forge_baptism",
+  "i18n": "event.forge_baptism",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.forge_baptism.opt.a.result",
+      "effects": [
+        {
+          "kind": "maxHp",
+          "value": 8
+        },
+        {
+          "kind": "pollution",
+          "value": 15
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.forge_baptism.opt.b.result"
+    }
+  ]
+}

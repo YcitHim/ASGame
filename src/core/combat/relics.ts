@@ -7,6 +7,7 @@
  * 核心只按时机派发，不改代码即可新增触发内容。
  */
 import type { EventSink } from "../events/event-sink";
+import { getEnhancementHandler } from "../registry/enhancement-handler";
 import type { CardPower, TriggerTiming } from "../registry/content";
 import { evaluateCondition } from "../registry/condition";
 import type { Draft } from "./draft";
@@ -18,13 +19,32 @@ export function resetTurnRelics(draft: Draft): void {
   draft.relicFiresThisTurn = {};
 }
 
-/** 取某个卡牌实例当前生效的能力定义（升级版覆盖基础版）。 */
-export function powerOf(draft: Draft, instanceId: string): CardPower | undefined {
+/**
+ * 取某个卡牌实例当前生效的**全部**能力定义：
+ * 卡牌自身（升级版覆盖基础版）+ **强化注入的常驻能力**（docs/66 批 3「炉渣镀层 / 余烬引线」）。
+ *
+ * 强化能力也走这条汇总，而不是另造一套派发——引擎问能力、不查 id（docs/58 铁律 6 同款护栏）。
+ */
+export function powersOf(draft: Draft, instanceId: string): readonly CardPower[] {
   const instance = draft.cardInstances[instanceId];
-  if (!instance) return undefined;
+  if (!instance) return [];
   const def = draft.content.cards.get(instance.cardId);
-  if (!def) return undefined;
-  return instance.upgraded ? (def.upgraded?.power ?? def.power) : def.power;
+  if (!def) return [];
+  const out: CardPower[] = [];
+  const base = instance.upgraded ? (def.upgraded?.power ?? def.power) : def.power;
+  if (base) out.push(base);
+  for (const enhancementId of instance.enhancements) {
+    const enhancement = draft.content.enhancements.get(enhancementId);
+    if (!enhancement) continue;
+    const power = getEnhancementHandler(enhancement.handler).power?.(enhancement.params);
+    if (power) out.push(power);
+  }
+  return out;
+}
+
+/** @deprecated 用 powersOf；保留别名以免旧调用断裂。 */
+export function powerOf(draft: Draft, instanceId: string): CardPower | undefined {
+  return powersOf(draft, instanceId)[0];
 }
 
 /**
@@ -75,24 +95,28 @@ export function resolveTriggers(
   }
 
   for (const instanceId of draft.player.powers) {
-    const power = powerOf(draft, instanceId);
-    if (!power || power.timing !== timing) continue;
-    const key = `power:${instanceId}`;
-    if (power.once === "battle" && draft.player.triggeredThisBattle.includes(key)) continue;
-    if (power.once === "turn" && draft.player.triggeredThisTurn.includes(key)) continue;
-    // 与遗物同口径：条件全不满足不消耗 once
-    if (power.once && !mayProduceEffect(draft, power.effects)) continue;
+    // 一张牌可能同时挂「自身能力」与「强化注入的能力」（docs/66 批 3），逐个派发；
+    // 触发册 key 按序号区分——第 0 个沿用旧 key，既有回放 / 单测不漂移。
+    const powers = powersOf(draft, instanceId);
+    for (const [index, power] of powers.entries()) {
+      if (power.timing !== timing) continue;
+      const key = index === 0 ? `power:${instanceId}` : `power:${instanceId}:${index}`;
+      if (power.once === "battle" && draft.player.triggeredThisBattle.includes(key)) continue;
+      if (power.once === "turn" && draft.player.triggeredThisTurn.includes(key)) continue;
+      // 与遗物同口径：条件全不满足不消耗 once
+      if (power.once && !mayProduceEffect(draft, power.effects)) continue;
 
-    run(draft, sink, power.effects, {
-      sourceId: instanceId,
-      actorId: "player",
-      chosenTargetId: opts.targetId ?? null,
-      fromTrigger: true,
-      triggerTiming: timing,
-    });
+      run(draft, sink, power.effects, {
+        sourceId: instanceId,
+        actorId: "player",
+        chosenTargetId: opts.targetId ?? null,
+        fromTrigger: true,
+        triggerTiming: timing,
+      });
 
-    if (power.once === "battle") draft.player.triggeredThisBattle.push(key);
-    if (power.once === "turn") draft.player.triggeredThisTurn.push(key);
+      if (power.once === "battle") draft.player.triggeredThisBattle.push(key);
+      if (power.once === "turn") draft.player.triggeredThisTurn.push(key);
+    }
   }
 }
 

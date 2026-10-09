@@ -30,7 +30,7 @@ import {
   type RunDifficulty,
   type RunState,
 } from "../../../src/core/map";
-import type { ActDefinition, ContentDb } from "../../../src/core/registry";
+import type { ActDefinition, ActRule, ContentDb } from "../../../src/core/registry";
 import { cardValue, choosePlay, chooseTarget } from "./ai";
 
 export interface SimCard {
@@ -84,6 +84,10 @@ export interface BattleRunConfig {
   difficulty?: RunDifficulty;
   /** 职业特性（docs/58 §二）；缺省空串 = 无特性（现版基线） */
   traitId?: string;
+  /** 幕规则（docs/66 §3.1）；缺省空数组 = 无幕规则（老场景/教学） */
+  actRules?: readonly ActRule[];
+  /** 幕内敌人属性倍率（docs/66 §4.1）；缺省 undefined = 无倍率 */
+  enemyStatMult?: { readonly hp: number; readonly damage: number };
 }
 
 export interface BattleRunOutcome {
@@ -260,6 +264,8 @@ export function runBattle(content: ContentDb, config: BattleRunConfig): BattleRu
     content,
     difficulty: config.difficulty ?? "normal",
     traitId: config.traitId ?? "",
+    actRules: config.actRules ?? [],
+    ...(config.enemyStatMult ? { enemyStatMult: config.enemyStatMult } : {}),
   });
   state = reduce(state, { type: "Noop", actionId: "s" }).state;
 
@@ -422,6 +428,9 @@ export function simulateRun(
         relics,
         difficulty: run.difficulty,
         traitId: run.traitId,
+        actRules: act.rules ?? [],
+        // 幕内敌人属性倍率（docs/66 §4.1）：哨兵必须与实机同源，否则三幕加压测不到
+        ...(node.statMult ?? act.statMult ? { enemyStatMult: node.statMult ?? act.statMult } : {}),
       });
 
       turns += battle.turns;

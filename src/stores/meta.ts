@@ -31,6 +31,11 @@ export const ACHIEVEMENT_IDS = [
   "guide",
   /** 进阶教学徽章（docs/43 Q6）：三职业第一班岗全部走完 */
   "three_watch",
+  /**
+   * 真结局（docs/65 §5.2 / docs/66 §4.4）：打完**最后一幕**（当前 = 第三幕炉前督军）。
+   * 判定不写死「第三幕」——只看「通关时后面还有没有幕」，以后加第四幕不会失效。
+   */
+  "true_ending",
 ] as const;
 
 /** 教学覆盖的三个职业（docs/43 Q6「三朝守夜」的判定口径）。 */
@@ -166,6 +171,11 @@ interface MetaState {
   tutorialDone: string[];
   /** 教学：未走完的进度（断点续做；走完或跳过即清空） */
   tutorial: TutorialProgress | null;
+  /**
+   * 真结局是否已达成（docs/65 §5.3 / docs/66 §五）：只做**解锁钩子**，
+   * 无尽回廊本体单独立项；旧档缺这个字段一律按 false 读。
+   */
+  finaleUnlocked?: boolean;
 }
 
 /** 一次远征的成就输入（由 run store 汇总）。 */
@@ -197,6 +207,8 @@ export interface RunAchievements {
   readonly traitId?: string;
   /** 是否胜利（只有胜利才记成就与纪录） */
   readonly won?: boolean;
+  /** 是否是**打完最后一幕**的通关（真结局，docs/66 §4.4） */
+  readonly finale?: boolean;
 }
 
 export const useMetaStore = defineStore("meta", {
@@ -212,6 +224,8 @@ export const useMetaStore = defineStore("meta", {
     tutorialOffered: [] as string[],
     /** 教学：走完「第一班岗」的职业（解锁「引路人」徽章） */
     tutorialDone: [] as string[],
+    /** 真结局解锁钩子（docs/66 §五）：真结局后置位，无尽回廊本体单独立项 */
+    finaleUnlocked: false,
     /** 教学：没走完的那一次（docs/43 Q2） */
     tutorial: null as TutorialProgress | null,
     /** 最近一次通关新解锁的内容 id（结算页弹提示用） */
@@ -277,6 +291,8 @@ export const useMetaStore = defineStore("meta", {
         this.tutorialOffered = Array.isArray(saved.tutorialOffered) ? saved.tutorialOffered : [];
         this.tutorialDone = Array.isArray(saved.tutorialDone) ? saved.tutorialDone : [];
         this.tutorial = saved.tutorial ?? null;
+        // 真结局钩子：旧档没这个字段 → false（不回溯，符合 docs/40 §2.1 的 legacy 口径）
+        this.finaleUnlocked = saved.finaleUnlocked === true;
       }
       this.loaded = true;
     },
@@ -291,6 +307,7 @@ export const useMetaStore = defineStore("meta", {
         tutorialOffered: [...this.tutorialOffered],
         tutorialDone: [...this.tutorialDone],
         tutorial: this.tutorial ? { ...this.tutorial, deck: [...this.tutorial.deck], cleared: [...this.tutorial.cleared] } : null,
+        finaleUnlocked: this.finaleUnlocked,
       } satisfies MetaState);
     },
     unlock(ids: readonly string[]): string[] {
@@ -455,6 +472,12 @@ export const useMetaStore = defineStore("meta", {
         if ((ach.backlashTaken ?? 0) >= 3) achieved.push("backlash3_win");
         if (ach.difficulty === "rust") achieved.push("rust_clear");
         if (ach.codexComplete) achieved.push("codex_all");
+        // 真结局：打完最后一幕（判定不吃幕数写死，见 ACHIEVEMENT_IDS）
+        if (ach.finale) {
+          achieved.push("true_ending");
+          // 解锁钩子（docs/66 §五）：无尽回廊本体单独立项，v1.2 只留这一位
+          this.finaleUnlocked = true;
+        }
         this.lastAchievements = this.achieve(achieved);
         if (ach.turns !== undefined && ach.hpLeft !== undefined) {
           this.updateRecord(ach.classId, ach.turns, ach.hpLeft, ach.difficulty, ach.date, ach.traitId ?? "");

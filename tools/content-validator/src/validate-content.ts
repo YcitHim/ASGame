@@ -621,6 +621,21 @@ export function validateContent(input: ContentInput): ValidationResult {
           message: "l1 与倒数第二层不出精英（docs/48 §3.2）",
         });
       }
+      // 骨架层（docs/66 §3.2）：只能标在中段层；pin=elite 必须自带精英池，否则精英节点没有敌人
+      if (layer.pin !== undefined && edgeLayer) {
+        issues.push({
+          file: `act ${act.id}`,
+          path: `layers.${layer.id}`,
+          message: "骨架层 pin 只能标在中段层（l1~l7）",
+        });
+      }
+      if (layer.pin === "elite" && (layer.elitePool ?? []).length === 0) {
+        issues.push({
+          file: `act ${act.id}`,
+          path: `layers.${layer.id}`,
+          message: "骨架层 pin=elite 必须自带非空 elitePool（docs/66 §3.2）",
+        });
+      }
     });
     if (!(act.i18n in input.i18n)) {
       issues.push({ file: `act ${act.id}`, path: "i18n", message: `文案缺失：zh-CN 无 "${act.i18n}"` });

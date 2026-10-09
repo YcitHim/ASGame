@@ -10,9 +10,14 @@
     "battle": 50,
     "elite": 0,
     "rest": 0,
-    "altar": 25,
-    "event": 25
+    "altar": 20,
+    "event": 30
   },
+  "rules": [
+    {
+      "id": "mourning"
+    }
+  ],
   "nodeI18n": {
     "battle": "node.act2.battle",
     "elite": "node.act2.elite",
@@ -99,15 +104,15 @@
         },
         {
           "enemies": [
-            "white_slag",
-            "drowned_crawler"
+            "glazed_husk",
+            "caisson_pile"
           ],
           "weight": 2
         },
         {
           "enemies": [
             "moss_servant",
-            "drowned_crawler"
+            "barnacle_host"
           ],
           "weight": 2
         }
@@ -140,43 +145,43 @@
       "encounters": [
         {
           "enemies": [
-            "tide_swarm",
-            "bell_warden"
+            "glazed_husk",
+            "caisson_pile"
           ],
           "weight": 4
         },
         {
           "enemies": [
-            "bell_warden",
-            "choir_echo"
-          ],
-          "weight": 3
-        },
-        {
-          "enemies": [
-            "rust_pilgrim",
-            "drowned_crawler"
-          ],
-          "weight": 3
-        },
-        {
-          "enemies": [
-            "barnacle_host",
-            "choir_echo"
-          ],
-          "weight": 3
-        },
-        {
-          "enemies": [
             "moss_servant",
-            "choir_echo"
+            "barnacle_host"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "choir_echo",
+            "bell_warden"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "white_slag",
+            "deep_diver"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "white_slag",
+            "white_slag"
           ],
           "weight": 2
         },
         {
           "enemies": [
-            "white_slag",
-            "bell_warden"
+            "rust_pilgrim",
+            "choir_echo"
           ],
           "weight": 2
         }
@@ -190,10 +195,55 @@
         "altar",
         "event"
       ],
+      "pin": "elite",
       "elitePool": [
         "sanctum_jailer",
         "tidecaller",
         "mirror_judge"
+      ],
+      "encounters": [
+        {
+          "enemies": [
+            "glazed_husk",
+            "caisson_pile"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "moss_servant",
+            "barnacle_host"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "choir_echo",
+            "bell_warden"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "white_slag",
+            "deep_diver"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "white_slag",
+            "white_slag"
+          ],
+          "weight": 2
+        },
+        {
+          "enemies": [
+            "sanctum_jailer",
+            "choir_echo"
+          ],
+          "weight": 2
+        }
       ]
     },
     {
@@ -204,10 +254,55 @@
         "altar",
         "event"
       ],
+      "pin": "rest",
       "elitePool": [
         "sanctum_jailer",
         "tidecaller",
         "mirror_judge"
+      ],
+      "encounters": [
+        {
+          "enemies": [
+            "glazed_husk",
+            "caisson_pile"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "moss_servant",
+            "barnacle_host"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "white_slag",
+            "deep_diver"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "tide_swarm",
+            "bell_warden"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "white_slag",
+            "moss_servant"
+          ],
+          "weight": 2
+        },
+        {
+          "enemies": [
+            "silent_matron",
+            "deep_diver"
+          ],
+          "weight": 2
+        }
       ]
     },
     {
@@ -226,15 +321,15 @@
       "encounters": [
         {
           "enemies": [
-            "bell_warden",
-            "rust_pilgrim"
+            "moss_servant",
+            "barnacle_host"
           ],
           "weight": 4
         },
         {
           "enemies": [
-            "deep_diver",
-            "tide_swarm"
+            "bell_warden",
+            "rust_pilgrim"
           ],
           "weight": 3
         },
@@ -248,22 +343,15 @@
         },
         {
           "enemies": [
-            "silent_matron",
-            "deep_diver"
-          ],
-          "weight": 3
-        },
-        {
-          "enemies": [
-            "barnacle_host",
-            "choir_echo"
+            "choir_echo",
+            "bell_warden"
           ],
           "weight": 3
         },
         {
           "enemies": [
             "white_slag",
-            "moss_servant"
+            "white_slag"
           ],
           "weight": 2
         },
@@ -295,10 +383,55 @@
         "altar",
         "event"
       ],
+      "pin": "elite",
       "elitePool": [
         "sanctum_jailer",
         "tidecaller",
         "mirror_judge"
+      ],
+      "encounters": [
+        {
+          "enemies": [
+            "glazed_husk",
+            "caisson_pile"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "moss_servant",
+            "barnacle_host"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "white_slag",
+            "deep_diver"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "white_slag",
+            "white_slag"
+          ],
+          "weight": 2
+        },
+        {
+          "enemies": [
+            "bell_warden",
+            "choir_echo"
+          ],
+          "weight": 2
+        },
+        {
+          "enemies": [
+            "rust_pilgrim",
+            "choir_echo"
+          ],
+          "weight": 2
+        }
       ]
     },
     {

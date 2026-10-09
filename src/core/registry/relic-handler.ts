@@ -66,6 +66,11 @@ export interface RelicHandler {
   onKill?: (params: Readonly<Record<string, unknown>>, ctx: RelicHandlerContext) => readonly CardEffect[];
   /** 每当你打出消耗牌（进消耗堆）时触发；回合末手牌被消耗不算「打出」 */
   onExhaust?: (params: Readonly<Record<string, unknown>>, ctx: RelicHandlerContext) => readonly CardEffect[];
+  /**
+   * 每场战斗**第一次真的掉 HP** 时触发（淬火怀表，docs/64 §九.4 备选池）。
+   * 被格挡挡下的攻击不算；每场一次的保证由数据里的 `once: "battle"` 给出（框架统一记账）。
+   */
+  onDamaged?: (params: Readonly<Record<string, unknown>>, ctx: RelicHandlerContext) => readonly CardEffect[];
   /** 你的攻击每次命中时触发（酸洗线圈；多段攻击每段独立，与强化 onHit 同构） */
   onHit?: (params: Readonly<Record<string, unknown>>, ctx: RelicHandlerContext) => readonly CardEffect[];
   /** 每当你打出一张牌时触发（商人算盘「每花费 N 能量回 M」；派发在出牌计数自增之后） */
@@ -163,6 +168,19 @@ registerRelicHandler({
     const draw = Math.max(0, Math.trunc(num(params, "draw", 1)));
     if (draw <= 0) return [];
     return [{ kind: "draw", value: draw }];
+  },
+});
+
+/**
+ * 淬火怀表（docs/64 §九.4 备选池 · 降级版）：每场战斗第一次真的掉 HP 时获得 N 层力量。
+ * 「不减伤、只给力量」是 docs/62 §八.5 定的降级口径——改伤害管线牵扯面大、且是数值缓冲不是戏剧件。
+ */
+registerRelicHandler({
+  id: "first_hit_strength",
+  onDamaged(params) {
+    const stacks = Math.max(0, Math.trunc(num(params, "stacks", 2)));
+    if (stacks <= 0) return [];
+    return [{ kind: "applyBuff", target: { type: "self" }, buff: "strength", stacks }];
   },
 });
 

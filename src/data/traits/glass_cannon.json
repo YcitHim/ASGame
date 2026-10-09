@@ -6,11 +6,13 @@
   "params": {
     "overloadDisabled": true,
     "overloadPerStep": 5,
-    "overloadTickPerStack": 2,
+    "overloadTickPerStack": 1,
     "overloadDamageTakenPerStack": 1,
     "firstAttackCharge": true,
     "spreadOverloadOnBurst": true,
     "lowChargeBelow": 10,
-    "lowChargeEnergy": 1
+    "lowChargeEnergy": 1,
+    "burstPerStack": 5,
+    "burstHealPerStack": 5
   }
 }

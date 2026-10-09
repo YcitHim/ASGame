@@ -179,6 +179,19 @@ const battles = [
     relics: ["dentedcoil", "pressuregauge", "rust_charm"],
     seed: 20261006,
   }),
+  // 第三幕：锈心锻炉（docs/66 §四）回归盘——幕规则「锻炉高温」+ statMult + 混合遭遇。
+  // fromTurn 取 3：短盘也要把幕规则真的跑到（默认第 5 回合起，一盘常常打不到第 5 回合）。
+  recordBattle({
+    content,
+    id: "golden-act3",
+    nodeId: "l4",
+    enemies: ["white_slag", "caisson_pile"],
+    deck: act2Deck,
+    relics: ["dentedcoil", "pressuregauge", "rust_charm"],
+    seed: 20261009,
+    actRules: [{ id: "forgeHeat", params: { fromTurn: 3 } }],
+    enemyStatMult: { hp: 1.15, damage: 1.1 },
+  }),
   // 职业特性（docs/58）回归盘：每个特性一张，走真实回合循环把特性钩子跑全
   recordBattle({
     content,

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { NODE_KINDS } from "../../../src/core/registry/content";
+import { ACT_RULE_IDS, NODE_KINDS } from "../../../src/core/registry/content";
 import { VALUE_KINDS } from "../../../src/core/pipeline";
 import {
   BUFF_IDS,
@@ -33,6 +33,15 @@ const conditionSchema: z.ZodType<ConditionNode> = z.lazy(() =>
     z.object({ type: z.enum(CONDITION_IDS) }).loose(),
   ]),
 );
+
+/** 概率分支（docs/64 §九.4 备选池「赌徒齿轮」）：weight 即相对概率。effects 用 lazy 自引用。 */
+// 显式标注类型：effectSchema ⟷ chanceBranchSchema 互为引用，靠这行打断 TS 的推断环。
+const chanceBranchSchema: z.ZodType<{ weight: number; effects: readonly unknown[] }> = z
+  .object({
+    weight: z.number().min(0),
+    effects: z.array(z.lazy((): z.ZodTypeAny => effectSchema)).min(1),
+  })
+  .strict();
 
 const effectSchema = z.discriminatedUnion("kind", [
   z
@@ -203,6 +212,14 @@ const effectSchema = z.discriminatedUnion("kind", [
       condition: conditionSchema.optional(),
     })
     .strict(),
+  z
+    .object({
+      /** 概率分支（docs/64 §九.4 备选池「赌徒齿轮」）：按 weight 掷一次，结算命中分支 */
+      kind: z.literal("chance"),
+      options: z.array(chanceBranchSchema).min(1),
+      condition: conditionSchema.optional(),
+    })
+    .strict(),
 ]);
 
 const playSchema = z
@@ -215,7 +232,7 @@ const playSchema = z
 /** 卡牌常驻能力（docs/29 §一②）：与遗物同构的 { timing, effects, once }。 */
 const powerSchema = z
   .object({
-    timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell", "onBlock", "onGainCharge", "onPollutionMax"]),
+    timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell", "onBlock", "onGainCharge", "onPollutionMax", "onExhaust"]),
     effects: z.array(effectSchema).min(1),
     once: z.enum(["battle", "turn"]).optional(),
   })
@@ -299,6 +316,8 @@ const eventEffectSchema = z
     rarity: z.enum(CARD_RARITIES).optional(),
     pool: z.array(z.string().regex(ID_PATTERN)).min(1).optional(),
     count: z.number().int().min(1).optional(),
+    /** gainRelic / loseRelic 的遗物分级收窄（docs/66 批 3） */
+    tier: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional(),
   })
   .strict();
 
@@ -448,6 +467,9 @@ export const mapNodeSchema = z
   })
   .strict();
 
+/** 幕内敌人属性倍率（docs/65 §二 / docs/66 §4.1）：正数，缺省不写 = ×1。 */
+const statMultSchema = z.object({ hp: z.number().positive(), damage: z.number().positive() }).strict();
+
 /** 分支地图层模板（docs/16 5.4）：width=1 必经/汇合，width≥2 分支候选。 */
 const mapLayerSpecSchema = z
   .object({
@@ -462,6 +484,10 @@ const mapLayerSpecSchema = z
       .optional(),
     events: z.array(z.string().regex(ID_PATTERN)).min(1).optional(),
     enemies: z.array(z.string().regex(ID_PATTERN)).min(1).optional(),
+    /** 骨架层（docs/66 §3.2 门禁兼容实装）：该层必现一个指定稀有节点 */
+    pin: z.enum(["elite", "rest"]).optional(),
+    /** 本层敌人属性倍率（docs/66 §4.1：三幕 l7 满档） */
+    statMult: statMultSchema.optional(),
     i18n: z.string().optional(),
   })
   .strict();
@@ -476,6 +502,19 @@ export const actSchema = z
     weights: z.record(z.string(), z.number().min(0)),
     /** 本幕节点文案（按 kind，docs/40 §三补） */
     nodeI18n: z.record(z.string(), z.string()).optional(),
+    /** 幕级战斗规则（docs/66）：id 走白名单，params 为数值表 */
+    rules: z
+      .array(
+        z
+          .object({
+            id: z.enum(ACT_RULE_IDS),
+            params: z.record(z.string(), z.number()).optional(),
+          })
+          .strict(),
+      )
+      .optional(),
+    /** 本幕敌人属性倍率兜底（docs/66 §4.1）：第三幕 ×1.15/×1.1 */
+    statMult: statMultSchema.optional(),
     /** 分支地图层模板（至少：入口 + 精英 + Boss） */
     layers: z.array(mapLayerSpecSchema).min(3),
   })
@@ -514,7 +553,7 @@ export const relicSchema = z
   .object({
     id: idSchema,
     i18n: z.string(),
-    timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell", "onBlock", "onGainCharge", "onPollutionMax", "onBattleWin"]),
+    timing: z.enum(["onBattleStart", "onTurnStart", "onTurnEnd", "onPlay", "onHit", "onSell", "onBlock", "onGainCharge", "onPollutionMax", "onExhaust", "onBattleWin"]),
     /** 数据驱动效果；规则件（docs/64 §三）可以只挂 handler 而没有 effects */
     effects: z.array(effectSchema).min(1).optional(),
     once: z.enum(["battle", "turn"]).optional(),

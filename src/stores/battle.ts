@@ -270,6 +270,10 @@ export const useBattleStore = defineStore("battle", {
         difficulty: run.run?.difficulty ?? "normal",
         // 职业特性（docs/58 §二）：开局绑定本局，战斗内走注册表能力问询
         traitId: run.run?.traitId ?? "",
+        // 幕级规则（docs/66）：本幕所有战斗生效的额外规则层（act1 无 = 空）
+        actRules: act.rules ?? [],
+        // 幕内敌人属性倍率（docs/66 §4.1）：层模板优先，缺省用幕的兜底档（前两幕为 undefined）
+        ...(node.statMult ?? act.statMult ? { enemyStatMult: node.statMult ?? act.statMult } : {}),
       });
       // 图鉴「见过即解锁」：本场用到的卡 / 遗物 / 敌人都点亮（docs/16 4.7）
       const codex = useCodexStore();

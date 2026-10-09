@@ -299,6 +299,31 @@ const floatersFor = computed(() => {
  * 战斗动画三档（docs/41 §3.1）：full 全开 / simple 仅飘字 / off 全关。
  * 飘字是信息层（"挨打看得见"），simple 必须保留；位移与光效是装饰层，simple 关掉。
  */
+/**
+ * 幕规则提示条（docs/67 §一 ⑧）：规则再好玩，玩家看不见就等于没有。
+ * 只显示当前幕的**第一条**规则（当下每幕最多一条）；锻炉高温额外报「还差几回合生效」——
+ * 软计时器必须让玩家数得出来。
+ */
+const actRule = computed(() => (store.battle?.actRules ?? [])[0] ?? null);
+const actRuleName = computed(() => (actRule.value ? t(`actRule.${actRule.value.id}.name`, actRule.value.id) : ""));
+const actRuleActive = computed(() => {
+  const r = actRule.value;
+  if (!r || r.id !== "forgeHeat") return true;
+  const from = r.params?.["fromTurn"] ?? 5;
+  return (store.battle?.turn ?? 0) >= from;
+});
+const actRuleNote = computed(() => {
+  const r = actRule.value;
+  if (!r) return "";
+  if (r.id === "forgeHeat") {
+    const from = r.params?.["fromTurn"] ?? 5;
+    return (store.battle?.turn ?? 0) >= from
+      ? t("actRule.forgeHeat.active", "已生效")
+      : t("actRule.forgeHeat.pending", "第 {n} 回合起").replace("{n}", String(from));
+  }
+  return t(`actRule.${r.id}.desc`, "");
+});
+
 const showTutHint = computed(() => tutorial.active && tutorial.step !== undefined);
 const battleAnim = computed(() => settings.values.battleAnim);
 const showFloaters = computed(() => battleAnim.value !== "off");
@@ -654,6 +679,11 @@ function quitToTitleKeepRun(): void {
 <template>
   <div class="viewport">
     <div ref="stage" class="stage battle-stage" :class="{ shaking, 'tut-on': showTutHint }">
+      <!-- 幕规则提示条（docs/67 §一 ⑧） -->
+      <div v-if="actRule" class="act-rule" :class="{ active: actRuleActive }">
+        <b>{{ actRuleName }}</b>
+        <span>{{ actRuleNote }}</span>
+      </div>
       <!-- 顶栏 -->
       <div class="topbar" :class="{ 'with-tut-hint': showTutHint }">
         <span v-if="tutorial.active">{{ TUTORIAL_TITLE }} · {{ tutorial.chapter?.title ?? "" }}</span>
@@ -1068,6 +1098,37 @@ function quitToTitleKeepRun(): void {
   background: linear-gradient(180deg, rgba(10, 8, 6, 0.9), transparent);
   border-bottom: 1px solid rgba(110, 88, 54, 0.25);
 }
+/* 幕规则提示条（docs/67 §一 ⑧）：挂在顶栏下方居中，未生效时压暗、生效时亮起来 */
+.act-rule {
+  position: absolute;
+  top: 34px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 14px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--ink-dim);
+  border: 1px solid rgba(110, 88, 54, 0.28);
+  border-bottom-left-radius: var(--radius-sm);
+  border-bottom-right-radius: var(--radius-sm);
+  background: rgba(14, 12, 10, 0.62);
+  pointer-events: none;
+}
+.act-rule b {
+  font-weight: 400;
+  color: var(--gold-dim);
+  letter-spacing: 0.2em;
+}
+.act-rule.active {
+  color: var(--blood-hi);
+  border-color: rgba(138, 43, 31, 0.45);
+}
+.act-rule.active b { color: var(--blood-hi); }
+
 .topbar .r { display: flex; gap: 16px; }
 .topbar .r span { cursor: pointer; }
 .topbar .r span:hover { color: var(--gold); }

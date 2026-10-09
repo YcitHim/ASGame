@@ -1,0 +1,28 @@
+{
+  "id": "slag_merchant",
+  "i18n": "event.slag_merchant",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.slag_merchant.opt.a.result",
+      "effects": [
+        {
+          "kind": "loseRelic",
+          "tier": 1
+        },
+        {
+          "kind": "gainRelic",
+          "tier": 2
+        }
+      ],
+      "condition": {
+        "kind": "loseableRelicAtLeast",
+        "value": 1
+      }
+    },
+    {
+      "id": "b",
+      "i18n": "event.slag_merchant.opt.b.result"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "id": "cinder_offering",
+  "i18n": "event.cinder_offering",
+  "options": [
+    {
+      "id": "a",
+      "i18n": "event.cinder_offering.opt.a.result",
+      "effects": [
+        {
+          "kind": "removeCard"
+        },
+        {
+          "kind": "hpPercent",
+          "value": 8
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.cinder_offering.opt.b.result"
+    }
+  ]
+}

@@ -125,6 +125,10 @@ export const ENHANCEMENT_HANDLER_IDS = [
   "abyssal_hush",
   "sunk_cost",
   "choir_reverb",
+  /** docs/66 批 3 第三幕专属强化（锈心锻炉） */
+  "forgeheart",
+  "slagplate",
+  "emberdraw",
 ] as const;
 
 export const CARD_TYPES = ["attack", "skill", "power", "curse", "status"] as const;
@@ -156,6 +160,8 @@ export const RELIC_HANDLER_IDS = [
   "pollution_overflow_relief",
   "battle_win_growth",
   "relic_gain_heal",
+  /** docs/64 §九.4 备选池：淬火怀表（每场首次掉 HP 给力量） */
+  "first_hit_strength",
 ] as const;
 /**
  * 卡牌归属池（docs/56 §二）：三职业 + 中立。

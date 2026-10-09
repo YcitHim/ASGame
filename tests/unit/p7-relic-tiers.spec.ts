@@ -42,12 +42,13 @@ function battle(relicIds: readonly string[], opts: { pollution?: number; enemies
 
 describe("1.0-A 遗物分级与掉落池", () => {
   it("T1/T2/T3 池规模与身份件隔离", () => {
-    // docs/64 重置 + 甲方 2026-10-08 补装：T1 10 件 / T2 13 件 / T3 9 件（含 2 件解锁件）
+    // docs/64 重置 + 甲方 2026-10-08 补装 + docs/65 §6.3 备选两件入池：
+    // T1 10 件 / T2 14 件 / T3 10 件（含 2 件解锁件）
     expect(relicPool(game.content, 1)).toHaveLength(10);
-    expect(relicPool(game.content, 2)).toHaveLength(13);
-    // T3 共 9 件，其中 2 件带解锁条件（双重钟摆 / 朝圣者之铃），未解锁时不入池
-    expect(relicPool(game.content, 3)).toHaveLength(7);
-    expect(relicPool(game.content, 3, ["double_pendulum", "pilgrim_bell"])).toHaveLength(9);
+    expect(relicPool(game.content, 2)).toHaveLength(14);
+    // T3 共 10 件，其中 2 件带解锁条件（双重钟摆 / 朝圣者之铃），未解锁时不入池
+    expect(relicPool(game.content, 3)).toHaveLength(8);
+    expect(relicPool(game.content, 3, ["double_pendulum", "pilgrim_bell"])).toHaveLength(10);
     const all = [...relicPool(game.content, 1), ...relicPool(game.content, 2), ...relicPool(game.content, 3)];
     expect(all).not.toContain("broken_oil");
     expect(all).not.toContain("dentedcoil");

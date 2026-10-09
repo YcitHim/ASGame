@@ -1,0 +1,346 @@
+{
+  "id": "act3",
+  "i18n": "act.rustheart_forge",
+  "classes": [
+    "bloodwright",
+    "engineer",
+    "rustspeaker"
+  ],
+  "weights": {
+    "battle": 50,
+    "elite": 0,
+    "rest": 0,
+    "altar": 25,
+    "event": 10
+  },
+  "rules": [
+    {
+      "id": "forgeHeat"
+    }
+  ],
+  "nodeI18n": {
+    "battle": "node.act3.battle",
+    "elite": "node.act3.elite",
+    "rest": "node.act3.rest",
+    "altar": "node.act3.altar",
+    "event": "node.act3.event",
+    "boss": "node.act3.boss",
+    "reward": "node.act3.reward"
+  },
+  "layers": [
+    {
+      "id": "l0",
+      "width": 1,
+      "kinds": [
+        "battle"
+      ],
+      "encounters": [
+        {
+          "enemies": [
+            "white_slag",
+            "caisson_pile",
+            "blister_belly"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "rust_hound",
+            "rust_hound",
+            "corroded_swarm"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "drowned_crawler",
+            "deep_diver",
+            "moss_servant"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "glazed_husk",
+            "choir_echo",
+            "barnacle_host"
+          ],
+          "weight": 3
+        }
+      ],
+      "statMult": {
+        "hp": 1.15,
+        "damage": 1.1
+      }
+    },
+    {
+      "id": "l1",
+      "width": 3,
+      "kinds": [
+        "battle",
+        "altar",
+        "event"
+      ],
+      "events": [
+        "forge_baptism",
+        "slag_merchant",
+        "heart_whisper",
+        "quench_trial",
+        "ash_oracle",
+        "cinder_offering"
+      ],
+      "encounters": [
+        {
+          "enemies": [
+            "white_slag",
+            "caisson_pile",
+            "blister_belly"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "rust_hound",
+            "rust_hound",
+            "corroded_swarm"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "drowned_crawler",
+            "deep_diver",
+            "moss_servant"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "glazed_husk",
+            "choir_echo",
+            "barnacle_host"
+          ],
+          "weight": 3
+        }
+      ],
+      "statMult": {
+        "hp": 1.15,
+        "damage": 1.1
+      }
+    },
+    {
+      "id": "l2",
+      "width": 3,
+      "kinds": [
+        "battle",
+        "altar",
+        "event"
+      ],
+      "encounters": [
+        {
+          "enemies": [
+            "white_slag",
+            "caisson_pile",
+            "blister_belly"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "rust_hound",
+            "rust_hound",
+            "corroded_swarm"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "drowned_crawler",
+            "deep_diver",
+            "moss_servant"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "glazed_husk",
+            "choir_echo",
+            "barnacle_host"
+          ],
+          "weight": 3
+        }
+      ],
+      "statMult": {
+        "hp": 1.15,
+        "damage": 1.1
+      }
+    },
+    {
+      "id": "l3",
+      "width": 3,
+      "kinds": [
+        "battle",
+        "altar",
+        "event"
+      ],
+      "elitePool": [
+        "rust_warden",
+        "rust_bell_penitent",
+        "chain_flailer",
+        "forge_colossus",
+        "sanctum_jailer",
+        "tidecaller",
+        "mirror_judge"
+      ],
+      "pin": "elite"
+    },
+    {
+      "id": "l4",
+      "width": 3,
+      "kinds": [
+        "battle",
+        "altar",
+        "event"
+      ],
+      "encounters": [
+        {
+          "enemies": [
+            "white_slag",
+            "caisson_pile",
+            "blister_belly"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "rust_hound",
+            "rust_hound",
+            "corroded_swarm"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "drowned_crawler",
+            "deep_diver",
+            "moss_servant"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "glazed_husk",
+            "choir_echo",
+            "barnacle_host"
+          ],
+          "weight": 3
+        }
+      ],
+      "statMult": {
+        "hp": 1.15,
+        "damage": 1.1
+      }
+    },
+    {
+      "id": "l5",
+      "width": 3,
+      "kinds": [
+        "battle",
+        "altar",
+        "event"
+      ],
+      "events": [
+        "forge_baptism",
+        "slag_merchant",
+        "heart_whisper",
+        "quench_trial",
+        "ash_oracle",
+        "cinder_offering"
+      ],
+      "pin": "rest"
+    },
+    {
+      "id": "l6",
+      "width": 3,
+      "kinds": [
+        "battle",
+        "altar",
+        "event"
+      ],
+      "elitePool": [
+        "rust_warden",
+        "rust_bell_penitent",
+        "chain_flailer",
+        "forge_colossus",
+        "sanctum_jailer",
+        "tidecaller",
+        "mirror_judge"
+      ],
+      "pin": "elite"
+    },
+    {
+      "id": "l7",
+      "width": 3,
+      "kinds": [
+        "battle",
+        "altar",
+        "event"
+      ],
+      "encounters": [
+        {
+          "enemies": [
+            "white_slag",
+            "caisson_pile",
+            "blister_belly"
+          ],
+          "weight": 4
+        },
+        {
+          "enemies": [
+            "rust_hound",
+            "rust_hound",
+            "corroded_swarm"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "drowned_crawler",
+            "deep_diver",
+            "moss_servant"
+          ],
+          "weight": 3
+        },
+        {
+          "enemies": [
+            "glazed_husk",
+            "choir_echo",
+            "barnacle_host"
+          ],
+          "weight": 3
+        }
+      ],
+      "statMult": {
+        "hp": 1.2,
+        "damage": 1.15
+      }
+    },
+    {
+      "id": "l8",
+      "width": 1,
+      "kinds": [
+        "altar"
+      ]
+    },
+    {
+      "id": "l9",
+      "width": 1,
+      "kinds": [
+        "boss"
+      ],
+      "enemies": [
+        "forge_marshal"
+      ]
+    }
+  ]
+}

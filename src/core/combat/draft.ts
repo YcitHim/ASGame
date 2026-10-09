@@ -7,7 +7,7 @@
 import { Rng } from "../rng";
 import { EffectQueue } from "../pipeline";
 import type { BuffInstance } from "../buffs";
-import type { ContentDb } from "../registry/content";
+import type { ActRule, ContentDb } from "../registry/content";
 import type { CardDefinition, RunDifficulty } from "../registry/content";
 import type { IntentPayload } from "../events";
 import type { Modifier } from "../pipeline";
@@ -61,11 +61,15 @@ export interface Draft {
   rootSeed: number;
   /** 难度档（docs/36 T2）：敌人伤害倍率在 attackModifiers 读取 */
   readonly difficulty: RunDifficulty;
+  /** 敌人造伤最终倍率 = 难度 × 幕内 statMult（docs/66 §4.1），由 attackModifiers 读取 */
+  readonly enemyDamageMul: number;
   /** 教学安全下限（docs/42 §四）；undefined = 关闭 */
   readonly safetyFloor: number | undefined;
   /** 安全网已触发次数 */
   safetySaves: number;
   readonly content: ContentDb;
+  /** 本场生效的幕级规则（docs/66）：静态数据，工作副本直接透传 */
+  readonly actRules: readonly ActRule[];
   readonly handSize: number;
   rng: Rng;
   turn: number;
@@ -118,9 +122,11 @@ export function toDraft(state: BattleState): Draft {
     battleId: state.battleId,
     rootSeed: state.rootSeed,
     difficulty: state.difficulty,
+    enemyDamageMul: state.enemyDamageMul,
     safetyFloor: state.safetyFloor,
     safetySaves: state.safetySaves,
     content: state.content,
+    actRules: state.actRules,
     handSize: state.handSize,
     rng: Rng.fromSnapshot(state.rootSeed, state.rng),
     turn: state.turn,
@@ -194,6 +200,7 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
     battleId: draft.battleId,
     rootSeed: draft.rootSeed,
     difficulty: draft.difficulty,
+    enemyDamageMul: draft.enemyDamageMul,
     ...(draft.safetyFloor !== undefined ? { safetyFloor: draft.safetyFloor } : {}),
     safetySaves: draft.safetySaves,
     rng: draft.rng.snapshot(),
@@ -262,6 +269,7 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
     delayedEffects: draft.delayed.map((d) => ({ ...d })),
     eventSeq,
     content: draft.content,
+    actRules: draft.actRules,
   };
 }
 

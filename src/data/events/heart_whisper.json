@@ -1,0 +1,35 @@
+{
+  "id": "heart_whisper",
+  "i18n": "event.heart_whisper",
+  "options": [
+    {
+      "id": "a",
+      "outcomes": [
+        {
+          "weight": 50,
+          "i18n": "event.heart_whisper.opt.a.win",
+          "effects": [
+            {
+              "kind": "gainRelic",
+              "tier": 2
+            }
+          ]
+        },
+        {
+          "weight": 50,
+          "i18n": "event.heart_whisper.opt.a.lose",
+          "effects": [
+            {
+              "kind": "pollution",
+              "value": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "i18n": "event.heart_whisper.opt.b.result"
+    }
+  ]
+}

@@ -4,7 +4,8 @@
   "i18n": "trait.ironhide_turtle",
   "handler": "ironhide_turtle",
   "params": {
-    "bramblePerBlock": 8,
-    "brambleMaxStacks": 10
+    "bramblePerBlock": 10,
+    "brambleMaxStacks": 7,
+    "hybridChargeDivisor": 2
   }
 }

@@ -111,6 +111,38 @@ describe("S5.1 分支地图（core/map）", () => {
     }
   });
 
+  it("骨架层 pin（docs/66 §3.2 门禁兼容实装）：二幕 l3 必现精英 / l4 必现篝火 / l6 必现精英", () => {
+    const act2 = game.acts.find((a) => a.id === "act2")!;
+    const has = (map: ReturnType<typeof generateMapGraph>, li: number, kind: string): boolean =>
+      map.layers[li]!.nodes.some((n) => n.kind === kind);
+    const sigs = new Set<string>();
+    for (let seed = 0; seed < 400; seed += 1) {
+      const map = generateMapGraph(act2, seed);
+      expect(has(map, 3, "elite"), `seed ${seed} l3 无精英`).toBe(true);
+      expect(has(map, 4, "rest"), `seed ${seed} l4 无篝火`).toBe(true);
+      expect(has(map, 6, "elite"), `seed ${seed} l6 无精英`).toBe(true);
+      // 骨架层不吃掉冻结门禁：全图精英 2~4 / 篝火 1~3 / 同层同类 ≤1
+      const all = map.layers.flatMap((l) => l.nodes);
+      const elites = all.filter((n) => n.kind === "elite").length;
+      const rests = all.filter((n) => n.kind === "rest").length;
+      expect(elites, `seed ${seed} 精英总数`).toBeGreaterThanOrEqual(2);
+      expect(elites, `seed ${seed} 精英总数`).toBeLessThanOrEqual(4);
+      expect(rests, `seed ${seed} 篝火总数`).toBeGreaterThanOrEqual(1);
+      expect(rests, `seed ${seed} 篝火总数`).toBeLessThanOrEqual(3);
+      for (const l of map.layers) {
+        expect(l.nodes.filter((n) => n.kind === "elite").length).toBeLessThanOrEqual(1);
+        expect(l.nodes.filter((n) => n.kind === "rest").length).toBeLessThanOrEqual(1);
+      }
+      sigs.add(
+        map.layers
+          .map((l, i) => (l.nodes.some((n) => n.kind === "elite") ? i : -1))
+          .filter((i) => i >= 0)
+          .join(","),
+      );
+    }
+    // 精英层位方差门禁（docs/48 §3.3 修订 4）：≥5 种取值
+    expect(sigs.size).toBeGreaterThanOrEqual(5);
+  });
 
   it("mapView / currentNode / isCombatNode", () => {
     let run = createRunState(act, cls, 1);

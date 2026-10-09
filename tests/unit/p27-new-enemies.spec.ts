@@ -22,9 +22,10 @@ const selfBuff = (id: string, buffId: string) =>
 
 /* ---------------- 数据层 ---------------- */
 
-describe("新怪 6 只入内容库（25 → 31）", () => {
+describe("新怪 6 只入内容库（25 → 32，含第三幕 Boss 炉前督军）", () => {
   it("六只全部可解析，含各自的招牌机制", () => {
-    expect(game.content.enemies.size).toBe(31);
+    // docs/66 §四：三幕 Boss「炉前督军」在 31 之上再 +1
+    expect(game.content.enemies.size).toBe(32);
     for (const id of ["glazed_husk", "caisson_pile", "white_slag", "moss_servant", "forge_colossus", "mirror_judge"]) {
       expect(def(id), `缺少敌人 ${id}`).toBeTruthy();
     }

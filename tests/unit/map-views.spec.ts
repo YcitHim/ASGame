@@ -41,7 +41,7 @@ describe("S5 UI 流程视图挂载", () => {
     wrapper.unmount();
   });
 
-  it("MapView：一幕打完先弹幕间入口，两幕打完全局胜利", async () => {
+  it("MapView：一幕打完先弹幕间入口，三幕打完全局胜利", async () => {
     const { wrapper } = mountView(MapView, (run) => {
       run.startRun("bloodwright", 1);
       for (let i = 0; i < 10; i += 1) run.advance();
@@ -50,8 +50,13 @@ describe("S5 UI 流程视图挂载", () => {
     // docs/40：一幕通关 → 幕间，而非全局胜利
     expect(wrapper.find(".victory-overlay").exists()).toBe(true);
     expect(wrapper.text()).toContain("回 廊 已 尽");
-    // 过幕后再走完第二幕 → 全局胜利
+    // docs/66 §4.4：过幕后再走完第二幕 → 第二次幕间（锻炉馈赠），仍非全局胜利
     const run = useRunStore();
+    run.enterNextAct();
+    for (let i = 0; i < 10; i += 1) run.advance();
+    await nextTick();
+    expect(wrapper.text()).toContain("炉 火 在 前");
+    // 走完第三幕 → 全局胜利
     run.enterNextAct();
     for (let i = 0; i < 10; i += 1) run.advance();
     await nextTick();

@@ -1,0 +1,27 @@
+{
+  "id": "slagplate",
+  "tier": 1,
+  "appliesTo": [
+    "bloodwall",
+    "brace",
+    "brassguard",
+    "coiled_spring",
+    "grandwindup",
+    "gyrostabilizer",
+    "insulation",
+    "ironhide",
+    "lastbreath",
+    "overclockfist",
+    "rust_moss",
+    "scrapguard",
+    "toxshield",
+    "weld"
+  ],
+  "handler": "slagplate",
+  "params": {
+    "bonus": 3,
+    "riderBlock": 1
+  },
+  "i18n": "enh.slagplate",
+  "actScope": "act3"
+}

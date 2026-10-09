@@ -38,6 +38,18 @@ function devToBoss(): void {
 const stage = useTemplateRef<HTMLElement>("stage");
 useStageFit(stage);
 
+/**
+ * 幕间浮层文案按「刚打完的幕 → 即将进入的幕」取（docs/66 §4.4）：
+ * 一→二幕是「回廊已尽」，二→三幕是「炉火在前」。此前这里写死了一→二幕的句子，
+ * 加了第三幕后会显示错文案。
+ */
+const interCopyKey = computed(() => {
+  const from = run.act?.id ?? "act1";
+  const idx = run.acts.findIndex((a) => a.id === from);
+  const to = run.acts[idx + 1]?.id ?? from;
+  return `intermission.${from}_to_${to}`;
+});
+
 onMounted(() => {
   if (!run.ensureActive()) {
     void router.replace("/");
@@ -279,8 +291,8 @@ function toTitle(): void {
 
       <div v-if="interNeeded" class="victory-overlay">
         <div class="victory">
-          <h2>回 廊 已 尽</h2>
-          <p>地板裂开了，下面是水声——还有歌声。</p>
+          <h2>{{ t(interCopyKey + ".title", "回 廊 已 尽") }}</h2>
+          <p>{{ t(interCopyKey + ".body", "") }}</p>
           <div class="victory-actions">
             <button class="etch-btn" @click="router.push('/intermission')">继 续 下 潜</button>
           </div>

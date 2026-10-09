@@ -94,6 +94,13 @@ export interface TraitHandler {
    * true = 出牌后自身超负荷清零，层数搬到敌方（AoE → 全体敌人）。
    */
   spreadOverloadOnBurst?: (params: Readonly<Record<string, unknown>>) => boolean;
+  /**
+   * 「混合充能」（docs/67 §2.2 T1，铁皮王八）：充能**全量注入格挡**的同时，
+   * 攻击牌再获得 `floor(充能 / N)` 的固定加伤。返回 N；null / 缺省 = 不启用。
+   */
+  hybridChargeAttackDivisor?: (params: Readonly<Record<string, unknown>>) => number | null;
+  /** 「一波打出去」时按**转嫁的超负荷层数**回血的每层值（docs/67 §2.1 A2）；缺省 0 */
+  burstHealPerStack?: (params: Readonly<Record<string, unknown>>) => number;
   /** 荆棘层数上限覆盖（缺省 5；铁皮王八 10） */
   brambleMaxStacks?: (params: Readonly<Record<string, unknown>>) => number;
   /**
@@ -248,6 +255,14 @@ registerTraitHandler({
     const per = Math.trunc(num(params, "bramblePerBlock", 8));
     return per > 0 ? per : null;
   },
+  /**
+   * 混合充能（docs/67 §2.2 T1）：治「只防不打」的墨迹根因——充能仍全量注入格挡，
+   * 但攻击牌按 floor(充能 / N) 分到一份加伤，玩家有理由主动结束回合而不是等敌人撞死。
+   */
+  hybridChargeAttackDivisor: (params) => {
+    const n = Math.trunc(num(params, "hybridChargeDivisor", 0));
+    return n > 0 ? n : null;
+  },
 });
 
 /* ------------------------------------------------------------------ *
@@ -282,8 +297,13 @@ registerTraitHandler({
     if (!bool(params, "firstAttackCharge", true)) return 0;
     const overload = ctx.buffs.find((b) => b.id === "overload")?.stacks ?? 0;
     if (overload <= 0) return 0;
-    return Math.max(0, ctx.charge);
+    // A1（docs/67 §2.1）：把「罪」折成「功」——爆发再加 层数 × burstPerStack。
+    // 光吃满充能时爆发太小，撑不起「玻璃」与「大炮」四个字。
+    const per = Math.max(0, Math.trunc(num(params, "burstPerStack", 5)));
+    return Math.max(0, ctx.charge) + overload * per;
   },
+  /** A2（docs/67 §2.1）：爆发 = 泄压——按转嫁出去的层数回血，爽点与续航合一。 */
+  burstHealPerStack: (params) => Math.max(0, Math.trunc(num(params, "burstHealPerStack", 5))),
   /**
    * 蓄势（docs/58 §六.4，甲方 2026-10-07 三次修订）：每个回合开始（含第 1 回合），
    * 只要充能还没攒到 10，就额外 +1 能量——帮玩家更快把充能堆过阈值；一旦过载即断供。

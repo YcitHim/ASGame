@@ -55,7 +55,7 @@ function relicCtx(draft: Draft, firesThisTurn: number, healAmount?: number): Rel
   };
 }
 
-export type RelicHook = "onHeal" | "onKill" | "onExhaust" | "onHit" | "onPlay";
+export type RelicHook = "onHeal" | "onKill" | "onExhaust" | "onHit" | "onPlay" | "onDamaged";
 
 /**
  * 按钩子派发全部遗物 handler（onHeal / onKill / onExhaust / onHit）。
@@ -72,11 +72,15 @@ export function fireRelicHandlers(
   for (const { def, handler } of activeRelics(draft)) {
     const fn = handler[hook];
     if (!fn) continue;
+    // 数据里的 once: "battle" 对 handler 钩子同样生效（淬火怀表：每场第一次掉血才给力量）。
+    // 记在同一本 triggeredThisBattle 上，与数据驱动件的「整场一次」共用一个册子。
+    if (def.once === "battle" && draft.player.triggeredThisBattle.includes(def.id)) continue;
     const key = `${def.id}:${hook}`;
     const fires = draft.relicFiresThisTurn[key] ?? 0;
     const effects = fn.call(handler, def.params ?? {}, relicCtx(draft, fires, opts.healAmount));
     if (effects.length === 0) continue;
     draft.relicFiresThisTurn[key] = fires + 1;
+    if (def.once === "battle") draft.player.triggeredThisBattle.push(def.id);
     resolveEffectsInline(draft, sink, effects, {
       sourceId: `relic:${def.id}`,
       actorId: PLAYER_ID,
