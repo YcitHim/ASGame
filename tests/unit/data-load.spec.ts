@@ -85,7 +85,8 @@ describe("真实内容装载（data/load）", () => {
 
   it("三职业各有一张「1 费 · 普通 · 保留」格挡牌，且各自挂本职业资源条件", () => {
     const cards = loadGameContent().content.cards;
-    const retain = [...cards.values()].filter((c) => (c.keywords ?? []).includes("retain"));
+    // 只数正规牌：衍生物（token，如「铁拳」）也可以带保留，但它们不受「1 费普通」这条画像约束
+    const retain = [...cards.values()].filter((c) => (c.keywords ?? []).includes("retain") && !c.token);
     expect(retain.map((c) => c.id).sort()).toEqual(["brace", "coiled_spring", "rust_moss"]);
     for (const c of retain) {
       expect(c.cost, c.id).toBe(1);

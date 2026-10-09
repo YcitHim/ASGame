@@ -192,10 +192,21 @@ describe("P4.2 充能储蓄与延迟给牌", () => {
     expect(handIds(next.state)).toContain("ironfist");
     expect(next.state.delayedEffects).toHaveLength(0);
 
-    // 铁拳本体：0 费、24 伤
+    // 铁拳本体：0 费、24 伤、打出后消耗
     const hit = play(next.state, "ironfist");
     expect(dealt(hit.events)).toEqual([24]);
     expect(hit.state.piles.exhaust.some((id) => hit.state.cardInstances[id].cardId === "ironfist")).toBe(true);
+  });
+
+  it("铁拳带「保留」（甲方 2026-10-09）：不打出就一直留在手上，不会进弃牌堆", () => {
+    const r = play(battle(["overclockfist"]), "overclockfist");
+    const next = reduce(r.state, { type: "EndTurn", actionId: "e" });
+    expect(handIds(next.state)).toContain("ironfist");
+
+    // 不打出：再过一整个回合，铁拳仍在手牌（保留），且不在弃牌堆
+    const kept = reduce(next.state, { type: "EndTurn", actionId: "e2" });
+    expect(handIds(kept.state)).toContain("ironfist");
+    expect(kept.state.piles.discard.some((id) => kept.state.cardInstances[id].cardId === "ironfist")).toBe(false);
   });
 
   it("超械铁拳升级：依旧 3 费，格挡 12，且下回合给的是升级「铁拳」（32 伤）", () => {
