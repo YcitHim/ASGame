@@ -24,6 +24,7 @@ import HpBar from "@/ui/components/HpBar.vue";
 import IntentIcon from "@/ui/components/IntentIcon.vue";
 import LibraryPicker from "@/ui/components/LibraryPicker.vue";
 import PollutionGauge from "@/ui/components/PollutionGauge.vue";
+import RelicBar from "@/ui/components/RelicBar.vue";
 
 const router = useRouter();
 const store = useBattleStore();
@@ -684,6 +685,8 @@ function quitToTitleKeepRun(): void {
         <b>{{ actRuleName }}</b>
         <span>{{ actRuleNote }}</span>
       </div>
+      <!-- 遗物栏（甲方 2026-10-09 反馈：进战斗就看不见了——战斗页原先漏挂） -->
+      <RelicBar :relics="run.relics" />
       <!-- 顶栏 -->
       <div class="topbar" :class="{ 'with-tut-hint': showTutHint }">
         <span v-if="tutorial.active">{{ TUTORIAL_TITLE }} · {{ tutorial.chapter?.title ?? "" }}</span>

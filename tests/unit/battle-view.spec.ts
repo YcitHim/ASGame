@@ -52,6 +52,25 @@ describe("BattleView 挂载冒烟（S3.7）", () => {
     wrapper.unmount();
   });
 
+  it("左上角遗物栏在战斗页也渲染（甲方 2026-10-09 反馈：进战斗就看不见了）", async () => {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const run = useRunStore();
+    run.startRun("bloodwright", 1);
+    run.addRelic("whetstone");
+    const wrapper = mount(BattleView, { global: { plugins: [pinia, router] } });
+    await nextTick();
+    await nextTick();
+
+    // 身份件 + 刚拿到的那件，两枚都要在
+    const chips = wrapper.findAll(".relic-bar .relic-chip");
+    expect(chips).toHaveLength(2);
+    expect(wrapper.find(".relic-bar").text()).toContain("破碎圣油瓶");
+    expect(wrapper.find(".relic-bar").text()).toContain("磨刀石");
+    useBattleStore().skip();
+    wrapper.unmount();
+  });
+
   it("拖拽卡牌到敌人身上 = 直接出牌", async () => {
     const pinia = createPinia();
     setActivePinia(pinia);
