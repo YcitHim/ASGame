@@ -193,3 +193,13 @@ export function traitFirstAttackBonus(draft: Draft): number {
   if (!trait) return 0;
   return Math.max(0, trait.handler.firstAttackChargeBonus?.(trait.def.params, traitCtx(draft)) ?? 0);
 }
+
+/**
+ * 上一项里**只属于超负荷折功**的部分（甲方 2026-10-09）。
+ * 卡牌自带 `spendCharge` 时充能已按卡牌自己的汇率兑现，特性只能再补这一块。
+ */
+export function traitFirstAttackOverloadBonus(draft: Draft): number {
+  const trait = activeTrait(draft);
+  if (!trait) return 0;
+  return Math.max(0, trait.handler.firstAttackOverloadBonus?.(trait.def.params, traitCtx(draft)) ?? 0);
+}

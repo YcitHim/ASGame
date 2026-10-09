@@ -22,6 +22,7 @@ import { enqueueEffects, drainQueue, loseHp, resolveEffects } from "./resolve";
 import {
   traitBurstHealPerStack,
   traitFirstAttackBonus,
+  traitFirstAttackOverloadBonus,
   traitFirstCardDouble,
   traitFirstCardFree,
   traitEyeAvailable,
@@ -312,15 +313,14 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
   // 双结算：畸变大鲨臂（特性）与双重钟摆（遗物）OR 合并——同一回合只多结算一次，不叠成三次
   const doubleResolve = traitFirstCardDouble(draft) || relicFirstCardDouble(draft);
   const firstAttackBonus = isFirstAttack ? traitFirstAttackBonus(draft) : 0;
+  // 只属于「超负荷折功」的那部分：卡牌自带 spendCharge 时特性只补它（防止充能算两遍）
+  const firstAttackOverload = isFirstAttack ? traitFirstAttackOverloadBonus(draft) : 0;
   // 磨刀石（docs/64 §四.2）：每场战斗第一张攻击牌 +N，每场一次（施加后记入 triggeredThisBattle）
   const relicFA = isFirstAttack ? relicFirstAttackBonus(draft) : null;
-  if (firstAttackBonus > 0) {
-    // 一波打出去（docs/58 §六.3）：附加等同当前充能的伤害，随后充能归零。
-    // 消耗不经 changeCharge → 不触发过载、不派发 onGainCharge（沿用现有「消耗不过载」口径）。
-    const before = draft.player.charge;
-    draft.player.charge = 0;
-    sink.emit("ChargeChanged", { targetId: "player", before, after: 0, delta: -before });
-  }
+  // 出牌瞬间的充能：既是爆发加伤的基数，也是**这一波最多能收走多少**。
+  // 记下来是为了不在收尾时把这张牌自己刚攒的充能也一起吞掉（火花塞 / 电击拳）。
+  const chargeAtPlay = firstAttackBonus > 0 ? draft.player.charge : 0;
+  // ⚠ 充能**不在这里**清零（甲方 2026-10-09 修正）：见本函数末尾的收尾段。
 
   // 「本回合已出牌数」在触发 onPlay 之前递增：
   // 这样「当你打出本回合第 N 张牌时」类遗物/能力读到的是**含当前这张**的计数，
@@ -396,12 +396,16 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
     energyAtPlay,
     attackModifiers: (() => {
       const mods = [...effective.attackModifiers];
-      if (firstAttackBonus > 0) {
+      // 卡牌自己会消耗充能（spendCharge）→ 这次爆发只补「超负荷折功」，
+      // 充能那部分交给卡牌按自己的汇率兑现，同一笔充能只算一遍（甲方 2026-10-09）。
+      const selfDischarge = [...spreadEffects, ...effects].some((e) => e.kind === "spendCharge");
+      const burst = selfDischarge ? firstAttackOverload : firstAttackBonus;
+      if (burst > 0) {
         mods.push({
           sourceId: `trait:${draft.traitId ?? ""}:firstAttackCharge`,
           layer: "buff" as const,
           op: "add" as const,
-          value: firstAttackBonus,
+          value: burst,
         });
       }
       if (relicFA) {
@@ -429,6 +433,22 @@ export function playCard(draft: Draft, sink: EventSink, handIndex: number, targe
       blockModifiers: effective.blockModifiers,
     });
     drainQueue(draft, sink);
+  }
+
+  // 一波打出去（docs/58 §六.3）的收尾：**先让卡牌自己算完，再抽空充能**。
+  // 甲方 2026-10-09 实机修正：旧版在卡牌结算**之前**就把充能清零，于是
+  // ① 本牌自己的「充能 ≥N 时额外造成…」条件读到 0，第二段整个不发（活塞冲拳只打出一段）；
+  // ② 自耗充能的牌（泄能重锤 / 泄压阀 / 紧急泄压）先被特性抽干，自己的 spendCharge 结算成 0。
+  // 现在改成：卡牌的条件与自家消耗先按**出牌时的充能**结算，剩下的才由特性一波收走。
+  // 消耗不经 changeCharge → 不触发过载、不派发 onGainCharge（沿用现有「消耗不过载」口径）。
+  if (chargeAtPlay > 0) {
+    const before = draft.player.charge;
+    // 只收走「出牌时那笔」，这张牌自己新攒的充能留着（否则火花塞/电击拳白攒）
+    const drain = Math.min(before, chargeAtPlay);
+    if (drain > 0) {
+      draft.player.charge = before - drain;
+      sink.emit("ChargeChanged", { targetId: "player", before, after: before - drain, delta: -drain });
+    }
   }
   // 常驻能力（power）：本场生效，按实例记录（升级版走 def.upgraded.power）
   if ((def.power ?? def.upgraded?.power) && !draft.player.powers.includes(instance.instanceId)) {

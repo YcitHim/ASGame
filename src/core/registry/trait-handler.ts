@@ -142,10 +142,21 @@ export interface TraitHandler {
   firstCardDouble?: (params: Readonly<Record<string, unknown>>) => boolean;
   /**
    * 每回合第一张**攻击**牌的附加伤害（玻璃大炮 §六.3）：返回 >0 时框架会把该值
-   * 作为固定加伤注入，并把充能清零（消耗不经 changeCharge，不吃过载）。
+   * 作为固定加伤注入，并在**这张牌结算完之后**把充能清零（消耗不经 changeCharge，不吃过载）。
    * 甲方 2026-10-07 二次修订：**只有身上已有超负荷时**才返回 >0，否则整段爆发不发生。
+   * 甲方 2026-10-09 修正：清零改到卡牌结算之后——卡牌自己的「充能 ≥N」条件与 spendCharge
+   * 必须先按出牌时的充能算，否则第二段不发、泄能类卡牌白抽干。
    */
   firstAttackChargeBonus?: (
+    params: Readonly<Record<string, unknown>>,
+    ctx: TraitContext,
+  ) => number;
+  /**
+   * 「一波打出去」里**属于超负荷折功**的那部分（甲方 2026-10-09）。
+   * 卡牌自带 `spendCharge` 时，充能已经按卡牌自己的汇率兑现过了，特性只再补这部分，
+   * 避免同一笔充能被算两遍。
+   */
+  firstAttackOverloadBonus?: (
     params: Readonly<Record<string, unknown>>,
     ctx: TraitContext,
   ) => number;
@@ -267,7 +278,7 @@ registerTraitHandler({
 
 /* ------------------------------------------------------------------ *
  * 炉心机士 · 玻璃大炮（docs/58 §六，甲方 2026-10-07 二次 / 三次修订）
- * 充能不设上限、不触发过载反噬；超 10 的部分**每 5 点** 1 层超负荷。
+ * 充能不设上限、不触发过载反噬；超 10 的部分**每 3 点** 1 层超负荷（甲方 2026-10-09 加强）。
  * 超负荷 = 承载者每回合开始扣 2×层血、且每层受到伤害 +1（可叠加）。
  * 「一波打出去」：**只有在身上已有超负荷时**，每回合的第一张攻击牌才吃满当前充能并清零，
  * 同时把自身超负荷整体转嫁给目标（AoE → 每个敌人各一份）——
@@ -276,6 +287,28 @@ registerTraitHandler({
  * 没有超负荷 → 第一张攻击牌什么也不消耗，充能继续攒着。
  * 「蓄势」：每回合开始（含第 1 回合）充能 <10 时额外 +1 能量。
  * ------------------------------------------------------------------ */
+
+/**
+ * 「一波打出去」里**超负荷折功**的那部分（docs/67 §2.1 A1）：层数 × burstPerStack。
+ * 单独拆出来是因为卡牌自带 spendCharge 时充能已被卡牌自己兑现，特性只能再补这一块，
+ * 否则同一笔充能会被算两遍（甲方 2026-10-09）。
+ */
+function overloadStacks(ctx: TraitContext): number {
+  return ctx.buffs.find((b) => b.id === "overload")?.stacks ?? 0;
+}
+
+/** 「一波打出去」的门槛（docs/58 §六.3）：**身上得有超负荷**，否则整段爆发不发生。 */
+function burstArmed(params: Readonly<Record<string, unknown>>, ctx: TraitContext): boolean {
+  return bool(params, "firstAttackCharge", true) && overloadStacks(ctx) > 0;
+}
+
+function overloadFold(params: Readonly<Record<string, unknown>>, ctx: TraitContext): number {
+  if (!burstArmed(params, ctx)) return 0;
+  // A1（docs/67 §2.1）：把「罪」折成「功」——爆发再加 层数 × burstPerStack。
+  // 光吃满充能时爆发太小，撑不起「玻璃」与「大炮」四个字。
+  return overloadStacks(ctx) * Math.max(0, Math.trunc(num(params, "burstPerStack", 5)));
+}
+
 registerTraitHandler({
   id: "glass_cannon",
   // 充能**不**注入普通攻击加伤：本特性下充能是「弹药」，只在爆发那张牌上兑现。
@@ -293,15 +326,9 @@ registerTraitHandler({
    * 一波打出去（docs/58 §六.3）：返回「当前充能」作为该牌的固定加伤，框架据此刻归零充能。
    * **门槛 = 身上有超负荷**：没有超负荷时返回 0 —— 不消耗充能、不转嫁，充能继续累计。
    */
-  firstAttackChargeBonus: (params, ctx) => {
-    if (!bool(params, "firstAttackCharge", true)) return 0;
-    const overload = ctx.buffs.find((b) => b.id === "overload")?.stacks ?? 0;
-    if (overload <= 0) return 0;
-    // A1（docs/67 §2.1）：把「罪」折成「功」——爆发再加 层数 × burstPerStack。
-    // 光吃满充能时爆发太小，撑不起「玻璃」与「大炮」四个字。
-    const per = Math.max(0, Math.trunc(num(params, "burstPerStack", 5)));
-    return Math.max(0, ctx.charge) + overload * per;
-  },
+  firstAttackChargeBonus: (params, ctx) =>
+    burstArmed(params, ctx) ? Math.max(0, ctx.charge) + overloadFold(params, ctx) : 0,
+  firstAttackOverloadBonus: overloadFold,
   /** A2（docs/67 §2.1）：爆发 = 泄压——按转嫁出去的层数回血，爽点与续航合一。 */
   burstHealPerStack: (params) => Math.max(0, Math.trunc(num(params, "burstHealPerStack", 5))),
   /**

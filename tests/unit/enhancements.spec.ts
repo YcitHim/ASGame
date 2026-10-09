@@ -69,7 +69,8 @@ describe("S4.3 强化钩子 modifyCard / onHit", () => {
     expect(hits).toHaveLength(3);
     expect(hits.map((h) => h.segment)).toEqual([1, 2, 3]);
     expect(hits.every((h) => h.segments === 3)).toBe(true);
-    expect(hits.reduce((a, h) => a + h.value, 0)).toBe(6);
+    // 无充能增伤 → 各段原伤（连续攻击衰减只管充能那一项）
+    expect(hits.map((h) => h.value)).toEqual([2, 2, 2]);
     expect(result.state.enemies[0].hp).toBe(44);
   });
 

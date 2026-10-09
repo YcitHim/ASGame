@@ -5,7 +5,7 @@
   "handler": "glass_cannon",
   "params": {
     "overloadDisabled": true,
-    "overloadPerStep": 5,
+    "overloadPerStep": 3,
     "overloadTickPerStack": 1,
     "overloadDamageTakenPerStack": 1,
     "firstAttackCharge": true,

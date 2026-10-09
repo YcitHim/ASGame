@@ -69,7 +69,7 @@ describe("P3.1 血怒 × 低血沸腾（失控线爆发流）", () => {
     const result = play(battle([{ cardId: "bloodbolt", enhancements: ["bloodboil", "bloodrage"] }], 20), "bloodbolt");
     const dealt = hits(result.events);
     expect(dealt).toHaveLength(3);
-    // 9 拆成 3/3/3，每段 ×1.5 = 4.5 → 单次取整 5
+    // 9 拆成 3/3/3，每段 ×1.5 = 4.5 → 单次取整 5（无充能增伤 → 不吃连续攻击衰减）
     expect(dealt.map((d) => d.value)).toEqual([5, 5, 5]);
     expect(result.state.enemies[0].hp).toBe(80 - 15);
   });

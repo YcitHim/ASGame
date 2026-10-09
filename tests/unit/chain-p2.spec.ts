@@ -106,6 +106,7 @@ describe("P2.1 荆棘血痂（荆棘）", () => {
       "player->dummy",
     ]);
     expect(hit.state.enemies[0].hp).toBe(50 - 9);
+    // 敌人三段普攻没有充能增伤 → 连续攻击衰减不涉及它，仍是 5×3 = 15
     expect(hit.state.player.hp).toBe(66 - 15);
   });
 

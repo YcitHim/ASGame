@@ -64,11 +64,13 @@ describe("docs/29 §二⑥ 炉心机士卡牌", () => {
     expect(dealt(play(battle(["pistonjab"]), "pistonjab").events)).toEqual([3]);
     const charged = play(battle(["charge4", "pistonjab"]), "charge4");
     expect(charged.state.player.charge).toBe(4);
-    // 充能按固定加伤计入每一次攻击判定（docs/20 §3.1）：3+4 / 2+4
-    expect(dealt(play(charged.state, "pistonjab").events)).toEqual([7, 6]);
+    // 充能按固定加伤计入每一次攻击判定（docs/20 §3.1）：3+4=7
+    // 第二段：基础 2 不动，充能那 4 点按连续攻击衰减 ×0.5 → 2 + 2 = 4
+    // （甲方 2026-10-09：**只砍充能增伤**；卡牌自身的基础伤害不变）
+    expect(dealt(play(charged.state, "pistonjab").events)).toEqual([7, 4]);
   });
 
-  it("蒸汽弹：多段 3×2（docs/32 第三刀①）", () => {
+  it("蒸汽弹：多段 3×2（无充能增伤 → 不吃连续攻击衰减）", () => {
     expect(dealt(play(battle(["steambolt"]), "steambolt").events)).toEqual([3, 3]);
   });
 

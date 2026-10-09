@@ -105,6 +105,32 @@ const aoeAttack: CardDefinition = {
   effects: [{ kind: "damage", target: { type: "allEnemies" }, value: 4 }],
 };
 
+/** 两段攻击：第 2 段条件是「充能 ≥2」——专门验证「卡牌先算完、再抽空充能」。 */
+const twoHitCharge: CardDefinition = {
+  id: "test_two_hit_charge",
+  class: "engineer",
+  type: "attack",
+  rarity: "common",
+  cost: 0,
+  effects: [
+    { kind: "damage", target: { type: "chosenEnemy" }, value: 3 },
+    { kind: "damage", target: { type: "chosenEnemy" }, value: 5, condition: { type: "chargeAtLeast", n: 2 } },
+  ],
+};
+
+/** 自带泄能的攻击：基础段 + spendCharge（每点 1 伤害）。 */
+const testDischarge: CardDefinition = {
+  id: "test_discharge",
+  class: "engineer",
+  type: "attack",
+  rarity: "common",
+  cost: 0,
+  effects: [
+    { kind: "damage", target: { type: "chosenEnemy" }, value: 2 },
+    { kind: "spendCharge", target: { type: "chosenEnemy" }, value: 1 },
+  ],
+};
+
 const expensive: CardDefinition = {
   id: "test_expensive",
   class: "rustspeaker",
@@ -124,6 +150,8 @@ const ALL_TEST_CARDS = [
   bigGuard,
   aoeAttack,
   expensive,
+  twoHitCharge,
+  testDischarge,
 ];
 
 /* ---------------- 构建工具 ---------------- */
@@ -458,12 +486,13 @@ describe("docs/58 §五 炉心·铁皮王八（甲方 2026-10-07 修订）", () 
 describe("docs/58 §六 炉心·玻璃大炮（甲方 2026-10-07 二次修订）", () => {
   const db = makeContent([TRAIT.glass]);
 
-  it("充能不触发过载清零；超出 10 的部分每 5 点 1 层超负荷（不再获得时即伤）", () => {
+  it("充能不触发过载清零；超出 10 的部分每 3 点 1 层超负荷（不再获得时即伤）", () => {
     const state = battle(db, ["test_charge16"], "glass_cannon");
     const r = play(state, "test_charge16");
     expect(r.state.player.charge).toBe(16); // 不清零
     expect(eventsOfType(r.events, "Overloaded")).toHaveLength(0);
-    expect(r.state.player.buffs.find((b) => b.id === "overload")?.stacks).toBe(1); // ⌊(16−10)/5⌋
+    // 甲方 2026-10-09 加强：折算步长 5 → 3，⌊(16−10)/3⌋ = 2 层
+    expect(r.state.player.buffs.find((b) => b.id === "overload")?.stacks).toBe(2);
     expect(eventsOfType(r.events, "HpLost")).toHaveLength(0); // 惩罚改到承载者回合开始
   });
 
@@ -487,80 +516,80 @@ describe("docs/58 §六 炉心·玻璃大炮（甲方 2026-10-07 二次修订）
     expect(r.state.player.buffs.some((b) => b.id === "overload")).toBe(false);
   });
 
-  it("超负荷只结算新跨过的层数：16→19→22 依次是 1 / 1 / 2 层（不重复结算）", () => {
+  it("超负荷只结算新跨过的层数：16→19→22 依次是 2 / 3 / 4 层（每 +3 充能补 1 层）", () => {
     let state = battle(db, ["test_charge16", "test_charge3", "test_charge3"], "glass_cannon");
     const stackOf = (s: BattleState): number => s.player.buffs.find((b) => b.id === "overload")?.stacks ?? 0;
-    state = play(state, "test_charge16").state; // 16 → ⌊(16−10)/5⌋ = 1
-    expect(stackOf(state)).toBe(1);
-    state = play(state, "test_charge3").state; // 19 → ⌊9/5⌋ = 1（未跨新档）
-    expect(stackOf(state)).toBe(1);
-    state = play(state, "test_charge3").state; // 22 → ⌊12/5⌋ = 2（只补 1）
+    state = play(state, "test_charge16").state; // 16 → ⌊(16−10)/3⌋ = 2
     expect(stackOf(state)).toBe(2);
+    state = play(state, "test_charge3").state; // 19 → ⌊9/3⌋ = 3
+    expect(stackOf(state)).toBe(3);
+    state = play(state, "test_charge3").state; // 22 → ⌊12/3⌋ = 4（只补 1）
+    expect(stackOf(state)).toBe(4);
   });
 
   it("超负荷每层让承载者受到的伤害 +1（加区，敌我同构）", () => {
     let state = battle(db, ["test_charge16", "test_attack", "test_attack"], "glass_cannon");
-    state = play(state, "test_charge16").state; // 自身 1 层超负荷
+    state = play(state, "test_charge16").state; // 自身 2 层超负荷
     state = play(state, "test_attack").state; // 首张攻击牌：一波打出去 → 转嫁给 dummy
     const dummy = state.enemies[0]!;
-    expect(dummy.buffs.find((b) => b.id === "overload")?.stacks).toBe(1);
+    expect(dummy.buffs.find((b) => b.id === "overload")?.stacks).toBe(2);
 
     const r = play(state, "test_attack");
     const dmg = eventsOfType(r.events, "DamageDealt").find((e) => e.targetId === "dummy");
-    expect(dmg?.hpLost).toBe(8); // 7 基础 + 1（敌方超负荷受伤 +1）
+    expect(dmg?.hpLost).toBe(9); // 7 基础 + 2（敌方超负荷受伤 +2）
   });
 
   it("承载者回合开始每层扣 1 点生命（docs/67 §2.1 B2）：玩家侧", () => {
     let state = battle(db, ["test_charge16", "test_guard"], "glass_cannon");
-    state = play(state, "test_charge16").state; // 1 层超负荷
+    state = play(state, "test_charge16").state; // 2 层超负荷
     const r = reduce(state, { type: "EndTurn", actionId: "e" });
     const overload = eventsOfType(r.events, "HpLost").filter((e) => e.reason === "overload");
     expect(overload).toHaveLength(1);
-    expect(overload[0]?.value).toBe(1); // 1 层 × 1
-    // 同一时刻敌方打过来：玩家扛超负荷 → 受击伤害也 +1（5 → 6）
+    expect(overload[0]?.value).toBe(2); // 2 层 × 1
+    // 同一时刻敌方打过来：玩家扛超负荷 → 受击伤害也 +2（5 → 7）
     const hit = eventsOfType(r.events, "HpLost").filter((e) => e.reason === "damage");
-    expect(hit.reduce((s, e) => s + e.value, 0)).toBe(6);
+    expect(hit.reduce((s, e) => s + e.value, 0)).toBe(7);
   });
 
   it("承载者回合开始每层扣 1 点生命（docs/67 §2.1 B2）：敌方侧", () => {
     let state = battle(db, ["test_charge16", "test_attack"], "glass_cannon");
     state = play(state, "test_charge16").state;
-    state = play(state, "test_attack").state; // 转嫁 1 层给 dummy
+    state = play(state, "test_attack").state; // 转嫁 2 层给 dummy
     const r = reduce(state, { type: "EndTurn", actionId: "e" });
     const overload = eventsOfType(r.events, "HpLost").filter(
       (e) => e.reason === "overload" && e.targetId === "dummy",
     );
     expect(overload).toHaveLength(1);
-    expect(overload[0]?.value).toBe(1);
+    expect(overload[0]?.value).toBe(2);
   });
 
   it("一波打出去：**先转嫁超负荷、再结算伤害**（转嫁到手的「受伤 +1」算进这一击）", () => {
     let state = battle(db, ["test_charge16", "test_attack", "test_attack"], "glass_cannon");
-    state = play(state, "test_charge16").state; // 充能 16 → 自身 1 层超负荷
+    state = play(state, "test_charge16").state; // 充能 16 → 自身 2 层超负荷
     // 压低 HP：满血时 A2 的回血会被上限吃掉、连事件都不发，看不到效果
     const hpBefore = state.player.maxHp - 20;
     state = { ...state, player: { ...state.player, hp: hpBefore } };
     const first = play(state, "test_attack");
     const firstDmg = eventsOfType(first.events, "DamageDealt").find((e) => e.targetId === "dummy");
-    // docs/67 §2.1 A1：7 基础 + 16 充能爆发 + 1 层 × 5（burstPerStack）+ 1（转嫁过去的超负荷受伤 +1）= 29
-    expect(firstDmg?.hpLost).toBe(29);
-    // A2：爆发 = 泄压——按转嫁的 1 层 × burstHealPerStack 5 回血
+    // docs/67 §2.1 A1：7 基础 + 16 充能爆发 + 2 层 × 5（burstPerStack）+ 2（转嫁过去的超负荷受伤 +2）= 35
+    expect(firstDmg?.hpLost).toBe(35);
+    // A2：爆发 = 泄压——按转嫁的 2 层 × burstHealPerStack 5 回血
     const burstHeal = eventsOfType(first.events, "HpHealed").reduce((s, e) => s + e.value, 0);
-    expect(burstHeal).toBe(5);
-    expect(first.state.player.hp).toBe(hpBefore + 5);
+    expect(burstHeal).toBe(10);
+    expect(first.state.player.hp).toBe(hpBefore + 10);
     // 转嫁必须发生在伤害之前：事件流里 BuffExpired(先) 先于 DamageDealt(后)
     const order = first.events.map((e) => e.type);
     expect(order.indexOf("BuffExpired")).toBeLessThan(order.indexOf("DamageDealt"));
     expect(first.state.player.charge).toBe(0);
     // 超负荷整体转嫁：自身清零、目标获得同等层数
     expect(first.state.player.buffs.some((b) => b.id === "overload")).toBe(false);
-    expect(first.state.enemies[0]?.buffs.find((b) => b.id === "overload")?.stacks).toBe(1);
+    expect(first.state.enemies[0]?.buffs.find((b) => b.id === "overload")?.stacks).toBe(2);
     expect(eventsOfType(first.events, "BuffExpired").some((e) => e.buffId === "overload")).toBe(true);
 
     // 第二张攻击不再吃充能
     const second = play(first.state, "test_attack");
     const secondDmg = eventsOfType(second.events, "DamageDealt").find((e) => e.targetId === "dummy");
-    expect(secondDmg?.hpLost).toBe(8); // 7 + 1（dummy 身上的超负荷）
+    expect(secondDmg?.hpLost).toBe(9); // 7 + 2（dummy 身上的超负荷）
   });
 
   it("一波打出去打全体：AoE 时每个敌人各得一份超负荷", () => {
@@ -571,8 +600,33 @@ describe("docs/58 §六 炉心·玻璃大炮（甲方 2026-10-07 二次修订）
     const r = play(state, "test_aoe", null);
     expect(r.state.player.buffs.some((b) => b.id === "overload")).toBe(false);
     for (const enemy of r.state.enemies) {
-      expect(enemy.buffs.find((b) => b.id === "overload")?.stacks).toBe(1);
+      expect(enemy.buffs.find((b) => b.id === "overload")?.stacks).toBe(2);
     }
+  });
+
+  // 甲方 2026-10-09 实机修正：旧版在卡牌结算**之前**抽空充能，
+  // 导致「充能 ≥N 时额外造成…」的条件读到 0，第二段直接不发（活塞冲拳实机只打出一段）。
+  it("先让卡牌算完，再抽空充能：充能条件段照发，段间衰减照吃", () => {
+    let state = battle(db, ["test_charge16", "test_two_hit_charge"], "glass_cannon");
+    state = play(state, "test_charge16").state; // 16 充能 → 2 层超负荷
+    const r = play(state, "test_two_hit_charge");
+    const dmg = eventsOfType(r.events, "DamageDealt").filter((e) => e.targetId === "dummy");
+    expect(dmg).toHaveLength(2); // 旧版只会有一段
+    // 段 1：3 基础 + 2（转嫁过去的超负荷）+ 26（16 充能 + 2 层 × 5）= 31
+    // 段 2：基础 5 + 2 不动，**充能那 26 点按连续攻击衰减 ×0.5** → 5 + 2 + 13 = 20
+    expect(dmg.map((d) => d.hpLost)).toEqual([31, 20]);
+    expect(r.state.player.charge).toBe(0); // 爆发之后才清零
+  });
+
+  it("自耗充能的牌：先按卡牌自己的汇率兑现，特性只再补超负荷折功（充能只算一遍）", () => {
+    let state = battle(db, ["test_charge16", "test_discharge"], "glass_cannon");
+    state = play(state, "test_charge16").state;
+    const r = play(state, "test_discharge");
+    const dmg = eventsOfType(r.events, "DamageDealt").filter((e) => e.targetId === "dummy");
+    // 基础段 2 + 2（转嫁过去的超负荷受伤 +2）+ 超负荷折功 10 = 14；自家泄能 16 × 1 = 16 → 合计 30
+    // （旧版是 2 + 2 + 26 = 30：总数相同，但充能全被特性吃掉、卡牌自己一点没兑现）
+    expect(dmg.reduce((s, d) => s + d.hpLost, 0)).toBe(30);
+    expect(r.state.player.charge).toBe(0);
   });
 
   it("对照组：无特性时充能超 10 会过载清零 + 5 反噬", () => {

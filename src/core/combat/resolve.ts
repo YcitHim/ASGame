@@ -178,6 +178,11 @@ export interface DamageArgs {
   modifiers?: readonly Modifier[];
   /** 额外修饰（强化层等），追加在自动推导的修饰之后 */
   extraModifiers?: readonly Modifier[];
+  /**
+   * 连续攻击里**充能增伤的段间倍率**（甲方 2026-10-09，玻璃大炮补丁）：
+   * 只缩放「充能增伤」这一类修饰，其余加成不动。缺省 1 = 不衰减。
+   */
+  chargeFalloff?: number;
   /** 该次伤害是反伤：不触发二次反伤 */
   reflect?: boolean;
   /**
@@ -216,6 +221,39 @@ function wardBlocks(draft: Draft, target: MutableUnit, sourceId: string): boolea
   return type !== "attack";
 }
 
+/**
+ * 连续攻击的**段间衰减**（甲方 2026-10-09 新增设定）：
+ * 「连续攻击」= 一次行动里连续结算的多段伤害（segment 1..segments）。
+ * 第一段是原本的伤害，之后**每多一段再减半**：100% → 50% → 25% → …
+ *
+ * 只按**段号**判定，与目标数无关：AoE 是「同一段打多个目标」，段号相同，不吃衰减。
+ * 敌我同构（铁律）：敌人的多段攻击（intent 的 hits）走同一条门，同样衰减。
+ */
+export const MULTI_HIT_FALLOFF = 0.5;
+
+/** 第 segment 段的衰减倍率（第 1 段恒为 1）。 */
+export function multiHitFalloff(segment: number, segments: number): number {
+  if (segments <= 1 || segment <= 1) return 1;
+  return MULTI_HIT_FALLOFF ** (segment - 1);
+}
+
+/**
+ * 这一项修饰是不是「充能增伤」——连续攻击衰减**只砍它**（甲方 2026-10-09）。
+ *
+ * 覆盖：普通充能加伤（`charge`，chargeTarget=attack 的炉心）与
+ * 玻璃大炮的「一波打出去」（`trait:<id>:firstAttackCharge`）。
+ *
+ * **明确排除**铁皮王八的混合充能（`charge:hybrid`）：那条是**防御向**的充能改道
+ * （充能先全量进格挡，再分 `⌊充能÷2⌋` 给攻击），把它一起砍会让防御盘直接拖成
+ * 107 回合的消耗战（golden-trait-turtle 实测：9 回合 → 107 回合），而玻璃大炮
+ * 根本走不到这条路径——与「给玻璃大炮打的补丁」的原意不符。
+ *
+ * 力量 / 强化 / 超负荷折功都不在此列，所以**没有充能加伤的攻击完全不受影响**。
+ */
+export function isChargeBonusModifier(sourceId: string): boolean {
+  return sourceId === "charge" || sourceId.endsWith(":firstAttackCharge");
+}
+
 /** 单次伤害：基础值 → 修饰管线 → 格挡吸收 → HP → 死亡检查。 */
 export function dealDamage(draft: Draft, sink: EventSink, args: DamageArgs): void {
   const target = findUnit(draft, args.targetId);
@@ -239,7 +277,11 @@ export function dealDamage(draft: Draft, sink: EventSink, args: DamageArgs): voi
   }
 
   const auto = args.modifiers ?? attackModifiers(draft, args.actorId, args.targetId);
-  const modifiers = args.extraModifiers?.length ? [...auto, ...args.extraModifiers] : auto;
+  const scale = args.chargeFalloff ?? 1;
+  const tune = (m: Modifier): Modifier =>
+    scale === 1 || !isChargeBonusModifier(m.sourceId) ? m : { ...m, value: m.value * scale };
+  const appended = args.extraModifiers?.length ? [...auto, ...args.extraModifiers] : auto;
+  const modifiers = scale === 1 ? appended : appended.map(tune);
   const evaluated = evaluateValue("attackDamage", args.base, modifiers);
   const value = evaluated.value;
   const blocked = args.bypassBlock ? 0 : Math.min(target.block, value);
@@ -1094,16 +1136,35 @@ export function enqueueEffects(
   effects: readonly CardEffect[],
   ctx: EffectContext,
 ): void {
-  const damageTotal = effects.filter((e) => e.kind === "damage").length;
+  // 「段」= **会同时结算**的伤害效果（甲方 2026-10-09 连续攻击衰减的口径）。
+  // 互为否定的条件（X 与 not X）不可能同时命中，所以它们是**同一段**：
+  // 「蚀心之刃」写作 `7 @not(污染≥50)` + `14 @污染≥50`，是「要么 7 要么 14」，
+  // 不是两连击——段号算成 2 会让它凭空吃一次衰减。
+  // 只有真正会连着打出去的伤害才递增段号，也因此吃 dealDamage 的段间衰减。
+  const slots: Array<{ key: string; negated: boolean }> = [];
+  const slotIndex = new Map<number, number>();
+  effects.forEach((effect, i) => {
+    if (effect.kind !== "damage") return;
+    const polarity = conditionPolarity(effect.condition);
+    const twin = slots.findIndex((s) => s.key === polarity.key && s.negated !== polarity.negated);
+    if (twin >= 0) {
+      slotIndex.set(i, twin + 1);
+      return;
+    }
+    slots.push(polarity);
+    slotIndex.set(i, slots.length);
+  });
+  const damageTotal = slots.length;
+
   const pending: EffectWork[] = [];
   let damageIndex = 0;
-  for (const effect of effects) {
+  effects.forEach((effect, i) => {
     // 目标条件（targetHasBuff）必须逐目标求值，不能在这里快照（docs/38 §二 B-3）
     const targetCondition = hasTargetCondition(effect.condition);
-    if (effect.kind === "damage") damageIndex += 1;
+    if (effect.kind === "damage") damageIndex = slotIndex.get(i) ?? damageIndex;
     const targetIds = resolveTargets(draft, defaultTarget(effect), ctx.actorId, ctx.chosenTargetId);
     pending.push({ effect, ctx, targetIds, damageIndex, damageTotal, ...(targetCondition ? { targetCondition } : {}) });
-  }
+  });
   for (let i = pending.length - 1; i >= 0; i -= 1) {
     const work = pending[i];
     draft.queue.push({
@@ -1113,6 +1174,32 @@ export function enqueueEffects(
       payload: work,
     });
   }
+}
+
+/** 条件的稳定规范化（键序无关），用来判断两个条件是否**互为否定**。 */
+function canonicalCondition(node: unknown): string {
+  if (node === null || typeof node !== "object") return JSON.stringify(node ?? null);
+  if (Array.isArray(node)) return "[" + node.map(canonicalCondition).join(",") + "]";
+  const obj = node as Record<string, unknown>;
+  return (
+    "{" +
+    Object.keys(obj)
+      .sort()
+      .map((k) => k + ":" + canonicalCondition(obj[k]))
+      .join(",") +
+    "}"
+  );
+}
+
+/**
+ * 条件的「极性」：把 `not(X)` 归一成「以 X 为键、极性为反」。
+ * 两个条件互为否定 ⟺ 同一个 key 且极性相反 ⟺ **永远不会同时命中**。
+ */
+function conditionPolarity(node: ConditionNode | undefined): { key: string; negated: boolean } {
+  if (node && node.type === "not") {
+    return { key: canonicalCondition((node as unknown as { of: ConditionNode }).of), negated: true };
+  }
+  return { key: canonicalCondition(node), negated: false };
 }
 
 /** 条件树里是否含"目标侧"条件（需要逐目标求值）。 */
@@ -1157,7 +1244,13 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
   const value = effect.value ?? 0;
 
   switch (effect.kind) {
-    case "damage":
+    case "damage": {
+      // 连续攻击衰减（甲方 2026-10-09）：**这是给玻璃大炮打的补丁，只砍「充能增伤」这一项**。
+      // 充能在多段攻击里按 100% / 50% / 25% … 计入各段（三段 = 300% → 175%）；
+      // 卡牌自身的基础伤害、力量、强化、超负荷折功等其他加成一概不动 ——
+      // 没有充能增伤的卡**完全不受影响**（所以这一刀只对「充能流 + 多段」生效）。
+      // 写在 executeWork 而不是 dealDamage —— 敌人的多段普攻不走这条管线，天然不受影响。
+      const falloff = multiHitFalloff(damageIndex, damageTotal);
       for (const t of targetIds) {
         dealDamage(draft, sink, {
           sourceId: ctx.sourceId,
@@ -1166,6 +1259,7 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
           base: value,
           segment: damageIndex,
           segments: damageTotal,
+          ...(falloff !== 1 ? { chargeFalloff: falloff } : {}),
           extraModifiers: ctx.attackModifiers,
           // 反伤是固定伤害：不走攻击修饰（力量/充能/易伤都不该放大它）
           ...(work.reflect ? { reflect: true, modifiers: [] } : {}),
@@ -1173,6 +1267,7 @@ function executeWork(draft: Draft, sink: EventSink, work: EffectWork): void {
         ctx.onHit?.(damageIndex, t);
       }
       break;
+    }
     case "block":
       for (const t of targetIds) {
         const before = findUnit(draft, t)?.block ?? 0;

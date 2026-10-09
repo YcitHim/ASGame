@@ -69,6 +69,8 @@ describe("S3.2 出牌判定与结算", () => {
     const typed = hits.filter((h) => h.type === "DamageDealt");
     expect(typed.map((h) => h.segment)).toEqual([1, 2, 3]);
     expect(typed.every((h) => h.segments === 3)).toBe(true);
+    // 无充能增伤 → 连续攻击衰减不生效，各段原伤（甲方 2026-10-09）
+    expect(typed.map((h) => h.value)).toEqual([2, 2, 2]);
     expect(typed.reduce((a, h) => a + h.value, 0)).toBe(6);
     expect(result.state.enemies[0].hp).toBe(44);
   });

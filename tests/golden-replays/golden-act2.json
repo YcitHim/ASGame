@@ -196,7 +196,7 @@
         "targetId": "tidecaller"
       }
     ],
-    "eventHash": "d48f857465dc073dd3f2c09944d0b5293082c5ba9659a0b137f7d56f634d6fb4",
+    "eventHash": "9d61a51ce8714a4d337d33d75b69552bc33178c571188e70429fc400dbe3590b",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",

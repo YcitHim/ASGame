@@ -248,7 +248,7 @@
         "actionId": "e32"
       }
     ],
-    "eventHash": "0663b073a0fd86259a414c44092c8f80ebf6b692db2718bfc5c849fe5777df9a",
+    "eventHash": "4a4a9c2c61f4cfa17d2a1965982f26a6a2d747d11eecbb6b6153e8b65b58b083",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",
@@ -267,6 +267,7 @@
       "CardExhausted",
       "CardPlayed",
       "ChargeChanged",
+      "BuffApplied",
       "TurnEnded",
       "PollutionChanged",
       "BuffApplied",
@@ -278,7 +279,6 @@
       "IntentRevealed",
       "IntentRevealed",
       "CardPlayed",
-      "ChargeChanged",
       "BuffExpired",
       "BuffApplied",
       "HpHealed",
@@ -286,12 +286,12 @@
       "HpLost",
       "UnitDied",
       "PollutionChanged",
+      "ChargeChanged",
       "CardPlayed",
       "DamageDealt",
-      "HpLost",
-      "CardPlayed"
+      "HpLost"
     ],
     "turns": 8,
-    "outcome": "lose"
+    "outcome": "win"
   }
 }
