@@ -68,16 +68,25 @@ function play(s: BattleState, cardId: string): BattleState {
 }
 
 describe("docs/49 Phase 2a · 冰缓 chill", () => {
-  it("玩家：手牌费用 +1；回合开始 −1 层，归零即恢复原价", () => {
+  it("玩家：手牌费用 +1；承载者自己回合结束递减，归零即恢复原价", () => {
     let s = start(["self_chill", "strike"]);
     s = play(s, "self_chill");
-    expect(s.player.buffs.find((b) => b.id === "chill")?.stacks).toBe(2);
+    // 甲方 2026-10-09 双轴：冰缓「层」伪装成强度，实际是时长——层数恒 1，参数 2 = 2 回合
+    expect(s.player.buffs.find((b) => b.id === "chill")?.stacks).toBe(1);
+    expect(s.player.buffs.find((b) => b.id === "chill")?.duration).toBe(2);
     expect(previewEnergyCost(s, handIndex(s, "strike"))).toBe(2); // 打击 1 + 冰缓 1
 
+    // 本回合刚挂上：新鲜度护栏挡住这次递减，时长保持 2
     s = reduce(s, { type: "EndTurn", actionId: "e" }).state;
-    expect(s.player.buffs.find((b) => b.id === "chill")?.stacks).toBe(1);
+    expect(s.player.buffs.find((b) => b.id === "chill")?.duration).toBe(2);
     expect(previewEnergyCost(s, handIndex(s, "strike"))).toBe(2);
 
+    // 再过一个自己的回合：2 → 1
+    s = reduce(s, { type: "EndTurn", actionId: "e" }).state;
+    expect(s.player.buffs.find((b) => b.id === "chill")?.duration).toBe(1);
+    expect(previewEnergyCost(s, handIndex(s, "strike"))).toBe(2);
+
+    // 第三个自己的回合结束才到期，恢复原价
     s = reduce(s, { type: "EndTurn", actionId: "e" }).state;
     expect(s.player.buffs.find((b) => b.id === "chill")).toBeUndefined();
     expect(previewEnergyCost(s, handIndex(s, "strike"))).toBe(1);
@@ -86,7 +95,8 @@ describe("docs/49 Phase 2a · 冰缓 chill", () => {
   it("敌人：冰缓期间造伤 ×0.8", () => {
     let s = start(["foe_chill", "strike"], "hitter");
     s = play(s, "foe_chill");
-    expect(s.enemies[0].buffs.find((b) => b.id === "chill")?.stacks).toBe(3);
+    expect(s.enemies[0].buffs.find((b) => b.id === "chill")?.stacks).toBe(1);
+    expect(s.enemies[0].buffs.find((b) => b.id === "chill")?.duration).toBe(3);
     const before = s.player.hp;
     const after = reduce(s, { type: "EndTurn", actionId: "e" }).state;
     // 5 × 0.8 = 4（round）

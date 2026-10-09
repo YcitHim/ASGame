@@ -77,24 +77,28 @@ describe("颠倒（诅咒 · 规则）", () => {
     expect(s.reverseCosts).toEqual({});
   });
 
-  it("2 层颠倒能撑两个自己的回合（每回合结束 −1 层）", () => {
+  it("2 回合颠倒能撑两个自己的回合（每回合结束 −1 回合）", () => {
     let s = pinReverseIntent(start(["rust_hound"], ["strike", "defend"]), "rust_hound", 2);
     s = endTurn(s);
-    expect(s.player.buffs.find((b) => b.id === "reverse")?.stacks).toBe(2);
+    // 甲方 2026-10-09：颠倒也是时长型——层数恒 1，参数 2 = 2 回合
+    expect(s.player.buffs.find((b) => b.id === "reverse")?.duration).toBe(2);
     s = endTurn(s);
-    expect(s.player.buffs.find((b) => b.id === "reverse")?.stacks).toBe(1);
+    expect(s.player.buffs.find((b) => b.id === "reverse")?.duration).toBe(1);
     s = endTurn(s);
     expect(s.player.buffs.find((b) => b.id === "reverse")).toBeUndefined();
   });
 
-  it("玩家给敌人挂的颠倒同样在敌人回合结束时递减（谵语 2 层）", () => {
+  it("玩家给敌人挂的颠倒同样在敌人回合结束时递减（谵语 2 回合）", () => {
     let s = start(["rust_hound", "bell_warden"], ["raving", "strike"]);
     const index = handIndex(s, "raving");
     s = reduce(s, { type: "PlayCard", actionId: "p" + ++seq, handIndex: index, targetId: "rust_hound" }).state;
-    expect(s.enemies[0].buffs.find((b) => b.id === "reverse")?.stacks).toBe(2);
-    // 玩家回合结束 → 敌人回合（带着颠倒行动）→ 敌方回合结束 −1
-    s = endTurn(s);
     expect(s.enemies[0].buffs.find((b) => b.id === "reverse")?.stacks).toBe(1);
+    expect(s.enemies[0].buffs.find((b) => b.id === "reverse")?.duration).toBe(2);
+    // 玩家回合结束 → 敌人回合（带着颠倒行动）→ 敌方回合结束 −1
+    // 关键：玩家回合里挂的，回合实例是玩家侧（2N），到敌方侧（2N+1）必须能递减——
+    // 若只按 draft.turn 判新鲜度，这里会被误判成"敌人自己回合挂的"而白吃一个回合。
+    s = endTurn(s);
+    expect(s.enemies[0].buffs.find((b) => b.id === "reverse")?.duration).toBe(1);
   });
 
   it("回合内抽到的牌也吃随机费用（抽牌流绕不过诅咒）", () => {

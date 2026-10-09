@@ -20,12 +20,14 @@ describe("S3.3 六个基础 Buff 接入战斗结算", () => {
     expect(play(buffed, "strike").state.enemies[0].hp).toBe(42);
   });
 
-  it("胆怯：每层承伤 +10%，5 层 = +50%（docs/46 §2.2，对齐旧易伤上限）", () => {
+  it("胆怯：固定 +20% 承伤，重复施加只延长时间、不放大强度（甲方 2026-10-09 双轴）", () => {
     let s = withHand(["expose", "expose", "expose", "expose", "expose", "strike"]);
     for (let i = 0; i < 5; i += 1) s = play(s, "expose").state;
-    expect(s.enemies[0].buffs.find((b) => b.id === "timid")?.stacks).toBe(5);
-    // 6 × 1.5 = 9
-    expect(play(s, "strike").state.enemies[0].hp).toBe(41);
+    // 层数恒 1（强度固定），时长 1 + 1×4 = 5 回合（extend）
+    expect(s.enemies[0].buffs.find((b) => b.id === "timid")?.stacks).toBe(1);
+    expect(s.enemies[0].buffs.find((b) => b.id === "timid")?.duration).toBe(5);
+    // 6 × 1.2 = 7.2 → 7（伤害四舍五入）
+    expect(play(s, "strike").state.enemies[0].hp).toBe(43);
   });
 
   it("虚弱：每层造伤 −10%（docs/46 §2.1；1 层：6 × 0.9 = 5.4 → 5）", () => {
@@ -38,8 +40,8 @@ describe("S3.3 六个基础 Buff 接入战斗结算", () => {
     let s = withHand(["expose", "expose", "expose", "expose", "expose", "strike", "strike"]);
     s = debug(s, "add buff strength 2").state;
     for (let i = 0; i < 5; i += 1) s = play(s, "expose").state;
-    // (6 + 2) × 1.5 = 12
-    expect(play(s, "strike").state.enemies[0].hp).toBe(38);
+    // (6 + 2) × 1.2 = 9.6 → 10（伤害四舍五入）
+    expect(play(s, "strike").state.enemies[0].hp).toBe(40);
   });
 
   it("再生：回合开始按层数回血", () => {
@@ -106,11 +108,19 @@ describe("S3.3 六个基础 Buff 接入战斗结算", () => {
     expect(s.player.buffs.find((b) => b.id === "bramble")?.stacks).toBe(5);
   });
 
-  it("层级型减益不按回合衰减：虚弱会留到战斗结束（docs/46 §2.1）", () => {
+  it("时长型减益：基础 1 回合；本回合刚挂上的不在同一回合掉时长（新鲜度护栏）", () => {
     const started = withHand(["curse_weak", "strike", "strike"]);
     const weakened = play(started, "curse_weak").state;
-    expect(weakened.player.buffs.find((b) => b.id === "weak")?.duration).toBeNull();
+    const weak = weakened.player.buffs.find((b) => b.id === "weak");
+    expect(weak?.stacks).toBe(1);
+    expect(weak?.duration).toBe(1);
+
+    // 玩家自己结束回合：applyTurn === 本回合实例 → 护栏挡住这一次递减
     const after = reduce(weakened, { type: "EndTurn", actionId: "e" });
-    expect(after.state.player.buffs.find((b) => b.id === "weak")?.stacks).toBe(1);
+    expect(after.state.player.buffs.find((b) => b.id === "weak")?.duration).toBe(1);
+
+    // 再过一个自己的回合才真正到期
+    const later = reduce(after.state, { type: "EndTurn", actionId: "e" });
+    expect(later.state.player.buffs.find((b) => b.id === "weak")).toBeUndefined();
   });
 });

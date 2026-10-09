@@ -19,9 +19,10 @@ describe("S3.6 调试控制台指令（G4）", () => {
   it("add buff 与 duration", () => {
     const state = debug(started(), "add buff strength 3").state;
     expect(state.player.buffs.find((b) => b.id === "strength")?.stacks).toBe(3);
-    // docs/46 §2：胆怯改成层级型（duration 参数不再生效）
-    const layered = debug(state, "add buff timid 3").state;
-    expect(layered.player.buffs.find((b) => b.id === "timid")?.stacks).toBe(3);
+    // 甲方 2026-10-09 双轴：胆怯改成时长型——层数恒 1，参数变成回合数
+    const timed = debug(state, "add buff timid 3").state;
+    expect(timed.player.buffs.find((b) => b.id === "timid")?.stacks).toBe(1);
+    expect(timed.player.buffs.find((b) => b.id === "timid")?.duration).toBe(3);
   });
 
   it("give card：注册卡才可加入，未注册报错", () => {

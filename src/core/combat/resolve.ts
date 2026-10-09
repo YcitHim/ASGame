@@ -4,7 +4,15 @@
  * 所有数值走修饰符管线；所有状态变更发事件；本文件不出现具体卡牌特判
  * （卡牌逻辑在 registry/handler 与 data JSON）。
  */
-import { applyBuff, buffApplication, buffStacks, isBoonBuff, tickBuffs, type BuffInstance } from "../buffs";
+import {
+  applyBuff,
+  buffApplication,
+  buffStacks,
+  isBoonBuff,
+  tickBuffs,
+  tickOwnerTurnEnd,
+  type BuffInstance,
+} from "../buffs";
 import type { EventSink } from "../events/event-sink";
 import { evaluateValue, type Modifier } from "../pipeline";
 import { getEnhancementHandler } from "../registry/enhancement-handler";
@@ -12,7 +20,7 @@ import type { BuffId } from "../registry/ids";
 import type { CardEffect, ConditionNode, TargetRef } from "../registry/content";
 import { evaluateCondition, type ConditionContext } from "../registry/condition";
 import { getTarget } from "../registry/target";
-import { findUnit, livingEnemies, type Draft, type MutableUnit } from "./draft";
+import { findUnit, livingEnemies, turnSerial, type Draft, type MutableUnit } from "./draft";
 import type { DelayedEffect } from "./state";
 import { resolveTriggers } from "./relics";
 import { fireRelicHandlers, relicPollutionOverflow } from "./relic-runtime";
@@ -113,15 +121,14 @@ export function attackModifiers(draft: Draft, actorId: string, targetId: string)
     }
   }
 
-  // docs/46 §2.1：虚弱层级化——每层造伤 −10%，上限 5 层（不再 ×0.75 计时）
-  const weak = Math.min(5, buffStacks(actor, "weak"));
-  if (weak > 0) {
-    mods.push({ sourceId: "weak", layer: "buff", op: "mul", value: 1 - 0.1 * weak });
+  // 虚弱（甲方 2026-10-09 双轴定稿，推翻 docs/46 §2.1 的层级化）：**固定 −20% 造伤**。
+  // 强度不再随层数变化（上限 1 层），时长才是新的变量——见 definitions.ts / tickOwnerTurnEnd。
+  if (buffStacks(actor, "weak") > 0) {
+    mods.push({ sourceId: "weak", layer: "buff", op: "mul", value: 1 - WEAK_DAMAGE_PENALTY });
   }
-  // docs/46 §2.2：胆怯（旧易伤合并案）——每层承伤 +10%，上限 5 层（不再 ×1.5 计时）
-  const timid = Math.min(5, buffStacks(target, "timid"));
-  if (timid > 0) {
-    mods.push({ sourceId: "timid", layer: "buff", op: "mul", value: 1 + 0.1 * timid });
+  // 胆怯（甲方 2026-10-09）：**固定 +20% 承伤**。
+  if (buffStacks(target, "timid") > 0) {
+    mods.push({ sourceId: "timid", layer: "buff", op: "mul", value: 1 + TIMID_DAMAGE_BONUS });
   }
   // 超负荷（docs/58 §六.2，甲方 2026-10-07 修订）：承载者受到的伤害**每层 +N**（加区）。
   // 与「承载者是谁」无关——玩家扛超负荷时挨打更疼，敌人被转嫁后同样如此。
@@ -524,6 +531,14 @@ export function loseHp(
 }
 
 /** amount 是"卡面参数"：强度型=层数，计时型=回合数（策划 Q1）。 */
+/**
+ * 虚弱 / 胆怯的固定幅度（甲方 2026-10-09 双轴定稿）。
+ * 这两个状态**不再按层数放缩强度**：层数恒为 1，变量只有「还剩几回合」。
+ * 改数值只需改这里，攻防两侧（玩家与敌人）共用同一道门。
+ */
+export const WEAK_DAMAGE_PENALTY = 0.2;
+export const TIMID_DAMAGE_BONUS = 0.2;
+
 export function applyBuffToTarget(
   draft: Draft,
   sink: EventSink,
@@ -556,6 +571,8 @@ export function applyBuffToTarget(
     id: buffId,
     ...application,
     ...(maxStacks !== undefined ? { maxStacks } : {}),
+    // 新鲜度戳：ownerTurnEnd 衰减时用它保证「承载者本回合刚挂上的」不在同一回合就掉时长
+    ...(turnSerial(draft) != null ? { turn: turnSerial(draft)! } : {}),
   });
   const applied = unit.buffs.find((b) => b.id === buffId);
   sink.emit("BuffApplied", {
@@ -872,22 +889,25 @@ export function resolveCurses(draft: Draft, sink: EventSink): void {
 }
 
 /**
- * 冰缓 / 颠倒（docs/46 §3.7/§3.8）：层数 = 剩余回合，在**该单位自己的回合结束时 −1**，
- * 归零即移除。谁挂的不重要，重要的是「挂上之后至少要活过对方的一整个回合」。
+ * **承载者自己回合结束**的状态衰减（甲方 2026-10-09 双轴定稿，唯一口径）。
+ *
+ * 覆盖：虚弱 / 胆怯 / 冰缓 / 颠倒 / 眩晕 / 灼烧 / 荆棘 / 坚韧——凡是 `decayAt: "ownerTurnEnd"` 的状态。
+ *
+ * 为什么必须是「承载者自己的回合结束」：状态是**挂在谁身上、谁自己数回合**。
+ * 敌人趁我方回合的间隙给你挂上 1 回合诅咒，减速就得从**你下一个回合结束**才动第一次——
+ * 写在玩家回合开始（旧版）会有一个致命差一：你还没轮到出手就已经被扣掉，等于完全没生效
+ * （甲方报的「颠倒对角色不生效 + 状态栏也没有」）。
+ *
+ * 再叠一道**新鲜度护栏**（见 tickOwnerTurnEnd）：本回合刚挂上的跳过这次递减，
+ * 于是「任何状态至少完整活过一次承载者的回合开始」是引擎保证，而不是各调用点约定。
  */
-export function decayTimedCurses(sink: EventSink, units: readonly MutableUnit[]): void {
+export function decayOwnerTurnEnd(sink: EventSink, units: readonly MutableUnit[], serial: number): void {
   for (const unit of units) {
     if (unit.hp <= 0) continue;
-    for (const id of ["chill", "reverse"] as const) {
-      const buff = unit.buffs.find((b) => b.id === id);
-      if (!buff) continue;
-      const next = buff.stacks - 1;
-      if (next <= 0) {
-        unit.buffs = unit.buffs.filter((b) => b.id !== id);
-        sink.emit("BuffExpired", { targetId: unit.id, buffId: id });
-      } else {
-        unit.buffs = unit.buffs.map((b) => (b.id === id ? { id, stacks: next, duration: b.duration } : b));
-      }
+    const tick = tickOwnerTurnEnd(unit.buffs, serial);
+    unit.buffs = [...tick.buffs];
+    for (const b of tick.expired) {
+      sink.emit("BuffExpired", { targetId: unit.id, buffId: b.id });
     }
   }
 }

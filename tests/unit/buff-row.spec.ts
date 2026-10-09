@@ -27,6 +27,21 @@ describe("BuffRow 状态角标", () => {
     expect(document.body.querySelector(".buff-tip")).toBeNull();
     w.unmount();
   });
+
+  // 甲方 2026-10-09 状态双轴：灼烧/荆棘/坚韧一个图标同时说明「多少层」与「还剩几回合」
+  it("双轴状态：主角标给层数，图标右下角另挂剩余回合小角标", () => {
+    const burn: BuffInstance = { id: "burn", stacks: 3, duration: 2 };
+    const w = mount(BuffRow, { props: { buffs: [burn] } });
+    expect(w.find(".val").text()).toBe("3");
+    expect(w.find(".tile .turns").text()).toBe("2");
+  });
+
+  it("纯计时型不重复挂回合角标（主角标本身就是剩余回合）", () => {
+    const chill: BuffInstance = { id: "chill", stacks: 1, duration: 2 };
+    const w = mount(BuffRow, { props: { buffs: [chill] } });
+    expect(w.find(".val").text()).toBe("2");
+    expect(w.find(".turns").exists()).toBe(false);
+  });
 });
 
 describe("computeBuffTipPlacement", () => {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import type { BuffInstance } from "@/core/buffs";
-import { buffAmount, buffMeta, buffTip, buffValueText, type BuffMeta } from "./buff-meta";
+import { buffAmount, buffMeta, buffTip, buffTurnsBadge, buffValueText, type BuffMeta } from "./buff-meta";
 import { BUFF_TIP_WIDTH, computeBuffTipPlacement, type TipRect } from "@/ui/tip-position";
 import { keywordTip } from "@/ui/glossary";
 
@@ -40,6 +40,11 @@ const tip = ref<TipState | null>(null);
 
 function meta(id: string): BuffMeta {
   return buffMeta(id);
+}
+
+/** 双轴状态的剩余回合角标（灼烧/荆棘/坚韧）；纯计时型返回 null。 */
+function turnsBadge(buff: BuffInstance): number | null {
+  return buffTurnsBadge(buff);
 }
 
 /** 收集同单位容器内的障碍物矩形（实测，不写死像素）。 */
@@ -118,7 +123,10 @@ function close(): void {
       @focus="open($event, b)"
       @blur="close"
     >
-      <span class="tile" :style="{ '--buff-tint': meta(b.id).tint }">{{ meta(b.id).glyph }}</span>
+      <span class="tile" :style="{ '--buff-tint': meta(b.id).tint }">
+        {{ meta(b.id).glyph }}
+        <span v-if="turnsBadge(b) != null" class="turns">{{ turnsBadge(b) }}</span>
+      </span>
       <span class="name">{{ meta(b.id).name }}</span>
       <span class="val">{{ buffAmount(b) }}</span>
     </button>
@@ -182,6 +190,7 @@ function close(): void {
   border-color: #d9822b;
 }
 .tile {
+  position: relative;
   width: 24px;
   height: 24px;
   flex: none;
@@ -197,6 +206,26 @@ function close(): void {
     var(--buff-tint, #6b5a3a);
   border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: inset 0 0 7px rgba(0, 0, 0, 0.6);
+}
+/* 双轴状态的剩余回合角标（甲方 2026-10-09）：主角标给强度，这个小角标给剩余回合 */
+.turns {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  font-family: var(--serif-num);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: #1a1208;
+  background: linear-gradient(180deg, #e8c877, #b08d4a);
+  border: 1px solid rgba(0, 0, 0, 0.55);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 .buff.compact {
   padding: 0 5px 0 4px;

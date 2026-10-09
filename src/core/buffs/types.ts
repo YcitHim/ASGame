@@ -8,7 +8,22 @@ import type { BuffId } from "../registry/ids";
 
 export type StackingPolicy = "stackAndRefresh" | "stack" | "refreshOnly";
 
-export type BuffDecayTiming = "turnStart" | "turnEnd" | "none";
+/**
+ * 衰减时机（甲方 2026-10-09 状态双轴定稿）：
+ * - `turnStart`：泛用 tick 在**玩家回合开始**扣时长（再生）
+ * - `turnEnd`：泛用 tick 在**玩家回合结束**扣时长（敌人自身的减伤形态，docs/60 §八.3）
+ * - `ownerTurnEnd`：**承载者自己的回合结束**扣时长——把「1 回合」的判定点钉在承载体身上，
+ *   于是敌人给你的 1 回合诅咒必定在你下一个回合开头生效（甲方口径：起码吃到一次）
+ * - `none`：不衰减（战斗结束统一清零）
+ */
+export type BuffDecayTiming = "turnStart" | "turnEnd" | "ownerTurnEnd" | "none";
+
+/**
+ * 重复施加时**时长**怎么合并（甲方 2026-10-09）：
+ * - `refresh`（缺省）：取较大值——「刷新时间」（灼烧：再来一次仍是 2 回合，不会越堆越长）
+ * - `extend`：**累加**——「延长时间」（虚弱/胆怯/冰缓/颠倒/眩晕/荆棘/坚韧：再来一次 +1 回合）
+ */
+export type DurationPolicy = "refresh" | "extend";
 
 /**
  * 施加语义：
@@ -33,6 +48,8 @@ export interface BuffDefinition {
   readonly stacking: StackingPolicy;
   /** 衰减时机；none = 永久 */
   readonly decayAt: BuffDecayTiming;
+  /** 重复施加时时长怎么合并；缺省 refresh（取较大值） */
+  readonly durationPolicy?: DurationPolicy;
   /** 参数如何折算为 stacks / duration */
   readonly applyAs: ApplySemantics;
   /** stacksAndTurns 型的默认持续回合 */
@@ -46,6 +63,14 @@ export interface BuffInstance {
   readonly id: BuffId;
   readonly stacks: number;
   readonly duration: number | null;
+  /**
+   * 本状态**是在第几回合被施加/刷新的**（甲方 2026-10-09 新鲜度护栏）。
+   *
+   * 用途：`ownerTurnEnd` 衰减时，若是**本回合刚挂上**的就跳过这次递减——
+   * 把「任何状态至少完整活过一次承载者的回合开始」从约定升级为引擎保证。
+   * 缺省 undefined = 旧数据/不受护栏管（照常递减）。
+   */
+  readonly appliedTurn?: number;
 }
 
 export interface ApplyBuffInput {
@@ -58,6 +83,11 @@ export interface ApplyBuffInput {
    * 覆盖只作用于**这一次施加**，不改变该状态对其他单位的全局上限。
    */
   readonly maxStacks?: number;
+  /**
+   * 施加时所在的**回合数**（draft.turn），用于盖新鲜度戳 appliedTurn。
+   * 只有 `decayAt: "ownerTurnEnd"` 的状态依赖它；其余可省略。
+   */
+  readonly turn?: number;
 }
 
 export interface BuffTickResult {

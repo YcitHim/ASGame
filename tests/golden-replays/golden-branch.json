@@ -154,7 +154,7 @@
         "targetId": "rust_sentinel"
       }
     ],
-    "eventHash": "6dc67dea9fbe44beb3d92da6ed3854fb63d378515282cbef482948697492a599",
+    "eventHash": "800a50aff6041df052c3e77cbd61382dd46b597c5e9002a2f85a4d4885558885",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",

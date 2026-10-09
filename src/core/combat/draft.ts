@@ -273,6 +273,24 @@ export function fromDraft(draft: Draft, eventSeq: number): BattleState {
   };
 }
 
+/**
+ * 当前「回合实例」编号（甲方 2026-10-09 双轴定稿 · 新鲜度护栏）。
+ *
+ * 一个**回合实例** = 某个单位的一次完整回合。玩家与敌人在同一个 `draft.turn` 内各有一个实例，
+ * 用奇偶区分：玩家侧 = `turn * 2`，敌方侧 = `turn * 2 + 1`。
+ *
+ * 为什么要分得这么细：只按 `draft.turn` 判断"是不是本回合挂的"会把**玩家回合里挂给敌人的诅咒**
+ * 误判成"敌人自己回合挂的"，于是敌人白吃两个回合。奇偶一分开，判据就精确到"是不是承载者
+ * 自己这个回合实例挂的"。
+ *
+ * 不在任何回合内（战斗开始 / 战斗结束）返回 null —— 此时不盖新鲜度戳，衰减照常走。
+ */
+export function turnSerial(draft: Draft): number | null {
+  if (draft.phase === "enemyAction") return draft.turn * 2 + 1;
+  if (draft.phase === "battleStart" || draft.phase === "battleEnd") return null;
+  return draft.turn * 2;
+}
+
 export function findUnit(draft: Draft, id: string): MutableUnit | undefined {
   if (id === "player") return draft.player;
   return draft.enemies.find((e) => e.id === id);

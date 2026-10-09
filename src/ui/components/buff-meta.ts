@@ -19,8 +19,9 @@ export interface BuffMeta {
 
 export const BUFF_META: Record<string, BuffMeta> = {
   strength: { name: "力量", glyph: "力", tint: "#8c2f22", unit: "层" },
-  timid: { name: "胆怯", glyph: "怯", tint: "#8a5a1f", unit: "层" },
-  weak: { name: "虚弱", glyph: "弱", tint: "#4a5866", unit: "层" },
+  // 甲方 2026-10-09 双轴：胆怯/虚弱改成时长型——层数恒 1，角标走「剩余回合」
+  timid: { name: "胆怯", glyph: "怯", tint: "#8a5a1f", unit: "回合" },
+  weak: { name: "虚弱", glyph: "弱", tint: "#4a5866", unit: "回合" },
   regeneration: { name: "再生", glyph: "生", tint: "#3f6b3a", unit: "层" },
   pollution: { name: "污染", glyph: "污", tint: "#5b3a7a", unit: "点" },
   bramble: { name: "荆棘", glyph: "荆", tint: "#6b1f34", unit: "层" },
@@ -30,6 +31,7 @@ export const BUFF_META: Record<string, BuffMeta> = {
   corroding: { name: "蚀锈", glyph: "蚀", tint: "#556b2a", unit: "点" },
   mending: { name: "回血印记", glyph: "愈", tint: "#3f6b3a", unit: "点" },
   // 九相后半（docs/49 Phase 2a）：异常红 / 诅咒紫
+  // 灼烧：层数仍是强度（每层每回合 −1 上限），另有 2 回合时长——角标显示层数（stacksAndTurns 规则）
   burn: { name: "灼烧", glyph: "灼", tint: "#8c2f22", unit: "层" },
   chill: { name: "冰缓", glyph: "缓", tint: "#3f5a7a", unit: "回合" },
   reverse: { name: "颠倒", glyph: "颠", tint: "#5b3a7a", unit: "回合" },
@@ -65,6 +67,21 @@ export function buffAmount(buff: { id: string; stacks: number; duration?: number
   const def = BUFF_DEFINITIONS[buff.id as BuffId];
   if (def?.applyAs === "stacksAndTurns") return buff.stacks;
   return buff.duration != null ? buff.duration : buff.stacks;
+}
+
+/**
+ * **双轴状态的回合角标**（甲方 2026-10-09 状态双轴定稿）。
+ *
+ * 灼烧 / 荆棘 / 坚韧同时有两个轴：层数是**强度**、duration 是**剩余回合**。
+ * 主角标已经被强度占了（见 buffAmount），所以剩余回合另起一个更小的角标，
+ * 挂在图标块右下角——一个格子同时说明「多少层」和「还剩几回合」。
+ *
+ * 纯计时型（虚弱/胆怯/冰缓/颠倒/眩晕）返回 null：它们的主角标本来就是剩余回合。
+ */
+export function buffTurnsBadge(buff: { id: string; stacks: number; duration?: number | null }): number | null {
+  if (buff.duration == null) return null;
+  const def = BUFF_DEFINITIONS[buff.id as BuffId];
+  return def?.applyAs === "stacksAndTurns" ? buff.duration : null;
 }
 
 export function buffValueText(buff: { id: string; stacks: number; duration?: number | null }): string {

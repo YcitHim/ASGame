@@ -13,7 +13,7 @@ import { buffStacks, buffDefinition, hasBuff } from "../buffs";
 import { isInnate, turnEndDestination } from "../keywords";
 import { executeDebugCommand } from "./debug";
 import { FORGE_HEAT_STACKS_PER_TURN, forgeHeatActive } from "./act-rules";
-import { definitionOf, fromDraft, livingEnemies, toDraft, type Draft } from "./draft";
+import { definitionOf, fromDraft, livingEnemies, toDraft, turnSerial, type Draft } from "./draft";
 import { generateIntents, runEnemyTurn } from "./enemy-turn";
 import { effectiveCard, playCard } from "./play-card";
 import { resetTurnRelics, resolveTriggers } from "./relics";
@@ -21,7 +21,7 @@ import { relicCheatDeath, relicHpToBlockOnStart, relicKeepBlock } from "./relic-
 import { activeTrait, brambleMaxStacks, traitBrambleFromBlock, traitBrambleFromBlockStep, traitCtx, traitLowChargeEnergy, traitTurnStartEffects } from "./trait";
 import {
   applyBuffToTarget,
-  decayTimedCurses,
+  decayOwnerTurnEnd,
   drawCards,
   gainBlock,
   resolveCorroding,
@@ -280,8 +280,9 @@ function endTurn(draft: Draft, sink: EventSink): void {
     }
   }
   tickAllBuffs(draft, sink, "turnEnd");
-  // 冰缓 / 颠倒（层数 = 剩余回合）：在自己回合结束时 −1（docs/46 §3.7/§3.8）
-  decayTimedCurses(sink, [draft.player]);
+  // 玩家侧状态衰减（甲方 2026-10-09 双轴定稿）：虚弱/胆怯/冰缓/颠倒/眩晕/灼烧/荆棘/坚韧
+  // 一律在**承载者自己的回合结束**递减——此刻 phase 还是 turnEnd，串号即玩家侧这个回合实例。
+  decayOwnerTurnEnd(sink, [draft.player], turnSerial(draft) ?? draft.turn * 2);
   sink.emit("TurnEnded", { turn: draft.turn });
 
   draft.phase = "enemyAction";
@@ -303,8 +304,8 @@ function endTurn(draft: Draft, sink: EventSink): void {
   if (checkBattleEnd(draft, sink)) return;
   runEnemyTurn(draft, sink);
   if (checkBattleEnd(draft, sink)) return;
-  // 敌人的冰缓 / 颠倒同样在自己的回合结束时递减
-  decayTimedCurses(sink, draft.enemies);
+  // 敌人侧的同一个口径：此刻 phase = enemyAction，串号是敌方这半场（turn*2+1）
+  decayOwnerTurnEnd(sink, draft.enemies, turnSerial(draft) ?? draft.turn * 2 + 1);
 
   draft.phase = "turnStart";
   draft.turn += 1;

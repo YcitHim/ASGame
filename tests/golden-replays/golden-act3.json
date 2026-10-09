@@ -174,7 +174,7 @@
         "targetId": "white_slag"
       }
     ],
-    "eventHash": "e27849d65cc8d0e3301245bf895eb4d7d32df3e2b92b1176e96bcd11dc7a0f6e",
+    "eventHash": "7d6e8549436c600bd80a683823079879b8ab190e5324f642fe828f349154596c",
     "eventTypes": [
       "BattleStarted",
       "CardsDrawn",

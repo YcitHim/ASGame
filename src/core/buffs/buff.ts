@@ -15,6 +15,22 @@ function refreshDuration(current: number | null, incoming: number | null | undef
   return Math.max(current ?? 0, incoming ?? 0);
 }
 
+/**
+ * 重复施加时长合并（甲方 2026-10-09 双轴定稿）：
+ * - `refresh`（缺省）：取较大值 = 「刷新时间」（灼烧再来一次仍是 2 回合）
+ * - `extend`：**累加** = 「延长时间」（虚弱/胆怯/冰缓/颠倒/眩晕/荆棘/坚韧 再来一次 +1 回合）
+ */
+function mergeDuration(
+  def: BuffDefinition,
+  current: number | null,
+  incoming: number | null | undefined,
+): number | null {
+  if (def.durationPolicy === "extend" && current != null && incoming != null) {
+    return current + incoming;
+  }
+  return refreshDuration(current, incoming);
+}
+
 function clampStacks(id: BuffInstance["id"], stacks: number, override?: number): number {
   const def = buffDefinition(id);
   const cap = override ?? def.maxStacks;
@@ -68,29 +84,27 @@ export function applyBuff(buffs: readonly BuffInstance[], input: ApplyBuffInput)
       id: input.id,
       stacks: clampStacks(input.id, input.stacks, cap),
       duration: def.applyAs === "stacks" ? null : incomingDuration,
+      ...(input.turn != null ? { appliedTurn: input.turn } : {}),
     };
     if (fresh.stacks <= 0 && def.applyAs === "stacks") return buffs.slice();
     return [...buffs, fresh];
   }
 
   let stacks: number;
-  let duration: number | null;
   switch (def.stacking) {
     case "stack":
       stacks = clampStacks(input.id, existing.stacks + input.stacks, cap);
-      duration = existing.duration;
       break;
     case "refreshOnly":
       stacks = clampStacks(input.id, Math.max(existing.stacks, input.stacks), cap);
-      duration = refreshDuration(existing.duration, incomingDuration);
       break;
     default:
       stacks = clampStacks(input.id, existing.stacks + input.stacks, cap);
-      duration = refreshDuration(existing.duration, incomingDuration);
       break;
   }
+  const duration = mergeDuration(def, existing.duration, incomingDuration);
 
-  return buffs.map((b) => (b.id === input.id ? { id: b.id, stacks, duration } : b));
+  return buffs.map((b) => (b.id === input.id ? { id: b.id, stacks, duration, appliedTurn: input.turn } : b));
 }
 
 /**
@@ -110,7 +124,38 @@ export function tickBuffs(buffs: readonly BuffInstance[], timing: BuffDecayTimin
     }
     const next = b.duration - 1;
     if (next <= 0) expired.push(b);
-    else kept.push({ id: b.id, stacks: b.stacks, duration: next });
+    else kept.push({ ...b, duration: next });
+  }
+  return { buffs: kept, expired };
+}
+
+/**
+ * **承载者自己回合结束**的状态衰减（甲方 2026-10-09）。
+ *
+ * 与 {@link tickBuffs} 的区别：这里只处理 `decayAt: "ownerTurnEnd"` 的状态，
+ * 且带**新鲜度护栏**——本回合刚挂上的（`appliedTurn === turn`）跳过这一次递减，
+ * 保证「无论谁在什么时候施加，承载者都至少吃到一次自己的回合开始」。
+ *
+ * 回合口径（写死，不许再各自为政）：剩余回合只在**承载者自己的回合结束**递减。
+ *
+ * @param turn 当前回合数（draft.turn），用于新鲜度判定
+ */
+export function tickOwnerTurnEnd(buffs: readonly BuffInstance[], turn: number): BuffTickResult {
+  const kept: BuffInstance[] = [];
+  const expired: BuffInstance[] = [];
+  for (const b of buffs) {
+    const def = buffDefinition(b.id);
+    if (def.decayAt !== "ownerTurnEnd" || b.duration == null) {
+      kept.push(b);
+      continue;
+    }
+    if (b.appliedTurn === turn) {
+      kept.push(b);
+      continue;
+    }
+    const next = b.duration - 1;
+    if (next <= 0) expired.push({ ...b, duration: 0 });
+    else kept.push({ ...b, duration: next });
   }
   return { buffs: kept, expired };
 }
